@@ -230,33 +230,36 @@ namespace Org.Reddragonit.Dbpro.Connections
 			{
                 if (table.GetType().GetProperty(fnp.ClassFieldName).PropertyType.IsSubclassOf(typeof(Table)))
                 {
-                    TableMap relatedTableMap = ClassMapper.GetTableMap(table.GetType().GetProperty(fnp.ClassFieldName).PropertyType);
-                    if (table.GetType().GetProperty(fnp.ClassFieldName).GetValue(table, new object[0]) == null)
+                    if (!((ExternalFieldMap)map[fnp]).IsArray)
                     {
-                        foreach (FieldMap fm in relatedTableMap.PrimaryKeys)
+                        TableMap relatedTableMap = ClassMapper.GetTableMap(table.GetType().GetProperty(fnp.ClassFieldName).PropertyType);
+                        if (table.GetType().GetProperty(fnp.ClassFieldName).GetValue(table, new object[0]) == null)
                         {
-                            values += relatedTableMap.GetTableFieldName(fm) + ",";
-                            pars.Add(CreateParameter("@" + relatedTableMap.GetTableFieldName(fm), null));
+                            foreach (FieldMap fm in relatedTableMap.PrimaryKeys)
+                            {
+                                values += relatedTableMap.GetTableFieldName(fm) + ",";
+                                pars.Add(CreateParameter("@" + relatedTableMap.GetTableFieldName(fm), null));
+                            }
                         }
-                    }
-                    else
-                    {
-                        if (!select.Contains("WHERE"))
+                        else
                         {
-                            select += " WHERE ";
-                        }
-                        select = select.Replace(" WHERE ", ", "+relatedTableMap.Name + " WHERE ");
-                        Table relatedTable = (Table)table.GetType().GetProperty(fnp.ClassFieldName).GetValue(table, new object[0]);
-                        foreach (FieldMap fm in relatedTableMap.PrimaryKeys)
-                        {
-                            values += relatedTableMap.GetTableFieldName(fm) + ",";
-                            pars.Add(CreateParameter("@" + relatedTableMap.GetTableFieldName(fm), relatedTable.GetType().GetProperty(relatedTableMap.GetClassFieldName(fm)).GetValue(relatedTable,new Object[0])));
-                            select += ClassMapper.GetTableMap(table.GetType()).Name + "." + relatedTableMap.GetTableFieldName(fm) + " = " + relatedTableMap.Name + "." + relatedTableMap.GetTableFieldName(fm) + " AND ";
-                            select+=relatedTableMap.Name+"."+relatedTableMap.GetTableFieldName(fm)+" = @"+relatedTableMap.GetTableFieldName(fm)+ " AND ";
-                        }
-                        foreach (FieldMap fm in relatedTableMap.Fields)
-                        {
-                            fields += "," + relatedTableMap.Name + "." + relatedTableMap.GetTableFieldName(fm);
+                            if (!select.Contains("WHERE"))
+                            {
+                                select += " WHERE ";
+                            }
+                            select = select.Replace(" WHERE ", ", " + relatedTableMap.Name + " WHERE ");
+                            Table relatedTable = (Table)table.GetType().GetProperty(fnp.ClassFieldName).GetValue(table, new object[0]);
+                            foreach (FieldMap fm in relatedTableMap.PrimaryKeys)
+                            {
+                                values += relatedTableMap.GetTableFieldName(fm) + ",";
+                                pars.Add(CreateParameter("@" + relatedTableMap.GetTableFieldName(fm), relatedTable.GetType().GetProperty(relatedTableMap.GetClassFieldName(fm)).GetValue(relatedTable, new Object[0])));
+                                select += ClassMapper.GetTableMap(table.GetType()).Name + "." + relatedTableMap.GetTableFieldName(fm) + " = " + relatedTableMap.Name + "." + relatedTableMap.GetTableFieldName(fm) + " AND ";
+                                select += relatedTableMap.Name + "." + relatedTableMap.GetTableFieldName(fm) + " = @" + relatedTableMap.GetTableFieldName(fm) + " AND ";
+                            }
+                            foreach (FieldMap fm in relatedTableMap.Fields)
+                            {
+                                fields += "," + relatedTableMap.Name + "." + relatedTableMap.GetTableFieldName(fm);
+                            }
                         }
                     }
                 }
@@ -304,6 +307,48 @@ namespace Org.Reddragonit.Dbpro.Connections
 			ExecuteQuery(select,pars);
 			Read();
 			table.SetValues(this);
+            foreach (ExternalFieldMap efm in map.ExternalFieldMapArrays)
+            {
+                TableMap relatedMap = ClassMapper.GetTableMap(efm.Type);
+                string delString = "DELETE FROM " + map.Name + "_" + relatedMap.Name + " WHERE ";
+                pars.Clear();
+                foreach (InternalFieldMap ifm in map.PrimaryKeys)
+                {
+                    delString += ifm.FieldName + " = @" + ifm.FieldName + " AND ";
+                    pars.Add(CreateParameter("@" + ifm.FieldName, table.GetType().GetProperty(map.GetClassFieldName(ifm)).GetValue(table, new object[0])));
+                }
+                ExecuteNonQuery(delString.Substring(0, delString.Length - 4), pars);
+                Table[] values = (Table[])table.GetType().GetProperty(map.GetClassFieldName(efm)).GetValue(table, new object[0]);
+                delString = "INSERT INTO " + map.Name + "_" + relatedMap.Name + "(";
+                string valueString = "VALUES(";
+                foreach (InternalFieldMap ifm in map.PrimaryKeys)
+                {
+                    delString += ifm.FieldName+",";
+                    valueString+="@"+ifm.FieldName+",";
+                }
+                foreach (InternalFieldMap ifm in relatedMap.PrimaryKeys)
+                {
+                    delString += ifm.FieldName + ",";
+                    valueString += "@" + ifm.FieldName + ",";
+                }
+                delString = delString.Substring(0, delString.Length - 1) + " " + valueString.Substring(0, valueString.Length - 1) + ")";
+                foreach (Table t in values)
+                {
+                    foreach (InternalFieldMap ifm in relatedMap.PrimaryKeys)
+                    {
+                        for (int x = 0; x < pars.Count; x++)
+                        {
+                            if (pars[x].ParameterName = "@" + ifm.FieldName)
+                            {
+                                pars.RemoveAt(x);
+                                break;
+                            }
+                        }
+                        pars.Add(CreateParameter("@" + ifm.FieldName, t.GetType().GetProperty(relatedMap.GetClassFieldName(ifm)).GetValue(t, new object[0])));
+                    }
+                    ExecuteNonQuery(delString, pars);
+                }
+            }
 			Close();
 			return table;
 		}
