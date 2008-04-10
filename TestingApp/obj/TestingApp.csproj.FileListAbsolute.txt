@@ -1,0 +1,21 @@
+C:\Documents and Settings\Roger\My Documents\Completed Projects\DBPro\TestingApp\bin\Debug\TestingApp.exe
+C:\Documents and Settings\Roger\My Documents\Completed Projects\DBPro\TestingApp\bin\Debug\TestingApp.pdb
+C:\Documents and Settings\Roger\My Documents\Completed Projects\DBPro\TestingApp\bin\Debug\DBPro.dll
+C:\Documents and Settings\Roger\My Documents\Completed Projects\DBPro\TestingApp\bin\Debug\DBPro.pdb
+C:\Documents and Settings\Roger\My Documents\Completed Projects\DBPro\TestingApp\obj\Debug\ResolveAssemblyReference.cache
+C:\Documents and Settings\Roger\My Documents\Completed Projects\DBPro\TestingApp\obj\Debug\TestingApp.exe
+C:\Documents and Settings\Roger\My Documents\Completed Projects\DBPro\TestingApp\obj\Debug\TestingApp.pdb
+F:\DBPro\TestingApp\obj\Debug\TestingApp.exe
+F:\DBPro\TestingApp\obj\Debug\TestingApp.pdb
+F:\DBPro\TestingApp\bin\Debug\TestingApp.exe
+F:\DBPro\TestingApp\bin\Debug\TestingApp.pdb
+F:\DBPro\TestingApp\bin\Debug\DBPro.dll
+F:\DBPro\TestingApp\bin\Debug\DBPro.pdb
+F:\DBPro\TestingApp\obj\Debug\ResolveAssemblyReference.cache
+G:\DBPro\TestingApp\bin\Debug\TestingApp.exe
+G:\DBPro\TestingApp\bin\Debug\TestingApp.pdb
+G:\DBPro\TestingApp\bin\Debug\DBPro.dll
+G:\DBPro\TestingApp\bin\Debug\DBPro.pdb
+G:\DBPro\TestingApp\obj\Debug\ResolveAssemblyReference.cache
+G:\DBPro\TestingApp\obj\Debug\TestingApp.exe
+G:\DBPro\TestingApp\obj\Debug\TestingApp.pdb
