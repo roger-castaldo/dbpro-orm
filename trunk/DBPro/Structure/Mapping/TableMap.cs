@@ -126,6 +126,25 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 				return ret;
 			}
 		}
+
+        public List<ExternalFieldMap> ExternalFieldMapArrays
+        {
+            get
+            {
+                List<ExternalFieldMap> ret = new List<ExternalFieldMap>();
+                foreach (FieldMap f in _fields.Values)
+                {
+                    if (f is ExternalFieldMap)
+                    {
+                        if (((ExternalFieldMap)f).IsArray)
+                        {
+                            ret.Add(f);
+                        }
+                    }
+                }
+                return ret;
+            }
+        }
 		
 		public List<FieldNamePair> FieldNamePairs{
 			get{
