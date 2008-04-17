@@ -33,15 +33,20 @@ namespace Org.Reddragonit.Dbpro.Structure
             TableMap map = ClassMapper.GetTableMap(this.GetType());
 			foreach (FieldNamePair fnp in map.FieldNamePairs)
 			{
-                if (this.GetType().GetProperty(fnp.ClassFieldName).PropertyType.IsSubclassOf(typeof(Table)))
+                if (map[fnp] is ExternalFieldMap)
                 {
-                    Table t = (Table)this.GetType().GetProperty(fnp.ClassFieldName).PropertyType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
-                    t.SetValues(conn);
-                    if (!t.AllFieldsNull){
-                        this.GetType().GetProperty(fnp.ClassFieldName).SetValue(this, t, new object[0]);
-                    }
-                    else{
-                        _nullFields.Add(fnp.ClassFieldName);
+                    if (!((ExternalFieldMap)map[fnp]).IsArray)
+                    {
+                        Table t = (Table)this.GetType().GetProperty(fnp.ClassFieldName).PropertyType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
+                        t.SetValues(conn);
+                        if (!t.AllFieldsNull)
+                        {
+                            this.GetType().GetProperty(fnp.ClassFieldName).SetValue(this, t, new object[0]);
+                        }
+                        else
+                        {
+                            _nullFields.Add(fnp.ClassFieldName);
+                        }
                     }
                 }
                 else
