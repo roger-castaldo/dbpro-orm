@@ -130,16 +130,16 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 				tmp=tmp.Substring(0,tmp.Length-1);
 				tmp+="),\n";
 			}
-			if (t.ForiegnTables.Count>0)
+			if (t.ForiegnTablesCreate.Count>0)
 			{
-				foreach (Type type in t.ForiegnTables)
+				foreach (Type type in t.ForiegnTablesCreate)
 				{
                     if (t.GetFieldInfoForForiegnTable(type).IsArray)
                     {
                         TableMap ext = ClassMapper.GetTableMap(type);
                         string externalTable = "CREATE TABLE "+t.Name+"_"+ext.Name+"(";
-                        string pkeys = "\nPRIMARY KEYS(";
-                        string fkeys = "\nFORIEGN KEYS(";
+                        string pkeys = "\nPRIMARY KEY(";
+                        string fkeys = "\nFOREIGN KEY(";
                         string fields = "";
                         foreach (InternalFieldMap f in t.PrimaryKeys)
                         {
@@ -148,8 +148,8 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
                             fkeys += f.FieldName + ",";
                         }
                         fkeys = fkeys.Substring(0, fkeys.Length - 1);
-                        fkeys += ")\nREFERENCES " + t.Name + "(" + fkeys.Replace("\nFORIEGN KEYS(", "").Replace(")","") + ")\n\t\tON UPDATE CASCADE ON DELETE CASCADE,";
-                        fkeys += "\nFORIEGN KEYS(";
+                        fkeys += ")\nREFERENCES " + t.Name + "(" + fkeys.Replace("\nFOREIGN KEY(", "").Replace(")","") + ")\n\t\tON UPDATE CASCADE ON DELETE CASCADE,";
+                        fkeys += "\nFOREIGN KEY(";
                         foreach (InternalFieldMap f in ext.PrimaryKeys)
                         {
                             externalTable += "\n\t" + f.FieldName + " " + TranslateFieldType(f.FieldType, f.FieldLength) + ",";

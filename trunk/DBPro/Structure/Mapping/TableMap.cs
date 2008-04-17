@@ -117,7 +117,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 				List<System.Type> ret = new List<System.Type>();
 				foreach (FieldMap f in _fields.Values)
 				{
-					if (f is ExternalFieldMap)
+					if (f is ExternalFieldMap && !((ExternalFieldMap)f).IsArray )
 					{
 						ExternalFieldMap efm = (ExternalFieldMap)f;
 						ret.Add(efm.Type);
@@ -126,6 +126,23 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 				return ret;
 			}
 		}
+
+        public List<System.Type> ForiegnTablesCreate
+        {
+            get
+            {
+                List<System.Type> ret = new List<System.Type>();
+                foreach (FieldMap f in _fields.Values)
+                {
+                    if (f is ExternalFieldMap)
+                    {
+                        ExternalFieldMap efm = (ExternalFieldMap)f;
+                        ret.Add(efm.Type);
+                    }
+                }
+                return ret;
+            }
+        }
 
         public List<ExternalFieldMap> ExternalFieldMapArrays
         {
@@ -138,7 +155,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
                     {
                         if (((ExternalFieldMap)f).IsArray)
                         {
-                            ret.Add(f);
+                            ret.Add((ExternalFieldMap)f);
                         }
                     }
                 }
