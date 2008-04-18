@@ -76,6 +76,18 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 					}
 				}
 			}
+            int autoGenCount=0;
+            foreach (InternalFieldMap  pkf in PrimaryKeys)
+            {
+                if (pkf.AutoGen)
+                {
+                    autoGenCount++;
+                }
+            }
+            if (autoGenCount > 1)
+            {
+                throw new Exception("Unable to produce database map due to invalid content.  You cannot have more than one autogen primary key field in a table. Class=" + type.Name);
+            }
 		}
 		
 		public List<InternalFieldMap> PrimaryKeys{
@@ -91,6 +103,22 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 				return ret;
 			}
 		}
+
+        public List<InternalFieldMap> InternalPrimaryKeys
+        {
+            get
+            {
+                List<InternalFieldMap> ret = new List<InternalFieldMap>();
+                foreach (FieldMap f in _fields.Values)
+                {
+                    if (f.PrimaryKey   && !(f is ExternalFieldMap))
+                    {
+                        ret.Add((InternalFieldMap)f);
+                    }
+                }
+                return ret;
+            }
+        }
 
         public bool HasPrimaryKeys
         {
