@@ -329,7 +329,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 {
                     fields += "," + tableName + "." + fnp.TableFieldName;
                     values += fnp.TableFieldName + ",";
-                    if (table.GetType().GetProperty(fnp.ClassFieldName).GetValue(table, new object[0]) == null)
+                    if (table.IsFieldNull(fnp.ClassFieldName) == null)
                     {
                         pars.Add(CreateParameter("@" + fnp.TableFieldName,null));
                     }
@@ -341,18 +341,44 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
 			foreach (InternalFieldMap f in ClassMapper.GetTableMap(table.GetType()).Fields)
 			{
-				if (!f.Nullable)
-				{
+                if (!f.Nullable)
+                {
                     if (!select.Contains(" WHERE "))
                     {
                         select += " WHERE ";
                     }
                     if (!f.AutoGen)
                     {
-                        select +=tableName+"." +f.FieldName + " = @" + f.FieldName + " AND ";
+                        select += tableName + "." + f.FieldName + " = @" + f.FieldName + " AND ";
                     }
-				}
+                }
+                else
+                {
+                    if (!select.Contains(" WHERE "))
+                    {
+                        select += " WHERE ";
+                    }
+                    if (!f.AutoGen)
+                    {
+                        if (table.IsFieldNull(map.GetClassFieldName(f)))
+                        {
+                            select += tableName + "." + f.FieldName + " is @" + f.FieldName + " AND ";
+                        }
+                        else
+                        {
+                            select += tableName + "." + f.FieldName + " = @" + f.FieldName + " AND ";
+                        }
+                    }
+                }
 			}
+            foreach (InternalFieldMap f in map.InternalPrimaryKeys)
+            {
+                if (f.AutoGen)
+                {
+                    select = "SELECT * FROM " + map.Name + " WHERE " + map.GetTableFieldName(f) + " IN (SELECT MAX(" + map.GetTableFieldName(f) + ") " + select.Replace("SELECT * ", "") ;
+                    select = select.Substring(0, select.Length - 4) + ") AND";
+                }
+            }
             select = select.Replace("*", fields.Substring(1));
 			values=values.Substring(0,values.Length-1);
 			query+=values+") VALUES(@"+values.Replace(",",",@")+")";
@@ -547,7 +573,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			{
                 if (!query.Contains(" WHERE "))
                 {
-                    query += "WHERE 1=1 ";
+                    query += " WHERE 1=1 ";
                 }
 				foreach (SelectParameter s in parameters)
 				{

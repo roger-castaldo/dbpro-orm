@@ -11,12 +11,24 @@ namespace Org.Reddragonit.Dbpro.Structure
 	{
 		private List<string> _nullFields=null;
         internal bool _isSaved = false;
-        private Dictionary<string, object> _initialPrimaryValues = null; 
-		
+        private Dictionary<string, object> _initialPrimaryValues = null;
+        private Dictionary<string, object> _initialValues = null;
+
 		public Table()
 		{
 			ClassMapper.GetTableMap(this.GetType());
             _nullFields = new List<String>();
+            _initialPrimaryValues = new Dictionary<string, object>();
+            _initialValues = new Dictionary<string, object>();
+            TableMap map = ClassMapper.GetTableMap(this.GetType());
+            foreach (FieldNamePair fnp in map.FieldNamePairs)
+            {
+                if (map[fnp].PrimaryKey)
+                {
+                    _initialPrimaryValues.Add(fnp.ClassFieldName, this.GetType().GetProperty(fnp.ClassFieldName).GetValue(this, new object[0]));
+                }
+                _initialValues.Add(fnp.ClassFieldName, this.GetType().GetProperty(fnp.ClassFieldName).GetValue(this, new object[0]));
+            }
 		}
 
         internal bool IsSaved
@@ -26,13 +38,13 @@ namespace Org.Reddragonit.Dbpro.Structure
                 return _isSaved;
             }
         }
-		
-		internal void SetValues(Org.Reddragonit.Dbpro.Connections.Connection conn)
-		{
+
+        internal void SetValues(Org.Reddragonit.Dbpro.Connections.Connection conn)
+        {
             _initialPrimaryValues = new Dictionary<string, object>();
             TableMap map = ClassMapper.GetTableMap(this.GetType());
-			foreach (FieldNamePair fnp in map.FieldNamePairs)
-			{
+            foreach (FieldNamePair fnp in map.FieldNamePairs)
+            {
                 if (map[fnp] is ExternalFieldMap)
                 {
                     if (!((ExternalFieldMap)map[fnp]).IsArray)
@@ -64,23 +76,26 @@ namespace Org.Reddragonit.Dbpro.Structure
                         this.GetType().GetProperty(fnp.ClassFieldName).SetValue(this, conn[fnp.TableFieldName], new object[0]);
                     }
                 }
-                if (map[fnp].PrimaryKey || !map.HasPrimaryKeys )
+                if (map[fnp].PrimaryKey || !map.HasPrimaryKeys)
                 {
                     _initialPrimaryValues.Add(fnp.ClassFieldName, GetField(fnp.ClassFieldName));
                 }
-			}
+            }
             _isSaved = true;
-		}
+        }
 
         internal bool AllFieldsNull
         {
             get
             {
-                if (_nullFields.Count == ClassMapper.GetTableMap(this.GetType()).FieldNamePairs.Count)
+                foreach (FieldNamePair fnp in ClassMapper.GetTableMap(this.GetType()).FieldNamePairs)
                 {
-                    return true;
+                    if (!IsFieldNull(fnp.ClassFieldName))
+                    {
+                        return false;
+                    }
                 }
-                return false;
+                return true;
             }
         }
 		
@@ -104,20 +119,40 @@ namespace Org.Reddragonit.Dbpro.Structure
             return null;
         }
 
-		protected bool IsFieldNull(string FieldName)
+        private bool equalObjects(object obj1, object obj2)
+        {
+            if (obj1 == null)
+            {
+                if (obj2 == null)
+                {
+                    return true;
+                }
+                return false;
+            }
+            else
+            {
+                if (obj2 == null)
+                {
+                    return false;
+                }
+                if (!(obj2.GetType().Equals(obj1.GetType())))
+                {
+                    return false;
+                }
+                try
+                {
+                    return obj1.Equals(obj2);
+                }
+                catch (Exception e)
+                {
+                    return false; 
+                }
+            }
+        }
+
+		internal bool IsFieldNull(string FieldName)
 		{
-			if (_nullFields==null)
-			{
-				return false;
-			}
-			foreach (string str in _nullFields)
-			{
-				if (str==FieldName)
-				{
-					return true;
-				}
-			}
-			return false;
+            return equalObjects(_initialValues[FieldName], this.GetType().GetProperty(FieldName).GetValue(this, new object[0]));
 		}
 		
 	}
