@@ -51,8 +51,11 @@
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="Connections\Connection.cs" />
     <Compile Include="Connections\ConnectionPool.cs" />
+    <Compile Include="Connections\ConnectionPoolManager.cs" />
     <Compile Include="Connections\Firebird\FBConnection.cs" />
     <Compile Include="Connections\Firebird\FBConnectionPool.cs" />
+    <Compile Include="Connections\MsSql\MsSqlConnection.cs" />
+    <Compile Include="Connections\MsSql\MsSqlConnectionPool.cs" />
     <Compile Include="Connections\SelectParameter.cs" />
     <Compile Include="Structure\Attributes\INullable.cs" />
     <Compile Include="Structure\Mapping\ClassMapper.cs" />

@@ -17,6 +17,9 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 	/// </summary>
 	public class FBConnectionPool : ConnectionPool
 	{
+        public FBConnectionPool(string username, string password, string databasePath, string databaseServer, int minPoolSize, int maxPoolSize, long maxKeepAlive) : this(username,password,databasePath,databaseServer,3050,minPoolSize,maxPoolSize,maxKeepAlive)
+        { }
+
 		public FBConnectionPool(string username,string password,string databasePath,string databaseServer,int port,int minPoolSize,int maxPoolSize,long maxKeepAlive) 
 			: base("User="+username+";" +
 				"Password="+password+";" +
@@ -24,6 +27,9 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 				"DataSource="+databaseServer+";" +
 				"Port="+port.ToString()+";",minPoolSize,maxPoolSize,maxKeepAlive)
 		{}
+
+        public FBConnectionPool(string username,string password,string databasePath,string databaseServer) : this(username,password,databasePath,databaseServer,3050)
+        {}
 		
 		public FBConnectionPool(string username,string password,string databasePath,string databaseServer,int port)
 			: this(username,password,databasePath,databaseServer,port,5,10,600)
