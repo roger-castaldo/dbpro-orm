@@ -5,7 +5,7 @@ using UpdateDeleteAction = Org.Reddragonit.Dbpro.Structure.Attributes.ForiegnFie
 
 namespace TestingApp.Structure
 {
-	[Org.Reddragonit.Dbpro.Structure.Attributes.Table("ACCOUNT","FBMain")]
+	[Org.Reddragonit.Dbpro.Structure.Attributes.Table("ACCOUNT")]
 	public class AccountTable : Table
 	{
 
@@ -13,6 +13,7 @@ namespace TestingApp.Structure
 		private string _fName;
 		private string _lName;
 		private AccountStatus[] _status;
+        private string _job;
 		
 		public AccountTable()
 		{
@@ -42,6 +43,13 @@ namespace TestingApp.Structure
 			get { return _status; }
 			set { _status = value; }
 		}
+
+        [Org.Reddragonit.Dbpro.Structure.Attributes.Field()]
+        public string Job
+        {
+            get { return _job; }
+            set { _job = value; }
+        }
 		
 	}
 }
