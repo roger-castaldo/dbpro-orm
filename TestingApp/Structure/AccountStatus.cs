@@ -4,7 +4,7 @@ using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.Field.FieldType;
 
 namespace TestingApp.Structure
 {
-	[Org.Reddragonit.Dbpro.Structure.Attributes.Table("ACCOUNT_STATUS","FBMain")]
+	[Org.Reddragonit.Dbpro.Structure.Attributes.Table("ACCOUNT_STATUS")]
 	public class AccountStatus : Table
 	{
 		private string _statusName;

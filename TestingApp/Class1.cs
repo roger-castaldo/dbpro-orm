@@ -27,14 +27,14 @@ namespace TestingApp
             Org.Reddragonit.Dbpro.Connections.Connection conn = pool.getConnection();
             conn.CreateTable(acs,true);
             conn.CreateTable(a,true);
-            a=(AccountTable)conn.Save(a);
+            /*a=(AccountTable)conn.Save(a);
             a.FirstName = "George";
             a = (AccountTable)conn.Save(a);
             Console.WriteLine(conn.SelectAll(typeof(AccountTable)).Count);
             List<Org.Reddragonit.Dbpro.Connections.SelectParameter> pars = new List<Org.Reddragonit.Dbpro.Connections.SelectParameter>();
             pars.Add(new Org.Reddragonit.Dbpro.Connections.SelectParameter("StatusId",a.Status[0].StatusId ));
             Console.WriteLine(((AccountStatus)conn.Select(typeof(AccountStatus),pars)[0]).StatusId );
-            conn.CloseConnection();
+            conn.CloseConnection();*/
             pool.ClosePool();
             Console.ReadLine();
 		}

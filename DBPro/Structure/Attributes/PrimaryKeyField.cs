@@ -9,6 +9,38 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 	{
 
 		private bool _autogen=false;
+
+        public PrimaryKeyField(): base()
+        { }
+
+        public PrimaryKeyField(bool autogen): base()
+        {
+            _autogen = autogen;
+        }
+
+        public PrimaryKeyField(int fieldLength)
+            : this(fieldLength, true)
+        {
+        }
+
+        public PrimaryKeyField(int fieldLength, bool Nullable) : base(fieldLength,Nullable)
+        {
+        }
+
+        public PrimaryKeyField(bool autogen,int fieldLength)
+            : this(autogen,fieldLength, true)
+        {
+        }
+
+        public PrimaryKeyField(bool autogen, bool nullable)
+            : this(autogen,int.MinValue, nullable)
+        {
+        }
+
+        public PrimaryKeyField(bool autogen, int fieldLength, bool Nullable) : base(fieldLength,Nullable)
+        {
+            _autogen = autogen;
+        }
 		
 		public PrimaryKeyField(string FieldName,FieldType type):this(FieldName,type,false,0,false)
 		{}

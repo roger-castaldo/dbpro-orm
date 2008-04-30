@@ -8,23 +8,52 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 	{
 
 		private string _tableName=null;
-		private string _connectionName=null;
 
-		public Table(string TableName,string ConnectionName)
+        public Table()
+        { }
+
+		public Table(string TableName)
 		{
-			if (TableName==null)
-				throw new Exception("Cannot set Table attribute with null Table Name");
-			if (ConnectionName==null)
-				throw new Exception("Cannot set Table attribute with null Connection Name");
 			_tableName=TableName;
-			_connectionName=ConnectionName;
-			Assembly asm = Assembly.GetEntryAssembly();
 		}
 
 		public string TableName
 		{
 			get
 			{
+                if (_tableName == null)
+                {
+                    Assembly asm = Assembly.GetEntryAssembly();
+                    foreach (Type t in asm.GetTypes())
+                    {
+                        if (t.IsSubclassOf(typeof(Org.Reddragonit.Dbpro.Structure.Table)))
+                        {
+                            foreach (object obj in t.GetCustomAttributes(this.GetType(), true))
+                            {
+                                if (obj.Equals(this))
+                                {
+                                    _tableName = "";
+                                    foreach (char c in t.Name.ToCharArray())
+                                    {
+                                        if (c.ToString().ToUpper() == c.ToString())
+                                        {
+                                            _tableName += "_" + c.ToString().ToLower();
+                                        }
+                                        else
+                                        {
+                                            _tableName += c;
+                                        }
+                                    }
+                                    if (_tableName[0] == '_')
+                                    {
+                                        _tableName = _tableName[1].ToString().ToUpper() + _tableName.Substring(2);
+                                    }
+                                    _tableName = _tableName.ToUpper();
+                                }
+                            }
+                        }
+                    }
+                }
 				return _tableName;
 			}
 		}
