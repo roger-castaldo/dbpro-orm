@@ -5,11 +5,64 @@ using System.Collections;
 using Org.Reddragonit.Dbpro.Structure;
 using Org.Reddragonit.Dbpro.Structure.Mapping;
 using FieldNamePair = Org.Reddragonit.Dbpro.Structure.Mapping.TableMap.FieldNamePair;
+using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.Field.FieldType;
 
 namespace Org.Reddragonit.Dbpro.Connections
 {
 	public abstract class Connection : IDataReader
 	{
+
+        internal struct ExtractedTableMap
+        {
+            private string _tableName;
+            private List<ExtractedFieldMap> _fields;
+
+            public ExtractedTableMap(string tableName)
+            {
+                _tableName=tableName;
+                _fields=new List<ExtractedFieldMap>();
+            }
+
+            public string TableName{get{return _tableName;}}
+            public List<ExtractedFieldMap> Fields{get{return _fields;}set{_fields=value;}}
+        }
+
+        internal struct ExtractedFieldMap
+        {
+            private string _fieldName;
+            private string _type;
+            private long _size;
+            private bool _primaryKey;
+            private bool _nullable;
+            private string _updateAction;
+            private string _deleteAction;
+            private string _externalTable;
+            private string _externalField;
+
+            public ExtractedFieldMap(string fieldName, string type, long size, bool primary, bool nullable)
+            {
+                _fieldName = fieldName;
+                _type = type;
+                _size = size;
+                _primaryKey = primary;
+                _nullable = nullable;
+                _externalField = null;
+                _updateAction = null;
+                _deleteAction = null;
+                _externalTable = null;
+            }
+
+            public string FieldName { get { return _fieldName; } }
+            public string Type { get { return _type; } }
+            public long Size { get { return _size; } }
+            public bool PrimaryKey { get { return _primaryKey; } }
+            public bool Nullable { get { return _nullable; } }
+            public string UpdateAction { get { return _updateAction; } set { _updateAction = value; } }
+            public string DeleteAction { get { return _deleteAction; } set { _deleteAction = value; } }
+            public string ExternalTable { get { return _externalTable; } set { _externalTable= value; } }
+            public string ExternalField { get { return _externalField; } set { _externalField = value; } }
+        }
+
 		private ConnectionPool pool;
 		protected IDbConnection conn;
 		protected IDbCommand comm;
@@ -24,6 +77,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 		protected abstract IDbDataParameter CreateParameter(string parameterName,object parameterValue);
 		protected abstract List<string> ConstructCreateStrings(Table table);
 		protected abstract string TranslateFieldType(Org.Reddragonit.Dbpro.Structure.Attributes.Field.FieldType type,int fieldLength);
+        internal abstract List<ExtractedTableMap> GetTableList();
+		
 		
 		public Connection(ConnectionPool pool,string connectionString){
 			creationTime=System.DateTime.Now;
@@ -33,6 +88,19 @@ namespace Org.Reddragonit.Dbpro.Connections
 			trans=conn.BeginTransaction();
 			comm = EstablishCommand();
             comm.Transaction = trans;
+            foreach (ExtractedTableMap etm in GetTableList())
+			{
+            	System.Diagnostics.Debug.WriteLine(etm.TableName);
+            	foreach (ExtractedFieldMap efm in etm.Fields)
+            	{
+            		System.Diagnostics.Debug.WriteLine("\t"+efm.FieldName+" Primary:"+efm.PrimaryKey.ToString()+" Nullable:"+efm.Nullable.ToString());
+            		if (efm.ExternalTable != null)
+            		{
+            			System.Diagnostics.Debug.WriteLine("\t\t Links To:"+efm.ExternalTable+"->"+efm.ExternalField);
+            			System.Diagnostics.Debug.WriteLine("\t\tOn Update:"+efm.UpdateAction+" On Delete:"+efm.DeleteAction);
+            		}
+            	}
+			}
 		}
 		
 		internal void Disconnect()
@@ -635,7 +703,6 @@ namespace Org.Reddragonit.Dbpro.Connections
 					comm.Parameters.Add(param);
 				}
 			}
-            System.Diagnostics.Debug.WriteLine(comm.CommandText);
 			reader=comm.ExecuteReader();
 		}
 		

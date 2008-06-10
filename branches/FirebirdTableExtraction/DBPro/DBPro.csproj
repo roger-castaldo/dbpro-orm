@@ -42,6 +42,7 @@
     <Reference Include="FirebirdSql.Data.FirebirdClient, Version=2.1.0.0, Culture=neutral, PublicKeyToken=3750abcc3150b00c, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>C:\Program Files\FirebirdClient 2.0\FirebirdSql.Data.FirebirdClient.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />

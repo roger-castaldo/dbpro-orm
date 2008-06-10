@@ -30,6 +30,11 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
             return new SqlConnection(connectionString);
         }
 
+        internal override List<Connection.ExtractedTableMap> GetTableList()
+        {
+            throw new Exception("The method or operation is not implemented.");
+        }
+
         protected override string TranslateFieldType(FieldType type, int fieldLength)
         {
             string ret = null;
