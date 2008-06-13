@@ -22,63 +22,63 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 	public class FBConnection : Connection
 	{
 
-        private const string SelectTableListQuery = "SELECT " +
-            "rfr.rdb$relation_name AS TableName, " +
-            "rfr.rdb$field_name AS ColumnName, " +
-            "rfr.rdb$field_position AS ColumnPosition, " +
-            " (CASE fld.rdb$field_type WHEN 261 THEN " +
-            " (CASE WHEN fld.rdb$field_sub_type = 1 THEN  'BLOB SUB_TYPE TEXT' " +
-            " ELSE 'BLOB' END) " +
-            " WHEN 14 THEN 'CHAR' " +
-            " WHEN 27 THEN 'DOUBLE' " +
-            " WHEN 10 THEN 'FLOAT' " +
-            " WHEN 16 THEN  " +
-            " (CASE WHEN fld.rdb$field_sub_type = 2 THEN 'DECIMAL('||CAST(fld.rdb$field_precision as varchar(100))||', '||cast((0-fld.rdb$field_scale) as varchar(100))||')'  " +
-            " ELSE 'BIGINT' END) " +
-            " WHEN 8 THEN 'INTEGER' " +
-            " WHEN 9 THEN 'QUAD' " +
-            " WHEN 7 THEN 'SMALLINT' " +
-            " WHEN 12 THEN 'DATE' " +
-            " WHEN 13 THEN 'TIME' " +
-            " WHEN 35 THEN 'TIMESTAMP' " +
-            " WHEN 37 THEN 'VARCHAR' " +
-            " ELSE 'UNKNOWN' " +
-            " END) AS ColumnDataType, " +
-            "fld.rdb$field_sub_type AS ColumnSubType, " +
-            "fld.rdb$field_length AS ColumnSize, " +
-            "fld.rdb$field_precision AS ColumnPrecision, " +
-            "fld.rdb$field_scale AS ColumnScale, " +
-            "(CASE WHEN rfr.rdb$null_flag IS null or rfr.rdb$null_flag=0 THEN 'true' else 'false' END) AS NullFlag,  " +
-            "fld.rdb$default_source AS DefaultValue, " +
-            "(select count(*) from " +
-            "rdb$relation_constraints rel, " +
-            "rdb$indices idx, " +
-            "rdb$index_segments seg " +
-            "where " +
-            "rel.rdb$constraint_type = 'PRIMARY KEY' " +
-            "and rel.rdb$index_name = idx.rdb$index_name " +
-            "and idx.rdb$index_name = seg.rdb$index_name " +
-            "and rel.rdb$relation_name = rfr.rdb$relation_name " +
-            "and seg.rdb$field_name = rfr.rdb$field_name) AS PrimaryKey, " +
-            "(select count(*) from " +
-            "rdb$relation_constraints rel, " +
-            "rdb$indices idx, " +
-            "rdb$index_segments seg " +
-            "where " +
-            "rel.rdb$constraint_type = 'FOREIGN KEY' " +
-            "and rel.rdb$index_name = idx.rdb$index_name " +
-            "and idx.rdb$index_name = seg.rdb$index_name " +
-            "and rel.rdb$relation_name = rfr.rdb$relation_name " +
-            "and seg.rdb$field_name = rfr.rdb$field_name) AS ForeignKey " +
-            "FROM " +
-            "rdb$relation_fields rfr " +
-            "LEFT JOIN rdb$fields fld ON rfr.rdb$field_source = fld.rdb$field_name " +
-            "LEFT JOIN rdb$relations rel ON (rfr.rdb$relation_name = rel.rdb$relation_name AND rel.rdb$system_flag IS NOT NULL) " +
-        	"WHERE rfr.rdb$relation_name NOT LIKE 'RDB$%' and rfr.rdb$relation_name NOT LIKE 'MON$%'" +
-            "ORDER BY " +
-            "rfr.rdb$relation_name, rfr.rdb$field_position";
-        
-        private const string SelectReferences =
+		private const string SelectTableListQuery = "SELECT " +
+			"rfr.rdb$relation_name AS TableName, " +
+			"rfr.rdb$field_name AS ColumnName, " +
+			"rfr.rdb$field_position AS ColumnPosition, " +
+			" (CASE fld.rdb$field_type WHEN 261 THEN " +
+			" (CASE WHEN fld.rdb$field_sub_type = 1 THEN  'BLOB SUB_TYPE TEXT' " +
+			" ELSE 'BLOB' END) " +
+			" WHEN 14 THEN 'CHAR' " +
+			" WHEN 27 THEN 'DOUBLE' " +
+			" WHEN 10 THEN 'FLOAT' " +
+			" WHEN 16 THEN  " +
+			" (CASE WHEN fld.rdb$field_sub_type = 2 THEN 'DECIMAL('||CAST(fld.rdb$field_precision as varchar(100))||', '||cast((0-fld.rdb$field_scale) as varchar(100))||')'  " +
+			" ELSE 'BIGINT' END) " +
+			" WHEN 8 THEN 'INTEGER' " +
+			" WHEN 9 THEN 'QUAD' " +
+			" WHEN 7 THEN 'SMALLINT' " +
+			" WHEN 12 THEN 'DATE' " +
+			" WHEN 13 THEN 'TIME' " +
+			" WHEN 35 THEN 'TIMESTAMP' " +
+			" WHEN 37 THEN 'VARCHAR' " +
+			" ELSE 'UNKNOWN' " +
+			" END) AS ColumnDataType, " +
+			"fld.rdb$field_sub_type AS ColumnSubType, " +
+			"fld.rdb$field_length AS ColumnSize, " +
+			"fld.rdb$field_precision AS ColumnPrecision, " +
+			"fld.rdb$field_scale AS ColumnScale, " +
+			"(CASE WHEN rfr.rdb$null_flag IS null or rfr.rdb$null_flag=0 THEN 'true' else 'false' END) AS NullFlag,  " +
+			"fld.rdb$default_source AS DefaultValue, " +
+			"(select count(*) from " +
+			"rdb$relation_constraints rel, " +
+			"rdb$indices idx, " +
+			"rdb$index_segments seg " +
+			"where " +
+			"rel.rdb$constraint_type = 'PRIMARY KEY' " +
+			"and rel.rdb$index_name = idx.rdb$index_name " +
+			"and idx.rdb$index_name = seg.rdb$index_name " +
+			"and rel.rdb$relation_name = rfr.rdb$relation_name " +
+			"and seg.rdb$field_name = rfr.rdb$field_name) AS PrimaryKey, " +
+			"(select count(*) from " +
+			"rdb$relation_constraints rel, " +
+			"rdb$indices idx, " +
+			"rdb$index_segments seg " +
+			"where " +
+			"rel.rdb$constraint_type = 'FOREIGN KEY' " +
+			"and rel.rdb$index_name = idx.rdb$index_name " +
+			"and idx.rdb$index_name = seg.rdb$index_name " +
+			"and rel.rdb$relation_name = rfr.rdb$relation_name " +
+			"and seg.rdb$field_name = rfr.rdb$field_name) AS ForeignKey " +
+			"FROM " +
+			"rdb$relation_fields rfr " +
+			"LEFT JOIN rdb$fields fld ON rfr.rdb$field_source = fld.rdb$field_name " +
+			"LEFT JOIN rdb$relations rel ON (rfr.rdb$relation_name = rel.rdb$relation_name AND rel.rdb$system_flag IS NOT NULL) " +
+			"WHERE rfr.rdb$relation_name NOT LIKE 'RDB$%' and rfr.rdb$relation_name NOT LIKE 'MON$%'" +
+			"ORDER BY " +
+			"rfr.rdb$relation_name, rfr.rdb$field_position";
+		
+		private const string SelectReferences =
 			"SELECT " +
 			"pidx.rdb$relation_name AS FKTableName, " +
 			"pseg.rdb$field_name AS FKColumnName, " +
@@ -86,16 +86,30 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 			"rc.rdb$relation_name AS PKTableName, " +
 			"fseg.rdb$field_name AS PKColumnName, " +
 			"fidx.rdb$foreign_key AS PKName," +
-        	"actions.rdb$update_rule as on_update, "+
-            "actions.rdb$delete_rule as on_delete " +
+			"actions.rdb$update_rule as on_update, "+
+			"actions.rdb$delete_rule as on_delete " +
 			"FROM " +
 			"rdb$relation_constraints rc " +
 			"inner join rdb$indices fidx ON (rc.rdb$index_name = fidx.rdb$index_name AND rc.rdb$constraint_type = 'FOREIGN KEY') " +
 			"inner join rdb$index_segments fseg ON fidx.rdb$index_name = fseg.rdb$index_name " +
 			"inner join rdb$indices pidx ON fidx.rdb$foreign_key = pidx.rdb$index_name " +
 			"inner join rdb$index_segments pseg ON (pidx.rdb$index_name = pseg.rdb$index_name AND pseg.rdb$field_position=fseg.rdb$field_position) " +
-        	"inner join RDB$REF_CONSTRAINTS actions ON rc.rdb$constraint_name = actions.RDB$constraint_name " +
-        	"ORDER BY rc.rdb$relation_name,fseg.rdb$field_name";
+			"inner join RDB$REF_CONSTRAINTS actions ON rc.rdb$constraint_name = actions.RDB$constraint_name " +
+			"ORDER BY rc.rdb$relation_name,fseg.rdb$field_name";
+		
+		private const string SelectContraints =
+			"SELECT command FROM " +
+			                  " (select 'ALTER TABLE '||rdb$relation_name||' DROP CONSTRAINT '||rdb$constraint_name||';' as command,2 as order_mode " +
+			                  " from rdb$relation_constraints " +
+			                  " where rdb$constraint_type = 'FOREIGN KEY' " +
+			                  " UNION " +
+			                  " select 'ALTER TABLE '||rdb$relation_name||' DROP CONSTRAINT '||rdb$constraint_name||';' as command,1 as order_mode " +
+			                  " from rdb$relation_constraints " +
+			                  " where rdb$constraint_type = 'PRIMARY KEY' " +
+			                  " UNION " +
+			                  " select 'ALTER TABLE '||rdb$relation_name||' DROP CONSTRAINT '||rdb$constraint_name||';' as command,0 as order_mode " +
+			                  " from rdb$relation_constraints " +
+			                  " where rdb$constraint_type = 'NOT NULL') ORDER BY order_mode DESC";
 		
 		public FBConnection(ConnectionPool pool,string connectionString) : base(pool,connectionString)
 		{
@@ -117,61 +131,89 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 			return new FbConnection(connectionString);
 		}
 
-        internal override List<Connection.ExtractedTableMap> GetTableList()
-        {
-            List<ExtractedTableMap> ret = new List<ExtractedTableMap>();
-            this.ExecuteQuery(SelectTableListQuery);
-            while (this.Read())
-            {
-                ExtractedTableMap map = new ExtractedTableMap(null);
-                foreach (ExtractedTableMap m in ret)
-                {
-                	if (m.TableName == this["TABLENAME"].ToString().Trim(" ".ToCharArray()))
-                    {
-                        map = m;
-                        break;
-                    }
-                }
-                if (map.TableName==null )
-                {
-                    map = new ExtractedTableMap(this["TABLENAME"].ToString().Trim(" ".ToCharArray()));
-                    ret.Add(map);
-                }
-                map.Fields.Add(new ExtractedFieldMap(this["COLUMNNAME"].ToString().Trim(" ".ToCharArray()), this["COLUMNDATATYPE"].ToString().Trim(" ".ToCharArray()),
-                                                     long.Parse(this["COLUMNSIZE"].ToString()), int.Parse(this["PRIMARYKEY"].ToString())>0, bool.Parse(this["NULLFLAG"].ToString())));
-            }
-            this.Close();
-            this.ExecuteQuery(SelectReferences);
-            int x=0;
-            while (this.Read())
-            {
-            	while ((x<ret.Count) && (!ret[x].TableName.Equals(this["PKTableName"].ToString().Trim(" ".ToCharArray()))))
-            	{
-            		x+=1;
-            	}
-            	if (x!=ret.Count)
-            	{
-            		ExtractedTableMap etm = ret[x];
-            		for(int y=0;y<etm.Fields.Count;y++)
-            		{
-            			ExtractedFieldMap efm=etm.Fields[y];
-            			if (efm.FieldName==this["PKColumnName"].ToString().Trim(" ".ToCharArray()))
-            			{
-            				efm.ExternalTable=this["FKTableName"].ToString().Trim(" ".ToCharArray());
-            				efm.ExternalField=this["FKColumnName"].ToString().Trim(" ".ToCharArray());
-            				efm.UpdateAction=this["on_update"].ToString();
-            				efm.DeleteAction=this["on_delete"].ToString();
-            				etm.Fields.RemoveAt(y);
-            				etm.Fields.Insert(y,efm);
-            				break;
-            			}
-            		}
-            		ret.RemoveAt(x);
-            		ret.Insert(x,etm);
-            	}
-            }
-            return ret;
-        }
+		internal override List<Connection.ExtractedTableMap> GetTableList()
+		{
+			List<ExtractedTableMap> ret = new List<ExtractedTableMap>();
+			this.ExecuteQuery(SelectTableListQuery);
+			while (this.Read())
+			{
+				ExtractedTableMap map = new ExtractedTableMap(null);
+				foreach (ExtractedTableMap m in ret)
+				{
+					if (m.TableName == this["TABLENAME"].ToString().Trim(" ".ToCharArray()))
+					{
+						map = m;
+						break;
+					}
+				}
+				if (map.TableName==null )
+				{
+					map = new ExtractedTableMap(this["TABLENAME"].ToString().Trim(" ".ToCharArray()));
+					ret.Add(map);
+				}
+				map.Fields.Add(new ExtractedFieldMap(this["COLUMNNAME"].ToString().Trim(" ".ToCharArray()), this["COLUMNDATATYPE"].ToString().Trim(" ".ToCharArray()),
+				                                     long.Parse(this["COLUMNSIZE"].ToString()), int.Parse(this["PRIMARYKEY"].ToString())>0, bool.Parse(this["NULLFLAG"].ToString())));
+			}
+			this.Close();
+			this.ExecuteQuery(SelectReferences);
+			int x=0;
+			while (this.Read())
+			{
+				while ((x<ret.Count) && (!ret[x].TableName.Equals(this["PKTableName"].ToString().Trim(" ".ToCharArray()))))
+				{
+					x+=1;
+				}
+				if (x!=ret.Count)
+				{
+					ExtractedTableMap etm = ret[x];
+					for(int y=0;y<etm.Fields.Count;y++)
+					{
+						ExtractedFieldMap efm=etm.Fields[y];
+						if (efm.FieldName==this["PKColumnName"].ToString().Trim(" ".ToCharArray()))
+						{
+							efm.ExternalTable=this["FKTableName"].ToString().Trim(" ".ToCharArray());
+							efm.ExternalField=this["FKColumnName"].ToString().Trim(" ".ToCharArray());
+							efm.UpdateAction=this["on_update"].ToString();
+							efm.DeleteAction=this["on_delete"].ToString();
+							etm.Fields.RemoveAt(y);
+							etm.Fields.Insert(y,efm);
+							break;
+						}
+					}
+					ret.RemoveAt(x);
+					ret.Insert(x,etm);
+				}
+			}
+			return ret;
+		}
+		
+		internal override List<string> GetDropConstraintsScript()
+		{
+			List<string> ret = new List<string>();
+			this.ExecuteQuery(SelectContraints);
+			while (this.Read())
+			{
+				ret.Add((string)this[0]);
+			}
+			this.Close();
+			return ret;
+		}
+		
+		internal override List<string> GetNullConstraintsScript(List<ExtractedTableMap> map)
+		{
+			List<string> ret = new List<string>();
+			foreach (ExtractedTableMap etm in map)
+			{
+				foreach(ExtractedFieldMap efm in etm.Fields)
+				{
+					if (!efm.Nullable)
+					{
+						ret.Add("ALTER TABLE "+etm.TableName+" ADD CHECK ("+efm.FieldName+" IS NOT NULL);");
+					}
+				}
+			}
+			return ret;
+		}
 		
 		protected override string TranslateFieldType(FieldType type, int fieldLength)
 		{
@@ -265,52 +307,52 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 			{
 				foreach (Type type in t.ForiegnTablesCreate)
 				{
-                    if (t.GetFieldInfoForForiegnTable(type).IsArray)
-                    {
-                        TableMap ext = ClassMapper.GetTableMap(type);
-                        string externalTable = "CREATE TABLE "+t.Name+"_"+ext.Name+"(";
-                        string pkeys = "\nPRIMARY KEY(";
-                        string fkeys = "\nFOREIGN KEY(";
-                        string fields = "";
-                        foreach (InternalFieldMap f in t.PrimaryKeys)
-                        {
-                            externalTable += "\n\t" + f.FieldName + " ".ToCharArray() + TranslateFieldType(f.FieldType, f.FieldLength)+",";
-                            pkeys += f.FieldName + ",";
-                            fkeys += f.FieldName + ",";
-                        }
-                        fkeys = fkeys.Substring(0, fkeys.Length - 1);
-                        fkeys += ")\nREFERENCES " + t.Name + "(" + fkeys.Replace("\nFOREIGN KEY(", "").Replace(")","") + ")\n\t\tON UPDATE CASCADE ON DELETE CASCADE,";
-                        fkeys += "\nFOREIGN KEY(";
-                        foreach (InternalFieldMap f in ext.PrimaryKeys)
-                        {
-                            externalTable += "\n\t" + f.FieldName + " ".ToCharArray() + TranslateFieldType(f.FieldType, f.FieldLength) + ",";
-                            pkeys += f.FieldName + ",";
-                            fkeys += f.FieldName + ",";
-                            fields += f.FieldName + ",";
-                        }
-                        fkeys = fkeys.Substring(0, fkeys.Length - 1);
-                        fkeys += ")\nREFERENCES " + ext.Name + "(" + fields.Substring(0, fields.Length - 1) + ")\nON UPDATE CASCADE ON DELETE CASCADE\n";
-                        pkeys = pkeys.Substring(0, pkeys.Length - 1) + "),";
-                        externalTable =externalTable+pkeys+fkeys +");";
-                        ret.Add(externalTable);
-                    }
-                    else
-                    {
-                        tmp += "\tFOREIGN KEY(";
-                        foreach (InternalFieldMap ifm in ClassMapper.GetTableMap(type).PrimaryKeys)
-                        {
-                            tmp += ifm.FieldName + ",";
-                        }
-                        tmp = tmp.Substring(0, tmp.Length - 1);
-                        tmp += ")\n\t\tREFERENCES " + ClassMapper.GetTableMap(type).Name + "(";
-                        foreach (InternalFieldMap ifm in ClassMapper.GetTableMap(type).PrimaryKeys)
-                        {
-                            tmp += ifm.FieldName + ",";
-                        }
-                        tmp = tmp.Substring(0, tmp.Length - 1);
-                        tmp += ")\n\t\tON UPDATE " + t.GetFieldInfoForForiegnTable(type).OnUpdate.ToString() + "\n";
-                        tmp += "\t\tON DELETE " + t.GetFieldInfoForForiegnTable(type).OnDelete.ToString() + ",\n";
-                    }
+					if (t.GetFieldInfoForForiegnTable(type).IsArray)
+					{
+						TableMap ext = ClassMapper.GetTableMap(type);
+						string externalTable = "CREATE TABLE "+t.Name+"_"+ext.Name+"(";
+						string pkeys = "\nPRIMARY KEY(";
+						string fkeys = "\nFOREIGN KEY(";
+						string fields = "";
+						foreach (InternalFieldMap f in t.PrimaryKeys)
+						{
+							externalTable += "\n\t" + f.FieldName + " ".ToCharArray() + TranslateFieldType(f.FieldType, f.FieldLength)+",";
+							pkeys += f.FieldName + ",";
+							fkeys += f.FieldName + ",";
+						}
+						fkeys = fkeys.Substring(0, fkeys.Length - 1);
+						fkeys += ")\nREFERENCES " + t.Name + "(" + fkeys.Replace("\nFOREIGN KEY(", "").Replace(")","") + ")\n\t\tON UPDATE CASCADE ON DELETE CASCADE,";
+						fkeys += "\nFOREIGN KEY(";
+						foreach (InternalFieldMap f in ext.PrimaryKeys)
+						{
+							externalTable += "\n\t" + f.FieldName + " ".ToCharArray() + TranslateFieldType(f.FieldType, f.FieldLength) + ",";
+							pkeys += f.FieldName + ",";
+							fkeys += f.FieldName + ",";
+							fields += f.FieldName + ",";
+						}
+						fkeys = fkeys.Substring(0, fkeys.Length - 1);
+						fkeys += ")\nREFERENCES " + ext.Name + "(" + fields.Substring(0, fields.Length - 1) + ")\nON UPDATE CASCADE ON DELETE CASCADE\n";
+						pkeys = pkeys.Substring(0, pkeys.Length - 1) + "),";
+						externalTable =externalTable+pkeys+fkeys +");";
+						ret.Add(externalTable);
+					}
+					else
+					{
+						tmp += "\tFOREIGN KEY(";
+						foreach (InternalFieldMap ifm in ClassMapper.GetTableMap(type).PrimaryKeys)
+						{
+							tmp += ifm.FieldName + ",";
+						}
+						tmp = tmp.Substring(0, tmp.Length - 1);
+						tmp += ")\n\t\tREFERENCES " + ClassMapper.GetTableMap(type).Name + "(";
+						foreach (InternalFieldMap ifm in ClassMapper.GetTableMap(type).PrimaryKeys)
+						{
+							tmp += ifm.FieldName + ",";
+						}
+						tmp = tmp.Substring(0, tmp.Length - 1);
+						tmp += ")\n\t\tON UPDATE " + t.GetFieldInfoForForiegnTable(type).OnUpdate.ToString() + "\n";
+						tmp += "\t\tON DELETE " + t.GetFieldInfoForForiegnTable(type).OnDelete.ToString() + ",\n";
+					}
 				}
 			}
 			tmp=tmp.Substring(0,tmp.Length-2)+"\n";

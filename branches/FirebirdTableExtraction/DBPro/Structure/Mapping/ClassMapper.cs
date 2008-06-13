@@ -31,6 +31,18 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			mut.ReleaseMutex();
 			return ret;
 		}
+
+        public static System.Type[] TableTypes
+        {
+            get
+            {
+                mut.WaitOne();
+                System.Type[] ret = new Type[map.Count];
+                map.Keys.CopyTo(ret, 0);
+                mut.ReleaseMutex();
+                return ret;
+            }
+        }
 		
 		static ClassMapper()
 		{

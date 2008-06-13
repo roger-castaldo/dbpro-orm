@@ -11,6 +11,34 @@ namespace Org.Reddragonit.Dbpro.Connections
 {
 	public abstract class Connection : IDataReader
 	{
+		
+		internal struct ForiegnRelationMap
+		{
+			private string _internalField;
+			private string _externalField;
+			private string _onUpdate;
+			private string _onDelete;
+			
+			public string InternalField{
+				get{return _internalField;}
+				set{_internalField=value;}
+			}
+			
+			public string ExternalField{
+				get{return _externalField;}
+				set{_externalField=value;}
+			}
+			
+			public string OnUpdate{
+				get{return _onUpdate;}
+				set{_onUpdate=value;}
+			}
+			
+			public string OnDelete{
+				get{return _onDelete;}
+				set{_onDelete=value;}
+			}
+		}
 
         internal struct ExtractedTableMap
         {
@@ -78,6 +106,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 		protected abstract List<string> ConstructCreateStrings(Table table);
 		protected abstract string TranslateFieldType(Org.Reddragonit.Dbpro.Structure.Attributes.Field.FieldType type,int fieldLength);
         internal abstract List<ExtractedTableMap> GetTableList();
+        internal abstract List<string> GetDropConstraintsScript();
+        internal abstract List<string> GetNullConstraintsScript(List<ExtractedTableMap> map);
 		
 		
 		public Connection(ConnectionPool pool,string connectionString){
@@ -88,19 +118,211 @@ namespace Org.Reddragonit.Dbpro.Connections
 			trans=conn.BeginTransaction();
 			comm = EstablishCommand();
             comm.Transaction = trans;
-            foreach (ExtractedTableMap etm in GetTableList())
-			{
-            	System.Diagnostics.Debug.WriteLine(etm.TableName);
-            	foreach (ExtractedFieldMap efm in etm.Fields)
+            List<ExtractedTableMap> curStructure=GetTableList();
+            List<ExtractedTableMap> tables = new List<ExtractedTableMap>();
+            foreach (System.Type type in ClassMapper.TableTypes)
+            {
+                TableMap tm = ClassMapper.GetTableMap(type);
+                ExtractedTableMap etm = new ExtractedTableMap(tm.Name);
+                foreach (InternalFieldMap ifm in tm.Fields )
+                {
+                    etm.Fields.Add(new ExtractedFieldMap(tm.GetTableFieldName(ifm), TranslateFieldType(ifm.FieldType, ifm.FieldLength), ifm.FieldLength, ifm.PrimaryKey, ifm.Nullable));
+                }
+                foreach (Type t in tm.ForiegnTables)
+                {
+                    TableMap rt = ClassMapper.GetTableMap(t);
+                    foreach (InternalFieldMap ifm in tm.PrimaryKeys)
+                    {
+                        ExtractedFieldMap efm;
+                        for (int x = 0; x < etm.Fields.Count; x++)
+                        {
+                            efm = etm.Fields[x];
+                            if (efm.FieldName == rt.GetTableFieldName(ifm))
+                            {
+                                efm.ExternalTable = tm.Name;
+                                efm.ExternalField = efm.FieldName;
+                                efm.DeleteAction=tm.GetFieldInfoForForiegnTable(t).OnDelete.ToString();
+                                efm.UpdateAction = tm.GetFieldInfoForForiegnTable(t).OnUpdate.ToString();
+                            }
+                        }
+                    }
+                }
+                tables.Add(etm);
+                foreach (ExternalFieldMap e in tm.ExternalFieldMapArrays)
+                {
+                	TableMap t = ClassMapper.GetTableMap(e.Type);
+                	etm = new ExtractedTableMap(tm.Name+"_"+t.Name);
+                	ExtractedFieldMap efm;
+                	foreach (InternalFieldMap ifm in tm.PrimaryKeys)
+                	{
+                		efm = new ExtractedFieldMap(ifm.FieldName,TranslateFieldType(ifm.FieldType,ifm.FieldLength),ifm.FieldLength,true,ifm.Nullable);
+                		efm.ExternalTable=tm.Name;
+                		efm.ExternalField=ifm.FieldName;
+                		efm.DeleteAction=e.OnDelete.ToString();
+                		efm.UpdateAction=e.OnUpdate.ToString();
+                		etm.Fields.Add(efm);
+                	}
+                	foreach (InternalFieldMap ifm in t.PrimaryKeys)
+                	{
+                		efm = new ExtractedFieldMap(ifm.FieldName,TranslateFieldType(ifm.FieldType,ifm.FieldLength),ifm.FieldLength,true,ifm.Nullable);
+                		efm.ExternalTable=t.Name;
+                		efm.ExternalField=ifm.FieldName;
+                		efm.DeleteAction=e.OnDelete.ToString();
+                		efm.UpdateAction=e.OnUpdate.ToString();
+                		etm.Fields.Add(efm);
+                	}
+                	tables.Add(etm);
+                }
+            }
+            /*foreach (ExtractedTableMap etm in tables)
+            {
+                System.Diagnostics.Debug.WriteLine(etm.TableName);
+                foreach (ExtractedFieldMap efm in etm.Fields)
+                {
+                    System.Diagnostics.Debug.WriteLine("\t" + efm.FieldName + " Primary:" + efm.PrimaryKey.ToString() + " Nullable:" + efm.Nullable.ToString());
+                    if (efm.ExternalTable != null)
+                    {
+                        System.Diagnostics.Debug.WriteLine("\t\t Links To:" + efm.ExternalTable + "->" + efm.ExternalField);
+                        System.Diagnostics.Debug.WriteLine("\t\tOn Update:" + efm.UpdateAction + " On Delete:" + efm.DeleteAction);
+                    }
+                }
+            }*/
+            List<string> alterations = new List<string>();
+            foreach (ExtractedTableMap etm in tables)
+            {
+            	bool tableExists = false;
+            	foreach (ExtractedTableMap e in curStructure)
             	{
-            		System.Diagnostics.Debug.WriteLine("\t"+efm.FieldName+" Primary:"+efm.PrimaryKey.ToString()+" Nullable:"+efm.Nullable.ToString());
-            		if (efm.ExternalTable != null)
+            		if (e.TableName==etm.TableName)
             		{
-            			System.Diagnostics.Debug.WriteLine("\t\t Links To:"+efm.ExternalTable+"->"+efm.ExternalField);
-            			System.Diagnostics.Debug.WriteLine("\t\tOn Update:"+efm.UpdateAction+" On Delete:"+efm.DeleteAction);
+            			tableExists=true;
+            			foreach (ExtractedFieldMap efm in etm.Fields)
+            			{
+            				bool fieldExists=false;
+            				foreach (ExtractedFieldMap f in e.Fields)
+            				{
+            					if (efm.FieldName==f.FieldName)
+            					{
+            						fieldExists=true;
+            						if ((efm.DeleteAction!=f.DeleteAction) ||
+            						    (efm.ExternalField!=f.ExternalField) ||
+            						    (efm.ExternalTable!=f.ExternalTable) ||
+            						    (efm.Nullable!=f.Nullable) ||
+            						    (efm.PrimaryKey!=f.PrimaryKey) ||
+            						    (efm.Size!=f.Size) ||
+            						    (efm.Type!=f.Type) ||
+            						    (efm.UpdateAction!=f.UpdateAction))
+            						{
+            							alterations.Add("ALTER TABLE "+etm.TableName+" ALTER COLUMN "+efm.FieldName+" TYPE "+efm.Type+";");
+            						}
+            						break;
+            					}
+            				}
+            				if (!fieldExists)
+            				{
+            					alterations.Add("ALTER TABLE "+etm.TableName+" ADD COLUMN "+efm.FieldName+" "+efm.Type+";");
+            				}
+            			}
+            			break;
             		}
             	}
-			}
+            	if (!tableExists)
+            	{
+            		string create = "CREATE TABLE "+etm.TableName+"(";
+            		foreach (ExtractedFieldMap efm in etm.Fields)
+            		{
+            			create+=efm.FieldName+" "+efm.Type+",";
+            		}
+            		create=create.Substring(0,create.Length-1);
+            		create+=");";
+            		alterations.Add(create);
+            	}
+            }
+            foreach (ExtractedTableMap etm in curStructure)
+            {
+            	bool tableExists=false;
+            	foreach (ExtractedTableMap e in tables)
+            	{
+            		if (e.TableName==etm.TableName)
+            		{
+            			tableExists=true;
+            			foreach (ExtractedFieldMap efm in etm.Fields)
+            			{
+            				bool fieldExists=false;
+            				foreach (ExtractedFieldMap f in e.Fields)
+            				{
+            					if (f.FieldName==efm.FieldName)
+            					{
+            						fieldExists=true;
+            						break;
+            					}
+            				}
+            				if (!fieldExists)
+            				{
+            					alterations.Add("ALTER TABLE "+etm.TableName+" DROP COLUMN "+efm.FieldName+";");
+            				}
+            			}
+            			break;
+            		}
+            	}
+            	if (!tableExists)
+            	{
+            		alterations.Add("DROP TABLE "+etm.TableName+";");
+            	}
+            }
+            if (alterations.Count>0)
+            {
+            	foreach (string str in this.GetDropConstraintsScript())
+            	{
+	            	System.Diagnostics.Debug.WriteLine(str);
+            	}
+            	foreach(string str in alterations)
+            	{
+            		System.Diagnostics.Debug.WriteLine(str);
+	            }
+            	foreach (ExtractedTableMap etm in tables)
+            	{
+            		string primary = "ALTER TABLE "+etm.TableName+" ADD PRIMARY KEY(";
+            		foreach (ExtractedFieldMap efm in etm.Fields)
+            		{
+            			if (efm.PrimaryKey)
+            				primary+=efm.FieldName+",";
+            		}
+            		if (!primary.Equals("ALTER TABLE "+etm.TableName+" ADD PRIMARY KEY("))
+            		    System.Diagnostics.Debug.WriteLine(primary.Substring(0,primary.Length-1)+");");
+            	}
+            	foreach (ExtractedTableMap etm in tables)
+            	{
+            		Dictionary<string,ForiegnRelationMap> foriegnKeys = new Dictionary<string, ForiegnRelationMap>();
+            		foreach(ExtractedFieldMap efm in etm.Fields)
+            		{
+            			if (efm.ExternalTable!=null)
+            			{
+            				ForiegnRelationMap frm;
+            				if (!foriegnKeys.ContainsKey(efm.ExternalTable))
+            				{
+            					frm=new ForiegnRelationMap();
+            					frm.ExternalField="";
+            					frm.InternalField="";
+            					frm.OnDelete=efm.DeleteAction;
+            					frm.OnUpdate=efm.UpdateAction;
+            					foriegnKeys.Add(efm.ExternalTable,frm);
+            				}
+            				frm=foriegnKeys[efm.ExternalTable];
+            				foriegnKeys.Remove(efm.ExternalTable);
+            				frm.ExternalField+=efm.ExternalField+",";
+            				frm.InternalField+=efm.FieldName+",";
+            				foriegnKeys.Add(efm.ExternalTable,frm);
+            			}
+            		}
+            		foreach (string str in foriegnKeys.Keys)
+            		{
+            			System.Diagnostics.Debug.WriteLine("ALTER TABLE "+etm.TableName+" ADD FOREIGN KEY ("+
+            			                                   foriegnKeys[str].InternalField.Substring(0,foriegnKeys[str].InternalField.Length-1)+") REFERENCES "+
+            			                                   str+"("+foriegnKeys[str].ExternalField.Substring(0,foriegnKeys[str].ExternalField.Length-1)+");");
+            		}
+            	}
+            }
 		}
 		
 		internal void Disconnect()

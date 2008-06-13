@@ -19,6 +19,11 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
         {
             return new SqlParameter(parameterName, parameterValue);
         }
+        
+		internal override List<string> GetNullConstraintsScript(List<ExtractedTableMap> map)
+		{
+			throw new NotImplementedException();
+		}
 
         protected override System.Data.IDbCommand EstablishCommand()
         {
@@ -34,6 +39,11 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
         {
             throw new Exception("The method or operation is not implemented.");
         }
+        
+		internal override List<string> GetDropConstraintsScript()
+		{
+			throw new NotImplementedException();
+		}
 
         protected override string TranslateFieldType(FieldType type, int fieldLength)
         {
