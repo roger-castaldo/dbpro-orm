@@ -78,6 +78,10 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 			"ORDER BY " +
 			"rfr.rdb$relation_name, rfr.rdb$field_position";
 		
+		private const string AutoGenQuery="SELECT RDB$GENERATOR_NAME " +
+			" FROM RDB$GENERATORS " +
+			" where RDB$SYSTEM_FLAG is null or RDB$SYSTEM_FLAG=0";
+		
 		private const string SelectReferences =
 			"SELECT " +
 			"pidx.rdb$relation_name AS FKTableName, " +
@@ -99,21 +103,130 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		
 		private const string SelectContraints =
 			"SELECT command FROM " +
-			                  " (select 'ALTER TABLE '||rdb$relation_name||' DROP CONSTRAINT '||rdb$constraint_name||';' as command,2 as order_mode " +
-			                  " from rdb$relation_constraints " +
-			                  " where rdb$constraint_type = 'FOREIGN KEY' " +
-			                  " UNION " +
-			                  " select 'ALTER TABLE '||rdb$relation_name||' DROP CONSTRAINT '||rdb$constraint_name||';' as command,1 as order_mode " +
-			                  " from rdb$relation_constraints " +
-			                  " where rdb$constraint_type = 'PRIMARY KEY' " +
-			                  " UNION " +
-			                  " select 'ALTER TABLE '||rdb$relation_name||' DROP CONSTRAINT '||rdb$constraint_name||';' as command,0 as order_mode " +
-			                  " from rdb$relation_constraints " +
-			                  " where rdb$constraint_type = 'NOT NULL') ORDER BY order_mode DESC";
+			" (select 'ALTER TABLE '||rdb$relation_name||' DROP CONSTRAINT '||rdb$constraint_name||';' as command,2 as order_mode " +
+			" from rdb$relation_constraints " +
+			" where rdb$constraint_type = 'FOREIGN KEY' " +
+			" UNION " +
+			" select 'ALTER TABLE '||rdb$relation_name||' DROP CONSTRAINT '||rdb$constraint_name||';' as command,1 as order_mode " +
+			" from rdb$relation_constraints " +
+			" where rdb$constraint_type = 'PRIMARY KEY' " +
+			" UNION " +
+			" select 'ALTER TABLE '||rdb$relation_name||' DROP CONSTRAINT '||rdb$constraint_name||';' as command,0 as order_mode " +
+			" from rdb$relation_constraints " +
+			" where rdb$constraint_type = 'NOT NULL') ORDER BY order_mode DESC";
 		
 		public FBConnection(ConnectionPool pool,string connectionString) : base(pool,connectionString)
 		{
 
+		}
+		
+		internal override string GetAlterFieldTypeString(string table, string field, string type,long size)
+		{
+			if (type.ToUpper().Contains("CHAR"))
+			{
+				return "ALTER TABLE "+table+" ALTER COLUMN "+field+" "+type+"("+size.ToString()+")";
+			}else{
+				return "ALTER TABLE "+table+" ALTER COLUMN "+field+" "+type;
+			}
+		}
+		
+		internal override string GetForiegnKeyCreateString(string table, List<string> fields, string foriegnTable, List<string> foriegnFields)
+		{
+			string ret="ALTER TABLE "+table+" ADD FOREIGN KEY (";
+			foreach (string str in fields)
+			{
+				ret+=str+",";
+			}
+			ret=ret.Substring(0,ret.Length-1);
+			ret+=") REFERENCES "+foriegnTable+"(";
+			foreach(string str in foriegnFields)
+			{
+				ret+=str+",";
+			}
+			return ret.Substring(0,ret.Length-1)+")";
+		}
+		
+		internal override string GetNullConstraintCreateString(string table, string field)
+		{
+			return "ALTER TABLE "+table+" ADD CHECK ("+field+" IS NOT NULL);";
+		}
+		
+		internal override string GetPrimaryKeyCreateString(string table, List<string> fields)
+		{
+			string ret = "ALTER TABLE "+table+" ADD PRIMARY KEY (";
+			foreach(string str in fields)
+			{
+				ret+=str+",";
+			}
+			return ret.Substring(0,ret.Length-1)+")";
+		}
+		
+		internal override string GetCreateColumnString(string table, string field, string type,long size)
+		{
+			if (type.ToUpper().Contains("CHAR"))
+			{
+				return "ALTER TABLE "+table+" ADD COLUMN "+field+" "+type+"("+size.ToString()+")";
+			}else{
+				return "ALTER TABLE "+table+" ADD COLUMN "+field+" "+type;
+			}
+		}
+		
+		internal override List<string> GetCreateTableStringsForAlterations(Connection.ExtractedTableMap table)
+		{
+			List<string> ret = new List<string>();
+			string tmp="CREATE TABLE "+table.TableName+"(\n";
+			foreach (ExtractedFieldMap f in table.Fields)
+			{
+				tmp+="\t"+f.FieldName+" "+f.Type;
+				if (f.Type.ToUpper().Contains("CHAR"))
+				{
+					tmp+="("+f.Size.ToString()+")";
+				}
+				tmp+=",\n";
+			}
+			ret.Add(tmp.Substring(0,tmp.Length-2)+")");
+			foreach (ExtractedFieldMap f in table.Fields)
+			{
+				if ((f.PrimaryKey)&&(f.AutoGen))
+				{
+					if (f.Type.ToUpper().Contains("DATE")||f.Type.ToUpper().Contains("TIME"))
+					{
+						tmp="CREATE TRIGGER "+table.TableName+"_"+f.FieldName+"_GEN FOR "+table.TableName+"\n"+
+							"ACTIVE \n"+
+							"BEFORE INSERT\n"+
+							"POSITION 0 \n"+
+							"AS \n"+
+							"BEGIN \n"+
+							"    NEW."+f.FieldName+" = CURRENT_TIMESTAMP;\n"+
+							"END\n\n";
+					}else if (f.Type.ToUpper().Contains("INT"))
+					{
+						ret.Add("CREATE GENERATOR GEN_"+table.TableName+"_"+f.FieldName+";\n");
+						tmp="CREATE TRIGGER "+table.TableName+"_"+f.FieldName+"_GEN FOR "+table.TableName+"\n"+
+							"ACTIVE \n"+
+							"BEFORE INSERT\n"+
+							"POSITION 0 \n"+
+							"AS \n"+
+							"BEGIN \n"+
+							"    NEW."+f.FieldName+" = GEN_ID(GEN_"+table.TableName+"_"+f.FieldName+",1);\n"+
+							"END\n\n";
+					}else{
+						throw new Exception("Unable to create autogenerator for non date or digit type.");
+					}
+					ret.Insert(1,tmp);
+				}
+			}
+			return ret;
+		}
+		
+		internal override string GetDropTableString(string table)
+		{
+			return "DROP TABLE "+table;
+		}
+		
+		internal override string GetDropColumnString(string table, string field)
+		{
+			return "ALTER TABLE "+table+" DROP COLUMN "+field;
 		}
 		
 		protected override System.Data.IDbDataParameter CreateParameter(string parameterName, object parameterValue)
@@ -184,6 +297,39 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 					ret.Insert(x,etm);
 				}
 			}
+			this.Close();
+			this.ExecuteQuery(AutoGenQuery);
+			while (this.Read())
+			{
+				bool foundMatch=false;
+				x=0;
+				while (x<ret.Count)
+				{
+					if (((string)this[0]).StartsWith("GEN_"+ret[x].TableName))
+					{
+						ExtractedTableMap etm = ret[x];
+						for (int y=0;y<etm.Fields.Count;y++)
+						{
+							ExtractedFieldMap efm = etm.Fields[y];
+							if (this.GetString(0)=="GEN_"+etm.TableName+"_"+efm.FieldName)
+							{
+								foundMatch=true;
+								efm.AutoGen=true;
+								etm.Fields.RemoveAt(y);
+								etm.Fields.Insert(y,efm);
+								break;
+							}
+						}
+						if (foundMatch)
+						{
+							ret.RemoveAt(x);
+							ret.Insert(x,etm);
+							break;
+						}
+					}
+					x+=1;
+				}
+			}
 			return ret;
 		}
 		
@@ -196,22 +342,6 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 				ret.Add((string)this[0]);
 			}
 			this.Close();
-			return ret;
-		}
-		
-		internal override List<string> GetNullConstraintsScript(List<ExtractedTableMap> map)
-		{
-			List<string> ret = new List<string>();
-			foreach (ExtractedTableMap etm in map)
-			{
-				foreach(ExtractedFieldMap efm in etm.Fields)
-				{
-					if (!efm.Nullable)
-					{
-						ret.Add("ALTER TABLE "+etm.TableName+" ADD CHECK ("+efm.FieldName+" IS NOT NULL);");
-					}
-				}
-			}
 			return ret;
 		}
 		

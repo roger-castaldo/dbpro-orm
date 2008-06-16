@@ -31,6 +31,22 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			mut.ReleaseMutex();
 			return ret;
 		}
+		
+		public static TableMap GetTableMapByTableName(string TableName)
+		{
+			mut.WaitOne();
+			TableMap ret = null;
+			foreach (System.Type type in TableTypes)
+			{
+				if (map[type].Name==TableName)
+				{
+					ret=map[type];
+					break;
+				}
+			}
+			mut.ReleaseMutex();
+			return ret;
+		}
 
         public static System.Type[] TableTypes
         {

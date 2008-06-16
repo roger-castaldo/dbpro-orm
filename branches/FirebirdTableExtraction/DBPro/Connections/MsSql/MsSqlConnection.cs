@@ -20,7 +20,42 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
             return new SqlParameter(parameterName, parameterValue);
         }
         
-		internal override List<string> GetNullConstraintsScript(List<ExtractedTableMap> map)
+		internal override List<string> GetCreateTableStringsForAlterations(ExtractedTableMap table)
+		{
+			throw new NotImplementedException();
+		}
+		
+		internal override string GetAlterFieldTypeString(string table, string field, string type,long size)
+		{
+			throw new NotImplementedException();
+		}
+		
+		internal override string GetDropTableString(string table)
+		{
+			throw new NotImplementedException();
+		}
+		
+		internal override string GetDropColumnString(string table, string field)
+		{
+			throw new NotImplementedException();
+		}
+		
+		internal override string GetCreateColumnString(string table, string field, string type,long size)
+		{
+			throw new NotImplementedException();
+		}
+		
+		internal override string GetForiegnKeyCreateString(string table, List<string> fields, string foriegnTable, List<string> foriegnFields)
+		{
+			throw new NotImplementedException();
+		}
+		
+		internal override string GetNullConstraintCreateString(string table, string field)
+		{
+			throw new NotImplementedException();
+		}
+		
+		internal override string GetPrimaryKeyCreateString(string table, List<string> fields)
 		{
 			throw new NotImplementedException();
 		}

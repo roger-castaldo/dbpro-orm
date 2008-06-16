@@ -62,14 +62,15 @@ namespace Org.Reddragonit.Dbpro.Connections
             private long _size;
             private bool _primaryKey;
             private bool _nullable;
+            private bool _autogen;
             private string _updateAction;
             private string _deleteAction;
             private string _externalTable;
             private string _externalField;
-
-            public ExtractedFieldMap(string fieldName, string type, long size, bool primary, bool nullable)
+            
+            public ExtractedFieldMap(string fieldName, string type, long size, bool primary, bool nullable,bool autogen) 
             {
-                _fieldName = fieldName;
+            	_fieldName = fieldName;
                 _type = type;
                 _size = size;
                 _primaryKey = primary;
@@ -78,6 +79,11 @@ namespace Org.Reddragonit.Dbpro.Connections
                 _updateAction = null;
                 _deleteAction = null;
                 _externalTable = null;
+                _autogen=autogen;
+            }
+
+            public ExtractedFieldMap(string fieldName, string type, long size, bool primary, bool nullable) : this(fieldName,type,size,primary,nullable,false)
+            {
             }
 
             public string FieldName { get { return _fieldName; } }
@@ -85,6 +91,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             public long Size { get { return _size; } }
             public bool PrimaryKey { get { return _primaryKey; } }
             public bool Nullable { get { return _nullable; } }
+            public bool AutoGen {get {return _autogen;} set{_autogen=value;}}
             public string UpdateAction { get { return _updateAction; } set { _updateAction = value; } }
             public string DeleteAction { get { return _deleteAction; } set { _deleteAction = value; } }
             public string ExternalTable { get { return _externalTable; } set { _externalTable= value; } }
@@ -107,7 +114,14 @@ namespace Org.Reddragonit.Dbpro.Connections
 		protected abstract string TranslateFieldType(Org.Reddragonit.Dbpro.Structure.Attributes.Field.FieldType type,int fieldLength);
         internal abstract List<ExtractedTableMap> GetTableList();
         internal abstract List<string> GetDropConstraintsScript();
-        internal abstract List<string> GetNullConstraintsScript(List<ExtractedTableMap> map);
+        internal abstract string GetNullConstraintCreateString(string table,string field);
+        internal abstract string GetPrimaryKeyCreateString(string table,List<string> fields);
+        internal abstract string GetAlterFieldTypeString(string table,string field,string type,long size);
+        internal abstract string GetForiegnKeyCreateString(string table,List<string> fields,string foriegnTable,List<string> foriegnFields);
+        internal abstract string GetCreateColumnString(string table,string field,string type,long size);
+        internal abstract string GetDropColumnString(string table,string field);
+        internal abstract string GetDropTableString(string table);
+        internal abstract List<string> GetCreateTableStringsForAlterations(ExtractedTableMap table);
 		
 		
 		public Connection(ConnectionPool pool,string connectionString){
@@ -126,7 +140,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 ExtractedTableMap etm = new ExtractedTableMap(tm.Name);
                 foreach (InternalFieldMap ifm in tm.Fields )
                 {
-                    etm.Fields.Add(new ExtractedFieldMap(tm.GetTableFieldName(ifm), TranslateFieldType(ifm.FieldType, ifm.FieldLength), ifm.FieldLength, ifm.PrimaryKey, ifm.Nullable));
+                    etm.Fields.Add(new ExtractedFieldMap(tm.GetTableFieldName(ifm), TranslateFieldType(ifm.FieldType, ifm.FieldLength), ifm.FieldLength, ifm.PrimaryKey, ifm.Nullable,ifm.AutoGen));
                 }
                 foreach (Type t in tm.ForiegnTables)
                 {
@@ -204,23 +218,18 @@ namespace Org.Reddragonit.Dbpro.Connections
             					if (efm.FieldName==f.FieldName)
             					{
             						fieldExists=true;
-            						if ((efm.DeleteAction!=f.DeleteAction) ||
-            						    (efm.ExternalField!=f.ExternalField) ||
-            						    (efm.ExternalTable!=f.ExternalTable) ||
-            						    (efm.Nullable!=f.Nullable) ||
-            						    (efm.PrimaryKey!=f.PrimaryKey) ||
+            						if ((efm.PrimaryKey!=f.PrimaryKey) ||
             						    (efm.Size!=f.Size) ||
-            						    (efm.Type!=f.Type) ||
-            						    (efm.UpdateAction!=f.UpdateAction))
+            						    (efm.Type!=f.Type))
             						{
-            							alterations.Add("ALTER TABLE "+etm.TableName+" ALTER COLUMN "+efm.FieldName+" TYPE "+efm.Type+";");
+            							alterations.Add(this.GetAlterFieldTypeString(etm.TableName,efm.FieldName,efm.Type,efm.Size));
             						}
             						break;
             					}
             				}
             				if (!fieldExists)
             				{
-            					alterations.Add("ALTER TABLE "+etm.TableName+" ADD COLUMN "+efm.FieldName+" "+efm.Type+";");
+            					alterations.Add(this.GetCreateColumnString(etm.TableName,efm.FieldName,efm.Type,efm.Size));
             				}
             			}
             			break;
@@ -228,14 +237,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             	}
             	if (!tableExists)
             	{
-            		string create = "CREATE TABLE "+etm.TableName+"(";
-            		foreach (ExtractedFieldMap efm in etm.Fields)
-            		{
-            			create+=efm.FieldName+" "+efm.Type+",";
-            		}
-            		create=create.Substring(0,create.Length-1);
-            		create+=");";
-            		alterations.Add(create);
+            		alterations.AddRange(GetCreateTableStringsForAlterations(etm));
             	}
             }
             foreach (ExtractedTableMap etm in curStructure)
@@ -259,7 +261,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             				}
             				if (!fieldExists)
             				{
-            					alterations.Add("ALTER TABLE "+etm.TableName+" DROP COLUMN "+efm.FieldName+";");
+            					alterations.Add(this.GetDropColumnString(etm.TableName,efm.FieldName));
             				}
             			}
             			break;
@@ -267,7 +269,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             	}
             	if (!tableExists)
             	{
-            		alterations.Add("DROP TABLE "+etm.TableName+";");
+            		alterations.Add(this.GetDropTableString(etm.TableName));
             	}
             }
             if (alterations.Count>0)
@@ -280,48 +282,6 @@ namespace Org.Reddragonit.Dbpro.Connections
             	{
             		System.Diagnostics.Debug.WriteLine(str);
 	            }
-            	foreach (ExtractedTableMap etm in tables)
-            	{
-            		string primary = "ALTER TABLE "+etm.TableName+" ADD PRIMARY KEY(";
-            		foreach (ExtractedFieldMap efm in etm.Fields)
-            		{
-            			if (efm.PrimaryKey)
-            				primary+=efm.FieldName+",";
-            		}
-            		if (!primary.Equals("ALTER TABLE "+etm.TableName+" ADD PRIMARY KEY("))
-            		    System.Diagnostics.Debug.WriteLine(primary.Substring(0,primary.Length-1)+");");
-            	}
-            	foreach (ExtractedTableMap etm in tables)
-            	{
-            		Dictionary<string,ForiegnRelationMap> foriegnKeys = new Dictionary<string, ForiegnRelationMap>();
-            		foreach(ExtractedFieldMap efm in etm.Fields)
-            		{
-            			if (efm.ExternalTable!=null)
-            			{
-            				ForiegnRelationMap frm;
-            				if (!foriegnKeys.ContainsKey(efm.ExternalTable))
-            				{
-            					frm=new ForiegnRelationMap();
-            					frm.ExternalField="";
-            					frm.InternalField="";
-            					frm.OnDelete=efm.DeleteAction;
-            					frm.OnUpdate=efm.UpdateAction;
-            					foriegnKeys.Add(efm.ExternalTable,frm);
-            				}
-            				frm=foriegnKeys[efm.ExternalTable];
-            				foriegnKeys.Remove(efm.ExternalTable);
-            				frm.ExternalField+=efm.ExternalField+",";
-            				frm.InternalField+=efm.FieldName+",";
-            				foriegnKeys.Add(efm.ExternalTable,frm);
-            			}
-            		}
-            		foreach (string str in foriegnKeys.Keys)
-            		{
-            			System.Diagnostics.Debug.WriteLine("ALTER TABLE "+etm.TableName+" ADD FOREIGN KEY ("+
-            			                                   foriegnKeys[str].InternalField.Substring(0,foriegnKeys[str].InternalField.Length-1)+") REFERENCES "+
-            			                                   str+"("+foriegnKeys[str].ExternalField.Substring(0,foriegnKeys[str].ExternalField.Length-1)+");");
-            		}
-            	}
             }
 		}
 		
