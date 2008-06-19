@@ -1,0 +1,79 @@
+﻿<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" xmlns:Conversion="urn:Conversion">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{804A5915-5770-4B62-AF13-E10AE65B5901}</ProjectGuid>
+    <RootNamespace>Org.Reddragonit.Dbpro</RootNamespace>
+    <AssemblyName>DBPro</AssemblyName>
+    <OutputType>Library</OutputType>
+    <ApplicationIcon />
+    <RunPostBuildEvent>OnSuccessfulBuild</RunPostBuildEvent>
+    <PreBuildEvent />
+    <PostBuildEvent />
+    <StartupObject />
+    <NoConfig>false</NoConfig>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <NoStdLib>false</NoStdLib>
+    <WarningLevel>4</WarningLevel>
+    <NoWarn />
+    <DebugSymbols>true</DebugSymbols>
+    <Optimize>false</Optimize>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <CheckForOverflowUnderflow>false</CheckForOverflowUnderflow>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <OutputPath>bin\Debug\</OutputPath>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <NoStdLib>false</NoStdLib>
+    <WarningLevel>4</WarningLevel>
+    <NoWarn />
+    <DebugSymbols>false</DebugSymbols>
+    <Optimize>true</Optimize>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <CheckForOverflowUnderflow>false</CheckForOverflowUnderflow>
+    <DefineConstants>TRACE</DefineConstants>
+    <OutputPath>bin\Release\</OutputPath>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="FirebirdSql.Data.FirebirdClient, Version=2.1.0.0, Culture=neutral, PublicKeyToken=3750abcc3150b00c, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>bin\Debug\FirebirdSql.Data.FirebirdClient.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+    <Reference Include="System" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="AssemblyInfo.cs" />
+    <Compile Include="Connections\Connection.cs" />
+    <Compile Include="Connections\ConnectionPool.cs" />
+    <Compile Include="Connections\ConnectionPoolManager.cs" />
+    <Compile Include="Connections\Firebird\FBConnection.cs" />
+    <Compile Include="Connections\Firebird\FBConnectionPool.cs" />
+    <Compile Include="Connections\MsSql\MsSqlConnection.cs" />
+    <Compile Include="Connections\MsSql\MsSqlConnectionPool.cs" />
+    <Compile Include="Connections\SelectParameter.cs" />
+    <Compile Include="Structure\Attributes\INullable.cs" />
+    <Compile Include="Structure\Mapping\ClassMapper.cs" />
+    <Compile Include="Structure\Mapping\ExternalFieldMap.cs" />
+    <Compile Include="Structure\Mapping\FieldMap.cs" />
+    <Compile Include="Structure\Mapping\InternalFieldMap.cs" />
+    <Compile Include="Structure\Mapping\TableMap.cs" />
+    <Compile Include="Structure\Table.cs" />
+    <Compile Include="Structure\Attributes\Field.cs" />
+    <Compile Include="Structure\Attributes\ForiegnField.cs" />
+    <Compile Include="Structure\Attributes\ForiegnPrimaryKeyField.cs" />
+    <Compile Include="Structure\Attributes\IField.cs" />
+    <Compile Include="Structure\Attributes\IForiegnField.cs" />
+    <Compile Include="Structure\Attributes\IPrimaryKeyField.cs" />
+    <Compile Include="Structure\Attributes\PrimaryKeyField.cs" />
+    <Compile Include="Structure\Attributes\Table.cs" />
+  </ItemGroup>
+  <ItemGroup />
+  <ItemGroup />
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.Targets" />
+</Project>
