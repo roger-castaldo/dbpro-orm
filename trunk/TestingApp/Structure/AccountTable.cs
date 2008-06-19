@@ -5,7 +5,7 @@ using UpdateDeleteAction = Org.Reddragonit.Dbpro.Structure.Attributes.ForiegnFie
 
 namespace TestingApp.Structure
 {
-	[Org.Reddragonit.Dbpro.Structure.Attributes.Table("ACCOUNT")]
+	[Org.Reddragonit.Dbpro.Structure.Attributes.Table("ACCOUNTS")]
 	public class AccountTable : Table
 	{
 
