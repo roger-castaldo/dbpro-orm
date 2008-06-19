@@ -111,7 +111,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		protected abstract IDbCommand EstablishCommand();
 		protected abstract IDbDataParameter CreateParameter(string parameterName,object parameterValue);
 		protected abstract List<string> ConstructCreateStrings(Table table);
-		protected abstract string TranslateFieldType(Org.Reddragonit.Dbpro.Structure.Attributes.Field.FieldType type,int fieldLength);
+		internal abstract string TranslateFieldType(Org.Reddragonit.Dbpro.Structure.Attributes.Field.FieldType type,int fieldLength);
         internal abstract List<ExtractedTableMap> GetTableList();
         internal abstract List<string> GetDropConstraintsScript();
         internal abstract string GetNullConstraintCreateString(string table,string field);
@@ -121,6 +121,8 @@ namespace Org.Reddragonit.Dbpro.Connections
         internal abstract string GetCreateColumnString(string table,string field,string type,long size);
         internal abstract string GetDropColumnString(string table,string field);
         internal abstract string GetDropTableString(string table);
+        internal abstract List<string> GetDropAutogenStrings(string table, string field,string type);
+        internal abstract List<string> GetAddAutogenString(string table, string field, string type);
         internal abstract List<string> GetCreateTableStringsForAlterations(ExtractedTableMap table);
 		
 		
@@ -132,157 +134,6 @@ namespace Org.Reddragonit.Dbpro.Connections
 			trans=conn.BeginTransaction();
 			comm = EstablishCommand();
             comm.Transaction = trans;
-            List<ExtractedTableMap> curStructure=GetTableList();
-            List<ExtractedTableMap> tables = new List<ExtractedTableMap>();
-            foreach (System.Type type in ClassMapper.TableTypes)
-            {
-                TableMap tm = ClassMapper.GetTableMap(type);
-                ExtractedTableMap etm = new ExtractedTableMap(tm.Name);
-                foreach (InternalFieldMap ifm in tm.Fields )
-                {
-                    etm.Fields.Add(new ExtractedFieldMap(tm.GetTableFieldName(ifm), TranslateFieldType(ifm.FieldType, ifm.FieldLength), ifm.FieldLength, ifm.PrimaryKey, ifm.Nullable,ifm.AutoGen));
-                }
-                foreach (Type t in tm.ForiegnTables)
-                {
-                    TableMap rt = ClassMapper.GetTableMap(t);
-                    foreach (InternalFieldMap ifm in tm.PrimaryKeys)
-                    {
-                        ExtractedFieldMap efm;
-                        for (int x = 0; x < etm.Fields.Count; x++)
-                        {
-                            efm = etm.Fields[x];
-                            if (efm.FieldName == rt.GetTableFieldName(ifm))
-                            {
-                                efm.ExternalTable = tm.Name;
-                                efm.ExternalField = efm.FieldName;
-                                efm.DeleteAction=tm.GetFieldInfoForForiegnTable(t).OnDelete.ToString();
-                                efm.UpdateAction = tm.GetFieldInfoForForiegnTable(t).OnUpdate.ToString();
-                            }
-                        }
-                    }
-                }
-                tables.Add(etm);
-                foreach (ExternalFieldMap e in tm.ExternalFieldMapArrays)
-                {
-                	TableMap t = ClassMapper.GetTableMap(e.Type);
-                	etm = new ExtractedTableMap(tm.Name+"_"+t.Name);
-                	ExtractedFieldMap efm;
-                	foreach (InternalFieldMap ifm in tm.PrimaryKeys)
-                	{
-                		efm = new ExtractedFieldMap(ifm.FieldName,TranslateFieldType(ifm.FieldType,ifm.FieldLength),ifm.FieldLength,true,ifm.Nullable);
-                		efm.ExternalTable=tm.Name;
-                		efm.ExternalField=ifm.FieldName;
-                		efm.DeleteAction=e.OnDelete.ToString();
-                		efm.UpdateAction=e.OnUpdate.ToString();
-                		etm.Fields.Add(efm);
-                	}
-                	foreach (InternalFieldMap ifm in t.PrimaryKeys)
-                	{
-                		efm = new ExtractedFieldMap(ifm.FieldName,TranslateFieldType(ifm.FieldType,ifm.FieldLength),ifm.FieldLength,true,ifm.Nullable);
-                		efm.ExternalTable=t.Name;
-                		efm.ExternalField=ifm.FieldName;
-                		efm.DeleteAction=e.OnDelete.ToString();
-                		efm.UpdateAction=e.OnUpdate.ToString();
-                		etm.Fields.Add(efm);
-                	}
-                	tables.Add(etm);
-                }
-            }
-            /*foreach (ExtractedTableMap etm in tables)
-            {
-                System.Diagnostics.Debug.WriteLine(etm.TableName);
-                foreach (ExtractedFieldMap efm in etm.Fields)
-                {
-                    System.Diagnostics.Debug.WriteLine("\t" + efm.FieldName + " Primary:" + efm.PrimaryKey.ToString() + " Nullable:" + efm.Nullable.ToString());
-                    if (efm.ExternalTable != null)
-                    {
-                        System.Diagnostics.Debug.WriteLine("\t\t Links To:" + efm.ExternalTable + "->" + efm.ExternalField);
-                        System.Diagnostics.Debug.WriteLine("\t\tOn Update:" + efm.UpdateAction + " On Delete:" + efm.DeleteAction);
-                    }
-                }
-            }*/
-            List<string> alterations = new List<string>();
-            foreach (ExtractedTableMap etm in tables)
-            {
-            	bool tableExists = false;
-            	foreach (ExtractedTableMap e in curStructure)
-            	{
-            		if (e.TableName==etm.TableName)
-            		{
-            			tableExists=true;
-            			foreach (ExtractedFieldMap efm in etm.Fields)
-            			{
-            				bool fieldExists=false;
-            				foreach (ExtractedFieldMap f in e.Fields)
-            				{
-            					if (efm.FieldName==f.FieldName)
-            					{
-            						fieldExists=true;
-            						if ((efm.PrimaryKey!=f.PrimaryKey) ||
-            						    (efm.Size!=f.Size) ||
-            						    (efm.Type!=f.Type))
-            						{
-            							alterations.Add(this.GetAlterFieldTypeString(etm.TableName,efm.FieldName,efm.Type,efm.Size));
-            						}
-            						break;
-            					}
-            				}
-            				if (!fieldExists)
-            				{
-            					alterations.Add(this.GetCreateColumnString(etm.TableName,efm.FieldName,efm.Type,efm.Size));
-            				}
-            			}
-            			break;
-            		}
-            	}
-            	if (!tableExists)
-            	{
-            		alterations.AddRange(GetCreateTableStringsForAlterations(etm));
-            	}
-            }
-            foreach (ExtractedTableMap etm in curStructure)
-            {
-            	bool tableExists=false;
-            	foreach (ExtractedTableMap e in tables)
-            	{
-            		if (e.TableName==etm.TableName)
-            		{
-            			tableExists=true;
-            			foreach (ExtractedFieldMap efm in etm.Fields)
-            			{
-            				bool fieldExists=false;
-            				foreach (ExtractedFieldMap f in e.Fields)
-            				{
-            					if (f.FieldName==efm.FieldName)
-            					{
-            						fieldExists=true;
-            						break;
-            					}
-            				}
-            				if (!fieldExists)
-            				{
-            					alterations.Add(this.GetDropColumnString(etm.TableName,efm.FieldName));
-            				}
-            			}
-            			break;
-            		}
-            	}
-            	if (!tableExists)
-            	{
-            		alterations.Add(this.GetDropTableString(etm.TableName));
-            	}
-            }
-            if (alterations.Count>0)
-            {
-            	foreach (string str in this.GetDropConstraintsScript())
-            	{
-	            	System.Diagnostics.Debug.WriteLine(str);
-            	}
-            	foreach(string str in alterations)
-            	{
-            		System.Diagnostics.Debug.WriteLine(str);
-	            }
-            }
 		}
 		
 		internal void Disconnect()

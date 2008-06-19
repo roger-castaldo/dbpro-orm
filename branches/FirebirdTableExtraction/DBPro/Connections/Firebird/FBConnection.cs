@@ -122,12 +122,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		
 		internal override string GetAlterFieldTypeString(string table, string field, string type,long size)
 		{
-			if (type.ToUpper().Contains("CHAR"))
-			{
-				return "ALTER TABLE "+table+" ALTER COLUMN "+field+" "+type+"("+size.ToString()+")";
-			}else{
-				return "ALTER TABLE "+table+" ALTER COLUMN "+field+" "+type;
-			}
+			return "ALTER TABLE "+table+" ALTER COLUMN "+field+" TYPE "+type;
 		}
 		
 		internal override string GetForiegnKeyCreateString(string table, List<string> fields, string foriegnTable, List<string> foriegnFields)
@@ -150,6 +145,58 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		{
 			return "ALTER TABLE "+table+" ADD CHECK ("+field+" IS NOT NULL);";
 		}
+
+        internal override List<string> GetAddAutogenString(string table, string field, string type)
+        {
+            List<string> ret = new List<string>();
+            if (type.ToUpper().Contains("DATE") || type.ToUpper().Contains("TIME"))
+            {
+                ret.Add( "CREATE TRIGGER " + table + "_" + field + "_GEN FOR " + table + "\n" +
+                    "ACTIVE \n" +
+                    "BEFORE INSERT\n" +
+                    "POSITION 0 \n" +
+                    "AS \n" +
+                    "BEGIN \n" +
+                    "    NEW." + field + " = CURRENT_TIMESTAMP;\n" +
+                    "END\n\n");
+            }
+            else if (type.ToUpper().Contains("INT"))
+            {
+                ret.Add("CREATE GENERATOR GEN_" + table + "_" + field + ";\n");
+                ret.Add("CREATE TRIGGER " + table + "_" + field + "_GEN FOR " + table + "\n" +
+                    "ACTIVE \n" +
+                    "BEFORE INSERT\n" +
+                    "POSITION 0 \n" +
+                    "AS \n" +
+                    "BEGIN \n" +
+                    "    NEW." + field + " = GEN_ID(GEN_" + table + "_" + field + ",1);\n" +
+                    "END\n\n");
+            }
+            else
+            {
+                throw new Exception("Unable to create autogenerator for non date or digit type.");
+            }
+            return ret;
+        }
+
+        internal override List<string> GetDropAutogenStrings(string table, string field,string type)
+        {
+            List<string> ret = new List<string>();
+            if (type.ToUpper().Contains("DATE") || type.ToUpper().Contains("TIME"))
+            {
+                ret.Add("DROP TRIGGER "+table+"_"+field+"_GEN");
+            }
+            else if (type.ToUpper().Contains("INT"))
+            {
+                ret.Add("DROP TRIGGER " + table + "_" + field+"_GEN;");
+                ret.Add("DROP GENERATOR GEN_"+table+"_"+field+";");
+            }
+            else
+            {
+                throw new Exception("Unable to create autogenerator for non date or digit type.");
+            }
+            return ret;
+        }
 		
 		internal override string GetPrimaryKeyCreateString(string table, List<string> fields)
 		{
@@ -177,14 +224,9 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 			string tmp="CREATE TABLE "+table.TableName+"(\n";
 			foreach (ExtractedFieldMap f in table.Fields)
 			{
-				tmp+="\t"+f.FieldName+" "+f.Type;
-				if (f.Type.ToUpper().Contains("CHAR"))
-				{
-					tmp+="("+f.Size.ToString()+")";
-				}
-				tmp+=",\n";
+				tmp+="\t"+f.FieldName+" "+f.Type+",\n";
 			}
-			ret.Add(tmp.Substring(0,tmp.Length-2)+")");
+			ret.Add(tmp.Substring(0,tmp.Length-2)+");\n");
 			foreach (ExtractedFieldMap f in table.Fields)
 			{
 				if ((f.PrimaryKey)&&(f.AutoGen))
@@ -345,7 +387,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 			return ret;
 		}
 		
-		protected override string TranslateFieldType(FieldType type, int fieldLength)
+		internal override string TranslateFieldType(FieldType type, int fieldLength)
 		{
 			string ret=null;
 			switch(type)

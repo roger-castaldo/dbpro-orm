@@ -19,7 +19,17 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
         {
             return new SqlParameter(parameterName, parameterValue);
         }
-        
+
+        internal override List<string> GetAddAutogenString(string table, string field, string type)
+        {
+            throw new Exception("The method or operation is not implemented.");
+        }
+
+        internal override List<string> GetDropAutogenStrings(string table, string field,string type)
+        {
+            throw new Exception("The method or operation is not implemented.");
+        }
+
 		internal override List<string> GetCreateTableStringsForAlterations(ExtractedTableMap table)
 		{
 			throw new NotImplementedException();
@@ -80,7 +90,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 			throw new NotImplementedException();
 		}
 
-        protected override string TranslateFieldType(FieldType type, int fieldLength)
+        internal override string TranslateFieldType(FieldType type, int fieldLength)
         {
             string ret = null;
             switch (type)
