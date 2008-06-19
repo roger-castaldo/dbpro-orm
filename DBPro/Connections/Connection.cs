@@ -5,11 +5,99 @@ using System.Collections;
 using Org.Reddragonit.Dbpro.Structure;
 using Org.Reddragonit.Dbpro.Structure.Mapping;
 using FieldNamePair = Org.Reddragonit.Dbpro.Structure.Mapping.TableMap.FieldNamePair;
+using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.Field.FieldType;
 
 namespace Org.Reddragonit.Dbpro.Connections
 {
 	public abstract class Connection : IDataReader
 	{
+		
+		internal struct ForiegnRelationMap
+		{
+			private string _internalField;
+			private string _externalField;
+			private string _onUpdate;
+			private string _onDelete;
+			
+			public string InternalField{
+				get{return _internalField;}
+				set{_internalField=value;}
+			}
+			
+			public string ExternalField{
+				get{return _externalField;}
+				set{_externalField=value;}
+			}
+			
+			public string OnUpdate{
+				get{return _onUpdate;}
+				set{_onUpdate=value;}
+			}
+			
+			public string OnDelete{
+				get{return _onDelete;}
+				set{_onDelete=value;}
+			}
+		}
+
+        internal struct ExtractedTableMap
+        {
+            private string _tableName;
+            private List<ExtractedFieldMap> _fields;
+
+            public ExtractedTableMap(string tableName)
+            {
+                _tableName=tableName;
+                _fields=new List<ExtractedFieldMap>();
+            }
+
+            public string TableName{get{return _tableName;}}
+            public List<ExtractedFieldMap> Fields{get{return _fields;}set{_fields=value;}}
+        }
+
+        internal struct ExtractedFieldMap
+        {
+            private string _fieldName;
+            private string _type;
+            private long _size;
+            private bool _primaryKey;
+            private bool _nullable;
+            private bool _autogen;
+            private string _updateAction;
+            private string _deleteAction;
+            private string _externalTable;
+            private string _externalField;
+            
+            public ExtractedFieldMap(string fieldName, string type, long size, bool primary, bool nullable,bool autogen) 
+            {
+            	_fieldName = fieldName;
+                _type = type;
+                _size = size;
+                _primaryKey = primary;
+                _nullable = nullable;
+                _externalField = null;
+                _updateAction = null;
+                _deleteAction = null;
+                _externalTable = null;
+                _autogen=autogen;
+            }
+
+            public ExtractedFieldMap(string fieldName, string type, long size, bool primary, bool nullable) : this(fieldName,type,size,primary,nullable,false)
+            {
+            }
+
+            public string FieldName { get { return _fieldName; } }
+            public string Type { get { return _type; } }
+            public long Size { get { return _size; } }
+            public bool PrimaryKey { get { return _primaryKey; } }
+            public bool Nullable { get { return _nullable; } }
+            public bool AutoGen {get {return _autogen;} set{_autogen=value;}}
+            public string UpdateAction { get { return _updateAction; } set { _updateAction = value; } }
+            public string DeleteAction { get { return _deleteAction; } set { _deleteAction = value; } }
+            public string ExternalTable { get { return _externalTable; } set { _externalTable= value; } }
+            public string ExternalField { get { return _externalField; } set { _externalField = value; } }
+        }
+
 		private ConnectionPool pool;
 		protected IDbConnection conn;
 		protected IDbCommand comm;
@@ -23,7 +111,20 @@ namespace Org.Reddragonit.Dbpro.Connections
 		protected abstract IDbCommand EstablishCommand();
 		protected abstract IDbDataParameter CreateParameter(string parameterName,object parameterValue);
 		protected abstract List<string> ConstructCreateStrings(Table table);
-		protected abstract string TranslateFieldType(Org.Reddragonit.Dbpro.Structure.Attributes.Field.FieldType type,int fieldLength);
+		internal abstract string TranslateFieldType(Org.Reddragonit.Dbpro.Structure.Attributes.Field.FieldType type,int fieldLength);
+        internal abstract List<ExtractedTableMap> GetTableList();
+        internal abstract List<string> GetDropConstraintsScript();
+        internal abstract string GetNullConstraintCreateString(string table,string field);
+        internal abstract string GetPrimaryKeyCreateString(string table,List<string> fields);
+        internal abstract string GetAlterFieldTypeString(string table,string field,string type,long size);
+        internal abstract string GetForiegnKeyCreateString(string table,List<string> fields,string foriegnTable,List<string> foriegnFields);
+        internal abstract string GetCreateColumnString(string table,string field,string type,long size);
+        internal abstract string GetDropColumnString(string table,string field);
+        internal abstract string GetDropTableString(string table);
+        internal abstract List<string> GetDropAutogenStrings(string table, string field,string type);
+        internal abstract List<string> GetAddAutogenString(string table, string field, string type);
+        internal abstract List<string> GetCreateTableStringsForAlterations(ExtractedTableMap table);
+		
 		
 		public Connection(ConnectionPool pool,string connectionString){
 			creationTime=System.DateTime.Now;
@@ -635,7 +736,6 @@ namespace Org.Reddragonit.Dbpro.Connections
 					comm.Parameters.Add(param);
 				}
 			}
-            System.Diagnostics.Debug.WriteLine(comm.CommandText);
 			reader=comm.ExecuteReader();
 		}
 		

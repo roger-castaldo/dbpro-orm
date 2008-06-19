@@ -20,6 +20,56 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
             return new SqlParameter(parameterName, parameterValue);
         }
 
+        internal override List<string> GetAddAutogenString(string table, string field, string type)
+        {
+            throw new Exception("The method or operation is not implemented.");
+        }
+
+        internal override List<string> GetDropAutogenStrings(string table, string field,string type)
+        {
+            throw new Exception("The method or operation is not implemented.");
+        }
+
+		internal override List<string> GetCreateTableStringsForAlterations(ExtractedTableMap table)
+		{
+			throw new NotImplementedException();
+		}
+		
+		internal override string GetAlterFieldTypeString(string table, string field, string type,long size)
+		{
+			throw new NotImplementedException();
+		}
+		
+		internal override string GetDropTableString(string table)
+		{
+			throw new NotImplementedException();
+		}
+		
+		internal override string GetDropColumnString(string table, string field)
+		{
+			throw new NotImplementedException();
+		}
+		
+		internal override string GetCreateColumnString(string table, string field, string type,long size)
+		{
+			throw new NotImplementedException();
+		}
+		
+		internal override string GetForiegnKeyCreateString(string table, List<string> fields, string foriegnTable, List<string> foriegnFields)
+		{
+			throw new NotImplementedException();
+		}
+		
+		internal override string GetNullConstraintCreateString(string table, string field)
+		{
+			throw new NotImplementedException();
+		}
+		
+		internal override string GetPrimaryKeyCreateString(string table, List<string> fields)
+		{
+			throw new NotImplementedException();
+		}
+
         protected override System.Data.IDbCommand EstablishCommand()
         {
             return new SqlCommand("", (SqlConnection)conn);
@@ -30,7 +80,17 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
             return new SqlConnection(connectionString);
         }
 
-        protected override string TranslateFieldType(FieldType type, int fieldLength)
+        internal override List<Connection.ExtractedTableMap> GetTableList()
+        {
+            throw new Exception("The method or operation is not implemented.");
+        }
+        
+		internal override List<string> GetDropConstraintsScript()
+		{
+			throw new NotImplementedException();
+		}
+
+        internal override string TranslateFieldType(FieldType type, int fieldLength)
         {
             string ret = null;
             switch (type)
