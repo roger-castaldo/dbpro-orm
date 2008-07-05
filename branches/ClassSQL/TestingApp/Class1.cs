@@ -17,7 +17,8 @@ namespace TestingApp
 		{
             AccountStatus acs = new AccountStatus();
             AccountTable a = new AccountTable();
-            Org.Reddragonit.Dbpro.Connections.Firebird.FBConnectionPool pool = new Org.Reddragonit.Dbpro.Connections.Firebird.FBConnectionPool("sysdba", "masterkey", "C:\\Documents and Settings\\rcastaldo\\My Documents\\Firebird\\TESTING.FDB", "localhost", 3050);
+            //Org.Reddragonit.Dbpro.Connections.Firebird.FBConnectionPool pool = new Org.Reddragonit.Dbpro.Connections.Firebird.FBConnectionPool("sysdba", "masterkey", "C:\\Documents and Settings\\rcastaldo\\My Documents\\Firebird\\TESTING.FDB", "localhost", 3050);
+            Org.Reddragonit.Dbpro.Connections.Firebird.FBConnectionPool pool = new Org.Reddragonit.Dbpro.Connections.Firebird.FBConnectionPool("sysdba", "masterkey", "F:\\BillingPro\\database\\BILLINGPRO.FDB", "localhost", 3050,false);
             acs.StatusId = 1;
             acs.StatusName = "Active";
             acs.Data = System.Text.ASCIIEncoding.ASCII.GetBytes("Hello Joe");
@@ -25,8 +26,8 @@ namespace TestingApp
             a.LastName = "Castaldo";
             a.Status = new AccountStatus[] { acs };
             Org.Reddragonit.Dbpro.Connections.Connection conn = pool.getConnection();
-            conn.CreateTable(acs,true);
-            conn.CreateTable(a,true);
+            //conn.CreateTable(acs,true);
+            //conn.CreateTable(a,true);
             /*a=(AccountTable)conn.Save(a);
             a.FirstName = "George";
             a = (AccountTable)conn.Save(a);
@@ -35,6 +36,7 @@ namespace TestingApp
             pars.Add(new Org.Reddragonit.Dbpro.Connections.SelectParameter("StatusId",a.Status[0].StatusId ));
             Console.WriteLine(((AccountStatus)conn.Select(typeof(AccountStatus),pars)[0]).StatusId );
             conn.CloseConnection();*/
+            conn.Select("SELECT FROM " + a.GetType().ToString(), null);
             pool.ClosePool();
             Console.ReadLine();
 		}
