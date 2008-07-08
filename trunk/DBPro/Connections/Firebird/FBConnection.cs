@@ -143,7 +143,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		
 		internal override string GetNullConstraintCreateString(string table, string field)
 		{
-			return "ALTER TABLE "+table+" ADD CHECK ("+field+" IS NOT NULL);";
+            return "UPDATE RDB$RELATION_FIELDS SET RDB$NULL_FLAG = 1 WHERE RDB$FIELD_NAME = '"+field+"' AND RDB$RELATION_NAME = '"+table+"'";
 		}
 
         internal override List<string> GetAddAutogenString(string table, string field, string type)
@@ -212,9 +212,9 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		{
 			if (type.ToUpper().Contains("CHAR"))
 			{
-				return "ALTER TABLE "+table+" ADD COLUMN "+field+" "+type+"("+size.ToString()+")";
+				return "ALTER TABLE "+table+" ADD "+field+" "+type+"("+size.ToString()+")";
 			}else{
-				return "ALTER TABLE "+table+" ADD COLUMN "+field+" "+type;
+				return "ALTER TABLE "+table+" ADD "+field+" "+type;
 			}
 		}
 		
@@ -268,7 +268,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		
 		internal override string GetDropColumnString(string table, string field)
 		{
-			return "ALTER TABLE "+table+" DROP COLUMN "+field;
+			return "ALTER TABLE "+table+" DROP "+field;
 		}
 		
 		protected override System.Data.IDbDataParameter CreateParameter(string parameterName, object parameterValue)
@@ -372,6 +372,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 					x+=1;
 				}
 			}
+			this.Close();
 			return ret;
 		}
 		

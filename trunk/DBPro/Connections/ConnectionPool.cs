@@ -62,7 +62,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 ExtractedTableMap etm = new ExtractedTableMap(tm.Name);
                 foreach (InternalFieldMap ifm in tm.Fields)
                 {
-                    etm.Fields.Add(new ExtractedFieldMap(tm.GetTableFieldName(ifm), conn.TranslateFieldType(ifm.FieldType, ifm.FieldLength), ifm.FieldLength, ifm.PrimaryKey, ifm.Nullable, ifm.AutoGen));
+                    etm.Fields.Add(new ExtractedFieldMap(ifm.FieldName, conn.TranslateFieldType(ifm.FieldType, ifm.FieldLength), ifm.FieldLength, ifm.PrimaryKey, ifm.Nullable, ifm.AutoGen));
                 }
                 foreach (Type t in tm.ForiegnTables)
                 {
@@ -127,16 +127,16 @@ namespace Org.Reddragonit.Dbpro.Connections
                                 if (efm.FieldName == f.FieldName)
                                 {
                                     fieldExists = true;
-                                    if ((efm.PrimaryKey != f.PrimaryKey) ||
-                                        (efm.Size != f.Size) ||
-                                        (efm.Type != f.Type))
+                                    if ((efm.Type != f.Type)||
+                                        	(efm.Type.ToUpper().Contains("CHAR") && (efm.Size != f.Size))
+                                       )
                                     {
                                         if (f.AutoGen)
                                         {
                                             alterations.AddRange(conn.GetDropAutogenStrings(e.TableName, f.FieldName, f.Type));
                                         }
                                         alterations.Add(conn.GetAlterFieldTypeString(etm.TableName, efm.FieldName, efm.Type, efm.Size));
-                                        if (efm.AutoGen)
+                                        if (efm.AutoGen && efm.PrimaryKey)
                                         {
                                             alterations.AddRange(conn.GetAddAutogenString(etm.TableName, efm.FieldName, efm.Type));
                                         }
@@ -207,7 +207,11 @@ namespace Org.Reddragonit.Dbpro.Connections
                     foreach (ExtractedFieldMap efm in etm.Fields)
                     {
                         if (efm.PrimaryKey)
+                        {
+                        	if (!efm.Nullable)
+                        		alterations.Add(conn.GetNullConstraintCreateString(etm.TableName,efm.FieldName));
                             tmp.Add(efm.FieldName);
+                        }
                         if (efm.ExternalTable != null)
                         {
                             if (!rels.ContainsKey(efm.ExternalTable))
@@ -266,10 +270,16 @@ namespace Org.Reddragonit.Dbpro.Connections
                     }
                     foreach (string str in alterations)
                     {
-                        conn.ExecuteNonQuery(str);
+                    	if (str.EndsWith(" COMMIT;"))
+                    	{
+                    	       	conn.ExecuteNonQuery(str.Substring(0,str.Length-8));
+                    	       	conn.Commit();
+                    	}else
+                        	conn.ExecuteNonQuery(str);
                     }
                 }
             }
+            conn.Commit();
         }
 		
 		public Connection getConnection()

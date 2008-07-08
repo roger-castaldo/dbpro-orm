@@ -40,7 +40,7 @@ namespace TestingApp.Structure
             }
         }
 
-        [Org.Reddragonit.Dbpro.Structure.Attributes.Field("STATUS_BYTES", FieldType.BYTE,-1)]
+        /*[Org.Reddragonit.Dbpro.Structure.Attributes.Field("STATUS_BYTES", FieldType.BYTE,-1)]
         public byte[] Data
         {
             get
@@ -51,6 +51,6 @@ namespace TestingApp.Structure
             {
                 _data = value;
             }
-        }
+        }*/
 	}
 }
