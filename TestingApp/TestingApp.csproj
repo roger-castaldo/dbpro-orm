@@ -47,6 +47,7 @@
     <Content Include="App.ico" />
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="Class1.cs" />
+    <Compile Include="Structure\AccountAddress.cs" />
     <Compile Include="Structure\AccountStatus.cs" />
     <Compile Include="Structure\AccountTable.cs" />
   </ItemGroup>

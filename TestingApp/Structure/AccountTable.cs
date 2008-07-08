@@ -44,7 +44,7 @@ namespace TestingApp.Structure
 			set { _status = value; }
 		}
 
-        [Org.Reddragonit.Dbpro.Structure.Attributes.Field()]
+		[Org.Reddragonit.Dbpro.Structure.Attributes.Field()]
         public string Job
         {
             get { return _job; }

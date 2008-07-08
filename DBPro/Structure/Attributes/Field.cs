@@ -65,7 +65,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 		{
 			if (FieldName == null)
 				throw new Exception("Cannot set Field with null name.");
-			_fieldName=FieldName;
+			_fieldName=FieldName.ToUpper();
 			_fieldType=type;
 			_nullable=Nullable;
 			_fieldLength=fieldLength;
@@ -119,16 +119,16 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
                                         {
                                             if (c.ToString().ToUpper() == c.ToString())
                                             {
-                                                _fieldName += "_" + c.ToString().ToLower();
+                                                _fieldName += "_" + c.ToString().ToUpper();
                                             }
                                             else
                                             {
-                                                _fieldName += c;
+                                            	_fieldName += c.ToString().ToUpper();
                                             }
                                         }
                                         if (_fieldName[0] == '_')
                                         {
-                                            _fieldName =_fieldName[1].ToString().ToUpper()+ _fieldName.Substring(2);
+                                        	_fieldName =_fieldName[1].ToString().ToUpper()+ _fieldName.Substring(2).ToUpper();
                                         }
                                         string type = m.ToString().Split(" ".ToCharArray())[0];
                                         if (type.IndexOf(".") >= 0)
