@@ -17,7 +17,8 @@ namespace TestingApp
 		{
             AccountStatus acs = new AccountStatus();
             AccountTable a = new AccountTable();
-            Org.Reddragonit.Dbpro.Connections.Firebird.FBConnectionPool pool = new Org.Reddragonit.Dbpro.Connections.Firebird.FBConnectionPool("sysdba", "copperbed1", "C:\\Documents and Settings\\Roger\\My Documents\\Firebird\\TESTING.FDB", "localhost", 3050,false);
+            Org.Reddragonit.Dbpro.Connections.Firebird.FBConnectionPool pool = (Org.Reddragonit.Dbpro.Connections.Firebird.FBConnectionPool)Org.Reddragonit.Dbpro.Connections.ConnectionPoolManager.GetConnection(null);
+           	//new Org.Reddragonit.Dbpro.Connections.Firebird.FBConnectionPool("sysdba", "copperbed1", "C:\\Documents and Settings\\Roger\\My Documents\\Firebird\\TESTING.FDB", "localhost", 3050,true,null);
             //Org.Reddragonit.Dbpro.Connections.Firebird.FBConnectionPool pool = new Org.Reddragonit.Dbpro.Connections.Firebird.FBConnectionPool("sysdba", "masterkey", "F:\\BillingPro\\database\\BILLINGPRO.FDB", "localhost", 3050,false);
             acs.StatusId = 1;
             acs.StatusName = "Active";

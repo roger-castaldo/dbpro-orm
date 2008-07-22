@@ -33,11 +33,31 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		private bool isClosed=false;
 		private bool isReady=false;
+		private string _connectionName;
 		
 		protected abstract Connection CreateConnection();
 		
+		internal string ConnectionName
+		{
+			get{
+				if (_connectionName==null)
+				{
+					_connectionName=ConnectionPoolManager.DEFAULT_CONNECTION_NAME;
+				}
+				return _connectionName;
+			}
+		}
 		
-		public ConnectionPool(string connectionString,int minPoolSize,int maxPoolSize,long maxKeepAlive,bool UpdateStructureDebugMode)
+		public override bool Equals(object obj)
+		{
+			if ((obj==null)||(((ConnectionPool)obj).connectionString==null))
+			{
+				return false;
+			}
+			return connectionString==((ConnectionPool)obj).connectionString;
+		}
+		
+		public ConnectionPool(string connectionString,int minPoolSize,int maxPoolSize,long maxKeepAlive,bool UpdateStructureDebugMode,string connectionName)
 		{
             mut.WaitOne();
 			this.connectionString=connectionString;
@@ -49,6 +69,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 				unlocked.Enqueue(CreateConnection());
 			isReady=true;
             mut.ReleaseMutex();
+            ConnectionPoolManager.AddConnection(connectionName,this);
+            _connectionName=connectionName;
 		}
 
         private void UpdateStructure(bool Debug)

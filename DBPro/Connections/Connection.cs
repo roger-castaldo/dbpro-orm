@@ -135,6 +135,11 @@ namespace Org.Reddragonit.Dbpro.Connections
 			comm = EstablishCommand();
             comm.Transaction = trans;
 		}
+        
+        internal string ConnectionName
+        {
+        	get{return pool.ConnectionName;}
+        }
 		
 		internal void Disconnect()
 		{
@@ -193,6 +198,10 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		public void CreateTable(Table table,bool debug)
 		{
+			if (table.ConnectionName!=ConnectionName)
+			{
+				throw new Exception("Cannot create a table into the database connection that it was not specified for.");
+			}
 			if (debug) 
 			{
 				foreach (string str in ConstructCreateStrings(table))
@@ -211,6 +220,10 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		private Table Update(Table table)
 		{
+			if (table.ConnectionName!=ConnectionName)
+			{
+				throw new Exception("Cannot update an entry into a table into the database connection that it was not specified for.");
+			}
             TableMap map = ClassMapper.GetTableMap(table.GetType());
             foreach (Type t in map.ForiegnTables)
             {
@@ -353,6 +366,10 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         public Table Save(Table table)
         {
+        	if (table.ConnectionName!=ConnectionName)
+			{
+				throw new Exception("Cannot insert an entry into a table into the database connection that it was not specified for.");
+			}
             if (table.IsSaved)
             {
                 return Update(table);
@@ -646,6 +663,10 @@ namespace Org.Reddragonit.Dbpro.Connections
 			{
 				throw new Exception("Unable to perform select on Type object without object inheriting Org.Reddragonit.DbPro.Structure.Table");
 			}
+			if (((Table)type.GetConstructor(System.Type.EmptyTypes).Invoke(new object[0])).ConnectionName!=ConnectionName)
+			{
+				throw new Exception("Cannot select from a table from the database connection that it was not specified for.");
+			}
 			List<Table> ret = new List<Table>();
             string query = this.ConstructSelectString(type);
 			ExecuteQuery(query);
@@ -665,6 +686,10 @@ namespace Org.Reddragonit.Dbpro.Connections
 			if (!type.IsSubclassOf(typeof(Table)))
 			{
 				throw new Exception("Unable to perform select on Type object without object inheriting Org.Reddragonit.DbPro.Structure.Table");
+			}
+			if (((Table)type.GetConstructor(System.Type.EmptyTypes).Invoke(new object[0])).ConnectionName!=ConnectionName)
+			{
+				throw new Exception("Cannot select from a table from the database connection that it was not specified for.");
 			}
 			List<Table> ret = new List<Table>();
             string query = ConstructSelectString(type);

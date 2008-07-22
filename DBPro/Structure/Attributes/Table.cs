@@ -8,13 +8,26 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 	{
 
 		private string _tableName=null;
+		private string _connectionName=null;
 
-        public Table()
+		public Table() : this(null,null)
         { }
 
-		public Table(string TableName)
+        public Table(string TableName) : this(TableName,null)
+		{
+		}
+		
+		public Table(string TableName,string ConnectionName)
 		{
 			_tableName=TableName;
+			_connectionName=ConnectionName;
+		}
+		
+		public string ConnectionName
+		{
+			get{
+				return _connectionName;
+			}
 		}
 
 		public string TableName

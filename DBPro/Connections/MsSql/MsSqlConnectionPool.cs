@@ -6,23 +6,23 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 {
     class MsSqlConnectionPool : ConnectionPool 
     {
-        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode)
-            : this(username, password, database, databaseServer, 1433, minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode)
+        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode,string connectionName)
+            : this(username, password, database, databaseServer, 1433, minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode,connectionName)
         { }
 
-        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int port, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode)
+        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int port, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode,string connectionName)
             : base("Server="+databaseServer+":"+port.ToString()+
                     ";Database="+database+";"+
                     "User ID="+username+";"+
-                    "Password="+password+";", minPoolSize, maxPoolSize, maxKeepAlive,UpdateStructureDebugMode)
+                    "Password="+password+";", minPoolSize, maxPoolSize, maxKeepAlive,UpdateStructureDebugMode,connectionName)
 		{}
 
-        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, bool UpdateStructureDebugMode)
-            : this(username, password, database, databaseServer, 1433, UpdateStructureDebugMode)
+        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, bool UpdateStructureDebugMode,string connectionName)
+            : this(username, password, database, databaseServer, 1433, UpdateStructureDebugMode,connectionName)
         {}
 
-        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int port, bool UpdateStructureDebugMode)
-            : this(username, password, database, databaseServer, port, 5, 10, 600, UpdateStructureDebugMode)
+        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int port, bool UpdateStructureDebugMode,string connectionName)
+            : this(username, password, database, databaseServer, port, 5, 10, 600, UpdateStructureDebugMode,connectionName)
 		{
 			
 		}
