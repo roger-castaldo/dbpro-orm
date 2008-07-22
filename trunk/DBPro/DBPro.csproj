@@ -72,6 +72,9 @@
     <Compile Include="Structure\Attributes\IPrimaryKeyField.cs" />
     <Compile Include="Structure\Attributes\PrimaryKeyField.cs" />
     <Compile Include="Structure\Attributes\Table.cs" />
+    <None Include="DbPro.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <ItemGroup />
   <ItemGroup />

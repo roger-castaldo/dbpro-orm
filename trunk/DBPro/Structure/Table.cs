@@ -30,6 +30,20 @@ namespace Org.Reddragonit.Dbpro.Structure
                 _initialValues.Add(fnp.ClassFieldName, this.GetType().GetProperty(fnp.ClassFieldName).GetValue(this, new object[0]));
             }
 		}
+		
+		internal string ConnectionName
+		{
+			get{
+				foreach (Attribute att in this.GetType().GetCustomAttributes(true))
+				{
+					if (att.GetType()==typeof(Org.Reddragonit.Dbpro.Structure.Attributes.Table))
+					{
+						return ((Org.Reddragonit.Dbpro.Structure.Attributes.Table)att).ConnectionName;
+					}
+				}
+				return null;
+			}
+		}
 
         internal bool IsSaved
         {
