@@ -13,6 +13,7 @@ using FirebirdSql.Data.FirebirdClient;
 using Org.Reddragonit.Dbpro.Connections;
 using Org.Reddragonit.Dbpro.Structure.Mapping;
 using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.Field.FieldType;
+using VersionTypes = Org.Reddragonit.Dbpro.Structure.Attributes.VersionField.VersionTypes;
 
 namespace Org.Reddragonit.Dbpro.Connections.Firebird
 {
@@ -115,107 +116,190 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 			" from rdb$relation_constraints " +
 			" where rdb$constraint_type = 'NOT NULL') ORDER BY order_mode DESC";
 		
+		private const string SelectVersionTriggers =
+			"SELECT RDB$TRIGGER_NAME FROM RDB$TRIGGERS "+
+			" where RDB$SYSTEM_FLAG<>1";
+		
+		private QueryBuilder _builder;
+		internal override QueryBuilder queryBuilder {
+			get { 
+				if (_builder==null)
+					_builder=new FBQueryBuilder();
+				return _builder;
+			}
+		}
+		
 		public FBConnection(ConnectionPool pool,string connectionString) : base(pool,connectionString)
 		{
 
 		}
-		
-		internal override string GetAlterFieldTypeString(string table, string field, string type,long size)
+
+		internal override List<string> GetAddAutogenString(string table, string field, string type)
 		{
-			return "ALTER TABLE "+table+" ALTER COLUMN "+field+" TYPE "+type;
-		}
-		
-		internal override string GetForiegnKeyCreateString(string table, List<string> fields, string foriegnTable, List<string> foriegnFields)
-		{
-			string ret="ALTER TABLE "+table+" ADD FOREIGN KEY (";
-			foreach (string str in fields)
+			List<string> ret = new List<string>();
+			if (type.ToUpper().Contains("DATE") || type.ToUpper().Contains("TIME"))
 			{
-				ret+=str+",";
+				ret.Add( "CREATE TRIGGER " + table + "_" + field + "_GEN FOR " + table + "\n" +
+				        "ACTIVE \n" +
+				        "BEFORE INSERT\n" +
+				        "POSITION 0 \n" +
+				        "AS \n" +
+				        "BEGIN \n" +
+				        "    NEW." + field + " = CURRENT_TIMESTAMP;\n" +
+				        "END\n\n");
 			}
-			ret=ret.Substring(0,ret.Length-1);
-			ret+=") REFERENCES "+foriegnTable+"(";
-			foreach(string str in foriegnFields)
+			else if (type.ToUpper().Contains("INT"))
 			{
-				ret+=str+",";
+				ret.Add("CREATE GENERATOR GEN_" + table + "_" + field + ";\n");
+				ret.Add("CREATE TRIGGER " + table + "_" + field + "_GEN FOR " + table + "\n" +
+				        "ACTIVE \n" +
+				        "BEFORE INSERT\n" +
+				        "POSITION 0 \n" +
+				        "AS \n" +
+				        "BEGIN \n" +
+				        "    NEW." + field + " = GEN_ID(GEN_" + table + "_" + field + ",1);\n" +
+				        "END\n\n");
 			}
-			return ret.Substring(0,ret.Length-1)+")";
-		}
-		
-		internal override string GetNullConstraintCreateString(string table, string field)
-		{
-            return "UPDATE RDB$RELATION_FIELDS SET RDB$NULL_FLAG = 1 WHERE RDB$FIELD_NAME = '"+field+"' AND RDB$RELATION_NAME = '"+table+"'";
+			else
+			{
+				throw new Exception("Unable to create autogenerator for non date or digit type.");
+			}
+			return ret;
 		}
 
-        internal override List<string> GetAddAutogenString(string table, string field, string type)
-        {
-            List<string> ret = new List<string>();
-            if (type.ToUpper().Contains("DATE") || type.ToUpper().Contains("TIME"))
-            {
-                ret.Add( "CREATE TRIGGER " + table + "_" + field + "_GEN FOR " + table + "\n" +
-                    "ACTIVE \n" +
-                    "BEFORE INSERT\n" +
-                    "POSITION 0 \n" +
-                    "AS \n" +
-                    "BEGIN \n" +
-                    "    NEW." + field + " = CURRENT_TIMESTAMP;\n" +
-                    "END\n\n");
-            }
-            else if (type.ToUpper().Contains("INT"))
-            {
-                ret.Add("CREATE GENERATOR GEN_" + table + "_" + field + ";\n");
-                ret.Add("CREATE TRIGGER " + table + "_" + field + "_GEN FOR " + table + "\n" +
-                    "ACTIVE \n" +
-                    "BEFORE INSERT\n" +
-                    "POSITION 0 \n" +
-                    "AS \n" +
-                    "BEGIN \n" +
-                    "    NEW." + field + " = GEN_ID(GEN_" + table + "_" + field + ",1);\n" +
-                    "END\n\n");
-            }
-            else
-            {
-                throw new Exception("Unable to create autogenerator for non date or digit type.");
-            }
-            return ret;
-        }
-
-        internal override List<string> GetDropAutogenStrings(string table, string field,string type)
-        {
-            List<string> ret = new List<string>();
-            if (type.ToUpper().Contains("DATE") || type.ToUpper().Contains("TIME"))
-            {
-                ret.Add("DROP TRIGGER "+table+"_"+field+"_GEN");
-            }
-            else if (type.ToUpper().Contains("INT"))
-            {
-                ret.Add("DROP TRIGGER " + table + "_" + field+"_GEN;");
-                ret.Add("DROP GENERATOR GEN_"+table+"_"+field+";");
-            }
-            else
-            {
-                throw new Exception("Unable to create autogenerator for non date or digit type.");
-            }
-            return ret;
-        }
-		
-		internal override string GetPrimaryKeyCreateString(string table, List<string> fields)
+		internal override List<string> GetDropAutogenStrings(string table, string field,string type)
 		{
-			string ret = "ALTER TABLE "+table+" ADD PRIMARY KEY (";
-			foreach(string str in fields)
+			List<string> ret = new List<string>();
+			if (type.ToUpper().Contains("DATE") || type.ToUpper().Contains("TIME"))
 			{
-				ret+=str+",";
+				ret.Add("DROP TRIGGER "+table+"_"+field+"_GEN");
 			}
-			return ret.Substring(0,ret.Length-1)+")";
+			else if (type.ToUpper().Contains("INT"))
+			{
+				ret.Add("DROP TRIGGER " + table + "_" + field+"_GEN;");
+				ret.Add("DROP GENERATOR GEN_"+table+"_"+field+";");
+			}
+			else
+			{
+				throw new Exception("Unable to create autogenerator for non date or digit type.");
+			}
+			return ret;
 		}
 		
-		internal override string GetCreateColumnString(string table, string field, string type,long size)
+		internal override List<string> GetVersionTableTriggers(string tableName, string versionTableName, string versionFieldName, VersionTypes versionType, List<ExtractedFieldMap> fields)
 		{
-			if (type.ToUpper().Contains("CHAR"))
+			List<string> ret = new List<string>();
+			string tmp = "CREATE TABLE "+versionTableName+"(\n\t"+versionFieldName+" ";
+			switch(versionType)
 			{
-				return "ALTER TABLE "+table+" ADD "+field+" "+type+"("+size.ToString()+")";
-			}else{
-				return "ALTER TABLE "+table+" ADD "+field+" "+type;
+				case VersionTypes.NUMBER:
+					tmp+="BIGINT NOT NULL,\n";
+					break;
+				case VersionTypes.DATESTAMP:
+					tmp+="TIMESTAMP NOT NULL,\n";
+					break;
 			}
+			foreach (ExtractedFieldMap efm in fields)
+			{
+				if (efm.Type.ToUpper().Contains("CHAR"))
+				{
+					tmp+= efm.FieldName+" "+efm.Type+"("+efm.Size.ToString()+")";
+				}else{
+					tmp+=efm.FieldName+" "+efm.Type;
+				}
+				if (efm.PrimaryKey)
+				{
+					tmp+=" NOT NULL";
+				}
+				tmp+="\n";
+			}
+			ret.Add(tmp.Substring(0,tmp.Length-2)+");\n");
+			tmp = "CREATE TRIGGER "+tableName+"_VERSION_INSERT FOR "+tableName+"\n"+
+				"ACTIVE \n"+
+				"AFTER INSERT \n"+
+				"POSITION 0 \n"+
+				"AS \n"+
+				"DECLARE VARIABLE "+versionFieldName+" ";
+			switch(versionType)
+			{
+				case VersionTypes.NUMBER:
+					tmp+="BIGINT;\n";
+					break;
+				case VersionTypes.DATESTAMP:
+					tmp+="TIMESTAMP;\n";
+					break;
+			}
+			foreach (ExtractedFieldMap efm in fields)
+			{
+				if (efm.Versioned||efm.PrimaryKey)
+				{
+					if (efm.Type.ToUpper().Contains("CHAR"))
+					{
+						tmp+= "DECLARE VARIABLE "+efm.FieldName+" "+efm.Type+"("+efm.Size.ToString()+")\n";
+					}else{
+						tmp+="DECLARE VARIABLE "+efm.FieldName+" "+efm.Type+"\n";
+					}
+				}
+			}
+			tmp+="BEGIN\n";
+			foreach (ExtractedFieldMap efm in fields)
+			{
+				if (efm.Versioned||efm.PrimaryKey)
+				{
+					tmp+="\t"+efm.FieldName+" = new."+efm.FieldName+";\n";
+				}
+			}
+			switch(versionType)
+			{
+				case VersionTypes.NUMBER:
+					tmp+="\t"+versionFieldName+" = 0;\n";
+					break;
+				case VersionTypes.DATESTAMP:
+					tmp+="\t"+versionFieldName+" = CURRENT_TIMESTAMP;\n";
+					break;
+			}
+			tmp+="\tINSERT INTO "+versionTableName+"("+versionFieldName;
+			foreach (ExtractedFieldMap efm in fields)
+			{
+				if (efm.Versioned||efm.PrimaryKey)
+				{
+					tmp+=","+efm.FieldName;
+				}
+			}
+			tmp+=") VALUES(:"+versionFieldName ;
+			foreach (ExtractedFieldMap efm in fields)
+			{
+				if (efm.Versioned||efm.PrimaryKey)
+				{
+					tmp+=",:"+efm.FieldName;
+				}
+			}
+			tmp+=");\nEND\n\n";
+			ret.Add(tmp);
+			tmp = tmp.Replace("AFTER INSERT","BEFORE UPDATE").Replace("_INSERT","_UPDATE");
+			switch(versionType)
+			{
+				case VersionTypes.NUMBER:
+					string maxQuery = "SELECT (MAX("+versionFieldName+")+1) as mid FROM "+versionTableName+"WHERE ";
+					foreach (ExtractedFieldMap efm in fields)
+					{
+						if (efm.PrimaryKey)
+						{
+							maxQuery+=efm.FieldName+" = :"+efm.FieldName+" AND ";
+						}
+					}
+					if (maxQuery.EndsWith(" WHERE ")) 
+					{
+						maxQuery=maxQuery.Substring(0,maxQuery.Length-7);
+					}else
+					{
+						maxQuery=maxQuery.Substring(0,maxQuery.Length-4);
+					}
+					tmp.Replace("\t"+versionFieldName+" = 0;\n","\t"+versionFieldName +" = ("+maxQuery+");\n");
+					break;
+			}
+			ret.Add(tmp);
+			return ret;
 		}
 		
 		internal override List<string> GetCreateTableStringsForAlterations(Connection.ExtractedTableMap table)
@@ -261,17 +345,20 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 			return ret;
 		}
 		
-		internal override string GetDropTableString(string table)
+		internal override List<string> GetDropTableString(string table,bool isVersioned)
 		{
-			return "DROP TABLE "+table;
+			List<string> ret = new List<string>();
+			if (isVersioned)
+			{
+				ret.Add("DROP TRIGGER "+table+"_VERSION_INSERT");
+				ret.Add("DROP TRIGGER "+table+"_VERSION_UPDATE");
+				ret.Add("DROP TABLE "+table+"_VERSION");
+			}
+			ret.Add("DROP TABLE "+table);
+			return ret;
 		}
 		
-		internal override string GetDropColumnString(string table, string field)
-		{
-			return "ALTER TABLE "+table+" DROP "+field;
-		}
-		
-		protected override System.Data.IDbDataParameter CreateParameter(string parameterName, object parameterValue)
+		internal override System.Data.IDbDataParameter CreateParameter(string parameterName, object parameterValue)
 		{
 			return new FbParameter(parameterName,parameterValue);
 		}
@@ -383,6 +470,15 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 			while (this.Read())
 			{
 				ret.Add((string)this[0]);
+			}
+			this.Close();
+			this.ExecuteQuery(SelectVersionTriggers);
+			while(this.Read())
+			{
+				if (((string)this[0]).ToUpper().Contains("_VERSION_INSERT")||((string)this[0]).ToUpper().Contains("_VERSION_UPDATE"))
+				{
+					ret.Add("DROP TRIGGER "+(string)this[0]);
+				}
 			}
 			this.Close();
 			return ret;
@@ -568,6 +664,124 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 					}
 					ret.Insert(1,tmp);
 				}
+			}
+			if (t.VersionType.HasValue)
+			{
+				tmp = "CREATE TABLE "+t.Name+"_VERSION(\n"+t.Name+"_VERSION_ID ";
+				switch(t.VersionType.Value)
+				{
+					case VersionTypes.NUMBER:
+						tmp+="BIGINT NOT NULL,\n";
+						break;
+					case VersionTypes.DATESTAMP:
+						tmp+="TIMESTAMP NOT NULL,\n";
+						break;
+				}
+				foreach (FieldMap f in t.Fields)
+				{
+					if (f.Versionable||f.PrimaryKey)
+					{
+						InternalFieldMap ifm = (InternalFieldMap)f;
+						tmp+="\t"+ifm.FieldName+" ".ToCharArray()+TranslateFieldType(ifm.FieldType,ifm.FieldLength);
+						if (!ifm.Nullable)
+						{
+							tmp+=" NOT NULL";
+						}
+						tmp+=",\n";
+					}
+				}
+				string pkeys = t.Name+"_VERSION_ID";
+				foreach (InternalFieldMap ifm in t.PrimaryKeys)
+				{
+					pkeys+=","+ifm.FieldName;
+				}
+				tmp+="\tPRIMARY KEY("+pkeys+"),\n";
+				if (t.PrimaryKeys.Count>0)
+				{
+					tmp+="\tFOREIGN KEY("+pkeys.Replace(t.Name+"_VERSION_ID,","")+")\n\t\tREFERENCES "+t.Name+"("+pkeys.Replace(t.Name+"_VERSION_ID,","")+
+						")\n\t\tON UPDATE CASCADE ON\n\t\tON DELETE CASCADE,";
+				}
+				tmp = tmp.Substring(0,tmp.Length-1)+")";
+				ret.Add(tmp);
+				tmp = "CREATE TRIGGER "+t.Name+"_VERSION_INSERT FOR "+t.Name+"\n"+
+					"ACTIVE \n"+
+					"AFTER INSERT \n"+
+					"POSITION 0 \n"+
+					"AS \n"+
+					"DECLARE VARIABLE "+t.Name+"_VERSION_ID ";
+				switch(t.VersionType.Value)
+				{
+					case VersionTypes.NUMBER:
+						tmp+="BIGINT;\n";
+						break;
+					case VersionTypes.DATESTAMP:
+						tmp+="TIMESTAMP;\n";
+						break;
+				}
+				foreach (FieldMap f in t.Fields)
+				{
+					if (f.Versionable||f.PrimaryKey)
+					{
+						InternalFieldMap ifm = (InternalFieldMap)f;
+						tmp+="DECLARE VARIABLE "+ifm.FieldName+" ".ToCharArray()+TranslateFieldType(ifm.FieldType,ifm.FieldLength)+";\n";
+					}
+				}
+				tmp+="BEGIN\n";
+				foreach (FieldMap f in t.Fields)
+				{
+					if (f.Versionable||f.PrimaryKey)
+					{
+						InternalFieldMap ifm = (InternalFieldMap)f;
+						tmp+="\t"+ifm.FieldName+" = new."+ifm.FieldName+";\n";
+					}
+				}
+				switch(t.VersionType.Value)
+				{
+					case VersionTypes.NUMBER:
+						tmp+="\t"+t.Name+"_VERSION_ID = 0;\n";
+						break;
+					case VersionTypes.DATESTAMP:
+						tmp+="\t"+t.Name+"_VERSION_ID = CURRENT_TIMESTAMP;\n";
+						break;
+				}
+				tmp+="\tINSERT INTO "+t.Name+"_VERSION("+t.Name+"_VERSION_ID";
+				foreach (FieldMap f in t.Fields)
+				{
+					if (f.Versionable||f.PrimaryKey)
+					{
+						InternalFieldMap ifm = (InternalFieldMap)f;
+						tmp+=","+ifm.FieldName;
+					}
+				}
+				tmp+=") VALUES(:"+t.Name+"_VERSION_ID";
+				foreach (FieldMap f in t.Fields)
+				{
+					if (f.Versionable||f.PrimaryKey)
+					{
+						InternalFieldMap ifm = (InternalFieldMap)f;
+						tmp+=",:"+ifm.FieldName;
+					}
+				}
+				tmp+=");\nEND\n\n";
+				ret.Add(tmp);
+				tmp = tmp.Replace("AFTER INSERT","BEFORE UPDATE");
+				switch(t.VersionType.Value)
+				{
+					case VersionTypes.NUMBER:
+						string maxQuery = "SELECT (MAX("+t.Name+"_VERSION_ID)+1) as mid FROM "+t.Name+"_VERSION";
+						if (t.PrimaryKeys.Count>0)
+						{
+							maxQuery+=" WHERE ";
+							foreach (InternalFieldMap ifm in t.PrimaryKeys)
+							{
+								maxQuery+=ifm.FieldName+" = :"+ifm.FieldName+" AND ";
+							}
+							maxQuery=maxQuery.Substring(0,maxQuery.Length-4);
+						}
+						tmp.Replace("\t"+t.Name+"_VERSION_ID = 0;\n","\t"+t.Name+"_VERSION_ID = ("+maxQuery+");\n");
+						break;
+				}
+				ret.Add(tmp);
 			}
 			return ret;
 		}

@@ -6,6 +6,7 @@ using Org.Reddragonit.Dbpro.Structure;
 using Org.Reddragonit.Dbpro.Structure.Mapping;
 using FieldNamePair = Org.Reddragonit.Dbpro.Structure.Mapping.TableMap.FieldNamePair;
 using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.Field.FieldType;
+using VersionTypes = Org.Reddragonit.Dbpro.Structure.Attributes.VersionField.VersionTypes;
 
 namespace Org.Reddragonit.Dbpro.Connections
 {
@@ -43,16 +44,30 @@ namespace Org.Reddragonit.Dbpro.Connections
         internal struct ExtractedTableMap
         {
             private string _tableName;
+            private VersionTypes? _versionType;
             private List<ExtractedFieldMap> _fields;
 
             public ExtractedTableMap(string tableName)
             {
                 _tableName=tableName;
                 _fields=new List<ExtractedFieldMap>();
+                _versionType=null;
             }
 
             public string TableName{get{return _tableName;}}
             public List<ExtractedFieldMap> Fields{get{return _fields;}set{_fields=value;}}
+            public VersionTypes? VersionType{get{return _versionType;}set{_versionType=value;}}
+            public List<ExtractedFieldMap> PrimaryKeys{
+            	get{
+            		List<ExtractedFieldMap> ret = new List<ExtractedFieldMap>();
+            		foreach (ExtractedFieldMap efm in Fields)
+            		{
+            			if (efm.PrimaryKey)
+            				ret.Add(efm);
+            		}
+            		return ret;
+            	}
+            }
         }
 
         internal struct ExtractedFieldMap
@@ -67,8 +82,9 @@ namespace Org.Reddragonit.Dbpro.Connections
             private string _deleteAction;
             private string _externalTable;
             private string _externalField;
+            private bool _versioned;
             
-            public ExtractedFieldMap(string fieldName, string type, long size, bool primary, bool nullable,bool autogen) 
+            public ExtractedFieldMap(string fieldName, string type, long size, bool primary, bool nullable,bool autogen,bool versioned) 
             {
             	_fieldName = fieldName;
                 _type = type;
@@ -80,9 +96,14 @@ namespace Org.Reddragonit.Dbpro.Connections
                 _deleteAction = null;
                 _externalTable = null;
                 _autogen=autogen;
+                _versioned=versioned;
             }
 
-            public ExtractedFieldMap(string fieldName, string type, long size, bool primary, bool nullable) : this(fieldName,type,size,primary,nullable,false)
+            public ExtractedFieldMap(string fieldName, string type, long size, bool primary, bool nullable,bool versioned) : this(fieldName,type,size,primary,nullable,versioned,false)
+            {
+            }
+            
+            public ExtractedFieldMap(string fieldName, string type, long size, bool primary, bool nullable) : this(fieldName,type,size,primary,nullable,false,false)
             {
             }
 
@@ -96,9 +117,10 @@ namespace Org.Reddragonit.Dbpro.Connections
             public string DeleteAction { get { return _deleteAction; } set { _deleteAction = value; } }
             public string ExternalTable { get { return _externalTable; } set { _externalTable= value; } }
             public string ExternalField { get { return _externalField; } set { _externalField = value; } }
+            public bool Versioned{get{return _versioned;}set{_versioned=value;}}
         }
 
-		private ConnectionPool pool;
+		private ConnectionPool pool;	
 		protected IDbConnection conn;
 		protected IDbCommand comm;
 		protected IDataReader reader;
@@ -107,24 +129,28 @@ namespace Org.Reddragonit.Dbpro.Connections
 		private DateTime creationTime;
 		protected string connectionString;
 		
+		private QueryBuilder _qb;
+		internal virtual QueryBuilder queryBuilder
+		{
+			get{
+				if (_qb==null)
+					_qb=new QueryBuilder();
+				return _qb;
+			}
+		}
+		
 		protected abstract IDbConnection EstablishConnection();
 		protected abstract IDbCommand EstablishCommand();
-		protected abstract IDbDataParameter CreateParameter(string parameterName,object parameterValue);
 		protected abstract List<string> ConstructCreateStrings(Table table);
+		internal abstract IDbDataParameter CreateParameter(string parameterName,object parameterValue);
 		internal abstract string TranslateFieldType(Org.Reddragonit.Dbpro.Structure.Attributes.Field.FieldType type,int fieldLength);
         internal abstract List<ExtractedTableMap> GetTableList();
         internal abstract List<string> GetDropConstraintsScript();
-        internal abstract string GetNullConstraintCreateString(string table,string field);
-        internal abstract string GetPrimaryKeyCreateString(string table,List<string> fields);
-        internal abstract string GetAlterFieldTypeString(string table,string field,string type,long size);
-        internal abstract string GetForiegnKeyCreateString(string table,List<string> fields,string foriegnTable,List<string> foriegnFields);
-        internal abstract string GetCreateColumnString(string table,string field,string type,long size);
-        internal abstract string GetDropColumnString(string table,string field);
-        internal abstract string GetDropTableString(string table);
+        internal abstract List<string> GetDropTableString(string table,bool isVersioned);
         internal abstract List<string> GetDropAutogenStrings(string table, string field,string type);
         internal abstract List<string> GetAddAutogenString(string table, string field, string type);
         internal abstract List<string> GetCreateTableStringsForAlterations(ExtractedTableMap table);
-		
+        internal abstract List<string> GetVersionTableTriggers(string tableName,string versionTableName,string versionFieldName,VersionTypes versionType,List<ExtractedFieldMap> fields);
 		
 		public Connection(ConnectionPool pool,string connectionString){
 			creationTime=System.DateTime.Now;
@@ -224,7 +250,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			{
 				throw new Exception("Cannot update an entry into a table into the database connection that it was not specified for.");
 			}
-            TableMap map = ClassMapper.GetTableMap(table.GetType());
+			TableMap map = ClassMapper.GetTableMap(table.GetType());
             foreach (Type t in map.ForiegnTables)
             {
                 Table ext = (Table)table.GetType().GetProperty(map.GetClassPropertyName(map.GetFieldInfoForForiegnTable(t))).GetValue(table, new object[0]);
@@ -242,124 +268,19 @@ namespace Org.Reddragonit.Dbpro.Connections
                     this.Save(t);
                 }
             }
-            string query = "UPDATE " + map.Name + " SET ";
-            string fields = "";
-            string conditions = "";
             List<IDbDataParameter> pars = new List<IDbDataParameter>();
-            foreach (FieldNamePair fnp in map.FieldNamePairs)
-            {
-                if (map[fnp] is ExternalFieldMap)
-                {
-                    if (!((ExternalFieldMap)map[fnp]).IsArray)
-                    {
-                        TableMap relatedTableMap = ClassMapper.GetTableMap(table.GetType().GetProperty(fnp.ClassFieldName).PropertyType);
-                        if (table.GetType().GetProperty(fnp.ClassFieldName).GetValue(table, new object[0]) == null)
-                        {
-                            foreach (FieldMap fm in relatedTableMap.PrimaryKeys)
-                            {
-                                fields += relatedTableMap.GetTableFieldName(fm) + " = @" + relatedTableMap.GetTableFieldName(fm) + ", ";
-                                pars.Add(CreateParameter("@" + relatedTableMap.GetTableFieldName(fm), null));
-                            }
-                        }
-                        else
-                        {
-                            Table relatedTable = (Table)table.GetType().GetProperty(fnp.ClassFieldName).GetValue(table, new object[0]);
-                            foreach (FieldMap fm in relatedTableMap.PrimaryKeys)
-                            {
-                                fields += relatedTableMap.GetTableFieldName(fm) + " = @" + relatedTableMap.GetTableFieldName(fm) + ", ";
-                                pars.Add(CreateParameter("@" + relatedTableMap.GetTableFieldName(fm), relatedTable.GetType().GetProperty(relatedTableMap.GetClassFieldName(fm)).GetValue(relatedTable, new Object[0])));
-                            }
-                        }
-                        if (map[fnp].PrimaryKey || !map.HasPrimaryKeys)
-                        {
-                            Table relatedTable = (Table)table.GetInitialPrimaryValue(fnp);
-                            if (relatedTable == null)
-                            {
-                                foreach (FieldMap fm in relatedTableMap.PrimaryKeys)
-                                {
-                                    conditions += relatedTableMap.GetTableFieldName(fm) + " is null AND ";
-                                }
-                            }
-                            else
-                            {
-                                foreach (FieldMap fm in relatedTableMap.PrimaryKeys)
-                                {
-                                    conditions += relatedTableMap.GetTableFieldName(fm) + " = @init_" + relatedTableMap.GetTableFieldName(fm) + " AND ";
-                                    pars.Add(CreateParameter("@init_" + relatedTableMap.GetTableFieldName(fm), relatedTable.GetType().GetProperty(relatedTableMap.GetClassFieldName(fm)).GetValue(relatedTable, new Object[0])));
-                                }
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    fields += fnp.TableFieldName+" = @"+fnp.TableFieldName +", ";
-                    if (table.GetType().GetProperty(fnp.ClassFieldName).GetValue(table, new object[0]) == null)
-                    {
-                        pars.Add(CreateParameter("@" + fnp.TableFieldName, null));
-                    }
-                    else
-                    {
-                        pars.Add(CreateParameter("@" + fnp.TableFieldName, table.GetType().GetProperty(fnp.ClassFieldName).GetValue(table, new object[0])));
-                    }
-                    if (map[fnp].PrimaryKey || !map.HasPrimaryKeys)
-                    {
-                        if (table.GetInitialPrimaryValue(fnp) == null)
-                        {
-                            conditions += fnp.TableFieldName + " IS NULL AND ";
-                        }
-                        else
-                        {
-                            conditions += fnp.TableFieldName + " = @init_"+fnp.TableFieldName +" AND ";
-                            pars.Add(CreateParameter("@init_" + fnp.TableFieldName, table.GetInitialPrimaryValue(fnp)));
-                        }
-                    }
-                }
-            }
-            query += fields.Substring(0, fields.Length - 2);
-            query += " WHERE " + conditions.Substring(0, conditions.Length - 4);
+            string query = queryBuilder.Update(table,out pars,this);
             this.ExecuteNonQuery(query, pars);
             foreach (ExternalFieldMap efm in map.ExternalFieldMapArrays)
             {
-                TableMap relatedMap = ClassMapper.GetTableMap(efm.Type);
-                string delString = "DELETE FROM " + map.Name + "_" + relatedMap.Name + " WHERE ";
-                pars.Clear();
-                foreach (InternalFieldMap ifm in map.PrimaryKeys)
-                {
-                    delString += ifm.FieldName + " = @" + ifm.FieldName + " AND ";
-                    pars.Add(CreateParameter("@" + ifm.FieldName, table.GetType().GetProperty(map.GetClassFieldName(ifm)).GetValue(table, new object[0])));
-                }
-                ExecuteNonQuery(delString.Substring(0, delString.Length - 4), pars);
-                Table[] values = (Table[])table.GetType().GetProperty(map.GetClassFieldName(efm)).GetValue(table, new object[0]);
-                delString = "INSERT INTO " + map.Name + "_" + relatedMap.Name + "(";
-                string valueString = "VALUES(";
-                foreach (InternalFieldMap ifm in map.PrimaryKeys)
-                {
-                    delString += ifm.FieldName + ",";
-                    valueString += "@" + ifm.FieldName + ",";
-                }
-                foreach (InternalFieldMap ifm in relatedMap.PrimaryKeys)
-                {
-                    delString += ifm.FieldName + ",";
-                    valueString += "@" + ifm.FieldName + ",";
-                }
-                delString = delString.Substring(0, delString.Length - 1) + ") " + valueString.Substring(0, valueString.Length - 1) + ")";
-                foreach (Table t in values)
-                {
-                    foreach (InternalFieldMap ifm in relatedMap.PrimaryKeys)
-                    {
-                        for (int x = 0; x < pars.Count; x++)
-                        {
-                            if (pars[x].ParameterName == "@" + ifm.FieldName)
-                            {
-                                pars.RemoveAt(x);
-                                break;
-                            }
-                        }
-                        pars.Add(CreateParameter("@" + ifm.FieldName, t.GetType().GetProperty(relatedMap.GetClassFieldName(ifm)).GetValue(t, new object[0])));
-                    }
-                    ExecuteNonQuery(delString, pars);
-                }
+            	Dictionary<string, List<List<IDbDataParameter>>> queries = queryBuilder.UpdateMapArray(table,efm,this);
+            	foreach (string str in queries.Keys)
+            	{
+            		foreach (List<IDbDataParameter> p in queries[str])
+            		{
+            			ExecuteNonQuery(str,p);
+            		}
+            	}
             }
 			return table;
 		}
@@ -400,13 +321,12 @@ namespace Org.Reddragonit.Dbpro.Connections
                     this.Save(t);
                 }
             }
-			string query = "INSERT INTO "+ClassMapper.GetTableMap(table.GetType()).Name+"(";
-			string values="";
-            string fields = "";
-            string tableName = ClassMapper.GetTableMap(table.GetType()).Name;
-			string select="SELECT * FROM "+tableName;
+			string query = "";
+			string select="";
 			List<IDbDataParameter> pars = new List<IDbDataParameter>();
-			foreach (FieldNamePair fnp in ClassMapper.GetTableMap(table.GetType()).FieldNamePairs)
+			List<IDbDataParameter> selectPars = new List<IDbDataParameter>();
+			query=queryBuilder.Insert(table,out pars,out select,out selectPars,this);
+			/*foreach (FieldNamePair fnp in ClassMapper.GetTableMap(table.GetType()).FieldNamePairs)
 			{
                 if (map[fnp] is ExternalFieldMap)
                 {
@@ -447,7 +367,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 {
                     fields += "," + tableName + "." + fnp.TableFieldName;
                     values += fnp.TableFieldName + ",";
-                    if (table.IsFieldNull(fnp.ClassFieldName) == null)
+                    if (table.IsFieldNull(fnp.ClassFieldName))
                     {
                         pars.Add(CreateParameter("@" + fnp.TableFieldName,null));
                     }
@@ -500,117 +420,25 @@ namespace Org.Reddragonit.Dbpro.Connections
             select = select.Replace("*", fields.Substring(1));
 			values=values.Substring(0,values.Length-1);
 			query+=values+") VALUES(@"+values.Replace(",",",@")+")";
-			select = select.Substring(0,select.Length-4);
+			select = select.Substring(0,select.Length-4);*/
 			ExecuteNonQuery(query,pars);
-			for (int x=0;x<pars.Count;x++)
-			{
-				if (!select.Contains(pars[x].ParameterName ))
-				{
-					pars.RemoveAt(x);
-					x--;
-				}
-			}
-			ExecuteQuery(select,pars);
+			ExecuteQuery(select,selectPars);
 			Read();
 			table.SetValues(this);
             Close();
             foreach (ExternalFieldMap efm in map.ExternalFieldMapArrays)
             {
-                TableMap relatedMap = ClassMapper.GetTableMap(efm.Type);
-                string delString = "DELETE FROM " + map.Name + "_" + relatedMap.Name + " WHERE ";
-                pars.Clear();
-                foreach (InternalFieldMap ifm in map.PrimaryKeys)
-                {
-                    delString += ifm.FieldName + " = @" + ifm.FieldName + " AND ";
-                    pars.Add(CreateParameter("@" + ifm.FieldName, table.GetType().GetProperty(map.GetClassFieldName(ifm)).GetValue(table, new object[0])));
-                }
-                ExecuteNonQuery(delString.Substring(0, delString.Length - 4), pars);
-                Table[] vals = (Table[])table.GetType().GetProperty(map.GetClassFieldName(efm)).GetValue(table, new object[0]);
-                delString = "INSERT INTO " + map.Name + "_" + relatedMap.Name + "(";
-                string valueString = "VALUES(";
-                foreach (InternalFieldMap ifm in map.PrimaryKeys)
-                {
-                    delString += ifm.FieldName+",";
-                    valueString+="@"+ifm.FieldName+",";
-                }
-                foreach (InternalFieldMap ifm in relatedMap.PrimaryKeys)
-                {
-                    delString += ifm.FieldName + ",";
-                    valueString += "@" + ifm.FieldName + ",";
-                }
-                delString = delString.Substring(0, delString.Length - 1) + ") " + valueString.Substring(0, valueString.Length - 1) + ")";
-                foreach (Table t in vals)
-                {
-                    foreach (InternalFieldMap ifm in relatedMap.PrimaryKeys)
-                    {
-                        for (int x = 0; x < pars.Count; x++)
-                        {
-                            if (pars[x].ParameterName == "@" + ifm.FieldName)
-                            {
-                                pars.RemoveAt(x);
-                                break;
-                            }
-                        }
-                        pars.Add(CreateParameter("@" + ifm.FieldName, t.GetType().GetProperty(relatedMap.GetClassFieldName(ifm)).GetValue(t, new object[0])));
-                    }
-                    ExecuteNonQuery(delString, pars);
-                }
+                Dictionary<string, List<List<IDbDataParameter>>> queries = queryBuilder.UpdateMapArray(table,efm,this);
+            	foreach (string str in queries.Keys)
+            	{
+            		foreach (List<IDbDataParameter> p in queries[str])
+            		{
+            			ExecuteNonQuery(str,p);
+            		}
+            	}
             }
 			return table;
 		}
-
-        private string ConstructSelectString(System.Type type)
-        {
-            TableMap map = ClassMapper.GetTableMap(type);
-            string fields = "";
-            string joins = "";
-            string tables = "";
-            string where = "";
-            string query = "SELECT * FROM " + map.Name;
-            foreach (FieldNamePair fnp in map.FieldNamePairs)
-            {
-                if (map[fnp] is ExternalFieldMap)
-                {
-                    if (!((ExternalFieldMap)map[fnp]).IsArray)
-                    {
-                        TableMap relatedTableMap = ClassMapper.GetTableMap(type.GetProperty(fnp.ClassFieldName).PropertyType);
-                        if (map.GetFieldInfoForForiegnTable(type.GetProperty(fnp.ClassFieldName).PropertyType).Nullable)
-                        {
-                            joins += " LEFT JOIN " + relatedTableMap.Name + " ON ";
-                            foreach (FieldMap fm in relatedTableMap.PrimaryKeys)
-                            {
-                                joins += map.Name + "." + relatedTableMap.GetTableFieldName(fm) + " = " + relatedTableMap.Name + "." + relatedTableMap.GetTableFieldName(fm) + " AND ";
-                            }
-                            joins = joins.Substring(0, joins.Length - 4);
-                        }
-                        else
-                        {
-                            tables += "," + relatedTableMap.Name;
-                            foreach (FieldMap fm in relatedTableMap.PrimaryKeys)
-                            {
-                                where += map.Name + "." + relatedTableMap.GetTableFieldName(fm) + " = " + relatedTableMap.Name + "." + relatedTableMap.GetTableFieldName(fm) + " AND ";
-                            }
-                        }
-                        foreach (FieldMap fm in relatedTableMap.Fields)
-                        {
-                            fields += "," + relatedTableMap.Name + "." + relatedTableMap.GetTableFieldName(fm);
-                        }
-                    }
-                }
-                else
-                {
-                    fields += "," + map.Name + "." + fnp.TableFieldName;
-                }
-            }
-            query += joins;
-            query += tables;
-            query.Replace("*", fields.Substring(1));
-            if (where.Length > 0)
-            {
-                query += " WHERE " + where.Substring(0, where.Length - 4);
-            }
-            return query;
-        }
 
         private List<Table> AddArrayedTablesToSelect(List<Table> ret, System.Type type)
         {
@@ -622,7 +450,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 {
                     List<IDbDataParameter> pars = new List<IDbDataParameter>();
                     TableMap external = ClassMapper.GetTableMap(f.Type);
-                    query = this.ConstructSelectString(f.Type);
+                    query = queryBuilder.SelectAll(f.Type);
                     if (query.Contains(" WHERE "))
                     {
                         query = query.Replace(" WHERE ", ", " + map.Name + "_" + external.Name + " WHERE ");
@@ -668,8 +496,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 				throw new Exception("Cannot select from a table from the database connection that it was not specified for.");
 			}
 			List<Table> ret = new List<Table>();
-            string query = this.ConstructSelectString(type);
-			ExecuteQuery(query);
+			ExecuteQuery(queryBuilder.SelectAll(type));
 			while (Read())
 			{
 				Table t = (Table)type.GetConstructor(System.Type.EmptyTypes).Invoke(new object[0]);
@@ -692,27 +519,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 				throw new Exception("Cannot select from a table from the database connection that it was not specified for.");
 			}
 			List<Table> ret = new List<Table>();
-            string query = ConstructSelectString(type);
 			List<IDbDataParameter> pars = new List<IDbDataParameter>();
-            TableMap map = ClassMapper.GetTableMap(type);
-			if (parameters!=null)
-			{
-                if (!query.Contains(" WHERE "))
-                {
-                    query += " WHERE 1=1 ";
-                }
-				foreach (SelectParameter s in parameters)
-				{
-					foreach (FieldNamePair f in map.FieldNamePairs)
-					{
-						if (s.FieldName==f.ClassFieldName)
-						{
-							query+=" AND "+f.TableFieldName+" = @"+f.TableFieldName;
-							pars.Add(CreateParameter("@"+f.TableFieldName,s.FieldValue));
-						}
-					}
-				}
-			}
+			string query = queryBuilder.Select(type,parameters,out pars,this);
 			ExecuteQuery(query,pars);
 			while (Read())
 			{
@@ -725,6 +533,24 @@ namespace Org.Reddragonit.Dbpro.Connections
 			return ret;
 		}
 		
+		private string FormatParameters(string queryString,List<IDbDataParameter> parameters)
+		{
+			if (parameters==null)
+				return queryString;
+			else
+			{
+				string ret = queryString;
+				foreach (IDbDataParameter par in parameters)
+				{
+					if (par.Value==null)
+					{
+						ret=ret.Replace("= "+par.ParameterName+" ","is "+par.ParameterName+" ");
+					}
+				}
+				return ret;
+			}
+		}
+		
 		public int ExecuteNonQuery(string queryString)
 		{
 			return ExecuteNonQuery(queryString,null);
@@ -732,7 +558,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		public int ExecuteNonQuery(string queryString,List<IDbDataParameter> parameters)
 		{
-			comm.CommandText=queryString;
+			comm.CommandText=FormatParameters(queryString+" ",parameters);
 			comm.Parameters.Clear();
 			if (parameters!=null)
 			{
@@ -752,7 +578,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		public void ExecuteQuery(string queryString,List<IDbDataParameter> parameters)
 		{
-			comm.CommandText=queryString;
+			comm.CommandText=FormatParameters(queryString+" ",parameters);
 			comm.Parameters.Clear();
 			if (parameters!=null)
 			{
@@ -764,6 +590,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			reader=comm.ExecuteReader();
 		}
 		
+		#region Reader
 		public int Depth {
 			get {
 				return reader.Depth;
@@ -947,6 +774,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 				return ret;
 			}
 		}
+		#endregion
 		
 	}
 }

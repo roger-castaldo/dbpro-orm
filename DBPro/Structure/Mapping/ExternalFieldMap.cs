@@ -28,7 +28,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 		public ExternalFieldMap(System.Type type,MemberInfo info) : base(info)
 		{
 			_type=type;
-            _isArray = info.ToString().Contains("[]");
+			_isArray = info.ToString().Contains("[]");
 			foreach (object obj in info.GetCustomAttributes(true))
 			{
 				if (obj is IForiegnField)
@@ -37,7 +37,19 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 					_onUpdate=f.OnUpdate;
 					_onDelete=f.OnDelete;
 				}
+				if (obj is IVersionField)
+				{
+					_versionable=true;
+				}
 			}
+		}
+		
+		public override bool Equals(object obj)
+		{
+			if ((obj==null)||!(obj is ExternalFieldMap))
+				return false;
+			ExternalFieldMap efm = (ExternalFieldMap)obj;
+			return base.Equals(obj)&&(efm.Type==Type)&&(efm.OnUpdate==OnUpdate)&&(efm.OnDelete==OnDelete)&&(efm.IsArray==IsArray);
 		}
 		
 		public UpdateDeleteAction OnUpdate{

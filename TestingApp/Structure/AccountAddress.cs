@@ -22,35 +22,35 @@ namespace TestingApp.Structure
 	{
 		private string _streetName;
 		private string _city;
-		private DateTime _startDate;
+		//private DateTime _startDate;
 		private AccountTable _account;
 		
 		public AccountAddress()
 		{
 		}
 		
-		[Org.Reddragonit.Dbpro.Structure.Attributes.Field("STREET_NAME", FieldType.STRING, false,250)]
+		[Org.Reddragonit.Dbpro.Structure.Attributes.VersionField("STREET_NAME", FieldType.STRING, false,250)]
 		public string StreetName
 		{
 			get{return _streetName;}
 			set{_streetName=value;}
 		}
 		
-		[Org.Reddragonit.Dbpro.Structure.Attributes.Field("CITY", FieldType.STRING, false, 100)]
+		[Org.Reddragonit.Dbpro.Structure.Attributes.VersionField("CITY", FieldType.STRING, false, 100)]
 		public string City
 		{
 			get{return _city;}
 			set{_city=value;}
 		}
 		
-		[Org.Reddragonit.Dbpro.Structure.Attributes.PrimaryKeyField("START_DATE",FieldType.DATETIME,false,true)]
-		public DateTime StartDate
-		{
-			get{return _startDate;}
-			set{_startDate=value;}
-		}
+//		[Org.Reddragonit.Dbpro.Structure.Attributes.PrimaryKeyField("START_DATE",FieldType.DATETIME,false,true)]
+//		public DateTime StartDate
+//		{
+//			get{return _startDate;}
+//			set{_startDate=value;}
+//		}
 		
-		[Org.Reddragonit.Dbpro.Structure.Attributes.ForiegnField(true,UpdateDeleteAction.CASCADE,UpdateDeleteAction.CASCADE)]
+		[Org.Reddragonit.Dbpro.Structure.Attributes.ForiegnPrimaryKeyField(UpdateDeleteAction.CASCADE,UpdateDeleteAction.CASCADE)]
 		public AccountTable Account
 		{
 			get{return _account;}

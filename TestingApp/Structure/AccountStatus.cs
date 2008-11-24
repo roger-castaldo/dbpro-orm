@@ -9,7 +9,7 @@ namespace TestingApp.Structure
 	{
 		private string _statusName;
 		private long _statusId;
-		private byte[] _data;
+		//private byte[] _data;
 		
 		public AccountStatus()
 		{
