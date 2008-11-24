@@ -31,6 +31,14 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 		private string _tableName;
 		private Dictionary<string,FieldMap> _fields;
 		
+		private VersionField.VersionTypes? _versionType=null;
+		public VersionField.VersionTypes? VersionType
+		{
+			get{
+				return _versionType;
+			}
+		}
+		
 		public TableMap(System.Type type,Assembly asm,MemberInfo[] info,ref Dictionary<System.Type,TableMap> map) : this(null,type,asm,info,ref map)
 		{}
 		
@@ -56,7 +64,6 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 					if (obj is IField)
 					{
 						_fields.Add(mi.Name,new InternalFieldMap(mi));
-						break;
 					}else if  (obj is IForiegnField)
 					{
 						System.Type ty = asm.GetType(mi.ToString().Substring(0,mi.ToString().IndexOf(" ")).Replace("[]",""),false);
@@ -74,20 +81,27 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 						}
 						_fields.Add(mi.Name,new ExternalFieldMap(ty,mi));
 					}
+					if (obj is IVersionField)
+					{
+						if (!_versionType.HasValue)
+							_versionType=((IVersionField)obj).VersionType;
+						else if (_versionType.Value!=((IVersionField)obj).VersionType)
+							throw new Exception("Cannot use two different version  types in the same table.");
+					}
 				}
 			}
-            int autoGenCount=0;
-            foreach (InternalFieldMap  pkf in PrimaryKeys)
-            {
-                if (pkf.AutoGen)
-                {
-                    autoGenCount++;
-                }
-            }
-            if (autoGenCount > 1)
-            {
-                throw new Exception("Unable to produce database map due to invalid content.  You cannot have more than one autogen primary key field in a table. Class=" + type.Name);
-            }
+			int autoGenCount=0;
+			foreach (InternalFieldMap  pkf in PrimaryKeys)
+			{
+				if (pkf.AutoGen)
+				{
+					autoGenCount++;
+				}
+			}
+			if (autoGenCount > 1)
+			{
+				throw new Exception("Unable to produce database map due to invalid content.  You cannot have more than one autogen primary key field in a table. Class=" + type.Name);
+			}
 		}
 		
 		public List<InternalFieldMap> PrimaryKeys{
@@ -104,29 +118,29 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			}
 		}
 
-        public List<InternalFieldMap> InternalPrimaryKeys
-        {
-            get
-            {
-                List<InternalFieldMap> ret = new List<InternalFieldMap>();
-                foreach (FieldMap f in _fields.Values)
-                {
-                    if (f.PrimaryKey   && !(f is ExternalFieldMap))
-                    {
-                        ret.Add((InternalFieldMap)f);
-                    }
-                }
-                return ret;
-            }
-        }
+		public List<InternalFieldMap> InternalPrimaryKeys
+		{
+			get
+			{
+				List<InternalFieldMap> ret = new List<InternalFieldMap>();
+				foreach (FieldMap f in _fields.Values)
+				{
+					if (f.PrimaryKey   && !(f is ExternalFieldMap))
+					{
+						ret.Add((InternalFieldMap)f);
+					}
+				}
+				return ret;
+			}
+		}
 
-        public bool HasPrimaryKeys
-        {
-            get
-            {
-                return PrimaryKeys.Count > 0;
-            }
-        }
+		public bool HasPrimaryKeys
+		{
+			get
+			{
+				return PrimaryKeys.Count > 0;
+			}
+		}
 		
 		public ExternalFieldMap GetFieldInfoForForiegnTable(System.Type table)
 		{
@@ -155,79 +169,79 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			}
 		}
 
-        public List<System.Type> ForiegnTablesCreate
-        {
-            get
-            {
-                List<System.Type> ret = new List<System.Type>();
-                foreach (FieldMap f in _fields.Values)
-                {
-                    if (f is ExternalFieldMap)
-                    {
-                        ExternalFieldMap efm = (ExternalFieldMap)f;
-                        ret.Add(efm.Type);
-                    }
-                }
-                return ret;
-            }
-        }
+		public List<System.Type> ForiegnTablesCreate
+		{
+			get
+			{
+				List<System.Type> ret = new List<System.Type>();
+				foreach (FieldMap f in _fields.Values)
+				{
+					if (f is ExternalFieldMap)
+					{
+						ExternalFieldMap efm = (ExternalFieldMap)f;
+						ret.Add(efm.Type);
+					}
+				}
+				return ret;
+			}
+		}
 
-        public List<ExternalFieldMap> ExternalFieldMapArrays
-        {
-            get
-            {
-                List<ExternalFieldMap> ret = new List<ExternalFieldMap>();
-                foreach (FieldMap f in _fields.Values)
-                {
-                    if (f is ExternalFieldMap)
-                    {
-                        if (((ExternalFieldMap)f).IsArray)
-                        {
-                            ret.Add((ExternalFieldMap)f);
-                        }
-                    }
-                }
-                return ret;
-            }
-        }
+		public List<ExternalFieldMap> ExternalFieldMapArrays
+		{
+			get
+			{
+				List<ExternalFieldMap> ret = new List<ExternalFieldMap>();
+				foreach (FieldMap f in _fields.Values)
+				{
+					if (f is ExternalFieldMap)
+					{
+						if (((ExternalFieldMap)f).IsArray)
+						{
+							ret.Add((ExternalFieldMap)f);
+						}
+					}
+				}
+				return ret;
+			}
+		}
 		
 		public List<FieldNamePair> FieldNamePairs{
 			get{
 				List<FieldNamePair> ret = new List<FieldNamePair>();
 				foreach (string str in _fields.Keys)
 				{
-                    if (_fields[str] is InternalFieldMap)
-                    {
-                        ret.Add(new FieldNamePair(str, ((InternalFieldMap)_fields[str]).FieldName));
-                    }
-                    else
-                    {
-                        ret.Add(new FieldNamePair(str, str));
-                    }
+					if (_fields[str] is InternalFieldMap)
+					{
+						ret.Add(new FieldNamePair(str, ((InternalFieldMap)_fields[str]).FieldName));
+					}
+					else
+					{
+						ret.Add(new FieldNamePair(str, str));
+					}
 				}
 				return ret;
 			}
 		}
 
-        public FieldMap this[string ClassFieldName]
-        {
-            get
-            {
-                if (_fields.ContainsKey(ClassFieldName) )
-                {
-                    return _fields[ClassFieldName];
-                }
-                return null;
-            }
-        }
+		public FieldMap this[string ClassFieldName]
+		{
+			get
+			{
+				if (_fields.ContainsKey(ClassFieldName) )
+				{
+					return _fields[ClassFieldName];
+				}
+				return null;
+			}
+		}
 
-        public FieldMap this[FieldNamePair pair]
-        {
-            get
-            {
-                return this[pair.ClassFieldName];
-            }
-        }
+		public FieldMap this[FieldNamePair pair]
+		{
+			get
+			{
+				return this[pair.ClassFieldName];
+			}
+		}
 		
 		public string GetClassFieldName(string TableFieldName)
 		{
@@ -241,42 +255,39 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			return null;
 		}
 
-        public string GetTableFieldName(string ClassFieldName)
-        {
-            foreach (FieldNamePair fnp in FieldNamePairs)
-            {
-                if (fnp.ClassFieldName == ClassFieldName)
-                {
-                    return fnp.TableFieldName;
-                }
-            }
-            return null;
-        }
+		public string GetTableFieldName(string ClassFieldName)
+		{
+			foreach (FieldNamePair fnp in FieldNamePairs)
+			{
+				if (fnp.ClassFieldName == ClassFieldName)
+				{
+					return fnp.TableFieldName;
+				}
+			}
+			return null;
+		}
 
-        public string GetTableFieldName(FieldMap fm)
-        {
-            return GetTableFieldName(GetClassPropertyName(fm));
-        }
+		public string GetTableFieldName(FieldMap fm)
+		{
+			return GetTableFieldName(GetClassPropertyName(fm));
+		}
 
-        public string GetClassFieldName(FieldMap fm)
-        {
-            return GetClassFieldName(GetTableFieldName(fm));
-        }
+		public string GetClassFieldName(FieldMap fm)
+		{
+			return GetClassFieldName(GetTableFieldName(fm));
+		}
 
-        public string GetClassPropertyName(FieldMap fi)
-        {
-            if (_fields.ContainsValue(fi))
-            {
-                foreach (string str in _fields.Keys)
-                {
-                    if (_fields[str].Equals(fi))
-                    {
-                        return str;
-                    }
-                }
-            }
-            return null;
-        }
+		public string GetClassPropertyName(FieldMap fi)
+		{
+			foreach (string str in _fields.Keys)
+			{
+				if (_fields[str].Equals(fi))
+				{
+					return str;
+				}
+			}
+			return null;
+		}
 		
 		public List<InternalFieldMap> Fields{
 			get{
@@ -285,14 +296,14 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 				{
 					if (f is ExternalFieldMap)
 					{
-                        if (!((ExternalFieldMap)f).IsArray)
-                        {
-                            ExternalFieldMap efm = (ExternalFieldMap)f;
-                            foreach (InternalFieldMap fm in ClassMapper.GetTableMap(((ExternalFieldMap)f).Type).PrimaryKeys)
-                            {
-                                ret.Add(new InternalFieldMap(fm.FieldLength, fm.FieldName, fm.FieldType, efm.PrimaryKey, false, efm.Nullable));
-                            }
-                        }
+						if (!((ExternalFieldMap)f).IsArray)
+						{
+							ExternalFieldMap efm = (ExternalFieldMap)f;
+							foreach (InternalFieldMap fm in ClassMapper.GetTableMap(((ExternalFieldMap)f).Type).PrimaryKeys)
+							{
+								ret.Add(new InternalFieldMap(fm.FieldLength, fm.FieldName, fm.FieldType, efm.PrimaryKey, false, efm.Nullable,efm.Versionable));
+							}
+						}
 					}else{
 						ret.Add((InternalFieldMap)f);
 					}
