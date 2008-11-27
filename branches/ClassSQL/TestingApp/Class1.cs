@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using TestingApp.Structure;
+using Org.Reddragonit.Dbpro.Connections.ClassQuery;
 
 namespace TestingApp
 {
@@ -15,13 +16,16 @@ namespace TestingApp
 		[STAThread]
 		static void Main(string[] args)
 		{
+			Query q = new Query("SELECT City FROM TestingApp.Structure.AccountAddress WHERE StreetName=@name or Account.FirstName = \"George\"");
+			System.Diagnostics.Debug.WriteLine(q.ParsedString);
             AccountStatus acs = new AccountStatus();
             AccountTable a = new AccountTable();
-            //Org.Reddragonit.Dbpro.Connections.Firebird.FBConnectionPool pool = new Org.Reddragonit.Dbpro.Connections.Firebird.FBConnectionPool("sysdba", "masterkey", "C:\\Documents and Settings\\rcastaldo\\My Documents\\Firebird\\TESTING.FDB", "localhost", 3050);
-            Org.Reddragonit.Dbpro.Connections.Firebird.FBConnectionPool pool = new Org.Reddragonit.Dbpro.Connections.Firebird.FBConnectionPool("sysdba", "masterkey", "F:\\BillingPro\\database\\BILLINGPRO.FDB", "localhost", 3050,false);
+            Org.Reddragonit.Dbpro.Connections.Firebird.FBConnectionPool pool = (Org.Reddragonit.Dbpro.Connections.Firebird.FBConnectionPool)Org.Reddragonit.Dbpro.Connections.ConnectionPoolManager.GetConnection(null);
+           	//new Org.Reddragonit.Dbpro.Connections.Firebird.FBConnectionPool("sysdba", "copperbed1", "C:\\Documents and Settings\\Roger\\My Documents\\Firebird\\TESTING.FDB", "localhost", 3050,true,null);
+            //Org.Reddragonit.Dbpro.Connections.Firebird.FBConnectionPool pool = new Org.Reddragonit.Dbpro.Connections.Firebird.FBConnectionPool("sysdba", "masterkey", "F:\\BillingPro\\database\\BILLINGPRO.FDB", "localhost", 3050,false);
             acs.StatusId = 1;
             acs.StatusName = "Active";
-            acs.Data = System.Text.ASCIIEncoding.ASCII.GetBytes("Hello Joe");
+            //acs.Data = System.Text.ASCIIEncoding.ASCII.GetBytes("Hello Joe");
             a.FirstName = "Roger";
             a.LastName = "Castaldo";
             a.Status = new AccountStatus[] { acs };
@@ -36,7 +40,6 @@ namespace TestingApp
             pars.Add(new Org.Reddragonit.Dbpro.Connections.SelectParameter("StatusId",a.Status[0].StatusId ));
             Console.WriteLine(((AccountStatus)conn.Select(typeof(AccountStatus),pars)[0]).StatusId );
             conn.CloseConnection();*/
-            conn.Select("SELECT FROM " + a.GetType().ToString(), null);
             pool.ClosePool();
             Console.ReadLine();
 		}

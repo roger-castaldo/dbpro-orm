@@ -26,7 +26,6 @@ namespace Org.Reddragonit.Dbpro.Connections
 			this._fieldValue = fieldValue;
 		}
 		
-		
 		public string FieldName {
 			get { return _fieldName; }
 		}

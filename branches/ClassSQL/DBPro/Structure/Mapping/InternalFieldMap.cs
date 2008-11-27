@@ -33,10 +33,22 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 					_fieldName=f.Name;
 					_fieldType=f.Type;
 				}
+				if (obj is VersionField)
+				{
+					_versionable=true;
+				}
 			}
 		}
 		
-		public InternalFieldMap(int fieldLength, string fieldName, Field.FieldType fieldType,bool primaryKey, bool autogen, bool nullable) : base(primaryKey,autogen,nullable)
+		public override bool Equals(object obj)
+		{
+			if ((obj==null)||!(obj is InternalFieldMap))
+				return false;
+			InternalFieldMap ifm = (InternalFieldMap)obj;
+			return base.Equals(obj)&&(ifm.FieldName==FieldName)&&(ifm.FieldLength==FieldLength)&&(ifm.FieldType==FieldType);
+		}
+		
+		public InternalFieldMap(int fieldLength, string fieldName, Field.FieldType fieldType,bool primaryKey, bool autogen, bool nullable,bool versionable) : base(primaryKey,autogen,nullable,versionable)
 		{
 			this._fieldLength = fieldLength;
 			this._fieldName = fieldName;

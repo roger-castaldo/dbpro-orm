@@ -15,7 +15,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
             : base(pool, ConnectionString)
         { }
 
-        protected override System.Data.IDbDataParameter CreateParameter(string parameterName, object parameterValue)
+        internal override System.Data.IDbDataParameter CreateParameter(string parameterName, object parameterValue)
         {
             return new SqlParameter(parameterName, parameterValue);
         }
@@ -35,37 +35,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 			throw new NotImplementedException();
 		}
 		
-		internal override string GetAlterFieldTypeString(string table, string field, string type,long size)
-		{
-			throw new NotImplementedException();
-		}
-		
-		internal override string GetDropTableString(string table)
-		{
-			throw new NotImplementedException();
-		}
-		
-		internal override string GetDropColumnString(string table, string field)
-		{
-			throw new NotImplementedException();
-		}
-		
-		internal override string GetCreateColumnString(string table, string field, string type,long size)
-		{
-			throw new NotImplementedException();
-		}
-		
-		internal override string GetForiegnKeyCreateString(string table, List<string> fields, string foriegnTable, List<string> foriegnFields)
-		{
-			throw new NotImplementedException();
-		}
-		
-		internal override string GetNullConstraintCreateString(string table, string field)
-		{
-			throw new NotImplementedException();
-		}
-		
-		internal override string GetPrimaryKeyCreateString(string table, List<string> fields)
+		internal override List<string> GetDropTableString(string table,bool isVersioned)
 		{
 			throw new NotImplementedException();
 		}
@@ -86,6 +56,11 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
         }
         
 		internal override List<string> GetDropConstraintsScript()
+		{
+			throw new NotImplementedException();
+		}
+		
+		internal override List<string> GetVersionTableTriggers(string tableName, string versionTableName,string versionFieldName, Org.Reddragonit.Dbpro.Structure.Attributes.VersionField.VersionTypes versionType, List<ExtractedFieldMap> fields)
 		{
 			throw new NotImplementedException();
 		}
