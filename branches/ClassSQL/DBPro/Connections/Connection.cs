@@ -153,6 +153,7 @@ namespace Org.Reddragonit.Dbpro.Connections
         internal abstract List<string> GetVersionTableTriggers(string tableName,string versionTableName,string versionFieldName,VersionTypes versionType,List<ExtractedFieldMap> fields);
 		
 		public Connection(ConnectionPool pool,string connectionString){
+        	this.pool=pool;
 			creationTime=System.DateTime.Now;
 			this.connectionString=connectionString;
 			conn = EstablishConnection();

@@ -140,9 +140,93 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassQuery
 					tokens.RemoveAt(x);
 					token.Value=tableName+"."+fieldName;
 					tokens.Insert(x,token);
-				}else if (token.ClassType!=null)
+				}
+			}
+			bool addAND = false;
+			if (whereIndex!=-1)
+			{
+				addAND=true;
+				tokens.Insert(whereIndex+1,new Tokenizer.Token("(",Tokenizer.TokenType.GENERAL));
+				int bracketCount=0;
+				bool added=false;
+				for(int x=whereIndex+2;x<tokens.Count;x++)
 				{
-					
+					Tokenizer.Token token = tokens[x];
+					if (((bracketCount==0)&&token.Value==")")||(token.Type==Tokenizer.TokenType.COMMAND&&((token.Command.Value==Tokenizer.CommandType.GROUP)||(token.Command.Value==Tokenizer.CommandType.ORDER)||(token.Command.Value==Tokenizer.CommandType.LIMIT))))
+					{
+						tokens.Insert(x+1,new Tokenizer.Token(")",Tokenizer.TokenType.GENERAL));
+						added=true;
+						break;
+					}
+					if (token.Value==")")
+						bracketCount--;
+					else if (token.Value=="(")
+						bracketCount++;
+				}
+				if (!added)
+				{
+					tokens.Add(new Tokenizer.Token(")",Tokenizer.TokenType.GENERAL));
+				}
+			}
+			for (int x=0;x<tokens.Count;x++)
+			{
+				Tokenizer.Token token = tokens[x];
+				if ((token.ClassType!=null)&&(requiredtables.Count!=containedTables.Count))
+				{
+					TableMap map = ClassMapper.GetTableMap(token.ClassType);
+					foreach (Type type in requiredtables)
+					{
+						if ((!containedTables.Contains(type))&&(map.ForiegnTables.Contains(type)))
+						{
+							TableMap etm = ClassMapper.GetTableMap(type);
+							ExternalFieldMap efm = map.GetFieldInfoForForiegnTable(type);
+							int pos = x+1;
+							int count=1;
+							if (efm.Nullable)
+							{
+								tokens.Insert(pos,new Tokenizer.Token("LEFT JOIN "+etm.Name+" "+aliases[type]+" ON ",Tokenizer.TokenType.GENERAL));
+								pos++;
+							}else
+							{
+								if (whereIndex==-1)
+								{
+									tokens.Insert(pos,new Tokenizer.Token("WHERE",Tokenizer.TokenType.COMMAND,Tokenizer.CommandType.WHERE));
+									whereIndex=x+1;
+									pos++;
+								}
+								tokens.Insert(whereIndex,new Tokenizer.Token(", "+etm.Name+" "+aliases[type],Tokenizer.TokenType.GENERAL));
+								pos=whereIndex+count+1;
+								tokens.Insert(pos,new Tokenizer.Token("(",Tokenizer.TokenType.GENERAL));
+								pos++;
+							}
+							foreach (InternalFieldMap ifm in etm.PrimaryKeys)
+							{
+								tokens.Insert(pos,new Tokenizer.Token(aliases[token.ClassType]+"."+ifm.FieldName,Tokenizer.TokenType.FIELD));
+								tokens.Insert(pos+1,new Tokenizer.Token("=",Tokenizer.TokenType.COMPARATOR));
+								tokens.Insert(pos+2,new Tokenizer.Token(aliases[type]+"."+ifm.FieldName,Tokenizer.TokenType.FIELD));
+								if (efm.Nullable)
+								{
+									pos+=3;
+									count+=3;
+								}else{
+									tokens.Insert(pos+3,new Tokenizer.Token("AND",Tokenizer.TokenType.COMMAND,Tokenizer.CommandType.AND));
+									pos+=4;
+								}
+							}
+							if (!efm.Nullable)
+							{
+								pos--;
+								tokens.RemoveAt(pos);
+								tokens.Insert(pos,new Tokenizer.Token(")",Tokenizer.TokenType.GENERAL));
+								if (addAND)
+									tokens.Insert(pos+1,new Tokenizer.Token("AND",Tokenizer.TokenType.COMMAND,Tokenizer.CommandType.AND));
+								else
+									addAND=true;
+							}
+							whereIndex+=count;
+							containedTables.Add(type);
+						}
+					}
 				}
 			}
 			if ((tokens[1].Type==Tokenizer.TokenType.COMMAND)&&(tokens[1].Command.Value==Tokenizer.CommandType.FROM))

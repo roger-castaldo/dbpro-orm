@@ -39,7 +39,10 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassQuery
 			IN,
 			LEFT,
 			RIGHT,
-			INNER
+			INNER,
+			GROUP,
+			ORDER,
+			LIMIT
 		}
 		
 		internal struct Token
