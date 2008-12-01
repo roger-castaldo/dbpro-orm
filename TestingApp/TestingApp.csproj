@@ -50,6 +50,7 @@
     <Compile Include="Structure\AccountAddress.cs" />
     <Compile Include="Structure\AccountStatus.cs" />
     <Compile Include="Structure\AccountTable.cs" />
+    <Compile Include="Structure\SubAccountStatus.cs" />
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>

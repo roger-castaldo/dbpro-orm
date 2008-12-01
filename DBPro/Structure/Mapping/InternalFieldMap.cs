@@ -40,6 +40,13 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			}
 		}
 		
+		internal InternalFieldMap(InternalFieldMap map,bool primary) : base(primary,map.Nullable,false)
+		{
+			_fieldLength=map.FieldLength;
+			_fieldName=map.FieldName;
+			_fieldType=map.FieldType;
+		}
+		
 		public override bool Equals(object obj)
 		{
 			if ((obj==null)||!(obj is InternalFieldMap))

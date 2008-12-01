@@ -43,6 +43,13 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			}
 		}
 		
+		internal FieldMap(bool PrimaryKey,bool AutoGen,bool Nullable)
+		{
+			_primaryKey=PrimaryKey;
+			_autogen=AutoGen;
+			_nullable=Nullable;
+		}
+		
 		public override bool Equals(object obj)
 		{
 			if ((obj==null)||!(obj is FieldMap))
