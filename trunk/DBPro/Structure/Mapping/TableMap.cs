@@ -39,6 +39,12 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			}
 		}
 		
+		private Type _parentType=null;
+		public Type ParentType
+		{
+			get{return _parentType;}
+		}
+		
 		public TableMap(System.Type type,Assembly asm,MemberInfo[] info,ref Dictionary<System.Type,TableMap> map) : this(null,type,asm,info,ref map)
 		{}
 		
@@ -88,6 +94,26 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 						else if (_versionType.Value!=((IVersionField)obj).VersionType)
 							throw new Exception("Cannot use two different version  types in the same table.");
 					}
+				}
+			}
+			if (!type.BaseType.Equals(typeof(Table)))
+			{
+				_parentType=type.BaseType;
+				TableMap t;
+				if (!map.ContainsKey(type.BaseType)){
+					t= new TableMap(type.BaseType,asm,type.BaseType.GetMembers(BindingFlags.Public |      //Get public members
+					                                     BindingFlags.NonPublic |   //Get private/protected/internal members
+					                                     BindingFlags.Static |      //Get static members
+					                                     BindingFlags.Instance |    //Get instance members
+					                                     BindingFlags.DeclaredOnly ),ref map);
+					map.Add(type.BaseType,t);
+				}else
+				{
+					t = map[type.BaseType];
+				}
+				foreach (InternalFieldMap ifm in t.PrimaryKeys)
+				{
+					_fields.Add(t.GetClassFieldName(ifm.FieldName),new InternalFieldMap(ifm,true));
 				}
 			}
 			int autoGenCount=0;

@@ -24,7 +24,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 		{
 			mut.WaitOne();
 			TableMap ret = null;
-			if (map.ContainsKey(type))
+			if ((type!=null)&&map.ContainsKey(type))
 			{
 				ret=map[type];
 			}
@@ -76,7 +76,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 								                                             BindingFlags.NonPublic |   //Get private/protected/internal members
 								                                             BindingFlags.Static |      //Get static members
 								                                             BindingFlags.Instance |    //Get instance members
-								                                             BindingFlags.DeclaredOnly ),ref map));
+								                                             BindingFlags.DeclaredOnly  ),ref map));
 							}
 						}
 					}
@@ -86,6 +86,14 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 				System.Diagnostics.Debug.WriteLine(e.Message);
 				System.Diagnostics.Debug.WriteLine(e.Source);
 				System.Diagnostics.Debug.WriteLine(e.StackTrace);
+			}
+			foreach (TableMap tm in map.Values)
+			{
+				System.Diagnostics.Debug.WriteLine(tm.Name);
+				foreach (InternalFieldMap ifm in tm.Fields)
+				{
+					System.Diagnostics.Debug.WriteLine("\t"+ifm.FieldName+"("+ifm.GetType().ToString()+")");
+				}
 			}
 		}
 	}

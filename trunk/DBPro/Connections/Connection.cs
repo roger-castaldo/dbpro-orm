@@ -321,106 +321,16 @@ namespace Org.Reddragonit.Dbpro.Connections
                     this.Save(t);
                 }
             }
+            if (map.ParentType!=null)
+            {
+            	Table ta = Insert((Table)Convert.ChangeType(table,map.ParentType));
+            	table.CopyValuesFrom(ta);
+            }
 			string query = "";
 			string select="";
 			List<IDbDataParameter> pars = new List<IDbDataParameter>();
 			List<IDbDataParameter> selectPars = new List<IDbDataParameter>();
 			query=queryBuilder.Insert(table,out pars,out select,out selectPars,this);
-			/*foreach (FieldNamePair fnp in ClassMapper.GetTableMap(table.GetType()).FieldNamePairs)
-			{
-                if (map[fnp] is ExternalFieldMap)
-                {
-                    if (!((ExternalFieldMap)map[fnp]).IsArray)
-                    {
-                        TableMap relatedTableMap = ClassMapper.GetTableMap(table.GetType().GetProperty(fnp.ClassFieldName).PropertyType);
-                        if (table.GetType().GetProperty(fnp.ClassFieldName).GetValue(table, new object[0]) == null)
-                        {
-                            foreach (FieldMap fm in relatedTableMap.PrimaryKeys)
-                            {
-                                values += relatedTableMap.GetTableFieldName(fm) + ",";
-                                pars.Add(CreateParameter("@" + relatedTableMap.GetTableFieldName(fm), null));
-                            }
-                        }
-                        else
-                        {
-                            if (!select.Contains("WHERE"))
-                            {
-                                select += " WHERE ";
-                            }
-                            select = select.Replace(" WHERE ", ", " + relatedTableMap.Name + " WHERE ");
-                            Table relatedTable = (Table)table.GetType().GetProperty(fnp.ClassFieldName).GetValue(table, new object[0]);
-                            foreach (FieldMap fm in relatedTableMap.PrimaryKeys)
-                            {
-                                values += relatedTableMap.GetTableFieldName(fm) + ",";
-                                pars.Add(CreateParameter("@" + relatedTableMap.GetTableFieldName(fm), relatedTable.GetType().GetProperty(relatedTableMap.GetClassFieldName(fm)).GetValue(relatedTable, new Object[0])));
-                                select += ClassMapper.GetTableMap(table.GetType()).Name + "." + relatedTableMap.GetTableFieldName(fm) + " = " + relatedTableMap.Name + "." + relatedTableMap.GetTableFieldName(fm) + " AND ";
-                                select += relatedTableMap.Name + "." + relatedTableMap.GetTableFieldName(fm) + " = @" + relatedTableMap.GetTableFieldName(fm) + " AND ";
-                            }
-                            foreach (FieldMap fm in relatedTableMap.Fields)
-                            {
-                                fields += "," + relatedTableMap.Name + "." + relatedTableMap.GetTableFieldName(fm);
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    fields += "," + tableName + "." + fnp.TableFieldName;
-                    values += fnp.TableFieldName + ",";
-                    if (table.IsFieldNull(fnp.ClassFieldName))
-                    {
-                        pars.Add(CreateParameter("@" + fnp.TableFieldName,null));
-                    }
-                    else
-                    {
-                        pars.Add(CreateParameter("@" + fnp.TableFieldName, table.GetType().GetProperty(fnp.ClassFieldName).GetValue(table, new object[0])));
-                    }
-                }
-			}
-			foreach (InternalFieldMap f in ClassMapper.GetTableMap(table.GetType()).Fields)
-			{
-                if (!f.Nullable)
-                {
-                    if (!select.Contains(" WHERE "))
-                    {
-                        select += " WHERE ";
-                    }
-                    if (!f.AutoGen)
-                    {
-                        select += tableName + "." + f.FieldName + " = @" + f.FieldName + " AND ";
-                    }
-                }
-                else
-                {
-                    if (!select.Contains(" WHERE "))
-                    {
-                        select += " WHERE ";
-                    }
-                    if (!f.AutoGen)
-                    {
-                        if (table.IsFieldNull(map.GetClassFieldName(f)))
-                        {
-                            select += tableName + "." + f.FieldName + " is @" + f.FieldName + " AND ";
-                        }
-                        else
-                        {
-                            select += tableName + "." + f.FieldName + " = @" + f.FieldName + " AND ";
-                        }
-                    }
-                }
-			}
-            foreach (InternalFieldMap f in map.InternalPrimaryKeys)
-            {
-                if (f.AutoGen)
-                {
-                    select = "SELECT * FROM " + map.Name + " WHERE " + map.GetTableFieldName(f) + " IN (SELECT MAX(" + map.GetTableFieldName(f) + ") " + select.Replace("SELECT * ", "") ;
-                    select = select.Substring(0, select.Length - 4) + ") AND";
-                }
-            }
-            select = select.Replace("*", fields.Substring(1));
-			values=values.Substring(0,values.Length-1);
-			query+=values+") VALUES(@"+values.Replace(",",",@")+")";
-			select = select.Substring(0,select.Length-4);*/
 			ExecuteNonQuery(query,pars);
 			ExecuteQuery(select,selectPars);
 			Read();

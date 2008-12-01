@@ -193,24 +193,11 @@ namespace Org.Reddragonit.Dbpro.Connections
 							}
 							else
 							{
-								/*if (!select.Contains("WHERE"))
-								{
-									select += " WHERE ";
-								}
-								select = select.Replace(" WHERE ", ", " + relatedTableMap.Name + " WHERE ");*/
 								Table relatedTable = (Table)table.GetType().GetProperty(fnp.ClassFieldName).GetValue(table, new object[0]);
 								foreach (FieldMap fm in relatedTableMap.PrimaryKeys)
 								{
 									pars.Add(new SelectParameter(relatedTableMap.GetTableFieldName(fm),relatedTable.GetType().GetProperty(relatedTableMap.GetClassFieldName(fm)).GetValue(relatedTable, new Object[0])));
-									/*									values += relatedTableMap.GetTableFieldName(fm) + ",";
-									pars.Add(conn.CreateParameter("@" + relatedTableMap.GetTableFieldName(fm), relatedTable.GetType().GetProperty(relatedTableMap.GetClassFieldName(fm)).GetValue(relatedTable, new Object[0])));
-									select += ClassMapper.GetTableMap(table.GetType()).Name + "." + relatedTableMap.GetTableFieldName(fm) + " = " + relatedTableMap.Name + "." + relatedTableMap.GetTableFieldName(fm) + " AND ";
-									select += relatedTableMap.Name + "." + relatedTableMap.GetTableFieldName(fm) + " = @" + relatedTableMap.GetTableFieldName(fm) + " AND ";*/
 								}
-								/*foreach (FieldMap fm in relatedTableMap.Fields)
-								{
-									fields += "," + relatedTableMap.Name + "." + relatedTableMap.GetTableFieldName(fm);
-								}*/
 							}
 						}
 					}

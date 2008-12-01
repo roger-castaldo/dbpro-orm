@@ -31,6 +31,23 @@ namespace Org.Reddragonit.Dbpro.Structure
             }
 		}
 		
+		internal void CopyValuesFrom(Table table)
+		{
+			foreach (PropertyInfo pi in table.GetType().GetProperties(BindingFlags.Public |      //Get public members
+								                                             BindingFlags.NonPublic |   //Get private/protected/internal members
+								                                             BindingFlags.Static |      //Get static members
+								                                             BindingFlags.Instance |    //Get instance members
+								                                             BindingFlags.DeclaredOnly))
+			{
+				try{
+					pi.SetValue(this,pi.GetValue(table,new object[0]),new object[0]);
+				}catch (Exception e)
+				{
+					
+				}
+			}
+		}
+		
 		internal string ConnectionName
 		{
 			get{
