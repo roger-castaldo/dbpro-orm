@@ -167,6 +167,28 @@ namespace Org.Reddragonit.Dbpro.Connections
 						}
 					}
 				}
+				if (tm.ParentType!=null)
+				{
+					TableMap parentMap = ClassMapper.GetTableMap(tm.ParentType);
+					ExtractedFieldMap efm;
+					foreach (InternalFieldMap ifm in parentMap.PrimaryKeys)
+					{
+						for (int x=0;x<etm.Fields.Count;x++)
+						{
+							efm = etm.Fields[x];
+							if (efm.FieldName==parentMap.GetTableFieldName(ifm))
+							{
+								efm.ExternalTable = parentMap.Name;
+								efm.ExternalField=efm.FieldName;
+								efm.DeleteAction = UpdateDeleteAction.CASCADE.ToString();
+								efm.UpdateAction = UpdateDeleteAction.CASCADE.ToString();
+								etm.Fields.RemoveAt(x);
+								etm.Fields.Insert(x,efm);
+								break;
+							}
+						}
+					}
+				}
 				tables.Add(etm);
 				foreach (ExternalFieldMap e in tm.ExternalFieldMapArrays)
 				{
@@ -240,7 +262,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 										else
 											alterations.AddRange(conn.GetAddAutogenString(etm.TableName, efm.FieldName, efm.Type));
 									}
-									if (efm.Versioned!=f.Versioned&&e.VersionType.HasValue)
+									if (efm.Versioned!=f.Versioned&&e.VersionType.HasValue&&!efm.PrimaryKey)
 									{
 										if (efm.Versioned)
 											alterations.Add(conn.queryBuilder.CreateColumn(etm.TableName+"_VERSION",efm.FieldName,efm.Type,efm.Size));
@@ -325,6 +347,10 @@ namespace Org.Reddragonit.Dbpro.Connections
 									alterations.Add(conn.queryBuilder.CreateNullConstraint(etm.TableName+"_VERSION",efm.FieldName));
 							}
 							tmp.Add(efm.FieldName);
+						}
+						if (efm.AutoGen)
+						{
+							alterations.AddRange(conn.GetAddAutogenString(etm.TableName,efm.FieldName,efm.Type));
 						}
 						if (efm.ExternalTable != null)
 						{
@@ -411,6 +437,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 						{
 							conn.ExecuteNonQuery(str);
 						}
+						conn.Commit();
 						foreach (string str in alterations)
 						{
 							if (str.EndsWith(" COMMIT;"))

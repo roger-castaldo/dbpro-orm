@@ -122,7 +122,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		
 		private QueryBuilder _builder;
 		internal override QueryBuilder queryBuilder {
-			get { 
+			get {
 				if (_builder==null)
 					_builder=new FBQueryBuilder();
 				return _builder;
@@ -189,31 +189,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		internal override List<string> GetVersionTableTriggers(string tableName, string versionTableName, string versionFieldName, VersionTypes versionType, List<ExtractedFieldMap> fields)
 		{
 			List<string> ret = new List<string>();
-			string tmp = "CREATE TABLE "+versionTableName+"(\n\t"+versionFieldName+" ";
-			switch(versionType)
-			{
-				case VersionTypes.NUMBER:
-					tmp+="BIGINT NOT NULL,\n";
-					break;
-				case VersionTypes.DATESTAMP:
-					tmp+="TIMESTAMP NOT NULL,\n";
-					break;
-			}
-			foreach (ExtractedFieldMap efm in fields)
-			{
-				if (efm.Type.ToUpper().Contains("CHAR"))
-				{
-					tmp+= efm.FieldName+" "+efm.Type+"("+efm.Size.ToString()+")";
-				}else{
-					tmp+=efm.FieldName+" "+efm.Type;
-				}
-				if (efm.PrimaryKey)
-				{
-					tmp+=" NOT NULL";
-				}
-				tmp+="\n";
-			}
-			ret.Add(tmp.Substring(0,tmp.Length-2)+");\n");
+			string tmp = "";
 			tmp = "CREATE TRIGGER "+tableName+"_VERSION_INSERT FOR "+tableName+"\n"+
 				"ACTIVE \n"+
 				"AFTER INSERT \n"+
@@ -235,9 +211,9 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 				{
 					if (efm.Type.ToUpper().Contains("CHAR"))
 					{
-						tmp+= "DECLARE VARIABLE "+efm.FieldName+" "+efm.Type+"("+efm.Size.ToString()+")\n";
+						tmp+= "DECLARE VARIABLE "+efm.FieldName+" "+efm.Type+"("+efm.Size.ToString()+");\n";
 					}else{
-						tmp+="DECLARE VARIABLE "+efm.FieldName+" "+efm.Type+"\n";
+						tmp+="DECLARE VARIABLE "+efm.FieldName+" "+efm.Type+";\n";
 					}
 				}
 			}
@@ -288,7 +264,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 							maxQuery+=efm.FieldName+" = :"+efm.FieldName+" AND ";
 						}
 					}
-					if (maxQuery.EndsWith(" WHERE ")) 
+					if (maxQuery.EndsWith(" WHERE "))
 					{
 						maxQuery=maxQuery.Substring(0,maxQuery.Length-7);
 					}else
@@ -308,10 +284,13 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 			string tmp="CREATE TABLE "+table.TableName+"(\n";
 			foreach (ExtractedFieldMap f in table.Fields)
 			{
-				tmp+="\t"+f.FieldName+" "+f.Type+",\n";
+				if (f.Type.ToUpper().Contains("CHAR"))
+					tmp+="\t"+f.FieldName+" "+f.Type+"("+f.Size.ToString()+"),\n";
+				else
+					tmp+="\t"+f.FieldName+" "+f.Type+",\n";
 			}
 			ret.Add(tmp.Substring(0,tmp.Length-2)+");\n");
-			foreach (ExtractedFieldMap f in table.Fields)
+			/*foreach (ExtractedFieldMap f in table.Fields)
 			{
 				if ((f.PrimaryKey)&&(f.AutoGen))
 				{
@@ -327,7 +306,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 							"END\n\n";
 					}else if (f.Type.ToUpper().Contains("INT"))
 					{
-						ret.Add("CREATE GENERATOR GEN_"+table.TableName+"_"+f.FieldName+";\n");
+						ret.Insert(0,"CREATE GENERATOR GEN_"+table.TableName+"_"+f.FieldName+";\n");
 						tmp="CREATE TRIGGER "+table.TableName+"_"+f.FieldName+"_GEN FOR "+table.TableName+"\n"+
 							"ACTIVE \n"+
 							"BEFORE INSERT\n"+
@@ -339,9 +318,9 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 					}else{
 						throw new Exception("Unable to create autogenerator for non date or digit type.");
 					}
-					ret.Insert(1,tmp);
+					ret.Add(tmp);
 				}
-			}
+			}*/
 			return ret;
 		}
 		
