@@ -257,6 +257,11 @@ namespace Org.Reddragonit.Dbpro.Connections
 				throw new Exception("Cannot update an entry into a table into the database connection that it was not specified for.");
 			}
 			TableMap map = ClassMapper.GetTableMap(table.GetType());
+			if (map.ParentType!=null)
+            {
+            	Table ta = Update((Table)Convert.ChangeType(table,map.ParentType));
+            	table.CopyValuesFrom(ta);
+            }
             foreach (Type t in map.ForiegnTables)
             {
                 Table ext = (Table)table.GetType().GetProperty(map.GetClassPropertyName(map.GetFieldInfoForForiegnTable(t))).GetValue(table, new object[0]);
@@ -310,6 +315,11 @@ namespace Org.Reddragonit.Dbpro.Connections
 		private Table Insert(Table table)
 		{
             TableMap map = ClassMapper.GetTableMap(table.GetType());
+            if (map.ParentType!=null)
+            {
+            	Table ta = Insert((Table)Convert.ChangeType(table,map.ParentType));
+            	table.CopyValuesFrom(ta);
+            }
             foreach (Type t in map.ForiegnTables)
             {
                 Table ext = (Table)table.GetType().GetProperty(map.GetClassPropertyName(map.GetFieldInfoForForiegnTable(t))).GetValue(table, new object[0]);
@@ -326,11 +336,6 @@ namespace Org.Reddragonit.Dbpro.Connections
                 {
                     this.Save(t);
                 }
-            }
-            if (map.ParentType!=null)
-            {
-            	Table ta = Insert((Table)Convert.ChangeType(table,map.ParentType));
-            	table.CopyValuesFrom(ta);
             }
 			string query = "";
 			string select="";
