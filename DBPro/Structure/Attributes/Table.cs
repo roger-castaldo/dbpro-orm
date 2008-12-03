@@ -11,9 +11,9 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 		private string _connectionName=null;
 
 		public Table() : this(null,null)
-        { }
+		{ }
 
-        public Table(string TableName) : this(TableName,null)
+		public Table(string TableName) : this(TableName,null)
 		{
 		}
 		
@@ -26,6 +26,8 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 		public string ConnectionName
 		{
 			get{
+				if(_connectionName==null)
+					_connectionName=Connections.ConnectionPoolManager.DEFAULT_CONNECTION_NAME;
 				return _connectionName;
 			}
 		}
@@ -34,39 +36,39 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 		{
 			get
 			{
-                if (_tableName == null)
-                {
-                    Assembly asm = Assembly.GetEntryAssembly();
-                    foreach (Type t in asm.GetTypes())
-                    {
-                        if (t.IsSubclassOf(typeof(Org.Reddragonit.Dbpro.Structure.Table)))
-                        {
-                            foreach (object obj in t.GetCustomAttributes(this.GetType(), true))
-                            {
-                                if (obj.Equals(this))
-                                {
-                                    _tableName = "";
-                                    foreach (char c in t.Name.ToCharArray())
-                                    {
-                                        if (c.ToString().ToUpper() == c.ToString())
-                                        {
-                                            _tableName += "_" + c.ToString().ToLower();
-                                        }
-                                        else
-                                        {
-                                            _tableName += c;
-                                        }
-                                    }
-                                    if (_tableName[0] == '_')
-                                    {
-                                        _tableName = _tableName[1].ToString().ToUpper() + _tableName.Substring(2);
-                                    }
-                                    _tableName = _tableName.ToUpper();
-                                }
-                            }
-                        }
-                    }
-                }
+				if (_tableName == null)
+				{
+					Assembly asm = Assembly.GetEntryAssembly();
+					foreach (Type t in asm.GetTypes())
+					{
+						if (t.IsSubclassOf(typeof(Org.Reddragonit.Dbpro.Structure.Table)))
+						{
+							foreach (object obj in t.GetCustomAttributes(this.GetType(), true))
+							{
+								if (obj.Equals(this))
+								{
+									_tableName = "";
+									foreach (char c in t.Name.ToCharArray())
+									{
+										if (c.ToString().ToUpper() == c.ToString())
+										{
+											_tableName += "_" + c.ToString().ToLower();
+										}
+										else
+										{
+											_tableName += c;
+										}
+									}
+									if (_tableName[0] == '_')
+									{
+										_tableName = _tableName[1].ToString().ToUpper() + _tableName.Substring(2);
+									}
+									_tableName = _tableName.ToUpper();
+								}
+							}
+						}
+					}
+				}
 				return _tableName;
 			}
 		}

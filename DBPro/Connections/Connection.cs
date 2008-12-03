@@ -88,7 +88,12 @@ namespace Org.Reddragonit.Dbpro.Connections
             {
             	_fieldName = fieldName;
                 _type = type;
-                _size = size;
+                if (type.Contains("CHAR("))
+                {
+                	_size = long.Parse(type.Substring(type.IndexOf("CHAR(")+5).Replace(")",""));
+                	_type = _type.Replace("("+_size.ToString()+")","");
+                }else
+                	_size = size;
                 _primaryKey = primary;
                 _nullable = nullable;
                 _externalField = null;
@@ -160,6 +165,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			trans=conn.BeginTransaction();
 			comm = EstablishCommand();
             comm.Transaction = trans;
+            this.pool=pool;
 		}
         
         internal string ConnectionName
@@ -497,6 +503,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 					comm.Parameters.Add(param);
 				}
 			}
+			System.Diagnostics.Debug.WriteLine(comm.CommandText);
 			reader=comm.ExecuteReader();
 		}
 		
@@ -578,6 +585,17 @@ namespace Org.Reddragonit.Dbpro.Connections
 		public int GetOrdinal(string name)
 		{
 			return reader.GetOrdinal(name);
+		}
+		
+		public bool ContainsField(string name)
+		{
+			try{
+				reader.GetOrdinal(name);
+				return true;
+			}catch (Exception e)
+			{
+				return false;
+			}
 		}
 		
 		public byte GetByte(int i)

@@ -52,6 +52,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 		{
 			if (TableName ==null)
 			{
+				try{
 				foreach (object obj in type.GetCustomAttributes(true))
 				{
 					if (obj is Org.Reddragonit.Dbpro.Structure.Attributes.Table)
@@ -59,6 +60,10 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 						Org.Reddragonit.Dbpro.Structure.Attributes.Table t = (Org.Reddragonit.Dbpro.Structure.Attributes.Table)obj;
 						TableName=t.TableName;
 					}
+				}
+				}catch (Exception ex)
+				{
+					System.Diagnostics.Debug.WriteLine(ex.Message);
 				}
 			}
 			_tableName=TableName;
@@ -80,6 +85,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 							                                     BindingFlags.Static |      //Get static members
 							                                     BindingFlags.Instance |    //Get instance members
 							                                     BindingFlags.DeclaredOnly ),ref map);
+							System.Diagnostics.Debug.WriteLine("Adding Table Map ("+ty.FullName+")");
 							map.Add(ty,t);
 						}else
 						{
@@ -106,6 +112,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 					                                     BindingFlags.Static |      //Get static members
 					                                     BindingFlags.Instance |    //Get instance members
 					                                     BindingFlags.DeclaredOnly ),ref map);
+					System.Diagnostics.Debug.WriteLine("Adding Table Map ("+type.BaseType.FullName+")");
 					map.Add(type.BaseType,t);
 				}else
 				{
@@ -139,6 +146,38 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 					{
 						ret.Add(f);
 					}
+				}
+				return ret;
+			}
+		}
+		
+		public List<FieldNamePair> ParentFieldNamePairs
+		{
+			get{
+				List<FieldNamePair> ret = new List<FieldNamePair>();
+				if (ParentType!=null)
+				{
+					TableMap parentMap = ClassMapper.GetTableMap(ParentType);
+					ret.AddRange(parentMap.FieldNamePairs);
+					ret.AddRange(ParentFieldNamePairs);
+				}
+				return ret;
+			}
+		}
+		
+		public List<string> ParentDatabaseFieldNames
+		{
+			get{
+				List<string> ret = new List<string>();
+				if (ParentType!=null)
+				{
+					TableMap parentMap = ClassMapper.GetTableMap(ParentType);
+					foreach (InternalFieldMap ifm in parentMap.Fields)
+					{
+						if (!ifm.PrimaryKey)
+							ret.Add(ifm.FieldName);
+					}
+					ret.AddRange(parentMap.ParentDatabaseFieldNames);
 				}
 				return ret;
 			}

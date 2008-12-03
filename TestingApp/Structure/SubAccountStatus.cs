@@ -23,17 +23,17 @@ namespace TestingApp.Structure
 		{
 		}
 		
-		
+		private string _subName;
 		[Org.Reddragonit.Dbpro.Structure.Attributes.Field("SUB_STATUS_NAME", FieldType.STRING, false, 50)]
         public string SubName
         {
             get
             {
-                return StatusName;
+                return _subName;
             }
             set
             {
-                StatusName = value;
+                _subName = value;
             }
         }
 	}

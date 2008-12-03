@@ -52,6 +52,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 		{
 			get
 			{
+				System.Diagnostics.Debug.WriteLine("MAPS: "+map.Count.ToString());
 				mut.WaitOne();
 				System.Type[] ret = new Type[map.Count];
 				map.Keys.CopyTo(ret, 0);
@@ -62,6 +63,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 		
 		static ClassMapper()
 		{
+			mut.WaitOne();
 			try{
 				map = new Dictionary<System.Type,TableMap>();
 				foreach (Assembly asm in AppDomain.CurrentDomain.GetAssemblies())
@@ -72,11 +74,13 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 						{
 							if (!map.ContainsKey(ty))
 							{
+								System.Diagnostics.Debug.WriteLine("Adding Table Map ("+ty.FullName+")");
 								map.Add(ty,new TableMap(ty,asm,ty.GetMembers(BindingFlags.Public |      //Get public members
 								                                             BindingFlags.NonPublic |   //Get private/protected/internal members
 								                                             BindingFlags.Static |      //Get static members
 								                                             BindingFlags.Instance |    //Get instance members
 								                                             BindingFlags.DeclaredOnly  ),ref map));
+								System.Diagnostics.Debug.WriteLine("Table Map Added");
 							}
 						}
 					}
@@ -95,6 +99,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 					System.Diagnostics.Debug.WriteLine("\t"+ifm.FieldName+"("+ifm.GetType().ToString()+")");
 				}
 			}
+			mut.ReleaseMutex();
 		}
 	}
 }
