@@ -9,8 +9,8 @@
 
 using System;
 using Org.Reddragonit.Dbpro.Structure;
-using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.Field.FieldType;
-using UpdateDeleteAction = Org.Reddragonit.Dbpro.Structure.Attributes.ForiegnField.UpdateDeleteAction;
+using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.FieldType;
+using UpdateDeleteAction = Org.Reddragonit.Dbpro.Structure.Attributes.ForeignField.UpdateDeleteAction;
 
 namespace TestingApp.Structure
 {
@@ -50,7 +50,7 @@ namespace TestingApp.Structure
 //			set{_startDate=value;}
 //		}
 		
-		[Org.Reddragonit.Dbpro.Structure.Attributes.ForiegnPrimaryKeyField(UpdateDeleteAction.CASCADE,UpdateDeleteAction.CASCADE)]
+		[Org.Reddragonit.Dbpro.Structure.Attributes.ForeignPrimaryKeyField(UpdateDeleteAction.CASCADE,UpdateDeleteAction.CASCADE)]
 		public AccountTable Account
 		{
 			get{return _account;}

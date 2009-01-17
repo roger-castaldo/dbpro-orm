@@ -13,7 +13,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 			get;
 		}
 
-		Field.FieldType Type
+		FieldType Type
 		{
 			get;
 		}

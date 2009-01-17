@@ -1,7 +1,7 @@
 using System;
 using Org.Reddragonit.Dbpro.Structure;
-using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.Field.FieldType;
-using UpdateDeleteAction = Org.Reddragonit.Dbpro.Structure.Attributes.ForiegnField.UpdateDeleteAction;
+using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.FieldType;
+using UpdateDeleteAction = Org.Reddragonit.Dbpro.Structure.Attributes.ForeignField.UpdateDeleteAction;
 
 namespace TestingApp.Structure
 {
@@ -38,7 +38,7 @@ namespace TestingApp.Structure
 			set { _lName = value; }
 		}
 		
-		[Org.Reddragonit.Dbpro.Structure.Attributes.ForiegnField(true,UpdateDeleteAction.CASCADE,UpdateDeleteAction.CASCADE)]
+		[Org.Reddragonit.Dbpro.Structure.Attributes.ForeignField(true,UpdateDeleteAction.CASCADE,UpdateDeleteAction.CASCADE)]
 		public AccountStatus[] Status {
 			get { return _status; }
 			set { _status = value; }

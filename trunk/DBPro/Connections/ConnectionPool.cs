@@ -8,15 +8,16 @@
  */
 
 using System;
+using System.Text.RegularExpressions;
 using System.Collections.Generic;
 using System.Threading;
 using Org.Reddragonit.Dbpro.Structure.Mapping;
-using ExtractedTableMap = Org.Reddragonit.Dbpro.Connections.Connection.ExtractedTableMap;
-using ExtractedFieldMap = Org.Reddragonit.Dbpro.Connections.Connection.ExtractedFieldMap;
-using ForiegnRelationMap = Org.Reddragonit.Dbpro.Connections.Connection.ForiegnRelationMap;
-using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.Field.FieldType;
+using ExtractedTableMap = Org.Reddragonit.Dbpro.Connections.ExtractedTableMap;
+using ExtractedFieldMap = Org.Reddragonit.Dbpro.Connections.ExtractedFieldMap;
+using ForeignRelationMap = Org.Reddragonit.Dbpro.Connections.ForeignRelationMap;
+using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.FieldType;
 using VersionTypes = Org.Reddragonit.Dbpro.Structure.Attributes.VersionField.VersionTypes;
-using UpdateDeleteAction =  Org.Reddragonit.Dbpro.Structure.Attributes.ForiegnField.UpdateDeleteAction;
+using UpdateDeleteAction =  Org.Reddragonit.Dbpro.Structure.Attributes.ForeignField.UpdateDeleteAction;
 
 namespace Org.Reddragonit.Dbpro.Connections
 {
@@ -25,6 +26,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 	/// </summary>
 	public abstract class ConnectionPool
 	{
+		
 		private List<Connection> locked=new List<Connection>();
 		private Queue<Connection> unlocked=new Queue<Connection>();
 		private Mutex mut = new Mutex(false);
@@ -39,6 +41,131 @@ namespace Org.Reddragonit.Dbpro.Connections
 		private string _connectionName;
 		
 		protected abstract Connection CreateConnection();
+		protected virtual string[] _ReservedWords{
+			get{
+				return new string[]{
+					"ABSOLUTE","ACTION","ADD","ADMIN","AFTER",
+					"ALL","ALLOCATE","ALTER","AND","ANY",
+					"ARE","AS","ASC","ASSERTION","AT",
+					"AUTHORIZATION","AVG","BEFORE","BEGIN","BETWEEN",
+					"BIT","BIT_LENGTH","BLOB","BOTH","BY",
+					"CASCADE","CASCADED","CASE","CAST","CATALOG",
+					"CHAR","CHARACTER","CHAR_LENGTH","CHARACTER_LENGTH","CHECK",
+					"CLOSE","COALESCE","COLLATE","COLLATION","COLUMN",
+					"COMMIT","CONNECT","CONNECTION","CONSTRAINT","CONSTRAINTS",
+					"CONTINUE","CONVERT","CORRESPONDING","COUNT","CREATE",
+					"CROSS","CURRENT","CURRENT_DATE","CURRENT_TIME","CURRENT_TIMESTAMP",
+					"CURRENT_USER","DATABASE","DATE","DAY","DEALLOCATE",
+					"DEC","DECIMAL","DECLARE","DEFAULT","DEFERRABLE",
+					"DEFERRED","DELETE","DESC","DESCRIBE","DESCRIPTOR",
+					"DIAGNOSTICS","DISCONNECT","DISTINCT","DO","DOMAIN",
+					"DOUBLE","DROP","ECHO","ELSE","END",
+					"END-EXEC","ESCAPE","EXCEPT","EXCEPTION","EXEC",
+					"EXECUTE","EXISTS","EXIT","EXTERNAL","EXTRACT",
+					"FALSE","FETCH","FILE","FLOAT","FOR",
+					"FOREIGN","FOUND","FROM","FULL","FUNCTION",
+					"GET","GLOBAL","GO","GOTO","GRANT",
+					"GROUP","HAVING","HOUR","IDENTITY","IF",
+					"IMMEDIATE","IN","INDEX","INDICATOR","INITIALLY",
+					"INNER","INPUT","INSENSITIVE","INSERT","INT",
+					"INTEGER","INTERSECT","INTERVAL","INTO","IS",
+					"ISOLATION","JOIN","KEY","LANGUAGE","LAST",
+					"LEADING","LEFT","LEVEL","LIKE","LOCAL",
+					"LONG","LOWER","MATCH","MAX","MESSAGE",
+					"MIN","MINUTE","MODULE","MONTH","NAMES",
+					"NATIONAL","NATURAL","NCHAR","NEXT","NO",
+					"NOT","NULL","NULLIF","NUMERIC","OCTET_LENGTH",
+					"OF","ON","ONLY","OPEN","OPTION",
+					"OR","ORDER","OUTER","OUTPUT","OVERLAPS",
+					"PAD","PARAMETER","PARTIAL","PASSWORD","PLAN",
+					"POSITION","PRECISION","PREPARE","PRESERVE","PRIMARY",
+					"PRIOR","PRIVILEGES","PROCEDURE","PUBLIC","QUIT",
+					"READ","REAL","REFERENCES","RELATIVE","RELEASE",
+					"RESTRICT","RETURN","RETURNS","REVOKE","RIGHT",
+					"ROLE","ROLLBACK","ROWS","SCHEMA","SCROLL",
+					"SECOND","SECTION","SELECT","SESSION","SESSION_USER",
+					"SET","SIZE","SMALLINT","SOME","SPACE",
+					"SQL","SQLCODE","SQLERROR","SQLSTATE","SQLWARNING",
+					"STATEMENT","STATIC","STATISTICS","SUBSTRING","SUM",
+					"SYSTEM_USER","TABLE","TEMPORARY","THEN","TIME",
+					"TIMESTAMP","TIMEZONE_HOUR","TIMEZONE_MINUTE","TO","TRAILING",
+					"TRANSACTION","TRANSLATE","TRANSLATION","TRIGGER","TRIM",
+					"TRUE","TYPE","UNION","UNIQUE","UNKNOWN",
+					"UPDATE","UPPER","USAGE","USER","USING",
+					"VALUE","VALUES","VARCHAR","VARIABLE","VARYING",
+					"VIEW","WAIT","WHEN","WHENEVER","WHERE",
+					"WHILE","WITH","WORK","WRITE","YEAR",
+					"ZONE","BINARY","BOOLEAN","GENERAL","IGNORE",
+					"NUMBER","OBJECT","OFF","PARAMETERS","PERCENT",
+					"TOP","VARBINARY","COMMENT","IDENTIFIED","LOCK",
+					"MODE","MODIFY","RENAME","RESOURCE","ROW",
+					"SHARE","START","VALIDATE","BACKUP","BREAK",
+					"CALL","CHECKPOINT","CONTAINS","CUBE","CURSOR",
+					"DYNAMIC","FIRST","HOLDLOCK","INOUT","LATERAL",
+					"NEW","OUT","OVER","PRINT","PROC",
+					"RAISERROR","READTEXT","RESTORE","ROLLUP","SAVE",
+					"SAVEPOINT","SETUSER","TRAN","TRUNCATE","TSEQUAL",
+					"WAITFOR","WRITETEXT"
+				};
+			}
+		}
+		
+		protected virtual int MaxFieldNameLength{
+			get{
+				return int.MaxValue;
+			}
+		}
+		
+		private string[] _reservedWords=null;
+		private Dictionary<string, string> _nameTranslations = new Dictionary<string, string>();
+		
+		internal string[] ReservedWords{
+			get{
+				if (_reservedWords==null)
+					_reservedWords=_ReservedWords;
+				return _reservedWords;
+			}
+		}
+		
+		internal string CorrectName(string currentName)
+		{
+			if (_nameTranslations.ContainsValue(currentName))
+			{
+				foreach (string str in _nameTranslations.Keys)
+				{
+					if (_nameTranslations[str]==currentName)
+						return str;
+				}
+				return null;
+			}
+			else{
+				string ret = currentName;
+				bool reserved=false;
+				foreach (string str in ReservedWords)
+				{
+					if (Utility.StringsEqualIgnoreCaseWhitespace(str,currentName))
+					{
+						reserved=true;
+						break;
+					}
+				}
+				if (reserved)
+					ret="RES_"+ret;
+				if (ret.Length>MaxFieldNameLength)
+				{
+					int _nameCounter=0;
+					while (_nameTranslations.ContainsKey(ret.Substring(0,MaxFieldNameLength-1-(_nameCounter.ToString().Length))+"_"+_nameCounter.ToString()))
+					{
+						_nameCounter++;
+					}
+					ret=ret.Substring(0,MaxFieldNameLength-1-(_nameCounter.ToString().Length));
+					ret+="_"+_nameCounter.ToString();
+				}
+				if (ret!=currentName)
+					_nameTranslations.Add(ret,currentName);
+				return ret;
+			}
+		}
 		
 		internal string ConnectionName
 		{
@@ -60,369 +187,740 @@ namespace Org.Reddragonit.Dbpro.Connections
 			return connectionString==((ConnectionPool)obj).connectionString;
 		}
 		
-		public ConnectionPool(string connectionString,int minPoolSize,int maxPoolSize,long maxKeepAlive,bool UpdateStructureDebugMode,string connectionName)
+		protected ConnectionPool(string connectionString,int minPoolSize,int maxPoolSize,long maxKeepAlive,bool UpdateStructureDebugMode,string connectionName)
 		{
+			System.Diagnostics.Debug.WriteLine("Establishing Connection with string: "+connectionString);
 			mut.WaitOne();
 			this.connectionString=connectionString;
 			this.minPoolSize=minPoolSize;
 			this.maxPoolSize=maxPoolSize;
 			this.maxKeepAlive=maxKeepAlive;
+			_connectionName=connectionName;
+			ClassMapper.CorrectNamesForConnection(this);
+			
 			UpdateStructure(UpdateStructureDebugMode);
 			for (int x=0;x<minPoolSize;x++)
 				unlocked.Enqueue(CreateConnection());
 			isReady=true;
 			mut.ReleaseMutex();
 			ConnectionPoolManager.AddConnection(connectionName,this);
-			_connectionName=connectionName;
 		}
-		
-		private ExtractedTableMap GetVersionedTableMap(ExtractedTableMap map,Connection conn)
+
+		private void ExtractCurrentStructure(out List<ExtractedTableMap> tables,out List<Trigger> triggers,out List<Generator> generators,Connection conn)
 		{
-			ExtractedTableMap tmpEtm = new ExtractedTableMap(map.TableName+"_VERSION");
-			string type=conn.TranslateFieldType(FieldType.DATETIME,0);
-			if (map.VersionType.Value==VersionTypes.NUMBER)
-				type=conn.TranslateFieldType(FieldType.LONG,0);
-			ExtractedFieldMap tmpEfm = new ExtractedFieldMap(map.TableName+"_VERSION_ID",type,0,true,false,false,true);
-			tmpEtm.Fields.Add(tmpEfm);
-			foreach (ExtractedFieldMap efm in map.Fields)
+			tables = new List<ExtractedTableMap>();
+			triggers = new List<Trigger>();
+			generators=new List<Generator>();
+			conn.ExecuteQuery(conn.queryBuilder.SelectTriggers());
+			while (conn.Read())
 			{
-				if (efm.PrimaryKey||efm.Versioned)
+				triggers.Add(new Trigger((string)conn[0],(string)conn[1],(string)conn[2]));
+			}
+			conn.Close();
+			conn.ExecuteQuery(conn.queryBuilder.SelectTableNames());
+			while (conn.Read())
+			{
+				tables.Add(new ExtractedTableMap((string)conn[0]));
+			}
+			conn.Close();
+			for(int x=0;x<tables.Count;x++)
+			{
+				ExtractedTableMap etm = tables[x];
+				conn.ExecuteQuery(conn.queryBuilder.SelectTableFields(etm.TableName));
+				while (conn.Read())
 				{
-					tmpEfm = new ExtractedFieldMap(efm.FieldName,efm.Type,efm.Size,efm.PrimaryKey,!efm.PrimaryKey,false,true);
-					tmpEtm.Fields.Add(tmpEfm);
+					etm.Fields.Add(new ExtractedFieldMap(conn[0].ToString(),conn[1].ToString(),
+					                                     long.Parse(conn[2].ToString()),bool.Parse(conn[3].ToString()),bool.Parse(conn[4].ToString()),
+					                                     bool.Parse(conn[5].ToString())));
+				}
+				conn.Close();
+				conn.ExecuteQuery(conn.queryBuilder.SelectForeignKeys(etm.TableName));
+				while (conn.Read())
+				{
+					etm.ForeignFields.Add(new ForeignRelationMap(conn[0].ToString(),conn[1].ToString(),
+					                                             conn[2].ToString(),conn[3].ToString(),conn[4].ToString()));
+				}
+				conn.Close();
+				tables.RemoveAt(x);
+				tables.Insert(x,etm);
+			}
+			if (conn.UsesGenerators)
+			{
+				conn.ExecuteQuery(conn.queryBuilder.SelectGenerators());
+				while (conn.Read())
+				{
+					generators.Add(new Generator((string)conn[0]));
+				}
+				conn.Close();
+				for(int x=0;x<generators.Count;x++)
+				{
+					Generator gen = generators[x];
+					conn.ExecuteQuery(conn.queryBuilder.GetGeneratorValue(gen.Name));
+					conn.Read();
+					gen.Value=long.Parse(conn[0].ToString());
+					conn.Close();
+					generators.RemoveAt(x);
+					generators.Insert(x,gen);
 				}
 			}
-			return tmpEtm;
+		}
+		
+		private void ExtractExpectedStructure(out List<ExtractedTableMap> tables,out List<Trigger> triggers,out List<Generator> generators,Connection conn)
+		{
+			tables = new List<ExtractedTableMap>();
+			triggers = new List<Trigger>();
+			generators=new List<Generator>();
+			List<Trigger> tmpTriggers = new List<Trigger>();
+			List<Generator> tmpGenerators = new List<Generator>();
+			List<string> queryStrings = new List<string>();
+			foreach (System.Type type in ClassMapper.TableTypesForConnection(ConnectionName))
+			{
+				TableMap tm = ClassMapper.GetTableMap(type);
+				ExtractedTableMap etm = new ExtractedTableMap(tm.Name);
+				foreach (InternalFieldMap ifm in tm.Fields)
+				{
+					etm.Fields.Add(new ExtractedFieldMap(ifm.FieldName,conn.TranslateFieldType(ifm.FieldType,ifm.FieldLength),
+					                                     ifm.FieldLength,ifm.PrimaryKey,ifm.Nullable,ifm.AutoGen));
+				}
+				foreach (Type t in tm.ForeignTables)
+				{
+					TableMap ftm = ClassMapper.GetTableMap(t);
+					ExternalFieldMap efm = tm.GetFieldInfoForForeignTable(t);
+					foreach (InternalFieldMap ifm in ftm.PrimaryKeys)
+					{
+						etm.ForeignFields.Add(new ForeignRelationMap(CorrectName(efm.AddOnName+"_"+ifm.FieldName),ftm.Name,
+						                                             ifm.FieldName,efm.OnUpdate.ToString(),efm.OnDelete.ToString()));
+					}
+				}
+				tables.Add(etm);
+				foreach (ExternalFieldMap efm in tm.ExternalFieldMapArrays)
+				{
+					TableMap ftm = ClassMapper.GetTableMap(efm.Type);
+					ExtractedTableMap aetm = new ExtractedTableMap(CorrectName(tm.Name+"_"+ftm.Name));
+					foreach (InternalFieldMap ifm in tm.PrimaryKeys)
+					{
+						aetm.Fields.Add(new ExtractedFieldMap(CorrectName(tm.Name+"_"+ifm.FieldName),conn.TranslateFieldType(ifm.FieldType,ifm.FieldLength),
+						                                      ifm.FieldLength,true,false,false));
+						aetm.ForeignFields.Add(new ForeignRelationMap(tm.Name+"_"+ifm.FieldName,tm.Name+"_"+ftm.Name,ifm.FieldName,efm.OnUpdate.ToString(),efm.OnDelete.ToString()));
+					}
+					foreach (InternalFieldMap ifm in ftm.PrimaryKeys)
+					{
+						aetm.Fields.Add(new ExtractedFieldMap(CorrectName(ftm.Name+"_"+ifm.FieldName),conn.TranslateFieldType(ifm.FieldType,ifm.FieldLength),
+						                                      ifm.FieldLength,true,false,false));
+						aetm.ForeignFields.Add(new ForeignRelationMap(CorrectName(ftm.Name+"_"+ifm.FieldName),tm.Name+"_"+ftm.Name,ifm.FieldName,efm.OnUpdate.ToString(),efm.OnDelete.ToString()));
+					}
+				}
+				if (tm.VersionType!=null)
+				{
+					ExtractedTableMap vetm = new ExtractedTableMap(CorrectName(conn.queryBuilder.VersionTableName(tm.Name)));
+					if (tm.VersionType.Value==VersionTypes.DATESTAMP)
+						vetm.Fields.Add(new ExtractedFieldMap(CorrectName(conn.queryBuilder.VersionFieldName(tm.Name)),conn.TranslateFieldType(FieldType.DATETIME,0),8,
+						                                      true,false,false));
+					else
+						vetm.Fields.Add(new ExtractedFieldMap(CorrectName(conn.queryBuilder.VersionFieldName(tm.Name)),conn.TranslateFieldType(FieldType.LONG,0),8,
+						                                      true,false,false));
+					foreach (InternalFieldMap ifm in tm.Fields)
+					{
+						if (ifm.Versionable||ifm.PrimaryKey)
+						{
+							vetm.Fields.Add(new ExtractedFieldMap(ifm.FieldName,conn.TranslateFieldType(ifm.FieldType,ifm.FieldLength),
+							                                      ifm.FieldLength,ifm.PrimaryKey,ifm.Nullable,ifm.AutoGen));
+							if (ifm.PrimaryKey)
+								vetm.ForeignFields.Add(new ForeignRelationMap(ifm.FieldName,etm.TableName,ifm.FieldName,"CASCADE","CASCADE"));
+						}
+					}
+					triggers.AddRange(conn.GetVersionTableTriggers(vetm,tm.VersionType.Value,this));
+					tables.Add(vetm);
+				}
+			}
+			foreach(ExtractedTableMap etm in tables)
+			{
+				System.Diagnostics.Debug.WriteLine(etm.TableName+":");
+				foreach (ExtractedFieldMap efm in etm.Fields)
+					System.Diagnostics.Debug.WriteLine("\t"+efm.FieldName+" - "+efm.PrimaryKey.ToString());
+				foreach (ExtractedFieldMap efm in etm.PrimaryKeys)
+				{
+					if (efm.AutoGen)
+					{
+						conn.GetAddAutogen(etm.TableName,efm,this,out queryStrings,out tmpGenerators,out tmpTriggers);
+						if (tmpGenerators!=null)
+							generators.AddRange(tmpGenerators);
+						if (tmpTriggers!=null)
+							triggers.AddRange(tmpTriggers);
+					}
+				}
+			}
+		}
+		
+		private void CompareTriggers(List<Trigger> curTriggers,List<Trigger> expectedTriggers,out List<Trigger> dropTriggers,out List<Trigger> createTriggers)
+		{
+			createTriggers=new List<Trigger>();
+			dropTriggers=new List<Trigger>();
+			//remove triggers that exist but are not needed
+			foreach (Trigger trig in curTriggers)
+			{
+				bool found=false;
+				foreach (Trigger t in expectedTriggers)
+				{
+					if (Utility.StringsEqualIgnoreCaseWhitespace(t.Name,trig.Name))
+					{
+						found=true;
+						break;
+					}
+				}
+				if (!found)
+					dropTriggers.Add(trig);
+			}
+			
+			//add triggers that are needed but do not exist
+			foreach (Trigger trig in expectedTriggers)
+			{
+				bool found=false;
+				foreach (Trigger t in curTriggers)
+				{
+					if (Utility.StringsEqualIgnoreCaseWhitespace(t.Name,trig.Name))
+					{
+						found=true;
+						break;
+					}
+				}
+				if (!found)
+					createTriggers.Add(trig);
+			}
+			
+			//compare triggers that exist in both to make sure they are the same
+			foreach (Trigger trig in expectedTriggers)
+			{
+				foreach (Trigger t in curTriggers)
+				{
+					if (Utility.StringsEqualIgnoreCaseWhitespace(t.Name,trig.Name))
+					{
+						if (!Utility.StringsEqualIgnoreCaseWhitespace(trig.Conditions,t.Conditions)||
+						    !Utility.StringsEqualIgnoreCaseWhitespace(trig.Code,t.Code))
+						{
+							dropTriggers.Add(t);
+							createTriggers.Add(trig);
+						}
+						break;
+					}
+				}
+			}
+		}
+		
+		private void CompareGenerators(List<Generator> curGenerators,List<Generator> expectedGenerators,out List<Generator> dropGenerators,out List<Generator> createGenerators)
+		{
+			createGenerators = new List<Generator>();
+			dropGenerators=new List<Generator>();
+			//remove generators that exist but are not needed
+			foreach (Generator gen in curGenerators)
+			{
+				bool found=false;
+				foreach (Generator g in expectedGenerators)
+				{
+					if (gen.Name==g.Name)
+					{
+						found=true;
+						break;
+					}
+				}
+				if (!found)
+					dropGenerators.Add(gen);
+			}
+			
+			//add generators that are needed but do not exist
+			foreach (Generator gen in expectedGenerators)
+			{
+				bool found=false;
+				foreach (Generator g in curGenerators)
+				{
+					if (gen.Name==g.Name)
+					{
+						found=true;
+						break;
+					}
+				}
+				if (!found)
+					createGenerators.Add(gen);
+			}
+		}
+		
+		private void ExtractConstraintDropsCreates(List<ExtractedTableMap> curStructure,List<ExtractedTableMap> expectedStructure,Connection conn,out List<string> constraintDrops, out List<string> constraintCreates)
+		{
+			constraintDrops=new List<string>();
+			constraintCreates=new List<string>();
+			foreach (ExtractedTableMap etm in expectedStructure)
+			{
+				bool found=false;
+				foreach (ExtractedTableMap e in curStructure)
+				{
+					if (etm.TableName==e.TableName)
+					{
+						found=true;
+						foreach (ExtractedFieldMap efm in etm.Fields)
+						{
+							bool foundField=false;
+							foreach (ExtractedFieldMap ee in e.Fields)
+							{
+								if (efm.FieldName==ee.FieldName)
+								{
+									foundField=true;
+									if (efm.Nullable&&!ee.Nullable)
+										constraintDrops.Add(conn.queryBuilder.DropNullConstraint(etm.TableName,efm.FieldName,conn));
+									else if (!efm.Nullable&&ee.Nullable)
+										constraintCreates.Add(conn.queryBuilder.CreateNullConstraint(etm.TableName,efm.FieldName));
+									break;
+								}
+							}
+							if (!foundField&&!efm.Nullable)
+							{
+								constraintCreates.Add(conn.queryBuilder.CreateNullConstraint(etm.TableName,efm.FieldName));
+							}
+						}
+						break;
+					}
+				}
+				if (!found)
+				{
+					foreach (ExtractedFieldMap efm in etm.Fields)
+					{
+						if (!efm.Nullable)
+							constraintCreates.Add(conn.queryBuilder.CreateNullConstraint(etm.TableName,efm.FieldName));
+					}
+				}
+			}
+			
+			foreach (ExtractedTableMap etm in curStructure)
+			{
+				bool found=false;
+				foreach (ExtractedTableMap e in expectedStructure)
+				{
+					if (etm.TableName==e.TableName)
+					{
+						found=true;
+						foreach (ExtractedFieldMap efm in etm.Fields)
+						{
+							bool foundField=false;
+							foreach (ExtractedFieldMap ee in e.Fields)
+							{
+								if (ee.FieldName==efm.FieldName)
+								{
+									foundField=true;
+									break;
+								}
+							}
+							if (!foundField)
+								constraintDrops.Add(conn.queryBuilder.DropNullConstraint(etm.TableName,efm.FieldName,conn));
+						}
+						break;
+					}
+				}
+				if (!found)
+				{
+					foreach (ExtractedFieldMap efm in etm.Fields)
+					{
+						if (!efm.Nullable)
+							constraintDrops.Add(conn.queryBuilder.DropNullConstraint(etm.TableName,efm.FieldName,conn));
+					}
+				}
+			}
+		}
+		
+		private void ExtractPrimaryKeyCreationsDrops(List<ExtractedTableMap> curStructure,List<ExtractedTableMap> expectedStructure,out List<PrimaryKey> primaryKeyDrops,out List<PrimaryKey> primaryKeyCreations)
+		{
+			primaryKeyDrops=new List<PrimaryKey>();
+			primaryKeyCreations=new List<PrimaryKey>();
+			foreach (ExtractedTableMap etm in expectedStructure)
+			{
+				bool found=false;
+				foreach (ExtractedTableMap e in curStructure)
+				{
+					if (etm.TableName==e.TableName)
+					{
+						found=true;
+						bool keyDifferent=false;
+						foreach (ExtractedFieldMap efm in etm.PrimaryKeys)
+						{
+							bool foundField=false;
+							foreach (ExtractedFieldMap ee in e.PrimaryKeys)
+							{
+								if (ee.FieldName==efm.FieldName)
+								{
+									foundField=true;
+									if ((ee.PrimaryKey!=efm.PrimaryKey)||(ee.PrimaryKey&&efm.PrimaryKey&&((ee.Type!=efm.Type)||(ee.Size!=efm.Size))))
+										keyDifferent=true;
+									break;
+								}
+							}
+							if (!foundField)
+								keyDifferent=true;
+							if (keyDifferent)
+								break;
+						}
+						if (keyDifferent)
+						{
+							primaryKeyDrops.Add(new PrimaryKey(e));
+							primaryKeyCreations.Add(new PrimaryKey(etm));
+						}
+					}
+				}
+				if (!found)
+				{
+					if (etm.PrimaryKeys.Count>0)
+						primaryKeyCreations.Add(new PrimaryKey(etm));
+				}
+			}
+			
+			foreach (ExtractedTableMap etm in curStructure)
+			{
+				bool found=false;
+				foreach (ExtractedTableMap e in expectedStructure)
+				{
+					if (e.TableName==etm.TableName)
+					{
+						found=true;
+						bool primaryDiff=false;
+						foreach (ExtractedFieldMap efm in etm.PrimaryKeys)
+						{
+							bool foundField=false;
+							foreach (ExtractedFieldMap ee in e.PrimaryKeys)
+							{
+								if (ee.FieldName==efm.FieldName)
+								{
+									foundField=true;
+									break;
+								}
+							}
+							if (!foundField)
+								primaryDiff=true;
+							if (primaryDiff)
+								break;
+						}
+						if (primaryDiff)
+						{
+							primaryKeyDrops.Add(new PrimaryKey(etm));
+							primaryKeyCreations.Add(new PrimaryKey(e));
+						}
+						break;
+					}
+				}
+				if (!found)
+				{
+					if (etm.PrimaryKeys.Count>0)
+						primaryKeyDrops.Add(new PrimaryKey(etm));
+				}
+			}
+		}
+		
+		private void ExtractForeignKeyCreatesDrops(List<ExtractedTableMap> curStructure,List<ExtractedTableMap> expectedStructure,out List<ForeignKey> foreignKeyDrops,out List<ForeignKey> foreignKeyCreations)
+		{
+			foreignKeyDrops=new List<ForeignKey>();
+			foreignKeyCreations=new List<ForeignKey>();
+			foreach (ExtractedTableMap etm in expectedStructure)
+			{
+				bool found=false;
+				foreach (ExtractedTableMap e in curStructure)
+				{
+					if (etm.TableName==e.TableName)
+					{
+						found=true;
+						foreach (string tableName in etm.RelatedTables)
+						{
+							bool foundtable=false;
+							foreach (string etableName in e.RelatedTables)
+							{
+								if (etableName==tableName)
+								{
+									foundtable=true;
+									bool diffRelation=false;
+									foreach (ForeignRelationMap frm in etm.RelatedFieldsForTable(tableName))
+									{
+										bool foundRelation=false;
+										foreach (ForeignRelationMap efrm in e.RelatedFieldsForTable(etableName))
+										{
+											if ((frm.InternalField==efrm.InternalField)&&(frm.ExternalField==efrm.ExternalField)&&(frm.ExternalTable==efrm.ExternalTable)&&(frm.OnDelete==efrm.OnDelete)&&(frm.OnUpdate==efrm.OnUpdate))
+											{
+												foundRelation=true;
+												foreach (ExtractedFieldMap efm in etm.Fields)
+												{
+													if (efm.FieldName==frm.InternalField)
+													{
+														foreach (ExtractedFieldMap ee in e.Fields)
+														{
+															if (ee.FieldName==frm.InternalField)
+															{
+																if ((ee.Type!=efm.Type)||(ee.Size!=efm.Size)||(ee.Nullable!=efm.Nullable)||(ee.PrimaryKey!=efm.PrimaryKey))
+																{
+																	diffRelation=true;
+																}
+																break;
+															}
+														}
+														break;
+													}
+												}
+												break;
+											}
+										}
+										if (!foundRelation)
+											foundRelation=true;
+										if (diffRelation)
+											break;
+									}
+									if (diffRelation)
+									{
+										foreignKeyDrops.Add(new ForeignKey(e,etableName));
+										foreignKeyCreations.Add(new ForeignKey(etm,tableName));
+									}
+									break;
+								}
+							}
+							if (!foundtable)
+							{
+								foreignKeyCreations.Add(new ForeignKey(etm,tableName));
+							}
+						}
+						break;
+					}
+				}
+				if (!found)
+				{
+					foreach (string tableName in etm.RelatedTables)
+					{
+						foreignKeyCreations.Add(new ForeignKey(etm,tableName));
+					}
+				}
+			}
+			
+			foreach (ExtractedTableMap etm in curStructure)
+			{
+				bool found=false;
+				foreach (ExtractedTableMap e in expectedStructure)
+				{
+					if (etm.TableName==e.TableName)
+					{
+						found=true;
+						foreach (string tableName in etm.RelatedTables)
+						{
+							bool foundTable=false;
+							foreach (string etableName in e.RelatedTables)
+							{
+								if (tableName==etableName)
+								{
+									foundTable=true;
+									break;
+								}
+							}
+							if (!foundTable)
+								foreignKeyDrops.Add(new ForeignKey(etm,tableName));
+						}
+						break;
+					}
+				}
+				if (!found)
+				{
+					foreach (string tableName in etm.RelatedTables)
+						foreignKeyDrops.Add(new ForeignKey(etm,tableName));
+				}
+			}
 		}
 
 		private void UpdateStructure(bool Debug)
 		{
 			Connection conn = CreateConnection();
-			List<ExtractedTableMap> curStructure = conn.GetTableList();
-			for(int x=0;x<curStructure.Count;x++)
+			List<ExtractedTableMap> curStructure =new List<ExtractedTableMap>();
+			List<Trigger> curTriggers = new List<Trigger>();
+			List<Generator> curGenerators = new List<Generator>();
+			
+			ExtractCurrentStructure(out curStructure,out curTriggers,out curGenerators,conn);
+			
+			List<ExtractedTableMap> expectedStructure = new List<ExtractedTableMap>();
+			List<Trigger> expectedTriggers = new List<Trigger>();
+			List<Generator> expectedGenerators = new List<Generator>();
+			
+			ExtractExpectedStructure(out expectedStructure,out expectedTriggers,out expectedGenerators,conn);
+			
+			List<Trigger> dropTriggers = new List<Trigger>();
+			List<Trigger> createTriggers = new List<Trigger>();
+			
+			CompareTriggers(curTriggers,expectedTriggers,out dropTriggers,out createTriggers);
+			
+			List<Generator> dropGenerators = new List<Generator>();
+			List<Generator> createGenerators = new List<Generator>();
+			
+			CompareGenerators(curGenerators,expectedGenerators,out dropGenerators,out createGenerators);
+			
+			List<string> constraintDrops = new List<string>();
+			List<string> constraintCreations = new List<string>();
+			
+			ExtractConstraintDropsCreates(curStructure,expectedStructure,conn,out constraintDrops,out constraintCreations);
+			
+			List<PrimaryKey> primaryKeyDrops = new List<PrimaryKey>();
+			List<PrimaryKey> primaryKeyCreations = new List<PrimaryKey>();
+			
+			ExtractPrimaryKeyCreationsDrops(curStructure,expectedStructure,out primaryKeyDrops,out primaryKeyCreations);
+			
+			List<ForeignKey> foreignKeyDrops = new List<ForeignKey>();
+			List<ForeignKey> foreignKeyCreations = new List<ForeignKey>();
+			
+			ExtractForeignKeyCreatesDrops(curStructure,expectedStructure,out foreignKeyDrops,out foreignKeyCreations);
+			
+			List<string> tableCreations = new List<string>();
+			List<string> tableAlterations = new List<string>();
+			
+			//locate tables and fields that need to be drop
+			for (int x=0;x<curStructure.Count;x++)
 			{
-				for(int y=0;y<curStructure.Count;y++)
+				ExtractedTableMap etm = curStructure[x];
+				bool found=false;
+				foreach (ExtractedTableMap e in expectedStructure)
 				{
-					if(curStructure[x].TableName.ToUpper()+"_VERSION"==curStructure[y].TableName.ToUpper())
+					if (etm.TableName==e.TableName)
 					{
-						ExtractedTableMap etm = curStructure[x];
-						foreach (Connection.ExtractedFieldMap efm in curStructure[y].Fields)
+						found=true;
+						foreach (ExtractedFieldMap efm in etm.Fields)
 						{
-							if (efm.FieldName==curStructure[x].TableName.ToUpper()+"_VERSION_ID")
+							bool foundField=false;
+							foreach(ExtractedFieldMap ee in e.Fields)
 							{
-								if (efm.Type.ToUpper()==conn.TranslateFieldType(FieldType.DATETIME,0))
-									etm.VersionType=VersionTypes.DATESTAMP;
-								else
-									etm.VersionType=VersionTypes.NUMBER;
-							}else
-							{
-								for (int z=0;z<etm.Fields.Count;z++)
+								if (efm.FieldName==ee.FieldName)
 								{
-									Connection.ExtractedFieldMap ef = etm.Fields[z];
-									if (efm.FieldName==ef.FieldName)
-									{
-										ef.Versioned=true;
-										etm.Fields.RemoveAt(z);
-										etm.Fields.Insert(z,ef);
-										break;
-									}
+									foundField=true;
+									break;
 								}
 							}
+							if (!foundField)
+							{
+								tableAlterations.Add(conn.queryBuilder.DropColumn(etm.TableName,efm.FieldName));
+							}
 						}
-						curStructure.RemoveAt(y);
-						curStructure.RemoveAt(x);
-						curStructure.Insert(x,etm);
 						break;
 					}
 				}
-			}
-			List<ExtractedTableMap> tables = new List<ExtractedTableMap>();
-			foreach (System.Type type in ClassMapper.TableTypes)
-			{
-				TableMap tm = ClassMapper.GetTableMap(type);
-				ExtractedTableMap etm = new ExtractedTableMap(tm.Name);
-				etm.VersionType=tm.VersionType;
-				foreach (InternalFieldMap ifm in tm.Fields)
+				if (!found)
 				{
-					etm.Fields.Add(new ExtractedFieldMap(ifm.FieldName, conn.TranslateFieldType(ifm.FieldType, ifm.FieldLength), ifm.FieldLength, ifm.PrimaryKey, ifm.Nullable, ifm.AutoGen,ifm.Versionable));
-				}
-				foreach (Type t in tm.ForiegnTables)
-				{
-					TableMap rt = ClassMapper.GetTableMap(t);
-					foreach (InternalFieldMap ifm in rt.PrimaryKeys)
-					{
-						ExtractedFieldMap efm;
-						for (int x = 0; x < etm.Fields.Count; x++)
-						{
-							efm = etm.Fields[x];
-							if (efm.FieldName == rt.GetTableFieldName(ifm))
-							{
-								efm.ExternalTable = rt.Name;
-								efm.ExternalField = efm.FieldName;
-								efm.DeleteAction = tm.GetFieldInfoForForiegnTable(t).OnDelete.ToString();
-								efm.UpdateAction = tm.GetFieldInfoForForiegnTable(t).OnUpdate.ToString();
-								etm.Fields.RemoveAt(x);
-								etm.Fields.Insert(x,efm);
-							}
-						}
-					}
-				}
-				if (tm.ParentType!=null)
-				{
-					TableMap parentMap = ClassMapper.GetTableMap(tm.ParentType);
-					ExtractedFieldMap efm;
-					foreach (InternalFieldMap ifm in parentMap.PrimaryKeys)
-					{
-						for (int x=0;x<etm.Fields.Count;x++)
-						{
-							efm = etm.Fields[x];
-							if (efm.FieldName==parentMap.GetTableFieldName(ifm))
-							{
-								efm.ExternalTable = parentMap.Name;
-								efm.ExternalField=efm.FieldName;
-								efm.DeleteAction = UpdateDeleteAction.CASCADE.ToString();
-								efm.UpdateAction = UpdateDeleteAction.CASCADE.ToString();
-								etm.Fields.RemoveAt(x);
-								etm.Fields.Insert(x,efm);
-								break;
-							}
-						}
-					}
-				}
-				tables.Add(etm);
-				foreach (ExternalFieldMap e in tm.ExternalFieldMapArrays)
-				{
-					TableMap t = ClassMapper.GetTableMap(e.Type);
-					etm = new ExtractedTableMap(tm.Name + "_" + t.Name);
-					ExtractedFieldMap efm;
-					foreach (InternalFieldMap ifm in tm.PrimaryKeys)
-					{
-						efm = new ExtractedFieldMap(ifm.FieldName, conn.TranslateFieldType(ifm.FieldType, ifm.FieldLength), ifm.FieldLength, true, ifm.Nullable,ifm.Versionable);
-						efm.ExternalTable = tm.Name;
-						efm.ExternalField = ifm.FieldName;
-						efm.DeleteAction = e.OnDelete.ToString();
-						efm.UpdateAction = e.OnUpdate.ToString();
-						etm.Fields.Add(efm);
-					}
-					foreach (InternalFieldMap ifm in t.PrimaryKeys)
-					{
-						efm = new ExtractedFieldMap(ifm.FieldName, conn.TranslateFieldType(ifm.FieldType, ifm.FieldLength), ifm.FieldLength, true, ifm.Nullable,ifm.Versionable);
-						efm.ExternalTable = t.Name;
-						efm.ExternalField = ifm.FieldName;
-						efm.DeleteAction = e.OnDelete.ToString();
-						efm.UpdateAction = e.OnUpdate.ToString();
-						etm.Fields.Add(efm);
-					}
-					tables.Add(etm);
+					tableAlterations.Add(conn.queryBuilder.DropTable(etm.TableName));
 				}
 			}
-			List<string> alterations = new List<string>();
-			foreach (ExtractedTableMap etm in tables)
+			
+			//locate tables and Columns that need to be created or columns that need to be alter for type in the expected structure
+			foreach (ExtractedTableMap etm in expectedStructure)
 			{
-				bool tableExists = false;
+				bool found=false;
 				foreach (ExtractedTableMap e in curStructure)
 				{
-					if (e.TableName == etm.TableName)
+					if (etm.TableName==e.TableName)
 					{
-						tableExists = true;
-						if (e.VersionType.HasValue&&!etm.VersionType.HasValue)
-						{
-							alterations.AddRange(conn.GetDropTableString(etm.TableName+"_VERSION",false));
-						}else if (!e.VersionType.HasValue&&etm.VersionType.HasValue)
-						{
-							alterations.AddRange(conn.GetCreateTableStringsForAlterations(this.GetVersionedTableMap(etm,conn)));
-						}
+						found=true;
 						foreach (ExtractedFieldMap efm in etm.Fields)
 						{
-							bool fieldExists = false;
-							foreach (ExtractedFieldMap f in e.Fields)
+							bool foundField=false;
+							foreach (ExtractedFieldMap ee in etm.Fields)
 							{
-								if (efm.FieldName == f.FieldName)
+								if (efm.FieldName==ee.FieldName)
 								{
-									fieldExists = true;
-									if ((efm.Type != f.Type)||
-									    (efm.Type.ToUpper().Contains("CHAR") && (efm.Size != f.Size))
-									   )
+									foundField=true;
+									if ((efm.Type!=ee.Type)||(efm.Size!=ee.Size))
 									{
-										if (f.AutoGen)
+										if (efm.PrimaryKey&&ee.PrimaryKey)
 										{
-											alterations.AddRange(conn.GetDropAutogenStrings(e.TableName, f.FieldName, f.Type));
+											primaryKeyDrops.Add(new PrimaryKey(etm));
+											primaryKeyCreations.Add(new PrimaryKey(etm));
+											for(int x=0;x<expectedStructure.Count;x++)
+											{
+												if (expectedStructure[x].RelatesToField(etm.TableName,efm.FieldName))
+												{
+													foreignKeyDrops.Add(new ForeignKey(expectedStructure[x],etm.TableName));
+													foreignKeyCreations.Add(new ForeignKey(expectedStructure[x],etm.TableName));
+												}
+											}
 										}
-										alterations.Add(conn.queryBuilder.AlterFieldType(etm.TableName, efm.FieldName, efm.Type, efm.Size));
-										if (f.Versioned&&e.VersionType.HasValue)
-											alterations.Add(conn.queryBuilder.AlterFieldType(etm.TableName+"_VERSION",efm.FieldName,efm.Type,efm.Size));
-										if (efm.AutoGen && efm.PrimaryKey)
+										foreach (string tbl in etm.ExternalTablesForField(efm.FieldName))
 										{
-											alterations.AddRange(conn.GetAddAutogenString(etm.TableName, efm.FieldName, efm.Type));
+											foreignKeyDrops.Add(new ForeignKey(etm,tbl));
+											foreignKeyCreations.Add(new ForeignKey(etm,tbl));
 										}
-									}else if (efm.AutoGen != f.AutoGen)
-									{
-										if ((efm.AutoGen) && (!f.AutoGen))
-											alterations.AddRange(conn.GetDropAutogenStrings(e.TableName, f.FieldName, f.Type));
-										else
-											alterations.AddRange(conn.GetAddAutogenString(etm.TableName, efm.FieldName, efm.Type));
-									}
-									if (efm.Versioned!=f.Versioned&&e.VersionType.HasValue&&!efm.PrimaryKey)
-									{
-										if (efm.Versioned)
-											alterations.Add(conn.queryBuilder.CreateColumn(etm.TableName+"_VERSION",efm.FieldName,efm.Type,efm.Size));
-										else
-											alterations.Add(conn.queryBuilder.DropColumn(etm.TableName+"_VERSION",efm.FieldName));
+										tableAlterations.Add(conn.queryBuilder.AlterFieldType(etm.TableName,efm.FieldName,efm.Type,efm.Size));
 									}
 									break;
 								}
 							}
-							if (!fieldExists)
-							{
-								alterations.Add(conn.queryBuilder.CreateColumn(etm.TableName, efm.FieldName, efm.Type, efm.Size));
-								if (efm.Versioned)
-								{
-									alterations.Add(conn.queryBuilder.CreateColumn(etm.TableName+"_VERSION",efm.FieldName,efm.Type,efm.Size));
-								}
-							}
+							if (!foundField)
+								tableAlterations.Add(conn.queryBuilder.CreateColumn(etm.TableName,efm.FieldName,efm.Type,efm.Size));
 						}
 						break;
 					}
 				}
-				if (!tableExists)
+				if (!found)
 				{
-					alterations.AddRange(conn.GetCreateTableStringsForAlterations(etm));
-					if (etm.VersionType.HasValue)
-					{
-						alterations.AddRange(conn.GetCreateTableStringsForAlterations(this.GetVersionedTableMap(etm,conn)));
-					}
+					tableCreations.Add(conn.queryBuilder.CreateTable(etm));
 				}
 			}
-			foreach (ExtractedTableMap etm in curStructure)
+			
+			List<string> alterations = new List<string>();
+			//add drops to alterations
+			alterations.AddRange(constraintDrops);
+			alterations.Add(" COMMIT;");
+			
+			foreach (Trigger trig in dropTriggers)
+				alterations.Add(conn.queryBuilder.DropTrigger(trig.Name));
+			alterations.Add(" COMMIT;");
+			
+			foreach (Generator gen in dropGenerators)
+				alterations.Add(conn.queryBuilder.DropGenerator(gen.Name));
+			alterations.Add(" COMMIT;");
+			
+			foreach (ForeignKey fk in foreignKeyDrops)
 			{
-				bool tableExists = false;
-				foreach (ExtractedTableMap e in tables)
-				{
-					if (e.TableName == etm.TableName)
-					{
-						tableExists = true;
-						foreach (ExtractedFieldMap efm in etm.Fields)
-						{
-							bool fieldExists = false;
-							foreach (ExtractedFieldMap f in e.Fields)
-							{
-								if (f.FieldName == efm.FieldName)
-								{
-									fieldExists = true;
-									break;
-								}
-							}
-							if (!fieldExists)
-							{
-								alterations.Add(conn.queryBuilder.DropColumn(etm.TableName, efm.FieldName));
-								if (efm.Versioned)
-									alterations.Add(conn.queryBuilder.DropColumn(etm.TableName+"_VERSION",efm.FieldName));
-							}
-						}
-						break;
-					}
-				}
-				if (!tableExists)
-				{
-					alterations.AddRange(conn.GetDropTableString(etm.TableName,etm.VersionType.HasValue));
-				}
+				foreach (string field in fk.InternalFields)
+					alterations.Add(conn.queryBuilder.DropForeignKey(fk.InternalTable,field,conn));
 			}
-			if (alterations.Count > 0)
+			alterations.Add(" COMMIT;");
+			
+			foreach (PrimaryKey pk in primaryKeyDrops)
 			{
-				List<string> tmp = new List<string>();
-				List<string> tmp1 = new List<string>();
-				Dictionary<string, List<ForiegnRelationMap>> rels = new Dictionary<string, List<ForiegnRelationMap>>();
-				foreach (ExtractedTableMap etm in tables)
-				{
-					tmp.Clear();
-					rels.Clear();
-					foreach (ExtractedFieldMap efm in etm.Fields)
-					{
-						if (efm.PrimaryKey)
-						{
-							if (!efm.Nullable)
-							{
-								alterations.Add(conn.queryBuilder.CreateNullConstraint(etm.TableName,efm.FieldName));
-								if (etm.VersionType.HasValue)
-									alterations.Add(conn.queryBuilder.CreateNullConstraint(etm.TableName+"_VERSION",efm.FieldName));
-							}
-							tmp.Add(efm.FieldName);
-						}
-						if (efm.AutoGen)
-						{
-							alterations.AddRange(conn.GetAddAutogenString(etm.TableName,efm.FieldName,efm.Type));
-						}
-						if (efm.ExternalTable != null)
-						{
-							if (!rels.ContainsKey(efm.ExternalTable))
-							{
-								rels.Add(efm.ExternalTable, new List<ForiegnRelationMap>());
-							}
-							List<ForiegnRelationMap> t = rels[efm.ExternalTable];
-							ForiegnRelationMap f = new ForiegnRelationMap();
-							f.ExternalField = efm.ExternalField;
-							f.InternalField = efm.FieldName;
-							f.OnDelete = efm.DeleteAction;
-							f.OnUpdate = efm.UpdateAction;
-							t.Add(f);
-							rels.Remove(efm.ExternalTable);
-							rels.Add(efm.ExternalTable, t);
-						}
-					}
-					if (tmp.Count > 0)
-					{
-						alterations.Add(conn.queryBuilder.CreatePrimaryKey(etm.TableName, tmp));
-						if (etm.VersionType.HasValue)
-							alterations.Add(conn.queryBuilder.CreatePrimaryKey(etm.TableName+"_VERSION",tmp));
-					}
-					if (rels.Count > 0)
-					{
-						foreach (string str in rels.Keys)
-						{
-							tmp.Clear();
-							tmp1.Clear();
-							string updateAction="";
-							string deleteAction="";
-							foreach (ForiegnRelationMap f in rels[str])
-							{
-								tmp.Add(f.InternalField);
-								tmp1.Add(f.ExternalField);
-								updateAction=f.OnUpdate;
-								deleteAction=f.OnDelete;
-							}
-							alterations.Add(conn.queryBuilder.CreateForiegnKey(etm.TableName, tmp, str, tmp1,updateAction,deleteAction));
-						}
-					}
-					if (etm.VersionType.HasValue)
-					{
-						tmp.Clear();
-						List<ExtractedFieldMap> tmpFields = new List<ExtractedFieldMap>();
-						foreach (ExtractedFieldMap efm in etm.Fields)
-						{
-							if (efm.PrimaryKey)
-							{
-								tmp.Add(efm.FieldName);
-							}
-							if (efm.Versioned)
-							{
-								tmpFields.Add(efm);
-							}
-						}
-						alterations.Add(conn.queryBuilder.CreateForiegnKey(etm.TableName+"_VERSION",tmp,etm.TableName,tmp,UpdateDeleteAction.CASCADE.ToString(),UpdateDeleteAction.CASCADE.ToString()));
-						alterations.AddRange(conn.GetVersionTableTriggers(etm.TableName,etm.TableName+"_VERSION",etm.TableName+"_VERSION_ID",etm.VersionType.Value,tmpFields));
-					}
-				}
+				foreach (string field in pk.Fields)
+					alterations.Add(conn.queryBuilder.DropPrimaryKey(pk.Name,field,conn));
+			}
+			alterations.Add(" COMMIT;");
+			
+			alterations.AddRange(tableAlterations);
+			alterations.Add(" COMMIT;");
+			
+			alterations.AddRange(tableCreations);
+			alterations.Add(" COMMIT;");
+			
+			//add creations to alterations
+			alterations.AddRange(constraintCreations);
+			alterations.Add(" COMMIT;");
+			
+			foreach (PrimaryKey pk in primaryKeyCreations)
+				alterations.Add(conn.queryBuilder.CreatePrimaryKey(pk.Name,pk.Fields));
+			alterations.Add(" COMMIT;");
+			
+			foreach (ForeignKey fk in foreignKeyCreations)
+				alterations.Add(conn.queryBuilder.CreateForeignKey(fk.InternalTable,fk.InternalFields,fk.ExternalTable,fk.ExternalFields,fk.OnUpdate,fk.OnDelete));
+			alterations.Add(" COMMIT;");
+			
+			foreach (Generator gen in createGenerators)
+			{
+				alterations.Add(conn.queryBuilder.CreateGenerator(gen.Name));
+				alterations.Add(conn.queryBuilder.SetGeneratorValue(gen.Name,gen.Value));
+			}
+			alterations.Add(" COMMIT;");
+			
+			foreach (Trigger trig in createTriggers)
+			{
+				alterations.Add(conn.queryBuilder.CreateTrigger(trig.Name,trig.Conditions,trig.Code));
+			}
+			alterations.Add(" COMMIT;");
+			
+			Utility.RemoveDuplicateStrings(ref alterations,new string[]{" COMMIT;"});
+			
+			if (alterations.Count>12)
+			{
 				try{
 					if (Debug)
 					{
-						foreach (string str in conn.GetDropConstraintsScript())
-						{
-							if (!str.EndsWith(";"))
-								System.Diagnostics.Debug.WriteLine(str + ";");
-							else
-								System.Diagnostics.Debug.WriteLine(str);
-							
-						}
 						foreach (string str in alterations)
 						{
 							if (!str.EndsWith(";"))
@@ -433,18 +931,16 @@ namespace Org.Reddragonit.Dbpro.Connections
 					}
 					else
 					{
-						foreach (string str in conn.GetDropConstraintsScript())
-						{
-							conn.ExecuteNonQuery(str);
-						}
-						conn.Commit();
 						foreach (string str in alterations)
 						{
-							if (str.EndsWith(" COMMIT;"))
+							if (str==" COMMIT;")
+								conn.Commit();
+							else if (str.EndsWith(" COMMIT;"))
 							{
 								conn.ExecuteNonQuery(str.Substring(0,str.Length-8));
 								conn.Commit();
-							}else
+							}
+							else
 								conn.ExecuteNonQuery(str);
 						}
 					}
@@ -455,7 +951,6 @@ namespace Org.Reddragonit.Dbpro.Connections
 					throw e;
 				}
 			}
-			conn.Commit();
 		}
 		
 		public Connection getConnection()

@@ -5,7 +5,8 @@ using System.Data;
 using System.Data.SqlClient;
 using Org.Reddragonit.Dbpro.Connections;
 using Org.Reddragonit.Dbpro.Structure.Mapping;
-using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.Field.FieldType; 
+using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.FieldType; 
+using VersionTypes = Org.Reddragonit.Dbpro.Structure.Attributes.VersionField.VersionTypes;
 
 namespace Org.Reddragonit.Dbpro.Connections.MsSql
 {
@@ -20,17 +21,12 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
             return new SqlParameter(parameterName, parameterValue);
         }
 
-        internal override List<string> GetAddAutogenString(string table, string field, string type)
-        {
-            throw new Exception("The method or operation is not implemented.");
-        }
-
-        internal override List<string> GetDropAutogenStrings(string table, string field,string type)
-        {
-            throw new Exception("The method or operation is not implemented.");
-        }
-
-		internal override List<string> GetCreateTableStringsForAlterations(ExtractedTableMap table)
+		internal override void GetAddAutogen(string tableName, ExtractedFieldMap field,ConnectionPool pool, out List<string> queryStrings, out List<Generator> generators, out List<Trigger> triggers)
+		{
+			throw new NotImplementedException();
+		}
+		
+		internal override void GetDropAutogenStrings(string tableName, ExtractedFieldMap field,ConnectionPool pool, out List<string> queryStrings, out List<Generator> generators, out List<Trigger> triggers)
 		{
 			throw new NotImplementedException();
 		}
@@ -49,18 +45,8 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
         {
             return new SqlConnection(connectionString);
         }
-
-        internal override List<Connection.ExtractedTableMap> GetTableList()
-        {
-            throw new Exception("The method or operation is not implemented.");
-        }
-        
-		internal override List<string> GetDropConstraintsScript()
-		{
-			throw new NotImplementedException();
-		}
 		
-		internal override List<string> GetVersionTableTriggers(string tableName, string versionTableName,string versionFieldName, Org.Reddragonit.Dbpro.Structure.Attributes.VersionField.VersionTypes versionType, List<ExtractedFieldMap> fields)
+		internal override List<Trigger> GetVersionTableTriggers(ExtractedTableMap table,VersionTypes versionType,ConnectionPool pool)
 		{
 			throw new NotImplementedException();
 		}
@@ -119,97 +105,6 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
                         ret = "NVARCHAR(" + fieldLength.ToString() + ")";
                     break;
             }
-            return ret;
-        }
-
-        protected override List<string> ConstructCreateStrings(Org.Reddragonit.Dbpro.Structure.Table table)
-        {
-            List<string> ret = new List<string>();
-            TableMap t = ClassMapper.GetTableMap(table.GetType());
-            string tmp = "CREATE TABLE " + t.Name + "(\n";
-            foreach (FieldMap f in t.Fields)
-            {
-                InternalFieldMap ifm = (InternalFieldMap)f;
-                tmp += "\t" + ifm.FieldName + " " + TranslateFieldType(ifm.FieldType, ifm.FieldLength);
-                if (ifm.AutoGen)
-                {
-                    tmp += " IDENTITY(1,1)";
-                }
-                if (!ifm.Nullable)
-                {
-                    tmp += " NOT NULL";
-                }
-                tmp += ",\n";
-            }
-            if (t.PrimaryKeys.Count > 0)
-            {
-                tmp += "\tPRIMARY KEY(";
-                foreach (FieldMap f in t.PrimaryKeys)
-                {
-                    if (f is InternalFieldMap)
-                    {
-                        InternalFieldMap ifm = (InternalFieldMap)f;
-                        tmp += ifm.FieldName + ",";
-                    }
-                }
-                tmp = tmp.Substring(0, tmp.Length - 1);
-                tmp += "),\n";
-            }
-            if (t.ForiegnTablesCreate.Count > 0)
-            {
-                foreach (Type type in t.ForiegnTablesCreate)
-                {
-                    if (t.GetFieldInfoForForiegnTable(type).IsArray)
-                    {
-                        TableMap ext = ClassMapper.GetTableMap(type);
-                        string externalTable = "CREATE TABLE " + t.Name + "_" + ext.Name + "(";
-                        string pkeys = "\nPRIMARY KEY(";
-                        string fkeys = "\nFOREIGN KEY(";
-                        string fields = "";
-                        foreach (InternalFieldMap f in t.PrimaryKeys)
-                        {
-                            externalTable += "\n\t" + f.FieldName + " " + TranslateFieldType(f.FieldType, f.FieldLength) + ",";
-                            pkeys += f.FieldName + ",";
-                            fkeys += f.FieldName + ",";
-                        }
-                        fkeys = fkeys.Substring(0, fkeys.Length - 1);
-                        fkeys += ")\nREFERENCES " + t.Name + "(" + fkeys.Replace("\nFOREIGN KEY(", "").Replace(")", "") + ")\n\t\tON UPDATE CASCADE ON DELETE CASCADE,";
-                        fkeys += "\nFOREIGN KEY(";
-                        foreach (InternalFieldMap f in ext.PrimaryKeys)
-                        {
-                            externalTable += "\n\t" + f.FieldName + " " + TranslateFieldType(f.FieldType, f.FieldLength) + ",";
-                            pkeys += f.FieldName + ",";
-                            fkeys += f.FieldName + ",";
-                            fields += f.FieldName + ",";
-                        }
-                        fkeys = fkeys.Substring(0, fkeys.Length - 1);
-                        fkeys += ")\nREFERENCES " + ext.Name + "(" + fields.Substring(0, fields.Length - 1) + ")\nON UPDATE CASCADE ON DELETE CASCADE\n";
-                        pkeys = pkeys.Substring(0, pkeys.Length - 1) + "),";
-                        externalTable = externalTable + pkeys + fkeys + ");";
-                        ret.Add(externalTable);
-                    }
-                    else
-                    {
-                        tmp += "\tFOREIGN KEY(";
-                        foreach (InternalFieldMap ifm in ClassMapper.GetTableMap(type).PrimaryKeys)
-                        {
-                            tmp += ifm.FieldName + ",";
-                        }
-                        tmp = tmp.Substring(0, tmp.Length - 1);
-                        tmp += ")\n\t\tREFERENCES " + ClassMapper.GetTableMap(type).Name + "(";
-                        foreach (InternalFieldMap ifm in ClassMapper.GetTableMap(type).PrimaryKeys)
-                        {
-                            tmp += ifm.FieldName + ",";
-                        }
-                        tmp = tmp.Substring(0, tmp.Length - 1);
-                        tmp += ")\n\t\tON UPDATE " + t.GetFieldInfoForForiegnTable(type).OnUpdate.ToString() + "\n";
-                        tmp += "\t\tON DELETE " + t.GetFieldInfoForForiegnTable(type).OnDelete.ToString() + ",\n";
-                    }
-                }
-            }
-            tmp = tmp.Substring(0, tmp.Length - 2) + "\n";
-            tmp += ");\n\n";
-            ret.Insert(0, tmp);
             return ret;
         }
     }

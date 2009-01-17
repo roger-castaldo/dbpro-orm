@@ -3,16 +3,16 @@ using System;
 namespace Org.Reddragonit.Dbpro.Structure.Attributes
 {
 	/// <summary>
-	/// Summary description for IForiegnField.
+	/// Summary description for IForeignField.
 	/// </summary>
-	public interface IForiegnField : INullable
+	public interface IForeignField : INullable
 	{
-		ForiegnField.UpdateDeleteAction OnUpdate
+		ForeignField.UpdateDeleteAction OnUpdate
 		{
 			get;
 		}
 
-		ForiegnField.UpdateDeleteAction OnDelete
+		ForeignField.UpdateDeleteAction OnDelete
 		{
 			get;
 		}

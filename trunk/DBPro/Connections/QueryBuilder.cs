@@ -13,6 +13,10 @@ using System.Data;
 using Org.Reddragonit.Dbpro.Structure.Mapping;
 using Org.Reddragonit.Dbpro.Structure;
 using FieldNamePair = Org.Reddragonit.Dbpro.Structure.Mapping.TableMap.FieldNamePair;
+using ExtractedTableMap = Org.Reddragonit.Dbpro.Connections.ExtractedTableMap;
+using ExtractedFieldMap = Org.Reddragonit.Dbpro.Connections.ExtractedFieldMap;
+using VersionTypes = Org.Reddragonit.Dbpro.Structure.Attributes.VersionField.VersionTypes;
+using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.FieldType;
 
 namespace Org.Reddragonit.Dbpro.Connections
 {
@@ -21,11 +25,127 @@ namespace Org.Reddragonit.Dbpro.Connections
 	/// </summary>
 	internal class QueryBuilder
 	{
+		
 		public QueryBuilder()
 		{
 		}
 		
+		#region VersionTableNaming
+		internal string VersionTableInsertTriggerName(string table)
+		{
+			return table+"_VERSION_INSERT";
+		}
+		
+		internal string VersionTableUpdateTriggerName(string table)
+		{
+			return table+"_VERSION_UPDATE";
+		}
+		
+		internal string VersionTableName(string table)
+		{
+			return table+"_VERSION";
+		}
+		
+		internal string VersionFieldName(string table)
+		{
+			return table+"_VERSION_ID";
+		}
+		#endregion
+		
+		#region abstracts
+		#region Triggers
+		protected virtual string SelectTriggersString{
+			get{
+				throw new Exception("Method Not Implemented.");
+			}
+		}
+		
+		protected virtual string SelectGeneratorsString{
+			get{
+				throw new Exception("Method Not Implemented.");
+			}
+		}
+			
+		
+		protected virtual string CreateGeneratorString{
+			get{
+				throw new Exception("Method Not Implemented.");
+			}
+		}
+		
+		protected virtual string DropGeneratorString{
+			get{
+				throw new Exception("Method Not Implemented.");
+			}
+		}
+		
+		protected virtual string GetGeneratorValueString{
+			get{
+				throw new Exception("Method Not Implemented.");
+			}
+		}
+		
+		protected virtual string SetGeneratorValueString{
+			get{
+				throw new Exception("Method Not Implemented.");
+			}
+		}
+		#endregion
+		
+		#region TableStructure
+		protected virtual string SelectTableNamesString{
+			get{
+				throw new Exception("Method Not Implemented.");
+			}
+		}
+		
+		protected virtual string SelectTableFieldsString{
+			get{
+				throw new Exception("Method Not Implemented.");
+			}
+		}
+		
+		protected virtual string SelectForeignKeysString{
+			get{
+				throw new Exception("Method Not Implemented.");
+			}
+		}
+		
+		protected virtual string SelectCurrentAutoGenIdValueNumberString{
+			get{
+				throw new Exception("Method Not Implemented.");
+			}
+		}
+		
+		protected virtual string SetCurrentAutoGenIdValueNumberString{
+			get{
+				throw new Exception("Method Not Implemented.");
+			}
+		}
+		
+		protected virtual string DropNotNullString{
+			get{
+				throw new Exception("Method Not Implemented.");
+			}
+		}
+		
+		protected virtual string DropPrimaryKeyString{
+			get{
+				throw new Exception("Method Not Implemented.");
+			}
+		}
+		
+		protected virtual string DropForeignKeyString{
+			get{
+				throw new Exception("Method Not Implemented.");
+			}
+		}
+		#endregion
+		#endregion
+		
 		#region virtual
+		
+		#region Selecting
 		protected virtual string SelectWithConditions
 		{
 			get{return "SELECT {0} FROM {1} WHERE {2}";}
@@ -50,12 +170,16 @@ namespace Org.Reddragonit.Dbpro.Connections
 		{
 			get{return " ORDER BY {0}";}
 		}
+		#endregion
 		
+		#region Insert
 		protected virtual string InsertString
 		{
 			get{return "INSERT INTO {0}({1}) VALUES ({2})";}
 		}
+		#endregion
 		
+		#region Delete 
 		protected virtual string DeleteWithConditions
 		{
 			get{return "DELETE FROM {0} WHERE {1}";}
@@ -65,7 +189,9 @@ namespace Org.Reddragonit.Dbpro.Connections
 		{
 			get{return "DELETE FROM {0}";}
 		}
+		#endregion
 		
+		#region Update
 		protected virtual string UpdateWithConditions
 		{
 			get{return "UPDATE {0} SET {1} WHERE {2}";}
@@ -75,7 +201,9 @@ namespace Org.Reddragonit.Dbpro.Connections
 		{
 			get{return "UPDATE {0} SET {1}";}
 		}
+		#endregion
 		
+		#region AlterFields
 		protected virtual string AlterFieldTypeString
 		{
 			get{return "ALTER TABLE {0} ALTER COLUMN {1} TYPE {2}";}
@@ -91,9 +219,9 @@ namespace Org.Reddragonit.Dbpro.Connections
 			get{return "ALTER TABLE {0} ADD CONSTRAINT nn_{1} {1} NOT NULL";}
 		}
 		
-		protected virtual string CreateForiegnKeyString
+		protected virtual string CreateForeignKeyString
 		{
-			get{return "ALTER TABLE {0} ADD FOREIGN KEY ({1}) REFERENCES {2}({3}) ON UPDATE {4} ON DELETE {5}";}
+			get{return "ALTER TABLE {0} ADD Foreign KEY ({1}) REFERENCES {2}({3}) ON UPDATE {4} ON DELETE {5}";}
 		}
 		
 		protected virtual string CreateColumnString
@@ -107,12 +235,102 @@ namespace Org.Reddragonit.Dbpro.Connections
 		}
 		#endregion
 		
+		#region Tables
+		protected virtual string DropTableString
+		{
+			get{return "DROP TABLE {0}";}
+		}
+		
+		protected virtual string DropTriggerString
+		{
+			get{return "DROP TRIGGER {0}";}
+		}
+		
+		protected virtual string CreateTableString{
+			get{return "CREATE TABLE {0} ( {1} )";}
+		}
+		
+		protected virtual string CreateTriggerString{
+			get{return "CREATE TRIGGER {0} {1} {2}";}
+		}
+		#endregion
+		
+		#endregion
+		
+		#region Metadata
+		internal string SelectTableNames()
+		{
+			return SelectTableNamesString;
+		}
+		
+		internal string SelectTableFields(string tableName)
+		{
+			return String.Format(SelectTableFieldsString,tableName);
+		}
+		
+		internal string SelectForeignKeys(string tableName)
+		{
+			return String.Format(SelectForeignKeysString,tableName);
+		}
+		
+		internal string SelectCurrentAutoGenIdNumberValue(string fieldName)
+		{
+			return String.Format(SelectCurrentAutoGenIdValueNumberString,fieldName);
+		}
+		
+		internal string SetCurrentAutoGenIdNumberValue(string fieldName,long IdValue)
+		{
+			return String.Format(SetCurrentAutoGenIdValueNumberString,fieldName,IdValue.ToString());
+		}
+		#endregion
+		
 		#region TableAlterations
 		internal string DropColumn(string table, string field)
 		{
 			return string.Format(DropColumnString,table,field);
 		}
 		
+		internal string DropTable(string table)
+		{
+			return string.Format(DropTableString,table);
+		}
+		
+		internal string DropTrigger(string trigger)
+		{
+			return string.Format(DropTriggerString,trigger);
+		}
+		
+		internal string CreateTrigger(string name,string conditions,string code)
+		{
+			return string.Format(CreateTriggerString,name,conditions,code);
+		}
+		
+		internal string SelectTriggers(){
+			return SelectTriggersString;
+		}
+		
+		internal string SelectGenerators(){
+			return SelectGeneratorsString;
+		}
+		
+		internal string CreateGenerator(string name){
+			return string.Format(CreateGeneratorString,name);
+		}
+		
+		internal string DropGenerator(string name){
+			return string.Format(DropGeneratorString,name);
+		}
+		
+		internal string GetGeneratorValue(string name){
+			return string.Format(GetGeneratorValueString,name);
+		}
+		
+		internal string SetGeneratorValue(string name,long value){
+			return string.Format(SetGeneratorValueString,name,value.ToString());
+		}
+		#endregion
+		
+		#region TableAltering
 		internal string CreateColumn(string table, string field, string type,long size)
 		{
 			if (type.ToUpper().Contains("CHAR"))
@@ -121,14 +339,19 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}else{
 				return string.Format(CreateColumnString,table,field,type);
 			}
-		}			
-			
+		}
+		
 		internal string AlterFieldType(string table, string field, string type,long size)
 		{
 			if (type.Contains("CHAR"))
 				return string.Format(AlterFieldTypeString,table,field,type+"("+size.ToString()+")");
 			else
 				return string.Format(AlterFieldTypeString,table,field,type);
+		}
+		
+		internal virtual string DropPrimaryKey(string table,string field,Connection conn)
+		{
+			return String.Format(DropPrimaryKeyString,table,field);
 		}
 		
 		internal string CreatePrimaryKey(string table, List<string> fields)
@@ -146,7 +369,17 @@ namespace Org.Reddragonit.Dbpro.Connections
 			return string.Format(CreateNullConstraintString,table,field);
 		}
 		
-		internal string CreateForiegnKey(string table, List<string> fields, string foriegnTable, List<string> foriegnFields,string UpdateAction,string DeleteAction)
+		internal virtual string DropNullConstraint(string table,string field, Connection conn)
+		{
+			return String.Format(DropNotNullString,table,field);
+		}
+		
+		internal virtual string DropForeignKey(string table,string field,Connection conn)
+		{
+			return string.Format(DropForeignKeyString,table,field);
+		}
+		
+		internal string CreateForeignKey(string table, List<string> fields, string ForeignTable, List<string> ForeignFields,string UpdateAction,string DeleteAction)
 		{
 			string field="";
 			foreach (string str in fields)
@@ -154,13 +387,27 @@ namespace Org.Reddragonit.Dbpro.Connections
 				field+=str+",";
 			}
 			field=field.Substring(0,field.Length-1);
-			string foriegns = "";
-			foreach (string str in foriegnFields)
+			string Foreigns = "";
+			foreach (string str in ForeignFields)
 			{
-				foriegns+=str+",";
+				Foreigns+=str+",";
 			}
-			foriegns=foriegns.Substring(0,foriegns.Length-1);
-			return string.Format(CreateForiegnKeyString,table,field,foriegnTable,foriegns,UpdateAction,DeleteAction);
+			Foreigns=Foreigns.Substring(0,Foreigns.Length-1);
+			return string.Format(CreateForeignKeyString,table,field,ForeignTable,Foreigns,UpdateAction,DeleteAction);
+		}
+		
+		internal string CreateTable(ExtractedTableMap table)
+		{
+			string fields = "";
+			foreach (ExtractedFieldMap efm in table.Fields)
+			{
+				if (efm.Type.ToUpper().Contains("CHAR"))
+					fields+="\t"+efm.FieldName+" "+efm.Type+"("+efm.Size.ToString()+"),\n";
+				else
+					fields+="\t"+efm.FieldName+" "+efm.Type+",\n";
+			}
+			fields = fields.Substring(0,fields.Length-2);
+			return String.Format(CreateTableString,table.TableName,fields);
 		}
 		#endregion
 		
@@ -239,7 +486,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 				}
 				if (!select.Contains(" WHERE ")&&(conditions.Length>0))
 					select+=" WHERE "+conditions.Substring(4);
-				else 
+				else
 					select+=conditions;
 				return string.Format(InsertString,map.Name,values,"@"+values.Replace(",",",@"));
 			}catch (Exception e)
@@ -453,7 +700,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 						if (!((ExternalFieldMap)map[fnp]).IsArray)
 						{
 							TableMap relatedTableMap = ClassMapper.GetTableMap(type.GetProperty(fnp.ClassFieldName).PropertyType);
-							if (map.GetFieldInfoForForiegnTable(type.GetProperty(fnp.ClassFieldName).PropertyType).Nullable)
+							if (map.GetFieldInfoForForeignTable(type.GetProperty(fnp.ClassFieldName).PropertyType).Nullable)
 							{
 								joins += " LEFT JOIN " + relatedTableMap.Name + " ON ";
 								foreach (FieldMap fm in relatedTableMap.PrimaryKeys)
