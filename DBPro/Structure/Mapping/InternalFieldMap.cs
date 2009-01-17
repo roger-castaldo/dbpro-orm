@@ -7,6 +7,7 @@
  * To change this template use Tools | Options | Coding | Edit Standard Headers.
  */
 
+using Org.Reddragonit.Dbpro.Connections;
 using System;
 using System.Reflection;
 using Org.Reddragonit.Dbpro.Structure.Attributes;
@@ -20,7 +21,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 	{
 		private int _fieldLength=0;
 		private string _fieldName=null;
-		private Field.FieldType _fieldType;
+		private FieldType _fieldType;
 				
 		public InternalFieldMap(MemberInfo info) : base(info)
 		{
@@ -55,16 +56,23 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			return base.Equals(obj)&&(ifm.FieldName==FieldName)&&(ifm.FieldLength==FieldLength)&&(ifm.FieldType==FieldType);
 		}
 		
-		public InternalFieldMap(int fieldLength, string fieldName, Field.FieldType fieldType,bool primaryKey, bool autogen, bool nullable,bool versionable) : base(primaryKey,autogen,nullable,versionable)
+		public InternalFieldMap(int fieldLength, string fieldName, FieldType fieldType,bool primaryKey, bool autogen, bool nullable,bool versionable) : base(primaryKey,autogen,nullable,versionable)
 		{
 			this._fieldLength = fieldLength;
 			this._fieldName = fieldName;
 			this._fieldType = fieldType;
 		}
 		
+		public void CorrectName(ConnectionPool pool)
+		{
+			_fieldName=Utility.CorrectName(pool,_fieldName);
+		}
+		
 		
 		public int FieldLength{
 			get{
+				if (_fieldLength==0)
+					ExtractFieldLengthForType();
 				return _fieldLength;
 			}
 		}
@@ -75,9 +83,34 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			}
 		}
 		
-		public Field.FieldType FieldType{
+		public FieldType FieldType{
 			get{
 				return _fieldType;
+			}
+		}
+		
+		private void ExtractFieldLengthForType()
+		{
+			switch(FieldType)
+			{
+				case FieldType.BOOLEAN:
+					_fieldLength=1;
+					break;
+				case FieldType.DATE:
+				case FieldType.DATETIME:
+				case FieldType.TIME:
+				case FieldType.DOUBLE:
+				case FieldType.FLOAT:
+				case FieldType.LONG:
+				case FieldType.MONEY:
+					_fieldLength=8;
+					break;
+				case FieldType.INTEGER:
+					_fieldLength=4;
+					break;
+				case FieldType.SHORT:
+					_fieldLength=2;
+					break;
 			}
 		}
 	}

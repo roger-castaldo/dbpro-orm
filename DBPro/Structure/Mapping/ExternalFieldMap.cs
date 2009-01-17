@@ -9,7 +9,7 @@
 
 using System;
 using System.Reflection;
-using UpdateDeleteAction =  Org.Reddragonit.Dbpro.Structure.Attributes.ForiegnField.UpdateDeleteAction;
+using UpdateDeleteAction =  Org.Reddragonit.Dbpro.Structure.Attributes.ForeignField.UpdateDeleteAction;
 using Org.Reddragonit.Dbpro.Structure.Attributes;
 
 namespace Org.Reddragonit.Dbpro.Structure.Mapping
@@ -23,17 +23,39 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 		private System.Type _type;
 		private UpdateDeleteAction _onUpdate;
 		private UpdateDeleteAction _onDelete;
-        private bool _isArray = false; 
+		private bool _isArray = false;
+		private bool _selfRelated=false;
+		private string _addonName=null;
 		
-		public ExternalFieldMap(System.Type type,MemberInfo info) : base(info)
+		public ExternalFieldMap(System.Type type,bool isSelfRelated,MemberInfo info) : base(info)
 		{
 			_type=type;
 			_isArray = info.ToString().Contains("[]");
+			_selfRelated=isSelfRelated;
+			_addonName="";
+			if (info.Name.ToUpper() != info.Name)
+			{
+				foreach (char c in info.Name.ToCharArray())
+				{
+					if (c.ToString().ToUpper() == c.ToString())
+					{
+						_addonName += "_" + c.ToString().ToUpper();
+					}
+					else
+					{
+						_addonName += c.ToString().ToUpper();
+					}
+				}
+			}else{
+				_addonName=info.Name;
+			}
+			if (_addonName.StartsWith("_"))
+				_addonName=_addonName.Substring(1);
 			foreach (object obj in info.GetCustomAttributes(true))
 			{
-				if (obj is IForiegnField)
+				if (obj is IForeignField)
 				{
-					IForiegnField f = (IForiegnField)obj;
+					IForeignField f = (IForeignField)obj;
 					_onUpdate=f.OnUpdate;
 					_onDelete=f.OnDelete;
 				}
@@ -64,12 +86,20 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			}
 		}
 
-        public bool IsArray{
-            get
-            {
-                return _isArray;
-            }
-        }
+		public bool IsArray{
+			get
+			{
+				return _isArray;
+			}
+		}
+		
+		public bool IsSelfRelated{
+			get{return _selfRelated;}
+		}
+		
+		public string AddOnName{
+			get{return _addonName;}
+		}
 		
 		public System.Type Type{
 			get{

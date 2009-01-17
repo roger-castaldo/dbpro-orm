@@ -16,11 +16,10 @@ namespace Org.Reddragonit.Dbpro.Structure
 
 		public Table()
 		{
-			ClassMapper.GetTableMap(this.GetType());
+            TableMap map = ClassMapper.GetTableMap(this.GetType());
 			_nullFields = new List<String>();
 			_initialPrimaryValues = new Dictionary<string, object>();
 			_initialValues = new Dictionary<string, object>();
-			TableMap map = ClassMapper.GetTableMap(this.GetType());
 			foreach (FieldNamePair fnp in map.FieldNamePairs)
 			{
 				if (map[fnp].PrimaryKey)

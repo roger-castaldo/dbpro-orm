@@ -4,10 +4,10 @@ using System.Reflection;
 namespace Org.Reddragonit.Dbpro.Structure.Attributes
 {
 	/// <summary>
-	/// Summary description for ForiegnField.
+	/// Summary description for ForeignField.
 	/// </summary>
 	[AttributeUsage(AttributeTargets.Property)]
-	public class ForiegnField : Attribute,IForiegnField
+	public class ForeignField : Attribute,IForeignField
 	{
 		public enum UpdateDeleteAction
 		{
@@ -21,17 +21,17 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 		private UpdateDeleteAction _onDelete=UpdateDeleteAction.NO_ACTION;
 		private bool _nullable;
 
-		public ForiegnField() : this(true,UpdateDeleteAction.NO_ACTION,UpdateDeleteAction.NO_ACTION)
+		public ForeignField() : this(true,UpdateDeleteAction.NO_ACTION,UpdateDeleteAction.NO_ACTION)
 		{
 		}
 		
-		public ForiegnField(bool NullAble) : this(NullAble,UpdateDeleteAction.NO_ACTION,UpdateDeleteAction.NO_ACTION)
+		public ForeignField(bool NullAble) : this(NullAble,UpdateDeleteAction.NO_ACTION,UpdateDeleteAction.NO_ACTION)
 		{}
 
-		public ForiegnField(UpdateDeleteAction OnUpdate,UpdateDeleteAction OnDelete) : this(true,OnUpdate,OnDelete)
+		public ForeignField(UpdateDeleteAction OnUpdate,UpdateDeleteAction OnDelete) : this(true,OnUpdate,OnDelete)
 		{}
 
-		public ForiegnField(bool NullAble,UpdateDeleteAction OnUpdate,UpdateDeleteAction OnDelete)
+		public ForeignField(bool NullAble,UpdateDeleteAction OnUpdate,UpdateDeleteAction OnDelete)
 		{
 			_onDelete=OnDelete;
 			_onUpdate=OnUpdate;

@@ -12,9 +12,9 @@ using System;
 namespace Org.Reddragonit.Dbpro.Structure.Attributes
 {
 	/// <summary>
-	/// Description of VersionForiegnField.
+	/// Description of VersionForeignField.
 	/// </summary>
-	public class VersionForiegnField : ForiegnField,IVersionField  
+	public class VersionForeignField : ForeignField,IVersionField  
 	{
 		
 		private VersionField.VersionTypes _versionType=VersionField.VersionTypes.DATESTAMP;
@@ -24,31 +24,31 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 			get{return _versionType;}
 		}
 		
-		public VersionForiegnField() : this(true,UpdateDeleteAction.NO_ACTION,UpdateDeleteAction.NO_ACTION)
+		public VersionForeignField() : this(true,UpdateDeleteAction.NO_ACTION,UpdateDeleteAction.NO_ACTION)
 		{
 		}
 		
-		public VersionForiegnField(VersionField.VersionTypes VersionType) : this(true,UpdateDeleteAction.NO_ACTION,UpdateDeleteAction.NO_ACTION,VersionType)
+		public VersionForeignField(VersionField.VersionTypes VersionType) : this(true,UpdateDeleteAction.NO_ACTION,UpdateDeleteAction.NO_ACTION,VersionType)
 		{
 		}
 		
-		public VersionForiegnField(bool NullAble) : this(NullAble,UpdateDeleteAction.NO_ACTION,UpdateDeleteAction.NO_ACTION)
+		public VersionForeignField(bool NullAble) : this(NullAble,UpdateDeleteAction.NO_ACTION,UpdateDeleteAction.NO_ACTION)
 		{}
 
-		public VersionForiegnField(bool NullAble,VersionField.VersionTypes VersionType) : this(NullAble,UpdateDeleteAction.NO_ACTION,UpdateDeleteAction.NO_ACTION,VersionType)
+		public VersionForeignField(bool NullAble,VersionField.VersionTypes VersionType) : this(NullAble,UpdateDeleteAction.NO_ACTION,UpdateDeleteAction.NO_ACTION,VersionType)
 		{}
 		
-		public VersionForiegnField(UpdateDeleteAction OnUpdate,UpdateDeleteAction OnDelete) : this(true,OnUpdate,OnDelete)
+		public VersionForeignField(UpdateDeleteAction OnUpdate,UpdateDeleteAction OnDelete) : this(true,OnUpdate,OnDelete)
 		{}
 		
-		public VersionForiegnField(UpdateDeleteAction OnUpdate,UpdateDeleteAction OnDelete,VersionField.VersionTypes VersionType) : this(true,OnUpdate,OnDelete,VersionType)
+		public VersionForeignField(UpdateDeleteAction OnUpdate,UpdateDeleteAction OnDelete,VersionField.VersionTypes VersionType) : this(true,OnUpdate,OnDelete,VersionType)
 		{}
 
-		public VersionForiegnField(bool NullAble,UpdateDeleteAction OnUpdate,UpdateDeleteAction OnDelete) : this(NullAble,OnUpdate,OnDelete,VersionField.VersionTypes.DATESTAMP)
+		public VersionForeignField(bool NullAble,UpdateDeleteAction OnUpdate,UpdateDeleteAction OnDelete) : this(NullAble,OnUpdate,OnDelete,VersionField.VersionTypes.DATESTAMP)
 		{
 		}
 		
-		public VersionForiegnField(bool NullAble,UpdateDeleteAction OnUpdate,UpdateDeleteAction OnDelete,VersionField.VersionTypes VersionType) : base(NullAble,OnUpdate,OnDelete)
+		public VersionForeignField(bool NullAble,UpdateDeleteAction OnUpdate,UpdateDeleteAction OnDelete,VersionField.VersionTypes VersionType) : base(NullAble,OnUpdate,OnDelete)
 		{
 			_versionType = VersionType;
 		}

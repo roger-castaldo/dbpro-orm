@@ -1,3 +1,4 @@
+using Org.Reddragonit.Dbpro.Structure.Mapping;
 using System;
 using System.Reflection;
 
@@ -38,34 +39,28 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 			{
 				if (_tableName == null)
 				{
-					Assembly asm = Assembly.GetEntryAssembly();
-					foreach (Type t in asm.GetTypes())
+					Type t = ClassMapper.ClassedTypes[ClassMapper.ClassedTypes.Count-1];
+					foreach (object obj in t.GetCustomAttributes(this.GetType(), true))
 					{
-						if (t.IsSubclassOf(typeof(Org.Reddragonit.Dbpro.Structure.Table)))
+						if (obj.Equals(this))
 						{
-							foreach (object obj in t.GetCustomAttributes(this.GetType(), true))
+							_tableName = "";
+							foreach (char c in t.Name.ToCharArray())
 							{
-								if (obj.Equals(this))
+								if (c.ToString().ToUpper() == c.ToString())
 								{
-									_tableName = "";
-									foreach (char c in t.Name.ToCharArray())
-									{
-										if (c.ToString().ToUpper() == c.ToString())
-										{
-											_tableName += "_" + c.ToString().ToLower();
-										}
-										else
-										{
-											_tableName += c;
-										}
-									}
-									if (_tableName[0] == '_')
-									{
-										_tableName = _tableName[1].ToString().ToUpper() + _tableName.Substring(2);
-									}
-									_tableName = _tableName.ToUpper();
+									_tableName += "_" + c.ToString().ToLower();
+								}
+								else
+								{
+									_tableName += c;
 								}
 							}
+							if (_tableName[0] == '_')
+							{
+								_tableName = _tableName[1].ToString().ToUpper() + _tableName.Substring(2);
+							}
+							_tableName = _tableName.ToUpper();
 						}
 					}
 				}

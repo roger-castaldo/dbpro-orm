@@ -7,6 +7,7 @@
  * To change this template use Tools | Options | Coding | Edit Standard Headers.
  */
 
+using Org.Reddragonit.Dbpro.Connections;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -29,7 +30,9 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 		}
 		
 		private string _tableName;
+		private string _connectionName;
 		private Dictionary<string,FieldMap> _fields;
+		private ConnectionPool _pool;
 		
 		private VersionField.VersionTypes? _versionType=null;
 		public VersionField.VersionTypes? VersionType
@@ -50,22 +53,24 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 		
 		public TableMap(string TableName,System.Type type,Assembly asm,MemberInfo[] info,ref Dictionary<System.Type,TableMap> map)
 		{
-			if (TableName ==null)
-			{
-				try{
+			try{
 				foreach (object obj in type.GetCustomAttributes(true))
 				{
 					if (obj is Org.Reddragonit.Dbpro.Structure.Attributes.Table)
 					{
 						Org.Reddragonit.Dbpro.Structure.Attributes.Table t = (Org.Reddragonit.Dbpro.Structure.Attributes.Table)obj;
-						TableName=t.TableName;
+						if (TableName ==null)
+						{
+							TableName=t.TableName;
+						}
+						_connectionName=t.ConnectionName;
+						break;
 					}
 				}
-				}catch (Exception ex)
-				{
-					System.Diagnostics.Debug.WriteLine(ex.Message);
-				}
-			}
+			}catch (Exception ex)
+			{
+				System.Diagnostics.Debug.WriteLine(ex.Message);
+			}			
 			_tableName=TableName;
 			_fields = new Dictionary<string,FieldMap>();
 			foreach (MemberInfo mi in info)
@@ -74,24 +79,30 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 				{
 					if (obj is IField)
 					{
+						System.Diagnostics.Debug.WriteLine("Adding Field ("+mi.Name+")");
 						_fields.Add(mi.Name,new InternalFieldMap(mi));
-					}else if  (obj is IForiegnField)
+					}else if  (obj is IForeignField)
 					{
+						System.Diagnostics.Debug.WriteLine("Adding Foreign Field ("+mi.Name+")");
 						System.Type ty = asm.GetType(mi.ToString().Substring(0,mi.ToString().IndexOf(" ")).Replace("[]",""),false);
 						TableMap t;
-						if (!map.ContainsKey(ty)){
-							t= new TableMap(ty,asm,ty.GetMembers(BindingFlags.Public |      //Get public members
-							                                     BindingFlags.NonPublic |   //Get private/protected/internal members
-							                                     BindingFlags.Static |      //Get static members
-							                                     BindingFlags.Instance |    //Get instance members
-							                                     BindingFlags.DeclaredOnly ),ref map);
-							System.Diagnostics.Debug.WriteLine("Adding Table Map ("+ty.FullName+")");
-							map.Add(ty,t);
-						}else
-						{
-							t=map[ty];
+						if (ty.Equals(type))
+							t=this;
+						else{
+							if ((!map.ContainsKey(ty))){
+								if (!ClassMapper.ClassedTypes.Contains(ty))
+									ClassMapper.ClassedTypes.Add(ty);
+								t= new TableMap(ty,asm,ty.GetMembers(BindingFlags.Public |      //Get public members
+								                                     BindingFlags.NonPublic |   //Get private/protected/internal members
+								                                     BindingFlags.Static |      //Get static members
+								                                     BindingFlags.Instance |    //Get instance members
+								                                     BindingFlags.DeclaredOnly ),ref map);
+								System.Diagnostics.Debug.WriteLine("Adding Sub Table Map ("+ty.FullName+")");
+								map.Add(ty,t);
+							}else
+								t=map[ty];
 						}
-						_fields.Add(mi.Name,new ExternalFieldMap(ty,mi));
+						_fields.Add(mi.Name,new ExternalFieldMap(ty,ty.Equals(type),mi));
 					}
 					if (obj is IVersionField)
 					{
@@ -107,11 +118,13 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 				_parentType=type.BaseType;
 				TableMap t;
 				if (!map.ContainsKey(type.BaseType)){
+					if (!ClassMapper.ClassedTypes.Contains(type.BaseType))
+						ClassMapper.ClassedTypes.Add(type.BaseType);
 					t= new TableMap(type.BaseType,asm,type.BaseType.GetMembers(BindingFlags.Public |      //Get public members
-					                                     BindingFlags.NonPublic |   //Get private/protected/internal members
-					                                     BindingFlags.Static |      //Get static members
-					                                     BindingFlags.Instance |    //Get instance members
-					                                     BindingFlags.DeclaredOnly ),ref map);
+					                                                           BindingFlags.NonPublic |   //Get private/protected/internal members
+					                                                           BindingFlags.Static |      //Get static members
+					                                                           BindingFlags.Instance |    //Get instance members
+					                                                           BindingFlags.DeclaredOnly ),ref map);
 					System.Diagnostics.Debug.WriteLine("Adding Table Map ("+type.BaseType.FullName+")");
 					map.Add(type.BaseType,t);
 				}else
@@ -124,6 +137,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 				}
 			}
 			int autoGenCount=0;
+			System.Diagnostics.Debug.WriteLine("Checking Autogen Conditions");
 			foreach (InternalFieldMap  pkf in PrimaryKeys)
 			{
 				if (pkf.AutoGen)
@@ -131,10 +145,17 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 					autoGenCount++;
 				}
 			}
+			System.Diagnostics.Debug.WriteLine("Located "+autoGenCount.ToString()+" Autogen Fields");
 			if (autoGenCount > 1)
 			{
 				throw new Exception("Unable to produce database map due to invalid content.  You cannot have more than one autogen primary key field in a table. Class=" + type.Name);
 			}
+		}
+		
+		public void CorrectNames(ConnectionPool pool)
+		{
+			_pool=pool;
+			_tableName=pool.CorrectName(_tableName); 
 		}
 		
 		public List<InternalFieldMap> PrimaryKeys{
@@ -207,7 +228,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			}
 		}
 		
-		public ExternalFieldMap GetFieldInfoForForiegnTable(System.Type table)
+		public ExternalFieldMap GetFieldInfoForForeignTable(System.Type table)
 		{
 			foreach (FieldMap f in _fields.Values )
 			{
@@ -219,7 +240,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			return null;
 		}
 		
-		public List<System.Type> ForiegnTables{
+		public List<System.Type> ForeignTables{
 			get{
 				List<System.Type> ret = new List<System.Type>();
 				foreach (FieldMap f in _fields.Values)
@@ -234,7 +255,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			}
 		}
 
-		public List<System.Type> ForiegnTablesCreate
+		public List<System.Type> ForeignTablesCreate
 		{
 			get
 			{
@@ -357,6 +378,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 		public List<InternalFieldMap> Fields{
 			get{
 				List<InternalFieldMap> ret = new List<InternalFieldMap>();
+				System.Diagnostics.Debug.WriteLine("Field Count ("+Name+"): "+_fields.Count.ToString());
 				foreach (FieldMap f in _fields.Values)
 				{
 					if (f is ExternalFieldMap)
@@ -364,9 +386,21 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 						if (!((ExternalFieldMap)f).IsArray)
 						{
 							ExternalFieldMap efm = (ExternalFieldMap)f;
-							foreach (InternalFieldMap fm in ClassMapper.GetTableMap(((ExternalFieldMap)f).Type).PrimaryKeys)
-							{
-								ret.Add(new InternalFieldMap(fm.FieldLength, fm.FieldName, fm.FieldType, efm.PrimaryKey, false, efm.Nullable,efm.Versionable));
+							if (efm.IsSelfRelated){
+								foreach (FieldMap fm in _fields.Values)
+								{
+									if (f.PrimaryKey&&(f is InternalFieldMap))
+									{
+										InternalFieldMap ifm = (InternalFieldMap)f;
+										ret.Add(new InternalFieldMap(ifm.FieldLength,Utility.CorrectName(_pool,efm.AddOnName+"_"+ifm.FieldName),ifm.FieldType,efm.PrimaryKey,false,efm.Nullable,efm.Versionable));
+									}
+								}
+							}else{
+								TableMap tm = ClassMapper.GetTableMap(((ExternalFieldMap)f).Type);
+								foreach (InternalFieldMap fm in tm.PrimaryKeys)
+								{
+									ret.Add(new InternalFieldMap(fm.FieldLength, Utility.CorrectName(_pool,efm.AddOnName+"_"+fm.FieldName), fm.FieldType, efm.PrimaryKey, false, efm.Nullable,efm.Versionable));
+								}
 							}
 						}
 					}else{
@@ -380,6 +414,12 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 		public string Name{
 			get{
 				return _tableName;
+			}
+		}
+		
+		public string ConnectionName{
+			get{
+				return _connectionName;
 			}
 		}
 	}

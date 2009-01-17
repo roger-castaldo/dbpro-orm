@@ -4,6 +4,7 @@ using System.Text;
 using System.IO;
 using System.Xml;
 using System.Reflection;
+using System.Threading;
 
 namespace Org.Reddragonit.Dbpro.Connections
 {
@@ -14,13 +15,16 @@ namespace Org.Reddragonit.Dbpro.Connections
 		private readonly static string CONNECTION_CONFIG_FILENAME="DbPro.xml";
 
 		private static Dictionary<string, ConnectionPool> _connectionPools = new Dictionary<string, ConnectionPool>();
+		private static Mutex mut = new Mutex(false);
 		
 		static ConnectionPoolManager()
 		{
+			mut.WaitOne();
 			string basePath=AppDomain.CurrentDomain.SetupInformation.ConfigurationFile.Substring(0,AppDomain.CurrentDomain.SetupInformation.ConfigurationFile.LastIndexOf("\\"));
 			FileInfo fi = RecurLocateConfigFile(new DirectoryInfo(basePath));
 			if (fi!=null)
 			{
+				System.Diagnostics.Debug.WriteLine("Loaded config file: "+fi.FullName);
 				XmlDocument doc = new XmlDocument();
 				doc.Load(fi.OpenRead());
 				foreach (XmlNode node in doc.DocumentElement.ChildNodes)
@@ -31,6 +35,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 					}
 				}
 			}
+			mut.ReleaseMutex();
 		}
 		
 		private static void ExtractConnectionFromXml(XmlNode connectionNode)
@@ -114,15 +119,19 @@ namespace Org.Reddragonit.Dbpro.Connections
 
 		public static ConnectionPool GetConnection(string name)
 		{
+			ConnectionPool ret = null;
+			mut.WaitOne();
 			if (name==null)
 			{
 				name=DEFAULT_CONNECTION_NAME;
 			}
 			if (_connectionPools.ContainsKey(name))
 			{
-				return _connectionPools[name];
-			}
-			return null;
+				ret =_connectionPools[name];
+			}else 
+				ret= _connectionPools[DEFAULT_CONNECTION_NAME];
+			mut.ReleaseMutex();
+			return ret;
 		}
 
 		internal static void AddConnection(string name, ConnectionPool pool)

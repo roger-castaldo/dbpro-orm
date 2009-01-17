@@ -7,9 +7,10 @@
  * To change this template use Tools | Options | Coding | Edit Standard Headers.
  */
 
+using Org.Reddragonit.Dbpro.Connections;
 using System;
-using System.Reflection;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Threading;
 
 namespace Org.Reddragonit.Dbpro.Structure.Mapping
@@ -17,12 +18,15 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 
 	internal static class ClassMapper
 	{
-		private static Dictionary<System.Type,TableMap> map;
+		private static Dictionary<System.Type,TableMap> map=null;
 		private static Mutex mut = new Mutex(false);
+		private static List<Type> types;
 		
 		public static TableMap GetTableMap(System.Type type)
 		{
 			mut.WaitOne();
+			if ((map==null)||(map.Count==0))
+				InitMaps();
 			TableMap ret = null;
 			if ((type!=null)&&map.ContainsKey(type))
 			{
@@ -35,6 +39,8 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 		public static TableMap GetTableMapByTableName(string TableName)
 		{
 			mut.WaitOne();
+			if ((map==null)||(map.Count==0))
+				InitMaps();
 			TableMap ret = null;
 			foreach (System.Type type in TableTypes)
 			{
@@ -47,6 +53,37 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			mut.ReleaseMutex();
 			return ret;
 		}
+		
+		public static List<System.Type> TableTypesForConnection(string name)
+		{
+			List<System.Type> ret = new List<Type>();
+			mut.WaitOne();
+			if ((map==null)||(map.Count==0))
+				InitMaps();
+			foreach (Type t in map.Keys)
+			{
+				if (map[t].ConnectionName==name)
+					ret.Add(t);
+			}
+			mut.ReleaseMutex();
+			return ret;
+		}
+		
+		public static void CorrectNamesForConnection(ConnectionPool pool)
+		{
+			List<Type> types = TableTypesForConnection(pool.ConnectionName);
+			mut.WaitOne();
+			if ((map==null)||(map.Count==0))
+				InitMaps();
+			foreach (Type t in types)
+			{
+				TableMap tm = map[t];
+				tm.CorrectNames(pool);
+				map.Remove(t);
+				map.Add(t,tm);
+			}
+			mut.ReleaseMutex();
+		}
 
 		public static System.Type[] TableTypes
 		{
@@ -54,6 +91,8 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			{
 				System.Diagnostics.Debug.WriteLine("MAPS: "+map.Count.ToString());
 				mut.WaitOne();
+				if ((map==null)||(map.Count==0))
+					InitMaps();
 				System.Type[] ret = new Type[map.Count];
 				map.Keys.CopyTo(ret, 0);
 				mut.ReleaseMutex();
@@ -61,9 +100,14 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			}
 		}
 		
-		static ClassMapper()
+		internal static List<Type> ClassedTypes
 		{
-			mut.WaitOne();
+			get{return types;}
+		}
+		
+		private static void InitMaps()
+		{
+			types=new List<Type>();
 			try{
 				map = new Dictionary<System.Type,TableMap>();
 				foreach (Assembly asm in AppDomain.CurrentDomain.GetAssemblies())
@@ -74,6 +118,8 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 						{
 							if (!map.ContainsKey(ty))
 							{
+								if (!types.Contains(ty))
+									types.Add(ty);
 								System.Diagnostics.Debug.WriteLine("Adding Table Map ("+ty.FullName+")");
 								map.Add(ty,new TableMap(ty,asm,ty.GetMembers(BindingFlags.Public |      //Get public members
 								                                             BindingFlags.NonPublic |   //Get private/protected/internal members
@@ -87,6 +133,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 				}
 			}catch (Exception e)
 			{
+				System.Diagnostics.Debug.WriteLine("ERROR ESTABLISHING STRUCTURE!!!!");
 				System.Diagnostics.Debug.WriteLine(e.Message);
 				System.Diagnostics.Debug.WriteLine(e.Source);
 				System.Diagnostics.Debug.WriteLine(e.StackTrace);
@@ -99,6 +146,12 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 					System.Diagnostics.Debug.WriteLine("\t"+ifm.FieldName+"("+ifm.GetType().ToString()+")");
 				}
 			}
+		}
+		
+		static ClassMapper()
+		{
+			mut.WaitOne();
+			InitMaps();
 			mut.ReleaseMutex();
 		}
 	}

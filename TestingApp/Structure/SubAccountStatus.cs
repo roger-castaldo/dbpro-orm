@@ -9,7 +9,7 @@
 
 using System;
 using Org.Reddragonit.Dbpro.Structure;
-using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.Field.FieldType;
+using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.FieldType;
 
 namespace TestingApp.Structure
 {

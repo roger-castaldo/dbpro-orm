@@ -52,6 +52,7 @@
     <Compile Include="Connections\Connection.cs" />
     <Compile Include="Connections\ConnectionPool.cs" />
     <Compile Include="Connections\ConnectionPoolManager.cs" />
+    <Compile Include="Connections\Structures.cs" />
     <Compile Include="Connections\Firebird\FBConnection.cs" />
     <Compile Include="Connections\Firebird\FBConnectionPool.cs" />
     <Compile Include="Connections\Firebird\FBQueryBuilder.cs" />
@@ -77,6 +78,7 @@
     <Compile Include="Structure\Attributes\IPrimaryKeyField.cs" />
     <Compile Include="Structure\Attributes\PrimaryKeyField.cs" />
     <Compile Include="Structure\Attributes\Table.cs" />
+    <Compile Include="Utility.cs" />
     <None Include="DbPro.xml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
