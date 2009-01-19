@@ -31,6 +31,10 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 				{
 					_nullable=((INullable)obj).Nullable;
 				}
+				if (obj is ForeignField)
+				{
+					_nullable=((ForeignField)obj).Nullable;
+				}
 				if (obj is IPrimaryKeyField)
 				{
 					IPrimaryKeyField p = (IPrimaryKeyField)obj;

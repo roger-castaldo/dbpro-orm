@@ -35,7 +35,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 		{
 			_onDelete=OnDelete;
 			_onUpdate=OnUpdate;
-			_nullable=Nullable;
+			_nullable=NullAble;
 		}
 
 		public UpdateDeleteAction OnUpdate

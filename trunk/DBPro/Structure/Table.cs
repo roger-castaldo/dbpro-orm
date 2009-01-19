@@ -194,6 +194,8 @@ namespace Org.Reddragonit.Dbpro.Structure
 
 		internal bool IsFieldNull(string FieldName)
 		{
+			if (!_initialValues.ContainsKey(FieldName))
+				return true;
 			return equalObjects(_initialValues[FieldName], this.GetType().GetProperty(FieldName).GetValue(this, new object[0]));
 		}
 		
@@ -291,7 +293,8 @@ namespace Org.Reddragonit.Dbpro.Structure
 			                                                         BindingFlags.Instance |    //Get instance members
 			                                                         BindingFlags.DeclaredOnly))
 			{
-				pi.SetValue(ret,pi.GetValue(this,new object[0]),new object[0]);
+				if (!this.IsFieldNull(pi.Name))
+					pi.SetValue(ret,pi.GetValue(this,new object[0]),new object[0]);
 			}
 			return ret;
 		}

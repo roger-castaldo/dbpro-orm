@@ -80,8 +80,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 			_internalFields=InternalFields;
 			_externalTableName=ExternalTable;
 			_externalFields=ExternalFields;
-			_update=OnUpdate;
-			_delete=OnDelete;
+			_update=OnUpdate.Replace("_"," ");
+			_delete=OnDelete.Replace("_"," ");
 		}
 		
 		public ForeignKey(ExtractedTableMap table,string externalTable)
@@ -96,8 +96,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 			{
 				_internalFields.Add(frm.InternalField);
 				_externalFields.Add(frm.ExternalField);
-				_update=frm.OnUpdate;
-				_delete=frm.OnDelete;
+				_update=frm.OnUpdate.Replace("_"," ");
+				_delete=frm.OnDelete.Replace("_"," ");
 			}
 		}
 	}
@@ -162,8 +162,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 			_internalField=internalField;
 			_externalTable=externalTable;
 			_externalField=externalField;
-			_onUpdate=OnUpdate;
-			_onDelete=OnDelete;
+			_onUpdate=OnUpdate.Replace("_"," ");
+			_onDelete=OnDelete.Replace("_"," ");
 		}
 		
 		public string InternalField{
