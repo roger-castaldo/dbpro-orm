@@ -120,7 +120,8 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 					" WHEN 37 THEN 'VARCHAR' "+
 					" ELSE 'UNKNOWN' "+
 					" END) AS ColumnDataType, "+
-					"fld.rdb$field_length AS ColumnSize, "+
+					"(CASE fld.rdb$field_type WHEN 261 THEN -1 ELSE "+
+					"fld.rdb$field_length END) AS ColumnSize, "+
 					"(CASE WHEN (select count(*) from  "+
 					"rdb$relation_constraints rel, "+
 					"rdb$indices idx, "+

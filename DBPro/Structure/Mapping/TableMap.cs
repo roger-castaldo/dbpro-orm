@@ -389,9 +389,9 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 							if (efm.IsSelfRelated){
 								foreach (FieldMap fm in _fields.Values)
 								{
-									if (f.PrimaryKey&&(f is InternalFieldMap))
+									if (fm.PrimaryKey&&(fm is InternalFieldMap))
 									{
-										InternalFieldMap ifm = (InternalFieldMap)f;
+										InternalFieldMap ifm = (InternalFieldMap)fm;
 										ret.Add(new InternalFieldMap(ifm.FieldLength,Utility.CorrectName(_pool,efm.AddOnName+"_"+ifm.FieldName),ifm.FieldType,efm.PrimaryKey,false,efm.Nullable,efm.Versionable));
 									}
 								}

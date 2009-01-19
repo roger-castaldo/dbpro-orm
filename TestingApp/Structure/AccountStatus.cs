@@ -9,6 +9,7 @@ namespace TestingApp.Structure
 	{
 		private string _statusName;
 		private long _statusId;
+		private AccountStatus _parentStatus;
 		//private byte[] _data;
 		
 		public AccountStatus()
@@ -25,6 +26,17 @@ namespace TestingApp.Structure
             set{
                 _statusId = value;
             }
+        }
+        
+        [Org.Reddragonit.Dbpro.Structure.Attributes.ForeignField(true)]
+        public AccountStatus ParentStatus
+        {
+        	get{
+        		return _parentStatus;
+        	}
+        	set{
+        		_parentStatus=value;
+        	}
         }
 
         [Org.Reddragonit.Dbpro.Structure.Attributes.Field("STATUS_NAME", FieldType.STRING, false, 50)]

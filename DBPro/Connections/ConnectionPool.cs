@@ -814,7 +814,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 						foreach (ExtractedFieldMap efm in etm.Fields)
 						{
 							bool foundField=false;
-							foreach (ExtractedFieldMap ee in etm.Fields)
+							foreach (ExtractedFieldMap ee in e.Fields)
 							{
 								if (efm.FieldName==ee.FieldName)
 								{
