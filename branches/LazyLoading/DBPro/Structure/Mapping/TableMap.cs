@@ -219,6 +219,18 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 				return ret;
 			}
 		}
+		
+		public bool ContainsAutogenField
+		{
+			get{
+				foreach (InternalFieldMap pk in PrimaryKeys)
+				{
+					if (pk.AutoGen)
+						return true;
+				}
+				return false;
+			}
+		}
 
 		public bool HasPrimaryKeys
 		{
@@ -316,6 +328,9 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 				if (_fields.ContainsKey(ClassFieldName) )
 				{
 					return _fields[ClassFieldName];
+				}else if (ParentType!=null)
+				{
+					return ClassMapper.GetTableMap(ParentType)[ClassFieldName];
 				}
 				return null;
 			}
@@ -375,10 +390,36 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			return null;
 		}
 		
+		public List<FieldNamePair> GetExternalTableFieldNamePairs(ExternalFieldMap efm)
+		{
+			List<FieldNamePair> ret = new List<FieldNamePair>();
+			TableMap map = ClassMapper.GetTableMap(efm.Type);
+			foreach (InternalFieldMap ifm in map.PrimaryKeys)
+			{
+				ret.Add(new FieldNamePair(Utility.CorrectName(_pool,efm.AddOnName+"_"+ifm.FieldName),ifm.FieldName));
+			}
+			return ret;
+		}
+		
+		public string GetExternalTableFieldName(ExternalFieldMap efm,string fieldName,ConnectionPool pool)
+		{
+			TableMap map = ClassMapper.GetTableMap(efm.Type);
+			string ret=null;
+			foreach (InternalFieldMap ifm in map.PrimaryKeys)
+			{
+				if (pool.CorrectName(efm.AddOnName+"_"+ifm.FieldName)==fieldName)
+				{
+					ret=ifm.FieldName;
+					break;
+				}
+			}
+			return ret;
+		}
+		
 		public List<InternalFieldMap> Fields{
 			get{
 				List<InternalFieldMap> ret = new List<InternalFieldMap>();
-				System.Diagnostics.Debug.WriteLine("Field Count ("+Name+"): "+_fields.Count.ToString());
+				//System.Diagnostics.Debug.WriteLine("Field Count ("+Name+"): "+_fields.Count.ToString());
 				foreach (FieldMap f in _fields.Values)
 				{
 					if (f is ExternalFieldMap)

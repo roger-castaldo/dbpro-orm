@@ -28,7 +28,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		{
 			get{
 				if (_qb==null)
-					_qb=new QueryBuilder();
+					_qb=new QueryBuilder(pool);
 				return _qb;
 			}
 		}
@@ -37,6 +37,10 @@ namespace Org.Reddragonit.Dbpro.Connections
 			get{
 				return false;
 			}
+		}
+		
+		public ConnectionPool Pool{
+			get{return pool;}
 		}
 		
 		protected abstract IDbConnection EstablishConnection();
@@ -69,6 +73,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			comm = EstablishCommand();
 			comm.Transaction = trans;
 			this.pool=pool;
+			isConnected=true;
 		}
 		
 		internal string ConnectionName
@@ -130,28 +135,6 @@ namespace Org.Reddragonit.Dbpro.Connections
 		{
 			comm.CommandType=type;
 		}
-		
-		/*public void CreateTable(Table table,bool debug)
-		{
-			if (table.ConnectionName!=ConnectionName)
-			{
-				throw new Exception("Cannot create a table into the database connection that it was not specified for.");
-			}
-			if (debug)
-			{
-				foreach (string str in ConstructCreateStrings(table))
-				{
-					System.Diagnostics.Debug.WriteLine(str);
-				}
-			}else
-			{
-				foreach (string str in ConstructCreateStrings(table))
-				{
-					ExecuteNonQuery(str);
-				}
-				this.Commit();
-			}
-		}*/
 		
 		private Table Update(Table table)
 		{
@@ -246,10 +229,20 @@ namespace Org.Reddragonit.Dbpro.Connections
 			List<IDbDataParameter> selectPars = new List<IDbDataParameter>();
 			query=queryBuilder.Insert(table,out pars,out select,out selectPars,this);
 			ExecuteNonQuery(query,pars);
-			ExecuteQuery(select,selectPars);
-			Read();
-			table.SetValues(this);
-			Close();
+			if (select!=null)
+			{
+				ExecuteQuery(select,selectPars);
+				Read();
+				foreach (InternalFieldMap ifm in map.InternalPrimaryKeys)
+				{
+					if (ifm.AutoGen)
+					{
+						table.GetType().GetProperty(map.GetClassFieldName(ifm.FieldName)).SetValue(table,this[0],new object[0]);
+						break;
+					}
+				}
+				Close();
+			}
 			foreach (ExternalFieldMap efm in map.ExternalFieldMapArrays)
 			{
 				Dictionary<string, List<List<IDbDataParameter>>> queries = queryBuilder.UpdateMapArray(table,efm,this);
@@ -323,8 +316,9 @@ namespace Org.Reddragonit.Dbpro.Connections
 			ExecuteQuery(queryBuilder.SelectAll(type));
 			while (Read())
 			{
-				Table t = (Table)type.GetConstructor(System.Type.EmptyTypes).Invoke(new object[0]);
+				Table t = (Table)LazyProxy.Instance(type.GetConstructor(System.Type.EmptyTypes).Invoke(new object[0]));
 				t.SetValues(this);
+				t.LoadStatus=LoadStatus.Complete;
 				ret.Add(t);
 			}
 			Close();
@@ -348,8 +342,9 @@ namespace Org.Reddragonit.Dbpro.Connections
 			ExecuteQuery(query,pars);
 			while (Read())
 			{
-				Table t = (Table)type.GetConstructor(System.Type.EmptyTypes).Invoke(new object[0]);
+				Table t = (Table)LazyProxy.Instance(type.GetConstructor(System.Type.EmptyTypes).Invoke(new object[0]));
 				t.SetValues(this);
+				t.LoadStatus=LoadStatus.Complete;
 				ret.Add(t);
 			}
 			Close();
@@ -402,6 +397,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		public void ExecuteQuery(string queryString,List<IDbDataParameter> parameters)
 		{
+			reader=null;
 			comm.CommandText=FormatParameters(queryString+" ",parameters);
 			comm.Parameters.Clear();
 			if (parameters!=null)
