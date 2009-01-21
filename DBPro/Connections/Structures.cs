@@ -273,7 +273,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		private bool _nullable;
 		private bool _autogen;
 		
-		public ExtractedFieldMap(string fieldName, string type, long size, bool primary, bool nullable,bool autogen)
+		public ExtractedFieldMap(string fieldName,string type, long size, bool primary, bool nullable,bool autogen)
 		{
 			_fieldName = fieldName;
 			_type = type;

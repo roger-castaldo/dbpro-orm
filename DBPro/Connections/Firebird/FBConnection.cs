@@ -27,7 +27,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		internal override QueryBuilder queryBuilder {
 			get {
 				if (_builder==null)
-					_builder=new FBQueryBuilder();
+					_builder=new FBQueryBuilder(Pool);
 				return _builder;
 			}
 		}

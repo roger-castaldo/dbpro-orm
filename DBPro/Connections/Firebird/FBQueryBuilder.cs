@@ -16,7 +16,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 	/// </summary>
 	internal class FBQueryBuilder : QueryBuilder
 	{
-		public FBQueryBuilder()
+		public FBQueryBuilder(ConnectionPool pool): base(pool)
 		{
 		}
 		
