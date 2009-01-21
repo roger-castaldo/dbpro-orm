@@ -19,6 +19,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 	internal static class ClassMapper
 	{
 		private static Dictionary<System.Type,TableMap> map=null;
+		private static Dictionary<Type, object> constructed = new Dictionary<Type, object>();
 		private static Mutex mut = new Mutex(false);
 		private static List<Type> types;
 		
@@ -31,6 +32,22 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			if ((type!=null)&&map.ContainsKey(type))
 			{
 				ret=map[type];
+			}
+			mut.ReleaseMutex();
+			return ret;
+		}
+		
+		public static object InitialValueForClassField(Type type, string ClassFieldName)
+		{
+			mut.WaitOne();
+			object ret=null;
+			if ((map==null)||(map.Count==0))
+				InitMaps();
+			if (map.ContainsKey(type))
+			{
+				if (!constructed.ContainsKey(type))
+					constructed.Add(type,type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
+				ret = type.GetProperty(ClassFieldName).GetValue(constructed[type],new object[0]);
 			}
 			mut.ReleaseMutex();
 			return ret;

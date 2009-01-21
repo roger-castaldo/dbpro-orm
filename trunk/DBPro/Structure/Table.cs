@@ -2,32 +2,52 @@ using System;
 using System.Reflection;
 using System.Collections.Generic;
 using System.Threading;
+using Org.Reddragonit.Dbpro.Connections;
 using Org.Reddragonit.Dbpro.Structure.Mapping;
 using FieldNamePair = Org.Reddragonit.Dbpro.Structure.Mapping.TableMap.FieldNamePair;
 
 namespace Org.Reddragonit.Dbpro.Structure
 {
-	public abstract class Table : IConvertible
+	internal enum LoadStatus{
+		Complete,
+		Partial,
+		NotLoaded
+	}
+	
+	public abstract class Table : MarshalByRefObject,IConvertible
 	{
-		private List<string> _nullFields=null;
-		internal bool _isSaved = false;
-		private Dictionary<string, object> _initialPrimaryValues = null;
-		private Dictionary<string, object> _initialValues = null;
+		private bool _isSaved = false;
+		private LoadStatus _loadStatus=LoadStatus.NotLoaded;
+		private Dictionary<string, object> _initialPrimaryKeys = new Dictionary<string, object>();
 
 		public Table()
 		{
-            TableMap map = ClassMapper.GetTableMap(this.GetType());
-			_nullFields = new List<String>();
-			_initialPrimaryValues = new Dictionary<string, object>();
-			_initialValues = new Dictionary<string, object>();
+			InitPrimaryKeys();
+		}
+		
+		internal LoadStatus LoadStatus{
+			get{return _loadStatus;}
+			set{_loadStatus=value;}
+		}
+		
+		private void InitPrimaryKeys()
+		{
+			_initialPrimaryKeys.Clear();
+			TableMap map = ClassMapper.GetTableMap(this.GetType());
 			foreach (FieldNamePair fnp in map.FieldNamePairs)
 			{
 				if (map[fnp].PrimaryKey)
 				{
-					_initialPrimaryValues.Add(fnp.ClassFieldName, this.GetType().GetProperty(fnp.ClassFieldName).GetValue(this, new object[0]));
+					_initialPrimaryKeys.Add(fnp.ClassFieldName,this.GetType().GetProperty(fnp.ClassFieldName).GetValue(this,new object[0]));
 				}
-				_initialValues.Add(fnp.ClassFieldName, this.GetType().GetProperty(fnp.ClassFieldName).GetValue(this, new object[0]));
 			}
+		}
+		
+		internal object GetInitialPrimaryValue(string ClassFieldName)
+		{
+			if ((_initialPrimaryKeys!=null)&&(_initialPrimaryKeys.ContainsKey(ClassFieldName)))
+				return _initialPrimaryKeys[ClassFieldName];
+			return null;
 		}
 		
 		internal void CopyValuesFrom(Table table)
@@ -45,6 +65,7 @@ namespace Org.Reddragonit.Dbpro.Structure
 					
 				}
 			}
+			InitPrimaryKeys();
 		}
 		
 		internal string ConnectionName
@@ -69,15 +90,15 @@ namespace Org.Reddragonit.Dbpro.Structure
 			}
 		}
 
-		internal void SetValues(Org.Reddragonit.Dbpro.Connections.Connection conn)
+		internal void SetValues(Connection conn)
 		{
-			_initialPrimaryValues = new Dictionary<string, object>();
+			_initialPrimaryKeys.Clear();
 			TableMap map = ClassMapper.GetTableMap(this.GetType());
 			RecurSetValues(map,conn);
 			_isSaved = true;
 		}
 		
-		private void RecurSetValues(TableMap map,Org.Reddragonit.Dbpro.Connections.Connection conn)
+		private void RecurSetValues(TableMap map,Connection conn)
 		{
 			foreach (FieldNamePair fnp in map.FieldNamePairs)
 			{
@@ -85,15 +106,20 @@ namespace Org.Reddragonit.Dbpro.Structure
 				{
 					if (!((ExternalFieldMap)map[fnp]).IsArray)
 					{
+						ExternalFieldMap efm = (ExternalFieldMap)map[fnp];
 						Table t = (Table)this.GetType().GetProperty(fnp.ClassFieldName).PropertyType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
-						t.SetValues(conn);
+						foreach (InternalFieldMap ifm in ClassMapper.GetTableMap(t.GetType()).PrimaryKeys)
+						{
+							if (conn.ContainsField(conn.Pool.CorrectName(efm.AddOnName+"_"+ifm.FieldName))&&!conn.IsDBNull(conn.GetOrdinal(conn.Pool.CorrectName(efm.AddOnName+"_"+ifm.FieldName))))
+							{
+								t.GetType().GetProperty(map.GetClassFieldName(ifm.FieldName)).SetValue(t,conn[conn.Pool.CorrectName(efm.AddOnName+"_"+ifm.FieldName)],new object[0]);
+							}
+						}
+						t._loadStatus= LoadStatus.Partial;
 						if (!t.AllFieldsNull)
 						{
+							t.InitPrimaryKeys();
 							this.GetType().GetProperty(fnp.ClassFieldName).SetValue(this, t, new object[0]);
-						}
-						else
-						{
-							_nullFields.Add(fnp.ClassFieldName);
 						}
 					}
 				}
@@ -103,11 +129,9 @@ namespace Org.Reddragonit.Dbpro.Structure
 					{
 						if (conn.IsDBNull(conn.GetOrdinal(fnp.TableFieldName)))
 						{
-							if (_nullFields == null)
-							{
-								_nullFields = new List<string>();
-							}
-							_nullFields.Add(fnp.ClassFieldName);
+							try{
+								this.GetType().GetProperty(fnp.ClassFieldName).SetValue(this,null,new object[0]);
+							}catch(Exception e){}
 						}
 						else
 						{
@@ -115,9 +139,9 @@ namespace Org.Reddragonit.Dbpro.Structure
 						}
 					}
 				}
-				if ((map[fnp].PrimaryKey || !map.HasPrimaryKeys)&&(!_initialPrimaryValues.ContainsKey(fnp.ClassFieldName)))
+				if ((map[fnp].PrimaryKey)&&!_initialPrimaryKeys.ContainsKey(fnp.ClassFieldName))
 				{
-					_initialPrimaryValues.Add(fnp.ClassFieldName, GetField(fnp.ClassFieldName));
+					_initialPrimaryKeys.Add(fnp.ClassFieldName,this.GetType().GetProperty(fnp.ClassFieldName).GetValue(this,new object[0]));
 				}
 			}
 			if (map.ParentType!=null)
@@ -141,7 +165,7 @@ namespace Org.Reddragonit.Dbpro.Structure
 			}
 		}
 		
-		protected object GetField(string FieldName)
+		internal object GetField(string FieldName)
 		{
 			if (IsFieldNull(FieldName))
 			{
@@ -151,14 +175,12 @@ namespace Org.Reddragonit.Dbpro.Structure
 				return this.GetType().GetProperty(FieldName).GetValue(this,new object[0]);
 			}
 		}
-
-		internal object GetInitialPrimaryValue(FieldNamePair pair)
+		
+		internal bool IsFieldNull(string FieldName)
 		{
-			if (_initialPrimaryValues.ContainsKey(pair.ClassFieldName))
-			{
-				return _initialPrimaryValues[pair.ClassFieldName];
-			}
-			return null;
+			PropertyInfo pi = this.GetType().GetProperty(FieldName);
+			object cur = pi.GetValue(this,new object[0]);
+			return equalObjects(cur,ClassMapper.InitialValueForClassField(this.GetType(),FieldName));
 		}
 
 		private bool equalObjects(object obj1, object obj2)
@@ -190,15 +212,7 @@ namespace Org.Reddragonit.Dbpro.Structure
 					return false;
 				}
 			}
-		}
-
-		internal bool IsFieldNull(string FieldName)
-		{
-			if (!_initialValues.ContainsKey(FieldName))
-				return true;
-			return equalObjects(_initialValues[FieldName], this.GetType().GetProperty(FieldName).GetValue(this, new object[0]));
-		}
-		
+		}		
 		
 		public TypeCode GetTypeCode()
 		{
@@ -296,6 +310,7 @@ namespace Org.Reddragonit.Dbpro.Structure
 				if (!this.IsFieldNull(pi.Name))
 					pi.SetValue(ret,pi.GetValue(this,new object[0]),new object[0]);
 			}
+			((Table)ret).InitPrimaryKeys();
 			return ret;
 		}
 	}

@@ -161,7 +161,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 					ret=ret.Substring(0,MaxFieldNameLength-1-(_nameCounter.ToString().Length));
 					ret+="_"+_nameCounter.ToString();
 				}
-				if (ret!=currentName)
+				if (!_nameTranslations.ContainsKey(ret))
 					_nameTranslations.Add(ret,currentName);
 				return ret;
 			}
