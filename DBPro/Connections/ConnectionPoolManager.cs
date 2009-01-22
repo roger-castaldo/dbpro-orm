@@ -156,6 +156,17 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
 			_connectionPools.Add(name, pool);
 		}
+		
+		internal static bool ConnectionExists(string name)
+		{
+			bool ret=false;
+			if (name==null)
+				name=DEFAULT_CONNECTION_NAME;
+			mut.WaitOne();
+			ret=_connectionPools.ContainsKey(name);
+			mut.ReleaseMutex();
+			return ret;
+		}
 
 	}
 }
