@@ -152,10 +152,39 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			}
 		}
 		
+		public void CorrectConnectionName(string[] connectionNames)
+		{
+			if (_connectionName==null)
+				_connectionName=ConnectionPoolManager.DEFAULT_CONNECTION_NAME;
+			bool contains=false;
+			foreach (string str in connectionNames)
+			{
+				if (str==_connectionName)
+				{
+					contains=true;
+					break;
+				}
+			}
+			if (!contains)
+				_connectionName=ConnectionPoolManager.DEFAULT_CONNECTION_NAME;
+		}
+		
 		public void CorrectNames(ConnectionPool pool)
 		{
 			_pool=pool;
 			_tableName=pool.CorrectName(_tableName); 
+			string[] tmp = new string[_fields.Count];
+			_fields.Keys.CopyTo(tmp,0);
+			foreach (string str in tmp)
+			{
+				if (_fields[str] is InternalFieldMap)
+				{
+					InternalFieldMap ifm = (InternalFieldMap)_fields[str];
+					ifm.CorrectName(pool);
+					_fields.Remove(str);
+					_fields.Add(str,(FieldMap)ifm);
+				}
+			}
 		}
 		
 		public List<InternalFieldMap> PrimaryKeys{

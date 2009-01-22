@@ -44,7 +44,11 @@ namespace Org.Reddragonit.Dbpro
 		
 		protected static PropertyInfo GetMethodProperty(MethodInfo methodInfo, object owner, out bool IsGet)
 		{
-			foreach(PropertyInfo aProp in owner.GetType().GetProperties())
+			foreach(PropertyInfo aProp in owner.GetType().GetProperties(BindingFlags.Public |      //Get public members
+								                                             BindingFlags.NonPublic |   //Get private/protected/internal members
+								                                             BindingFlags.Static |      //Get static members
+								                                             BindingFlags.Instance |    //Get instance members
+								                                             BindingFlags.DeclaredOnly  ))
 			{
 				MethodInfo mi = null;
 				mi = aProp.GetGetMethod(true);

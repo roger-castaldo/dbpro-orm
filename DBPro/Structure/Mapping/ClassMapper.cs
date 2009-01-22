@@ -23,6 +23,23 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 		private static Mutex mut = new Mutex(false);
 		private static List<Type> types;
 		
+		internal static void CorrectConnectionNames(string[] connectionNames)
+		{
+			mut.WaitOne();
+			if ((map==null)||(map.Count==0))
+				InitMaps();
+			Type[] types = new Type[map.Count];
+			map.Keys.CopyTo(types,0);
+			foreach (Type t in types)
+			{
+				TableMap tm = map[t];
+				map.Remove(t);
+				tm.CorrectConnectionName(connectionNames);
+				map.Add(t,tm);
+			}
+			mut.ReleaseMutex();
+		}
+		
 		public static TableMap GetTableMap(System.Type type)
 		{
 			mut.WaitOne();
@@ -47,7 +64,23 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			{
 				if (!constructed.ContainsKey(type))
 					constructed.Add(type,type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
-				ret = type.GetProperty(ClassFieldName).GetValue(constructed[type],new object[0]);
+				PropertyInfo pi = type.GetProperty(ClassFieldName);
+				if (pi==null)
+				{
+					foreach (PropertyInfo p in type.GetProperties(BindingFlags.Public |      //Get public members
+					                                                        BindingFlags.NonPublic |   //Get private/protected/internal members
+					                                                        BindingFlags.Static |      //Get static members
+					                                                        BindingFlags.Instance |    //Get instance members
+					                                                        BindingFlags.DeclaredOnly  ))
+					{
+						if (p.Name==ClassFieldName)
+						{
+							pi=p;
+							break;
+						}
+					}
+				}
+				ret = pi.GetValue(constructed[type],new object[0]);
 			}
 			mut.ReleaseMutex();
 			return ret;
