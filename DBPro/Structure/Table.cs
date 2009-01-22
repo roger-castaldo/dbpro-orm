@@ -215,7 +215,33 @@ namespace Org.Reddragonit.Dbpro.Structure
 					}
 				}
 			}
-			pi.SetValue(this,value,new object[0]);
+			if (pi.PropertyType.Equals(typeof(bool))&&!(value.GetType().Equals(typeof(bool))))
+			{
+				if (value.GetType().Equals(typeof(int)))
+				{
+					if ((int)value==0)
+						pi.SetValue(this,false,new object[0]);
+					else
+						pi.SetValue(this,true,new object[0]);
+				}else if (value.GetType().Equals(typeof(string)))
+				{
+					if (((string)value).Length==1)
+					{
+						if ((string)value=="F")
+							value="False";
+						else
+							value="True";
+					}
+					pi.SetValue(this,bool.Parse((string)value),new object[0]);
+				}else if (value.GetType().Equals(typeof(char)))
+				{
+					if ((char)value=='F')
+						pi.SetValue(this,false,new object[0]);
+					else
+						pi.SetValue(this,true,new object[0]);
+				}
+			}else 
+				pi.SetValue(this,value,new object[0]);
 		}
 		
 		internal bool IsFieldNull(string FieldName)

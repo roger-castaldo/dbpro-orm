@@ -999,6 +999,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 			if (ret!=null)
 				locked.Add(ret);
 			mut.ReleaseMutex();
+			if (ret!=null)
+				ret.Reset();
 			return ret;
 		}
 		

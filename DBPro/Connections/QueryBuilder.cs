@@ -152,7 +152,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		#region virtual
 		
 		#region Selecting
-		protected virtual string SelectWithConditions
+		internal virtual string SelectWithConditions
 		{
 			get{return "SELECT {0} FROM {1} WHERE {2}";}
 		}

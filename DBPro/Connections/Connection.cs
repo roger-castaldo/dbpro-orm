@@ -95,6 +95,13 @@ namespace Org.Reddragonit.Dbpro.Connections
 			return !(secondsToLive<0)||((System.DateTime.Now.Ticks-creationTime.Ticks)>secondsToLive);
 		}
 		
+		internal void Reset()
+		{
+			trans.Rollback();
+			trans = conn.BeginTransaction();
+			comm.Transaction=trans;
+		}
+		
 		public void Commit()
 		{
 			trans.Commit();
@@ -119,6 +126,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 				trans=conn.BeginTransaction();
 				comm.CommandText="";
 				comm.Parameters.Clear();
+				comm.Transaction=trans;
 				pool.returnConnection(this);
 			}
 		}
@@ -278,30 +286,27 @@ namespace Org.Reddragonit.Dbpro.Connections
 				{
 					List<IDbDataParameter> pars = new List<IDbDataParameter>();
 					TableMap external = ClassMapper.GetTableMap(f.Type);
-					query = queryBuilder.SelectAll(f.Type);
-					if (query.Contains(" WHERE "))
-					{
-						query = query.Replace(" WHERE ", ", " + map.Name + "_" + external.Name + " WHERE ");
-					}
-					else
-					{
-						query += ", " + map.Name + "_" + external.Name + " WHERE ";
-					}
-					foreach (InternalFieldMap ifm in map.PrimaryKeys)
-					{
-						query += map.Name + "_" + external.Name + "." + ifm.FieldName + " = @" + ifm.FieldName + " AND ";
-						pars.Add(CreateParameter("@" + ifm.FieldName, t.GetField(map.GetClassFieldName(ifm))));
-					}
+					string fields = "";
 					foreach (InternalFieldMap ifm in external.PrimaryKeys)
 					{
-						query += map.Name + "_" + external.Name + "." + ifm.FieldName + " = " + external.Name + "." + ifm.FieldName + " AND ";
+						fields+=pool.CorrectName(external.Name+"_"+ifm.FieldName)+" AS "+ifm.FieldName+", ";
 					}
+					fields = fields.Substring(0,fields.Length-2);
+					string conditions= "";
+					foreach (InternalFieldMap ifm in map.PrimaryKeys)
+					{
+						conditions += map.Name + "_" + external.Name + "." + Pool.CorrectName(map.Name+"_"+ifm.FieldName) + " = @" + map.Name+"_"+ifm.FieldName + " AND ";
+						pars.Add(CreateParameter("@" + map.Name+"_"+ifm.FieldName, t.GetField(map.GetClassFieldName(ifm))));
+					}
+					conditions=conditions.Substring(0,conditions.Length-4);
+					query = string.Format(queryBuilder.SelectWithConditions,fields,pool.CorrectName(map.Name+"_"+external.Name),conditions);
 					ArrayList values = new ArrayList();
-					ExecuteQuery(query.Substring(0, query.Length - 4), pars);
+					ExecuteQuery(query, pars);
 					while (Read())
 					{
 						Table ta = (Table)f.Type.GetConstructor(System.Type.EmptyTypes).Invoke(new object[0]);
 						ta.SetValues(this);
+						ta.LoadStatus=LoadStatus.Partial;
 						values.Add(ta);
 					}
 					Close();

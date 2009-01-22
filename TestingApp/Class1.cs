@@ -17,7 +17,7 @@ namespace TestingApp
 		static void Main(string[] args)
 		{
 			ConnectionPool pool = ConnectionPoolManager.GetConnection("Security");
-			Group g = new Group();
+			/*Group g = new Group();
 			g.InheritParentRights=false;
 			g.Name="Admin";
 			g=Group.Save(g);
@@ -27,9 +27,9 @@ namespace TestingApp
 			u.UserGroup=g;
 			u.UserName="rcastaldo";
 			u.Password="copperbed1";
-			u = User.Save(u);
+			u = User.Save(u);*/
 			
-			u = User.LoginUser("rcastaldo","copperbed1");
+			User u = User.LoginUser("rcastaldo","copperbed1");
 			if (u==null)
 				Console.WriteLine("Unable to login user.");
 			else
