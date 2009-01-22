@@ -174,9 +174,9 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 			if (parameterValue is bool)
 			{
 				if ((bool)parameterValue)
-					parameterValue=1;
+					parameterValue='T';
 				else
-					parameterValue=0;
+					parameterValue='F';
 			}
 			return new FbParameter(parameterName,parameterValue);
 		}

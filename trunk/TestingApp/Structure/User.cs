@@ -354,7 +354,7 @@ namespace TestingApp.Structure
 			List<Org.Reddragonit.Dbpro.Structure.Table> users=new List<Org.Reddragonit.Dbpro.Structure.Table>();
 			Connection c = conn;
 			List<SelectParameter> pars = new List<SelectParameter>();
-            pars.Add(new SelectParameter("UserName",password ));
+            pars.Add(new SelectParameter("UserName",username ));
             users.AddRange(c.Select(typeof(User),pars).ToArray());
             c.CloseConnection();
             foreach (User u in users)
