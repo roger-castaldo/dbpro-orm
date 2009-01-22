@@ -38,7 +38,7 @@ namespace Org.Reddragonit.Dbpro.Structure
 			{
 				if (map[fnp].PrimaryKey)
 				{
-					_initialPrimaryKeys.Add(fnp.ClassFieldName,this.GetField(fnp.ClassFieldName));
+					_initialPrimaryKeys.Add(fnp.ClassFieldName,this.GetType().GetProperty(fnp.ClassFieldName).GetValue(this,new object[0]));
 				}
 			}
 		}

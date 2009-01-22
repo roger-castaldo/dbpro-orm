@@ -23,13 +23,14 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 		private string _fieldName=null;
 		private FieldType _fieldType;
 				
-		public InternalFieldMap(MemberInfo info) : base(info)
+		public InternalFieldMap(PropertyInfo info) : base(info)
 		{
 			foreach (object obj in info.GetCustomAttributes(true))
 			{
 				if (obj is IField)
 				{
 					IField f = (IField)obj;
+					((Field)f).InitFieldName(info);
 					_fieldLength=f.Length;
 					_fieldName=f.Name;
 					_fieldType=f.Type;

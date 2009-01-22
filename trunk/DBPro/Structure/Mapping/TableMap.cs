@@ -48,10 +48,10 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			get{return _parentType;}
 		}
 		
-		public TableMap(System.Type type,Assembly asm,MemberInfo[] info,ref Dictionary<System.Type,TableMap> map) : this(null,type,asm,info,ref map)
+		public TableMap(System.Type type,Assembly asm,PropertyInfo[] info,ref Dictionary<System.Type,TableMap> map) : this(null,type,asm,info,ref map)
 		{}
 		
-		public TableMap(string TableName,System.Type type,Assembly asm,MemberInfo[] info,ref Dictionary<System.Type,TableMap> map)
+		public TableMap(string TableName,System.Type type,Assembly asm,PropertyInfo[] info,ref Dictionary<System.Type,TableMap> map)
 		{
 			try{
 				foreach (object obj in type.GetCustomAttributes(true))
@@ -73,7 +73,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			}			
 			_tableName=TableName;
 			_fields = new Dictionary<string,FieldMap>();
-			foreach (MemberInfo mi in info)
+			foreach (PropertyInfo mi in info)
 			{
 				foreach (object obj in mi.GetCustomAttributes(true))
 				{
@@ -92,7 +92,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 							if ((!map.ContainsKey(ty))){
 								if (!ClassMapper.ClassedTypes.Contains(ty))
 									ClassMapper.ClassedTypes.Add(ty);
-								t= new TableMap(ty,asm,ty.GetMembers(BindingFlags.Public |      //Get public members
+								t= new TableMap(ty,asm,ty.GetProperties(BindingFlags.Public |      //Get public members
 								                                     BindingFlags.NonPublic |   //Get private/protected/internal members
 								                                     BindingFlags.Static |      //Get static members
 								                                     BindingFlags.Instance |    //Get instance members
@@ -120,7 +120,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 				if (!map.ContainsKey(type.BaseType)){
 					if (!ClassMapper.ClassedTypes.Contains(type.BaseType))
 						ClassMapper.ClassedTypes.Add(type.BaseType);
-					t= new TableMap(type.BaseType,asm,type.BaseType.GetMembers(BindingFlags.Public |      //Get public members
+					t= new TableMap(type.BaseType,asm,type.BaseType.GetProperties(BindingFlags.Public |      //Get public members
 					                                                           BindingFlags.NonPublic |   //Get private/protected/internal members
 					                                                           BindingFlags.Static |      //Get static members
 					                                                           BindingFlags.Instance |    //Get instance members
