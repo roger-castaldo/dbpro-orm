@@ -34,8 +34,8 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		{
 			string ret = "";
 			conn.ExecuteQuery(String.Format(DropNotNullString,table,field));
-			conn.Read();
-			ret=conn[0].ToString();
+			if (conn.Read())
+				ret=conn[0].ToString();
 			conn.Close();
 			return ret;
 		}
@@ -70,8 +70,8 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		{
 			string ret = "";
 			conn.ExecuteQuery(String.Format(DropForeignKeyString,table,field));
-			conn.Read();
-			ret=conn[0].ToString();
+			if (conn.Read())
+				ret=conn[0].ToString();
 			conn.Close();
 			return ret;
 		}
@@ -80,8 +80,8 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		{
 			string ret="";
 			conn.ExecuteQuery(String.Format(DropPrimaryKeyString,table,field));
-			conn.Read();
-			ret=conn[0].ToString();
+			if (conn.Read())
+				ret=conn[0].ToString();
 			conn.Close();
 			return ret;
 		}

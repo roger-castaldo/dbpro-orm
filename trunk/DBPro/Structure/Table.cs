@@ -16,7 +16,7 @@ namespace Org.Reddragonit.Dbpro.Structure
 	
 	public abstract class Table : MarshalByRefObject,IConvertible
 	{
-		private bool _isSaved = false;
+		internal bool _isSaved = false;
 		private LoadStatus _loadStatus=LoadStatus.NotLoaded;
 		private Dictionary<string, object> _initialPrimaryKeys = new Dictionary<string, object>();
 
@@ -38,7 +38,7 @@ namespace Org.Reddragonit.Dbpro.Structure
 			{
 				if (map[fnp].PrimaryKey)
 				{
-					_initialPrimaryKeys.Add(fnp.ClassFieldName,this.GetType().GetProperty(fnp.ClassFieldName).GetValue(this,new object[0]));
+					_initialPrimaryKeys.Add(fnp.ClassFieldName,this.GetField(fnp.ClassFieldName));
 				}
 			}
 		}
@@ -110,19 +110,19 @@ namespace Org.Reddragonit.Dbpro.Structure
 					if (!((ExternalFieldMap)map[fnp]).IsArray)
 					{
 						ExternalFieldMap efm = (ExternalFieldMap)map[fnp];
-						Table t = (Table)this.GetType().GetProperty(fnp.ClassFieldName).PropertyType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
+						Table t = (Table)efm.Type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
 						foreach (InternalFieldMap ifm in ClassMapper.GetTableMap(t.GetType()).PrimaryKeys)
 						{
 							if (conn.ContainsField(conn.Pool.CorrectName(efm.AddOnName+"_"+ifm.FieldName))&&!conn.IsDBNull(conn.GetOrdinal(conn.Pool.CorrectName(efm.AddOnName+"_"+ifm.FieldName))))
 							{
-								t.GetType().GetProperty(map.GetClassFieldName(ifm.FieldName)).SetValue(t,conn[conn.Pool.CorrectName(efm.AddOnName+"_"+ifm.FieldName)],new object[0]);
+								t.SetField(map.GetClassFieldName(ifm.FieldName),conn[conn.Pool.CorrectName(efm.AddOnName+"_"+ifm.FieldName)]);
 							}
 						}
 						t._loadStatus= LoadStatus.Partial;
 						if (!t.AllFieldsNull)
 						{
 							t.InitPrimaryKeys();
-							this.GetType().GetProperty(fnp.ClassFieldName).SetValue(this, t, new object[0]);
+							this.SetField(fnp.ClassFieldName,t);
 						}
 					}
 				}
@@ -133,18 +133,18 @@ namespace Org.Reddragonit.Dbpro.Structure
 						if (conn.IsDBNull(conn.GetOrdinal(fnp.TableFieldName)))
 						{
 							try{
-								this.GetType().GetProperty(fnp.ClassFieldName).SetValue(this,null,new object[0]);
+								this.SetField(fnp.ClassFieldName,null);
 							}catch(Exception e){}
 						}
 						else
 						{
-							this.GetType().GetProperty(fnp.ClassFieldName).SetValue(this, conn[fnp.TableFieldName], new object[0]);
+							this.SetField(fnp.ClassFieldName, conn[fnp.TableFieldName]);
 						}
 					}
 				}
 				if ((map[fnp].PrimaryKey)&&!_initialPrimaryKeys.ContainsKey(fnp.ClassFieldName))
 				{
-					_initialPrimaryKeys.Add(fnp.ClassFieldName,this.GetType().GetProperty(fnp.ClassFieldName).GetValue(this,new object[0]));
+					_initialPrimaryKeys.Add(fnp.ClassFieldName,this.GetField(fnp.ClassFieldName));
 				}
 			}
 			if (map.ParentType!=null)
@@ -175,14 +175,70 @@ namespace Org.Reddragonit.Dbpro.Structure
 				return null;
 			}else
 			{
-				return this.GetType().GetProperty(FieldName).GetValue(this,new object[0]);
+				PropertyInfo pi = this.GetType().GetProperty(FieldName);
+				if (pi==null)
+				{
+					foreach (PropertyInfo p in this.GetType().GetProperties(BindingFlags.Public |      //Get public members
+					                                                        BindingFlags.NonPublic |   //Get private/protected/internal members
+					                                                        BindingFlags.Static |      //Get static members
+					                                                        BindingFlags.Instance |    //Get instance members
+					                                                        BindingFlags.DeclaredOnly  ))
+					{
+						if (p.Name==FieldName)
+						{
+							pi=p;
+							break;
+						}
+					}
+				}
+				return pi.GetValue(this,new object[0]);
 			}
+		}
+		
+		internal void SetField(string FieldName,object value)
+		{
+			if (value==null)
+				value = ClassMapper.InitialValueForClassField(this.GetType(),FieldName);
+			PropertyInfo pi = this.GetType().GetProperty(FieldName);
+			if (pi==null)
+			{
+				foreach (PropertyInfo p in this.GetType().GetProperties(BindingFlags.Public |      //Get public members
+				                                                        BindingFlags.NonPublic |   //Get private/protected/internal members
+				                                                        BindingFlags.Static |      //Get static members
+				                                                        BindingFlags.Instance |    //Get instance members
+				                                                        BindingFlags.DeclaredOnly  ))
+				{
+					if (p.Name==FieldName)
+					{
+						pi=p;
+						break;
+					}
+				}
+			}
+			pi.SetValue(this,value,new object[0]);
 		}
 		
 		internal bool IsFieldNull(string FieldName)
 		{
 			PropertyInfo pi = this.GetType().GetProperty(FieldName);
+			if (pi==null)
+			{
+				foreach (PropertyInfo p in this.GetType().GetProperties(BindingFlags.Public |      //Get public members
+				                                                        BindingFlags.NonPublic |   //Get private/protected/internal members
+				                                                        BindingFlags.Static |      //Get static members
+				                                                        BindingFlags.Instance |    //Get instance members
+				                                                        BindingFlags.DeclaredOnly  ))
+				{
+					if (p.Name==FieldName)
+					{
+						pi=p;
+						break;
+					}
+				}
+			}
 			object cur = pi.GetValue(this,new object[0]);
+			if ((pi.PropertyType.Equals(typeof(bool))&&!ClassMapper.GetTableMap(this.GetType())[FieldName].Nullable))
+				return false;
 			return equalObjects(cur,ClassMapper.InitialValueForClassField(this.GetType(),FieldName));
 		}
 
@@ -215,7 +271,7 @@ namespace Org.Reddragonit.Dbpro.Structure
 					return false;
 				}
 			}
-		}		
+		}
 		
 		public TypeCode GetTypeCode()
 		{

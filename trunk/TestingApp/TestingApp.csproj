@@ -47,10 +47,10 @@
     <Content Include="App.ico" />
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="Class1.cs" />
-    <Compile Include="Structure\AccountAddress.cs" />
-    <Compile Include="Structure\AccountStatus.cs" />
-    <Compile Include="Structure\AccountTable.cs" />
-    <Compile Include="Structure\SubAccountStatus.cs" />
+    <Compile Include="MT19937.cs" />
+    <Compile Include="Structure\Group.cs" />
+    <Compile Include="Structure\SecurityRight.cs" />
+    <Compile Include="Structure\User.cs" />
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>

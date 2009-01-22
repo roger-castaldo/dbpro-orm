@@ -35,6 +35,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		private int minPoolSize=0;
 		private int maxPoolSize=0;
 		private long maxKeepAlive=0;
+		private bool _debugMode=false;
 		
 		private bool isClosed=false;
 		private bool isReady=false;
@@ -190,20 +191,22 @@ namespace Org.Reddragonit.Dbpro.Connections
 		protected ConnectionPool(string connectionString,int minPoolSize,int maxPoolSize,long maxKeepAlive,bool UpdateStructureDebugMode,string connectionName)
 		{
 			System.Diagnostics.Debug.WriteLine("Establishing Connection with string: "+connectionString);
-			mut.WaitOne();
 			this.connectionString=connectionString;
 			this.minPoolSize=minPoolSize;
 			this.maxPoolSize=maxPoolSize;
 			this.maxKeepAlive=maxKeepAlive;
+			_debugMode=UpdateStructureDebugMode;
 			_connectionName=connectionName;
+			ConnectionPoolManager.AddConnection(connectionName,this);
+		}
+		
+		internal void Init()
+		{
 			ClassMapper.CorrectNamesForConnection(this);
-			
-			UpdateStructure(UpdateStructureDebugMode);
+			UpdateStructure(_debugMode);
 			for (int x=0;x<minPoolSize;x++)
 				unlocked.Enqueue(CreateConnection());
 			isReady=true;
-			mut.ReleaseMutex();
-			ConnectionPoolManager.AddConnection(connectionName,this);
 		}
 
 		private void ExtractCurrentStructure(out List<ExtractedTableMap> tables,out List<Trigger> triggers,out List<Generator> generators,Connection conn)
@@ -301,14 +304,15 @@ namespace Org.Reddragonit.Dbpro.Connections
 					{
 						aetm.Fields.Add(new ExtractedFieldMap(CorrectName(tm.Name+"_"+ifm.FieldName),conn.TranslateFieldType(ifm.FieldType,ifm.FieldLength),
 						                                      ifm.FieldLength,true,false,false));
-						aetm.ForeignFields.Add(new ForeignRelationMap(tm.Name+"_"+ifm.FieldName,tm.Name+"_"+ftm.Name,ifm.FieldName,efm.OnUpdate.ToString(),efm.OnDelete.ToString()));
+						aetm.ForeignFields.Add(new ForeignRelationMap(tm.Name+"_"+ifm.FieldName,tm.Name,ifm.FieldName,efm.OnUpdate.ToString(),efm.OnDelete.ToString()));
 					}
 					foreach (InternalFieldMap ifm in ftm.PrimaryKeys)
 					{
 						aetm.Fields.Add(new ExtractedFieldMap(CorrectName(ftm.Name+"_"+ifm.FieldName),conn.TranslateFieldType(ifm.FieldType,ifm.FieldLength),
 						                                      ifm.FieldLength,true,false,false));
-						aetm.ForeignFields.Add(new ForeignRelationMap(CorrectName(ftm.Name+"_"+ifm.FieldName),tm.Name+"_"+ftm.Name,ifm.FieldName,efm.OnUpdate.ToString(),efm.OnDelete.ToString()));
+						aetm.ForeignFields.Add(new ForeignRelationMap(CorrectName(ftm.Name+"_"+ifm.FieldName),ftm.Name,ifm.FieldName,efm.OnUpdate.ToString(),efm.OnDelete.ToString()));
 					}
+					tables.Add(aetm);
 				}
 				if (tm.VersionType!=null)
 				{
@@ -933,15 +937,18 @@ namespace Org.Reddragonit.Dbpro.Connections
 					{
 						foreach (string str in alterations)
 						{
-							if (str==" COMMIT;")
-								conn.Commit();
-							else if (str.EndsWith(" COMMIT;"))
+							if (str.Length>0)
 							{
-								conn.ExecuteNonQuery(str.Substring(0,str.Length-8));
-								conn.Commit();
+								if (str==" COMMIT;")
+									conn.Commit();
+								else if (str.EndsWith(" COMMIT;"))
+								{
+									conn.ExecuteNonQuery(str.Substring(0,str.Length-8));
+									conn.Commit();
+								}
+								else
+									conn.ExecuteNonQuery(str);
 							}
-							else
-								conn.ExecuteNonQuery(str);
 						}
 					}
 				}catch (Exception e)
@@ -951,10 +958,15 @@ namespace Org.Reddragonit.Dbpro.Connections
 					throw e;
 				}
 			}
+			conn.Commit();
 		}
 		
 		public Connection getConnection()
 		{
+			mut.WaitOne();
+			if (!isReady)
+				Init();
+			mut.ReleaseMutex();
 			if (isClosed)
 				return null;
 			Connection ret=null;

@@ -174,6 +174,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 			switch (name.ToUpper())
 			{
 				case "INT64":
+				case "LONG":
 					return FieldType.LONG;
 				case "INT16":
 					return FieldType.SHORT;

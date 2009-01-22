@@ -1,10 +1,11 @@
+using Org.Reddragonit.Dbpro.Structure.Mapping;
 using System;
 using System.Collections.Generic;
-using System.Text;
 using System.IO;
-using System.Xml;
 using System.Reflection;
+using System.Text;
 using System.Threading;
+using System.Xml;
 
 namespace Org.Reddragonit.Dbpro.Connections
 {
@@ -34,6 +35,13 @@ namespace Org.Reddragonit.Dbpro.Connections
 						ExtractConnectionFromXml(node);
 					}
 				}
+			}
+			string[] tmp = new string[_connectionPools.Count];
+			_connectionPools.Keys.CopyTo(tmp,0);
+			ClassMapper.CorrectConnectionNames(tmp);
+			foreach (ConnectionPool pool in _connectionPools.Values)
+			{
+				pool.Init();
 			}
 			mut.ReleaseMutex();
 		}

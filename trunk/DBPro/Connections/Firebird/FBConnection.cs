@@ -171,6 +171,13 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		
 		internal override System.Data.IDbDataParameter CreateParameter(string parameterName, object parameterValue)
 		{
+			if (parameterValue is bool)
+			{
+				if ((bool)parameterValue)
+					parameterValue=1;
+				else
+					parameterValue=0;
+			}
 			return new FbParameter(parameterName,parameterValue);
 		}
 		

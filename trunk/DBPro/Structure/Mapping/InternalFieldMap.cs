@@ -71,7 +71,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 		
 		public int FieldLength{
 			get{
-				if (_fieldLength==0)
+				if ((_fieldLength==0)||(_fieldLength==int.MinValue))
 					ExtractFieldLengthForType();
 				return _fieldLength;
 			}

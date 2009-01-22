@@ -150,19 +150,22 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
 			foreach (Type t in map.ForeignTables)
 			{
-				Table ext = (Table)table.GetType().GetProperty(map.GetClassPropertyName(map.GetFieldInfoForForeignTable(t))).GetValue(table, new object[0]);
+				Table ext = (Table)table.GetField(map.GetClassPropertyName(map.GetFieldInfoForForeignTable(t)));
 				if (ext != null)
 				{
-					Save(ext);
-					table.GetType().GetProperty(map.GetClassPropertyName(map.GetFieldInfoForForeignTable(t))).SetValue(table, ext, new object[0]);
+					ext=Save(ext);
+					table.SetField(map.GetClassPropertyName(map.GetFieldInfoForForeignTable(t)),ext);
 				}
 			}
 			foreach (ExternalFieldMap efm in map.ExternalFieldMapArrays)
 			{
-				Table[] values = (Table[])table.GetType().GetProperty(map.GetClassFieldName(efm)).GetValue(table, new object[0]);
-				foreach (Table t in values)
+				Table[] values = (Table[])table.GetField(map.GetClassFieldName(efm));
+				if (values!=null)
 				{
-					this.Save(t);
+					foreach (Table t in values)
+					{
+						this.Save(t);
+					}
 				}
 			}
 			List<IDbDataParameter> pars = new List<IDbDataParameter>();
@@ -208,19 +211,22 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
 			foreach (Type t in map.ForeignTables)
 			{
-				Table ext = (Table)table.GetType().GetProperty(map.GetClassPropertyName(map.GetFieldInfoForForeignTable(t))).GetValue(table, new object[0]);
+				Table ext = (Table)table.GetField(map.GetClassPropertyName(map.GetFieldInfoForForeignTable(t)));
 				if (ext != null)
 				{
-					Save(ext);
-					table.GetType().GetProperty(map.GetClassPropertyName(map.GetFieldInfoForForeignTable(t))).SetValue(table, ext, new object[0]);
+					ext=Save(ext);
+					table.SetField(map.GetClassPropertyName(map.GetFieldInfoForForeignTable(t)),table);
 				}
 			}
 			foreach (ExternalFieldMap efm in map.ExternalFieldMapArrays)
 			{
-				Table[] vals = (Table[])table.GetType().GetProperty(map.GetClassFieldName(efm)).GetValue(table, new object[0]);
-				foreach (Table t in vals)
+				Table[] vals = (Table[])table.GetField(map.GetClassFieldName(efm));
+				if (vals!=null)
 				{
-					this.Save(t);
+					foreach (Table t in vals)
+					{
+						this.Save(t);
+					}
 				}
 			}
 			string query = "";
@@ -237,20 +243,25 @@ namespace Org.Reddragonit.Dbpro.Connections
 				{
 					if (ifm.AutoGen)
 					{
-						table.GetType().GetProperty(map.GetClassFieldName(ifm.FieldName)).SetValue(table,this[0],new object[0]);
+						table.SetField(map.GetClassFieldName(ifm.FieldName),this[0]);
 						break;
 					}
 				}
 				Close();
 			}
+			table._isSaved=true;
+			table.LoadStatus= LoadStatus.Complete;
 			foreach (ExternalFieldMap efm in map.ExternalFieldMapArrays)
 			{
 				Dictionary<string, List<List<IDbDataParameter>>> queries = queryBuilder.UpdateMapArray(table,efm,this);
-				foreach (string str in queries.Keys)
+				if (queries!=null)
 				{
-					foreach (List<IDbDataParameter> p in queries[str])
+					foreach (string str in queries.Keys)
 					{
-						ExecuteNonQuery(str,p);
+						foreach (List<IDbDataParameter> p in queries[str])
+						{
+							ExecuteNonQuery(str,p);
+						}
 					}
 				}
 			}
@@ -279,7 +290,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 					foreach (InternalFieldMap ifm in map.PrimaryKeys)
 					{
 						query += map.Name + "_" + external.Name + "." + ifm.FieldName + " = @" + ifm.FieldName + " AND ";
-						pars.Add(CreateParameter("@" + ifm.FieldName, t.GetType().GetProperty(map.GetClassFieldName(ifm)).GetValue(t, new object[0])));
+						pars.Add(CreateParameter("@" + ifm.FieldName, t.GetField(map.GetClassFieldName(ifm))));
 					}
 					foreach (InternalFieldMap ifm in external.PrimaryKeys)
 					{
@@ -296,7 +307,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 					Close();
 					Array obj = Array.CreateInstance(f.Type , values.Count);
 					values.CopyTo(obj);
-					t.GetType().GetProperty(map.GetClassFieldName(f)).SetValue(t, obj, new object[0]);
+					t.SetField(map.GetClassFieldName(f),obj);
 				}
 			}
 			return ret;
