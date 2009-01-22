@@ -27,7 +27,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 		private bool _selfRelated=false;
 		private string _addonName=null;
 		
-		public ExternalFieldMap(System.Type type,bool isSelfRelated,MemberInfo info) : base(info)
+		public ExternalFieldMap(System.Type type,bool isSelfRelated,PropertyInfo info) : base(info)
 		{
 			_type=type;
 			_isArray = info.ToString().Contains("[]");

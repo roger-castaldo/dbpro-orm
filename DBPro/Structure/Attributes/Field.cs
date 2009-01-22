@@ -5,23 +5,23 @@ using System.Reflection;
 namespace Org.Reddragonit.Dbpro.Structure.Attributes
 {
 	public enum FieldType
-		{
-			INTEGER,
-			SHORT,
-			LONG,
-			STRING,
-			CHAR,
-			BYTE,
-			DATE,
-			TIME,
-			DATETIME,
-			BOOLEAN,
-			MONEY,
-			DECIMAL,
-			IMAGE,
-			FLOAT,
-			DOUBLE
-		};
+	{
+		INTEGER,
+		SHORT,
+		LONG,
+		STRING,
+		CHAR,
+		BYTE,
+		DATE,
+		TIME,
+		DATETIME,
+		BOOLEAN,
+		MONEY,
+		DECIMAL,
+		IMAGE,
+		FLOAT,
+		DOUBLE
+	};
 	
 	[AttributeUsage(AttributeTargets.Property)]
 	public class Field : Attribute,IField
@@ -103,69 +103,52 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 		{
 			get
 			{
-				if (_fieldName == null)
-				{
-					System.Diagnostics.Debug.WriteLine("Searching for Field Name...");
-					System.Diagnostics.Debug.WriteLine("Types Count: "+ClassMapper.ClassedTypes.Count);
-					foreach (Type t in ClassMapper.ClassedTypes)
-					{
-						foreach (PropertyInfo p in t.GetProperties(BindingFlags.Public |      //Get public members
-						                                           BindingFlags.NonPublic |   //Get private/protected/internal members
-						                                           BindingFlags.Static |      //Get static members
-						                                           BindingFlags.Instance |    //Get instance members
-						                                           BindingFlags.DeclaredOnly))
-						{
-							foreach (object obj in p.GetCustomAttributes(this.GetType(), true))
-							{
-								if (obj.Equals(this))
-								{
-									_fieldName = "";
-									if (p.Name.ToUpper() != p.Name)
-									{
-										foreach (char c in p.Name.ToCharArray())
-										{
-											if (c.ToString().ToUpper() == c.ToString())
-											{
-												_fieldName += "_" + c.ToString().ToUpper();
-											}
-											else
-											{
-												_fieldName += c.ToString().ToUpper();
-											}
-										}
-									}else{
-										_fieldName=p.Name;
-									}
-									if (_fieldName[0] == '_')
-									{
-										_fieldName =_fieldName[1].ToString().ToUpper()+ _fieldName.Substring(2).ToUpper();
-									}
-									string type = p.ToString().Split(" ".ToCharArray())[0];
-									if (type.IndexOf(".") >= 0)
-									{
-										type = type.Substring(type.LastIndexOf(".") + 1);
-									}
-									type = type.Replace(" ", "").Replace("[]", "");
-									_fieldType = GetFieldType(type);
-									if ((_fieldType == FieldType.STRING) || (_fieldType == FieldType.BYTE))
-									{
-										_fieldLength = -1;
-									}
-									System.Diagnostics.Debug.WriteLine("Located Field Name: "+_fieldName);
-									break;
-								}
-							}
-							if (_fieldName!=null)
-								break;
-						}
-						if (_fieldName!=null)
-								break;
-					}
-				}
 				return _fieldName;
 			}
 			set{
 				_fieldName=value;
+			}
+		}
+		
+		internal void InitFieldName(PropertyInfo p)
+		{
+			if (_fieldName == null)
+			{
+				_fieldName = "";
+				if (p.Name.ToUpper() != p.Name)
+				{
+					foreach (char c in p.Name.ToCharArray())
+					{
+						if (c.ToString().ToUpper() == c.ToString())
+						{
+							_fieldName += "_" + c.ToString().ToUpper();
+						}
+						else
+						{
+							_fieldName += c.ToString().ToUpper();
+						}
+					}
+				}else{
+					_fieldName=p.Name;
+				}
+				if (_fieldName[0] == '_')
+				{
+					_fieldName =_fieldName[1].ToString().ToUpper()+ _fieldName.Substring(2).ToUpper();
+				}
+				if (_fieldName[_fieldName.Length-1]=='_')
+					_fieldName=_fieldName.Substring(0,_fieldName.Length-1);
+				string type = p.ToString().Split(" ".ToCharArray())[0];
+				if (type.IndexOf(".") >= 0)
+				{
+					type = type.Substring(type.LastIndexOf(".") + 1);
+				}
+				type = type.Replace(" ", "").Replace("[]", "");
+				_fieldType = GetFieldType(type);
+				if ((_fieldLength==int.MinValue)&&((_fieldType == FieldType.STRING) || (_fieldType == FieldType.BYTE)))
+				{
+					_fieldLength = -1;
+				}
+				System.Diagnostics.Debug.WriteLine("Located Field Name: "+_fieldName);
 			}
 		}
 
@@ -199,7 +182,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 					return FieldType.STRING;
 			}
 		}
-		
+
 		public bool Nullable
 		{
 			get

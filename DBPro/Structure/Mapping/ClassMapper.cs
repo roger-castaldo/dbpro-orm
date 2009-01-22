@@ -171,7 +171,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 								if (!types.Contains(ty))
 									types.Add(ty);
 								System.Diagnostics.Debug.WriteLine("Adding Table Map ("+ty.FullName+")");
-								map.Add(ty,new TableMap(ty,asm,ty.GetMembers(BindingFlags.Public |      //Get public members
+								map.Add(ty,new TableMap(ty,asm,ty.GetProperties(BindingFlags.Public |      //Get public members
 								                                             BindingFlags.NonPublic |   //Get private/protected/internal members
 								                                             BindingFlags.Static |      //Get static members
 								                                             BindingFlags.Instance |    //Get instance members

@@ -215,7 +215,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 				if (ext != null)
 				{
 					ext=Save(ext);
-					table.SetField(map.GetClassPropertyName(map.GetFieldInfoForForeignTable(t)),table);
+					table.SetField(map.GetClassPropertyName(map.GetFieldInfoForForeignTable(t)),ext);
 				}
 			}
 			foreach (ExternalFieldMap efm in map.ExternalFieldMapArrays)

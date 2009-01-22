@@ -23,7 +23,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 		protected bool _nullable=false;
 		protected bool _versionable=false;
 		
-		public FieldMap(MemberInfo info)
+		public FieldMap(PropertyInfo info)
 		{
 			foreach (object obj in info.GetCustomAttributes(true))
 			{
