@@ -71,14 +71,17 @@ namespace Org.Reddragonit.Dbpro.Structure
 		internal string ConnectionName
 		{
 			get{
+				string ret = null;
 				foreach (Attribute att in this.GetType().GetCustomAttributes(true))
 				{
 					if (att.GetType()==typeof(Org.Reddragonit.Dbpro.Structure.Attributes.Table))
 					{
-						return ((Org.Reddragonit.Dbpro.Structure.Attributes.Table)att).ConnectionName;
+						ret = ((Org.Reddragonit.Dbpro.Structure.Attributes.Table)att).ConnectionName;
 					}
 				}
-				return Connections.ConnectionPoolManager.DEFAULT_CONNECTION_NAME;
+				if (!ConnectionPoolManager.ConnectionExists(ret))
+					ret=ConnectionPoolManager.DEFAULT_CONNECTION_NAME;
+				return ret;
 			}
 		}
 
