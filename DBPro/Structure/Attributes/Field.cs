@@ -146,7 +146,10 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 				_fieldType = GetFieldType(type);
 				if ((_fieldLength==int.MinValue)&&((_fieldType == FieldType.STRING) || (_fieldType == FieldType.BYTE)))
 				{
-					_fieldLength = -1;
+					if ((_fieldType== FieldType.BYTE)&&(!p.PropertyType.IsArray))
+						_fieldLength=1;
+					else
+						_fieldLength = -1;
 				}
 				System.Diagnostics.Debug.WriteLine("Located Field Name: "+_fieldName);
 			}
