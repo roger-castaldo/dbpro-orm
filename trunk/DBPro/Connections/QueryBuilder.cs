@@ -513,8 +513,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 					List<IDbDataParameter> pars = new List<IDbDataParameter>();
 					foreach (InternalFieldMap ifm in map.PrimaryKeys)
 					{
-						delString += ifm.FieldName + " = @" + ifm.FieldName + " AND ";
-						pars.Add(conn.CreateParameter("@" + ifm.FieldName, table.GetField(map.GetClassFieldName(ifm))));
+						delString += map.Name+"_"+ifm.FieldName + " = @" + map.Name+"_"+ifm.FieldName + " AND ";
+						pars.Add(conn.CreateParameter("@"+map.Name+"_" + ifm.FieldName, table.GetField(map.GetClassFieldName(ifm))));
 					}
 					ret.Add(delString.Substring(0, delString.Length - 4),new List<List<IDbDataParameter>>());
 					ret[delString.Substring(0, delString.Length - 4)].Add(pars);
@@ -522,13 +522,13 @@ namespace Org.Reddragonit.Dbpro.Connections
 					string valueString = "VALUES(";
 					foreach (InternalFieldMap ifm in map.PrimaryKeys)
 					{
-						delString += ifm.FieldName + ",";
-						valueString += "@" + ifm.FieldName + ",";
+						delString += map.Name+"_"+ifm.FieldName + ",";
+						valueString += "@"+map.Name + ifm.FieldName + ",";
 					}
 					foreach (InternalFieldMap ifm in relatedMap.PrimaryKeys)
 					{
-						delString += ifm.FieldName + ",";
-						valueString += "@" + ifm.FieldName + ",";
+						delString += relatedMap.Name+"_"+ifm.FieldName + ",";
+						valueString += "@"+relatedMap.Name+"_" + ifm.FieldName + ",";
 					}
 					delString = delString.Substring(0, delString.Length - 1) + ") " + valueString.Substring(0, valueString.Length - 1) + ")";
 					ret.Add(delString,new List<List<IDbDataParameter>>());
@@ -538,13 +538,13 @@ namespace Org.Reddragonit.Dbpro.Connections
 						{
 							for (int x = 0; x < pars.Count; x++)
 							{
-								if (pars[x].ParameterName == "@" + ifm.FieldName)
+								if (pars[x].ParameterName == "@"+relatedMap.Name+"_" + ifm.FieldName)
 								{
 									pars.RemoveAt(x);
 									break;
 								}
 							}
-							pars.Add(conn.CreateParameter("@" + ifm.FieldName, t.GetField(relatedMap.GetClassFieldName(ifm))));
+							pars.Add(conn.CreateParameter("@" + relatedMap.Name+"_"+ifm.FieldName, t.GetField(relatedMap.GetClassFieldName(ifm))));
 						}
 						ret[delString].Add(pars);
 					}

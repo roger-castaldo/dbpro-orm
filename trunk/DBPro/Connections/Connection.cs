@@ -199,9 +199,14 @@ namespace Org.Reddragonit.Dbpro.Connections
 			{
 				throw new Exception("Cannot insert an entry into a table into the database connection that it was not specified for.");
 			}
+			if (table.LoadStatus== LoadStatus.Partial)
+				return table;
 			if (table.IsSaved)
 			{
-				return Update(table);
+				if (table.LoadStatus== LoadStatus.Complete)
+					return Update(table);
+				else
+					return table;
 			}
 			else
 			{

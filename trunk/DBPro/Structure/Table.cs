@@ -27,7 +27,10 @@ namespace Org.Reddragonit.Dbpro.Structure
 		
 		internal LoadStatus LoadStatus{
 			get{return _loadStatus;}
-			set{_loadStatus=value;}
+			set{_loadStatus=value;
+				if ((_loadStatus== LoadStatus.Complete)||(_loadStatus== LoadStatus.Partial))
+					_isSaved=true;
+			}
 		}
 		
 		private void InitPrimaryKeys()
