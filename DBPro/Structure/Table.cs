@@ -114,15 +114,17 @@ namespace Org.Reddragonit.Dbpro.Structure
 					{
 						ExternalFieldMap efm = (ExternalFieldMap)map[fnp];
 						Table t = (Table)efm.Type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
+                        bool setValue = false;
 						foreach (InternalFieldMap ifm in ClassMapper.GetTableMap(t.GetType()).PrimaryKeys)
 						{
 							if (conn.ContainsField(conn.Pool.CorrectName(efm.AddOnName+"_"+ifm.FieldName))&&!conn.IsDBNull(conn.GetOrdinal(conn.Pool.CorrectName(efm.AddOnName+"_"+ifm.FieldName))))
 							{
 								t.SetField(map.GetClassFieldName(ifm.FieldName),conn[conn.Pool.CorrectName(efm.AddOnName+"_"+ifm.FieldName)]);
+                                setValue = true;
 							}
 						}
 						t._loadStatus= LoadStatus.Partial;
-						if (!t.AllFieldsNull)
+						if (!t.AllFieldsNull&&setValue)
 						{
 							t.InitPrimaryKeys();
 							this.SetField(fnp.ClassFieldName,t);
