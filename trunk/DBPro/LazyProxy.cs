@@ -45,10 +45,10 @@ namespace Org.Reddragonit.Dbpro
 		protected static PropertyInfo GetMethodProperty(MethodInfo methodInfo, object owner, out bool IsGet)
 		{
 			foreach(PropertyInfo aProp in owner.GetType().GetProperties(BindingFlags.Public |      //Get public members
-								                                             BindingFlags.NonPublic |   //Get private/protected/internal members
-								                                             BindingFlags.Static |      //Get static members
-								                                             BindingFlags.Instance |    //Get instance members
-								                                             BindingFlags.DeclaredOnly  ))
+			                                                            BindingFlags.NonPublic |   //Get private/protected/internal members
+			                                                            BindingFlags.Static |      //Get static members
+			                                                            BindingFlags.Instance |    //Get instance members
+			                                                            BindingFlags.DeclaredOnly  ))
 			{
 				MethodInfo mi = null;
 				mi = aProp.GetGetMethod(true);
@@ -87,8 +87,8 @@ namespace Org.Reddragonit.Dbpro
 			object outVal=null;
 			
 			if (owner!=null)
-			{				
-				bool isGet=false;				
+			{
+				bool isGet=false;
 				PropertyInfo pi = GetMethodProperty(mi,owner, out isGet);
 				
 				if ((pi!=null)&&(_map[pi.Name]!=null))
@@ -100,19 +100,38 @@ namespace Org.Reddragonit.Dbpro
 						if ((fm is ExternalFieldMap)&&(outVal!=null))
 						{
 							ExternalFieldMap efm = (ExternalFieldMap)fm;
-							Table t = (Table)outVal;
-							if (t.LoadStatus== LoadStatus.Partial)
+							if (efm.IsArray)
 							{
-								List<SelectParameter> pars = new List<SelectParameter>();
-								TableMap map = ClassMapper.GetTableMap(t.GetType());
-								foreach (InternalFieldMap ifm in map.PrimaryKeys)
-								{
-									pars.Add(new SelectParameter(map.GetClassFieldName(ifm.FieldName),t.GetField(map.GetClassFieldName(ifm.FieldName))));
-								}
+								Table[] vals = (Table[])outVal;
+								TableMap map = ClassMapper.GetTableMap(efm.Type);
 								Connection conn = ConnectionPoolManager.GetConnection(_map.ConnectionName).getConnection();
-								t = conn.Select(outVal.GetType(),pars)[0];
-								pi.SetValue(owner,t,new object[0]);
-								outVal=t;
+								for (int x=0;x<vals.Length;x++)
+								{
+									List<SelectParameter> pars = new List<SelectParameter>();
+									foreach (InternalFieldMap ifm in map.PrimaryKeys)
+									{
+										pars.Add(new SelectParameter(map.GetClassFieldName(ifm.FieldName),vals[x].GetField(map.GetClassFieldName(ifm.FieldName))));
+									}
+									vals[x]=conn.Select(efm.Type,pars)[0];
+								}
+								pi.SetValue(owner,vals,new object[0]);
+								outVal=vals;
+								conn.CloseConnection();
+							}else{
+								Table t = (Table)outVal;
+								if (t.LoadStatus== LoadStatus.Partial)
+								{
+									List<SelectParameter> pars = new List<SelectParameter>();
+									TableMap map = ClassMapper.GetTableMap(t.GetType());
+									foreach (InternalFieldMap ifm in map.PrimaryKeys)
+									{
+										pars.Add(new SelectParameter(map.GetClassFieldName(ifm.FieldName),t.GetField(map.GetClassFieldName(ifm.FieldName))));
+									}
+									Connection conn = ConnectionPoolManager.GetConnection(_map.ConnectionName).getConnection();
+									t = conn.Select(outVal.GetType(),pars)[0];
+									pi.SetValue(owner,t,new object[0]);
+									outVal=t;
+								}
 							}
 						}
 					}else
