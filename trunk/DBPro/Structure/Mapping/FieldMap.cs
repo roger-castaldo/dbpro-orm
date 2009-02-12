@@ -22,9 +22,13 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 		protected bool _autogen=false;
 		protected bool _nullable=false;
 		protected bool _versionable=false;
+		private bool _isArray = false;
+		private Type _objectType=null;
 		
 		public FieldMap(PropertyInfo info)
 		{
+			_isArray = info.ToString().Contains("[]");
+			_objectType=info.PropertyType;
 			foreach (object obj in info.GetCustomAttributes(true))
 			{
 				if (obj is INullable)
@@ -95,6 +99,17 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			get{
 				return _versionable;
 			}
+		}
+		
+		public bool IsArray{
+			get
+			{
+				return _isArray;
+			}
+		}
+		
+		public Type ObjectType{
+			get{return _objectType;}
 		}
 	}
 }

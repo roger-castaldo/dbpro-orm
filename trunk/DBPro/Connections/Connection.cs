@@ -320,6 +320,34 @@ namespace Org.Reddragonit.Dbpro.Connections
 					t.SetField(map.GetClassFieldName(f),obj);
 				}
 			}
+			foreach (InternalFieldMap ifm in map.Fields)
+			{
+				if (ifm.IsArray)
+				{
+					query = "SELECT "+Pool.CorrectName(ifm.FieldName+"_VALUE")+" FROM "+
+						Pool.CorrectName(map.Name+"_"+ifm.FieldName)+" WHERE ";
+					foreach (InternalFieldMap primary in map.PrimaryKeys)
+						query+=" "+Pool.CorrectName(map.Name+"_"+primary.FieldName)+" = "+Pool.CorrectName("@"+map.Name+"_"+primary.FieldName)+" AND ";
+					query = query.Substring(0,query.Length-4);
+					query+=" ORDER BY "+Pool.CorrectName(map.Name+"_"+ifm.FieldName+"_ID")+" ASC";
+					foreach (Table t in ret)
+					{
+						List<IDbDataParameter> pars = new List<IDbDataParameter>();
+						foreach (InternalFieldMap primary in map.PrimaryKeys)
+							pars.Add(CreateParameter(Pool.CorrectName("@"+map.Name+"_"+primary.FieldName),t.GetField(map.GetClassFieldName(primary))));
+						ArrayList values = new ArrayList();
+						ExecuteQuery(query,pars);
+						while (Read())
+						{
+							values.Add(this[0]);
+						}
+						Close();
+						Array obj = Array.CreateInstance(ifm.ObjectType,values.Count);
+						values.CopyTo(obj);
+						t.SetField(map.GetClassFieldName(ifm),obj);
+					}
+				}
+			}
 			return ret;
 		}
 		
