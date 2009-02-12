@@ -523,7 +523,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 					foreach (InternalFieldMap ifm in map.PrimaryKeys)
 					{
 						delString += map.Name+"_"+ifm.FieldName + ",";
-						valueString += "@"+map.Name + ifm.FieldName + ",";
+						valueString += "@"+map.Name +"_"+ ifm.FieldName + ",";
 					}
 					foreach (InternalFieldMap ifm in relatedMap.PrimaryKeys)
 					{

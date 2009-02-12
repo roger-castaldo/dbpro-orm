@@ -41,11 +41,23 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 
 		}
 		
-		internal override void GetAddAutogen(string tableName,ExtractedFieldMap field,ConnectionPool pool, out List<string> queryStrings, out List<Generator> generators, out List<Trigger> triggers)
+		internal override void GetAddAutogen(string tableName,List<ExtractedFieldMap> primaryFields,ConnectionPool pool, out List<string> queryStrings, out List<Generator> generators, out List<Trigger> triggers)
 		{
 			queryStrings=null;
 			generators = new List<Generator>();
 			triggers=new List<Trigger>();
+			ExtractedFieldMap field = primaryFields[0];
+			if ((primaryFields.Count>1)&&(!field.AutoGen))
+			{
+				foreach (ExtractedFieldMap efm in primaryFields)
+				{
+					if (efm.AutoGen)
+					{
+						field=efm;
+						break;
+					}
+				}
+			}
 			if (field.Type.ToUpper().Contains("DATE")||field.Type.ToUpper().Contains("TIME"))
 			{
 				triggers.Add(new Trigger(pool.CorrectName(tableName+"_"+field.FieldName+"_GEN"),"FOR "+tableName+" ACTIVE BEFORE INSERT POSITION 0",
@@ -55,12 +67,39 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 				                         "END"));
 			}else if (field.Type.ToUpper().Contains("INT"))
 			{
-				generators.Add(new Generator(pool.CorrectName("GEN_"+tableName+"_"+field.FieldName)));
-				triggers.Add(new Trigger(pool.CorrectName(tableName+"_"+field.FieldName+"_GEN"),"FOR "+tableName+" ACTIVE BEFORE INSERT POSITION 0",
-				                         "AS \n" +
-				                         "BEGIN \n" +
-				                         "    NEW." + field.FieldName + " = GEN_ID("+pool.CorrectName("GEN_" + tableName + "_" + field.FieldName) + ",1);\n" +
-				                         "END"));
+				if (primaryFields.Count==1)
+				{
+					generators.Add(new Generator(pool.CorrectName("GEN_"+tableName+"_"+field.FieldName)));
+					triggers.Add(new Trigger(pool.CorrectName(tableName+"_"+field.FieldName+"_GEN"),"FOR "+tableName+" ACTIVE BEFORE INSERT POSITION 0",
+					                         "AS \n" +
+					                         "BEGIN \n" +
+					                         "    NEW." + field.FieldName + " = GEN_ID("+pool.CorrectName("GEN_" + tableName + "_" + field.FieldName) + ",1);\n" +
+					                         "END"));
+				}else{
+					string code = "AS \n";
+					string declares="";
+					string sets="";
+					string queryFields="";
+					foreach (ExtractedFieldMap efm in primaryFields)
+					{
+						declares+="DECLARE VARIABLE "+efm.FieldName+" "+efm.Type+";\n";
+						if (!efm.AutoGen)
+						{
+							sets+=efm.FieldName+" = new."+efm.FieldName+";\n";
+							queryFields+=" AND "+efm.FieldName+" = :"+efm.FieldName;
+						}
+					}
+					code+=declares;
+					code+="BEGIN \n";
+					code+=sets;
+					code+="SELECT MAX("+field.FieldName+") FROM "+tableName+" WHERE ";
+					code+=queryFields.Substring(4)+" INTO :"+field.FieldName+";\n";
+					code+="IF ("+field.FieldName+" is NULL)\n";
+					code+="\tTHEN "+field.FieldName+" = -1;\n";
+					code+="NEW."+field.FieldName+" = "+field.FieldName+"+1;\n";
+					code+="END";
+					triggers.Add(new Trigger(pool.CorrectName(tableName+"_"+field.FieldName+"_GEN"),"FOR "+tableName+" ACTIVE BEFORE INSERT POSITION 0",code));
+				}
 			}else
 				throw new Exception("Unable to create autogenerator for non date or digit type.");
 		}
