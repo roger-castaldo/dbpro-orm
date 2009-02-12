@@ -23,14 +23,12 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 		private System.Type _type;
 		private UpdateDeleteAction _onUpdate;
 		private UpdateDeleteAction _onDelete;
-		private bool _isArray = false;
 		private bool _selfRelated=false;
 		private string _addonName=null;
 		
 		public ExternalFieldMap(System.Type type,bool isSelfRelated,PropertyInfo info) : base(info)
 		{
 			_type=type;
-			_isArray = info.ToString().Contains("[]");
 			_selfRelated=isSelfRelated;
 			_addonName="";
 			if (info.Name.ToUpper() != info.Name)
@@ -83,13 +81,6 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 		public UpdateDeleteAction OnDelete{
 			get{
 				return _onDelete;
-			}
-		}
-
-		public bool IsArray{
-			get
-			{
-				return _isArray;
 			}
 		}
 		

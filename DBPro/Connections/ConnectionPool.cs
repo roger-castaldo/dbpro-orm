@@ -282,8 +282,30 @@ namespace Org.Reddragonit.Dbpro.Connections
 				ExtractedTableMap etm = new ExtractedTableMap(tm.Name);
 				foreach (InternalFieldMap ifm in tm.Fields)
 				{
-					etm.Fields.Add(new ExtractedFieldMap(ifm.FieldName,conn.TranslateFieldType(ifm.FieldType,ifm.FieldLength),
+					if (!ifm.IsArray)
+						etm.Fields.Add(new ExtractedFieldMap(ifm.FieldName,conn.TranslateFieldType(ifm.FieldType,ifm.FieldLength),
 					                                     ifm.FieldLength,ifm.PrimaryKey,ifm.Nullable,ifm.AutoGen));
+					else
+					{
+						ExtractedTableMap etmField = new ExtractedTableMap(CorrectName(tm.Name+"_"+ifm.FieldName));
+						foreach (InternalFieldMap ifmField in tm.PrimaryKeys)
+						{
+							etmField.Fields.Add(new ExtractedFieldMap(CorrectName(tm.Name+"_"+ifmField.FieldName),conn.TranslateFieldType(ifmField.FieldType,ifmField.FieldLength),
+							                                          ifmField.FieldLength,true,false,false));
+							etmField.ForeignFields.Add(new ForeignRelationMap(CorrectName(tm.Name+"_"+ifmField.FieldName),tm.Name,
+							                                                  ifmField.FieldName,UpdateDeleteAction.CASCADE.ToString(),UpdateDeleteAction.CASCADE.ToString()));
+						}
+						etmField.Fields.Add(new ExtractedFieldMap(CorrectName(tm.Name+"_"+ifm.FieldName+"_ID"),conn.TranslateFieldType(FieldType.DATETIME,0),8,
+						                                          true,false,true));
+						etmField.Fields.Add(new ExtractedFieldMap(CorrectName(ifm.FieldName+"_VALUE"),conn.TranslateFieldType(ifm.FieldType,ifm.FieldLength),ifm.FieldLength,
+						                                          false,ifm.Nullable,false));
+						tables.Add(etmField);
+						conn.GetAddAutogen(etmField.TableName,etmField.PrimaryKeys,this,out queryStrings,out tmpGenerators,out tmpTriggers);
+						if (tmpGenerators!=null)
+							generators.AddRange(tmpGenerators);
+						if (tmpTriggers!=null)
+							triggers.AddRange(tmpTriggers);
+					}
 				}
 				foreach (Type t in tm.ForeignTables)
 				{

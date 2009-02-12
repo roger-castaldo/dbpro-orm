@@ -705,7 +705,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 				{
 					if (map[fnp] is ExternalFieldMap)
 					{
-						if (!((ExternalFieldMap)map[fnp]).IsArray)
+						if (!map[fnp].IsArray)
 						{
 							ExternalFieldMap efm = (ExternalFieldMap)map[fnp];
 							foreach (InternalFieldMap ifm in ClassMapper.GetTableMap(efm.Type).PrimaryKeys)
@@ -714,7 +714,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 							}
 						}
 					}
-					else
+					else if (!map[fnp].IsArray)
 					{
 						fields += ",main_table." + fnp.TableFieldName;
 					}

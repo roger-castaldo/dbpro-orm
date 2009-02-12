@@ -224,7 +224,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 					TableMap parentMap = ClassMapper.GetTableMap(ParentType);
 					foreach (InternalFieldMap ifm in parentMap.Fields)
 					{
-						if (!ifm.PrimaryKey)
+						if ((!ifm.PrimaryKey)&&!ifm.IsArray)
 							ret.Add(ifm.FieldName);
 					}
 					ret.AddRange(parentMap.ParentDatabaseFieldNames);
