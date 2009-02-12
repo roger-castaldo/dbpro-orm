@@ -346,7 +346,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 				{
 					if (efm.AutoGen)
 					{
-						conn.GetAddAutogen(etm.TableName,efm,this,out queryStrings,out tmpGenerators,out tmpTriggers);
+						conn.GetAddAutogen(etm.TableName,etm.PrimaryKeys,this,out queryStrings,out tmpGenerators,out tmpTriggers);
 						if (tmpGenerators!=null)
 							generators.AddRange(tmpGenerators);
 						if (tmpTriggers!=null)

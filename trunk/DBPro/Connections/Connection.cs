@@ -48,7 +48,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		internal abstract IDbDataParameter CreateParameter(string parameterName,object parameterValue);
 		internal abstract string TranslateFieldType(Org.Reddragonit.Dbpro.Structure.Attributes.FieldType type,int fieldLength);
 		internal abstract void GetDropAutogenStrings(string tableName,ExtractedFieldMap field,ConnectionPool pool,out List<string> queryStrings,out List<Generator> generators,out List<Trigger> triggers);
-		internal abstract void GetAddAutogen(string tableName,ExtractedFieldMap field,ConnectionPool pool,out List<string> queryStrings,out List<Generator> generators,out List<Trigger> triggers);
+		internal abstract void GetAddAutogen(string tableName,List<ExtractedFieldMap> primaryFields,ConnectionPool pool, out List<string> queryStrings, out List<Generator> generators, out List<Trigger> triggers);
 		internal abstract List<Trigger> GetVersionTableTriggers(ExtractedTableMap table,VersionTypes versionType,ConnectionPool pool);
 		
 		internal virtual List<string> GetDropTableString(string table,bool isVersioned)
@@ -309,7 +309,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 					ExecuteQuery(query, pars);
 					while (Read())
 					{
-						Table ta = (Table)f.Type.GetConstructor(System.Type.EmptyTypes).Invoke(new object[0]);
+						Table ta = (Table)LazyProxy.Instance(f.Type.GetConstructor(System.Type.EmptyTypes).Invoke(new object[0]));
 						ta.SetValues(this);
 						ta.LoadStatus=LoadStatus.Partial;
 						values.Add(ta);

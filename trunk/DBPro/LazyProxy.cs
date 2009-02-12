@@ -15,6 +15,7 @@ using System.Runtime.Remoting.Proxies;
 using Org.Reddragonit.Dbpro.Exceptions;
 using Org.Reddragonit.Dbpro.Structure;
 using Org.Reddragonit.Dbpro.Structure.Mapping;
+using FieldNamePair = Org.Reddragonit.Dbpro.Structure.Mapping.TableMap.FieldNamePair;
 
 namespace Org.Reddragonit.Dbpro
 {
@@ -93,6 +94,22 @@ namespace Org.Reddragonit.Dbpro
 				
 				if ((pi!=null)&&(_map[pi.Name]!=null))
 				{
+					if (pi.Name!="LoadStatus")
+					{
+						if (((Table)owner).LoadStatus== LoadStatus.Partial)
+						{
+							List<SelectParameter> pars = new List<SelectParameter>();
+							foreach (InternalFieldMap ifm in _map.PrimaryKeys)
+								pars.Add(new SelectParameter(_map.GetClassFieldName(ifm.FieldName),((Table)owner).GetField(_map.GetClassFieldName(ifm.FieldName))));
+							Connection conn = ConnectionPoolManager.GetConnection(_map.ConnectionName).getConnection();
+							Table tmp = conn.Select(owner.GetType(),pars)[0];
+							foreach (FieldNamePair fnp in _map.FieldNamePairs)
+							{
+								if ((!_map[fnp].PrimaryKey)&&(!tmp.IsFieldNull(fnp.ClassFieldName)))
+								    ((Table)owner).SetField(fnp.ClassFieldName,tmp.GetField(fnp.ClassFieldName));
+							}
+						}
+					}
 					FieldMap fm = _map[pi.Name];
 					if (isGet)
 					{

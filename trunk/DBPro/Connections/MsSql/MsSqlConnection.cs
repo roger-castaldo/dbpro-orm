@@ -21,7 +21,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
             return new SqlParameter(parameterName, parameterValue);
         }
 
-		internal override void GetAddAutogen(string tableName, ExtractedFieldMap field,ConnectionPool pool, out List<string> queryStrings, out List<Generator> generators, out List<Trigger> triggers)
+		internal override void GetAddAutogen(string tableName,List<ExtractedFieldMap> primaryFields,ConnectionPool pool, out List<string> queryStrings, out List<Generator> generators, out List<Trigger> triggers)
 		{
 			throw new NotImplementedException();
 		}
