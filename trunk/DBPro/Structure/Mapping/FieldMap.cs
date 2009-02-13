@@ -49,6 +49,8 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 					_versionable=true;
 				}
 			}
+			if (IsArray && PrimaryKey)
+				throw new Exception("Unable to use an Array value as a Primary Key");
 		}
 		
 		internal FieldMap(bool PrimaryKey,bool AutoGen,bool Nullable)

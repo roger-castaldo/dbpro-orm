@@ -295,7 +295,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 							etmField.ForeignFields.Add(new ForeignRelationMap(CorrectName(tm.Name+"_"+ifmField.FieldName),tm.Name,
 							                                                  ifmField.FieldName,UpdateDeleteAction.CASCADE.ToString(),UpdateDeleteAction.CASCADE.ToString()));
 						}
-						etmField.Fields.Add(new ExtractedFieldMap(CorrectName(tm.Name+"_"+ifm.FieldName+"_ID"),conn.TranslateFieldType(FieldType.DATETIME,0),8,
+						etmField.Fields.Add(new ExtractedFieldMap(CorrectName(tm.Name+"_"+ifm.FieldName+"_ID"),conn.TranslateFieldType(FieldType.LONG,0),8,
 						                                          true,false,true));
 						etmField.Fields.Add(new ExtractedFieldMap(CorrectName(ifm.FieldName+"_VALUE"),conn.TranslateFieldType(ifm.FieldType,ifm.FieldLength),ifm.FieldLength,
 						                                          false,ifm.Nullable,false));
