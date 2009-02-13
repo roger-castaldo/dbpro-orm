@@ -190,6 +190,11 @@ namespace Org.Reddragonit.Dbpro.Connections
 					}
 				}
 			}
+			foreach (InternalFieldMap ifm in map.Fields)
+			{
+				if (ifm.IsArray)
+					InsertArrayValue(table,map,(Array)table.GetField(map.GetClassFieldName(ifm.FieldName)),ifm);
+			}
 			return table;
 		}
 
@@ -278,7 +283,46 @@ namespace Org.Reddragonit.Dbpro.Connections
 					}
 				}
 			}
+			foreach (InternalFieldMap ifm in map.Fields)
+			{
+				if (ifm.IsArray)
+				{
+					InsertArrayValue(table,map,(Array)table.GetField(map.GetClassFieldName(ifm.FieldName)),ifm);
+				}
+			}
 			return table;
+		}
+		
+		private void InsertArrayValue(Table table,TableMap map,Array values,InternalFieldMap field)
+		{
+			List<IDbDataParameter> pars = new List<IDbDataParameter>();
+			string query="";
+			string fields="";
+			string paramString="";
+			string conditions = "";
+			pars = new List<IDbDataParameter>();
+			foreach (InternalFieldMap primary in map.PrimaryKeys)
+			{
+				fields+=Pool.CorrectName(map.Name+"_"+primary.FieldName)+", ";
+				paramString+=Pool.CorrectName("@"+map.Name+"_"+primary.FieldName)+", ";
+				conditions+=Pool.CorrectName(map.Name+"_"+primary.FieldName)+" = "+Pool.CorrectName("@"+map.Name+"_"+primary.FieldName)+" AND ";
+				pars.Add(CreateParameter(Pool.CorrectName("@"+map.Name+"_"+primary.FieldName),table.GetField(map.GetClassFieldName(primary.FieldName))));
+			}
+			query = queryBuilder.Delete(Pool.CorrectName(map.Name+"_"+field.FieldName),conditions.Substring(0,conditions.Length-4));
+			ExecuteNonQuery(query,pars);
+			if (values!=null)
+			{
+				pars.Add(CreateParameter(Pool.CorrectName("@"+field.FieldName+"_VALUE"),null));
+				fields+=Pool.CorrectName(field.FieldName+"_VALUE");
+				paramString+=Pool.CorrectName("@"+field.FieldName+"_VALUE");
+				query = queryBuilder.Insert(Pool.CorrectName(map.Name+"_"+field.FieldName),fields,paramString);
+				foreach (object obj in values)
+				{
+					pars.RemoveAt(pars.Count-1);
+					pars.Add(CreateParameter(Pool.CorrectName("@"+field.FieldName+"_VALUE"),obj));
+					ExecuteNonQuery(query,pars);
+				}
+			}
 		}
 
 		private List<Table> AddArrayedTablesToSelect(List<Table> ret, System.Type type)

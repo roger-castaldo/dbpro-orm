@@ -459,7 +459,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 							}
 						}
 					}
-					else if (!map[fnp].AutoGen)
+					else if (!map[fnp].AutoGen&&!map[fnp].IsArray)
 					{
 						values += fnp.TableFieldName + ",";
 						parameters+=",@"+fnp.TableFieldName;
@@ -496,6 +496,37 @@ namespace Org.Reddragonit.Dbpro.Connections
 				System.Diagnostics.Debug.WriteLine(e.Message);
 				return null;
 			}
+		}
+		
+		internal string Insert(string table,string fields,string parameters)
+		{
+			return string.Format(InsertString,table,fields,parameters);
+		}
+		#endregion
+		
+		#region Deletes
+		internal string Delete(Table table,out List<IDbDataParameter> parameters,Connection conn)
+		{
+			parameters = new List<IDbDataParameter>();
+			try{
+				string conditions="";
+				TableMap map = ClassMapper.GetTableMap(table.GetType());
+				foreach(InternalFieldMap ifm in map.PrimaryKeys)
+				{
+					conditions+=ifm.FieldName+" = "+pool.CorrectName("@"+ifm.FieldName)+" AND ";
+					parameters.Add(conn.CreateParameter(pool.CorrectName("@"+ifm.FieldName),table.GetField(map.GetClassFieldName(ifm.FieldName))));
+				}
+				return string.Format(DeleteWithConditions,map.Name,conditions);
+			}catch(Exception e)
+			{
+				System.Diagnostics.Debug.WriteLine(e.Message);
+				return null;
+			}
+		}
+		
+		internal string Delete(string tableName,string conditions)
+		{
+			return string.Format(DeleteWithConditions,tableName,conditions);
 		}
 		#endregion
 		
@@ -610,7 +641,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 							}
 						}
 					}
-					else
+					else if (!map[fnp].IsArray)
 					{
 						fields += fnp.TableFieldName+" = @"+fnp.TableFieldName +", ";
 						if (table.GetField(fnp.ClassFieldName) == null)
