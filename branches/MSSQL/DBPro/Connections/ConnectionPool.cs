@@ -491,15 +491,15 @@ namespace Org.Reddragonit.Dbpro.Connections
 								{
 									foundField=true;
 									if (efm.Nullable&&!ee.Nullable)
-										constraintDrops.Add(conn.queryBuilder.DropNullConstraint(etm.TableName,efm.FieldName,conn));
+										constraintDrops.Add(conn.queryBuilder.DropNullConstraint(etm.TableName,efm,conn));
 									else if (!efm.Nullable&&ee.Nullable)
-										constraintCreates.Add(conn.queryBuilder.CreateNullConstraint(etm.TableName,efm.FieldName));
+										constraintCreates.Add(conn.queryBuilder.CreateNullConstraint(etm.TableName,efm));
 									break;
 								}
 							}
 							if (!foundField&&!efm.Nullable)
 							{
-								constraintCreates.Add(conn.queryBuilder.CreateNullConstraint(etm.TableName,efm.FieldName));
+								constraintCreates.Add(conn.queryBuilder.CreateNullConstraint(etm.TableName,efm));
 							}
 						}
 						break;
@@ -510,7 +510,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 					foreach (ExtractedFieldMap efm in etm.Fields)
 					{
 						if (!efm.Nullable)
-							constraintCreates.Add(conn.queryBuilder.CreateNullConstraint(etm.TableName,efm.FieldName));
+							constraintCreates.Add(conn.queryBuilder.CreateNullConstraint(etm.TableName,efm));
 					}
 				}
 			}
@@ -535,7 +535,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 								}
 							}
 							if (!foundField)
-								constraintDrops.Add(conn.queryBuilder.DropNullConstraint(etm.TableName,efm.FieldName,conn));
+								constraintDrops.Add(conn.queryBuilder.DropNullConstraint(etm.TableName,efm,conn));
 						}
 						break;
 					}
@@ -545,7 +545,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 					foreach (ExtractedFieldMap efm in etm.Fields)
 					{
 						if (!efm.Nullable)
-							constraintDrops.Add(conn.queryBuilder.DropNullConstraint(etm.TableName,efm.FieldName,conn));
+							constraintDrops.Add(conn.queryBuilder.DropNullConstraint(etm.TableName,efm,conn));
 					}
 				}
 			}
@@ -865,13 +865,13 @@ namespace Org.Reddragonit.Dbpro.Connections
 											foreignKeyDrops.Add(new ForeignKey(etm,tbl));
 											foreignKeyCreations.Add(new ForeignKey(etm,tbl));
 										}
-										tableAlterations.Add(conn.queryBuilder.AlterFieldType(etm.TableName,efm.FieldName,efm.Type,efm.Size));
+										tableAlterations.Add(conn.queryBuilder.AlterFieldType(etm.TableName,efm));
 									}
 									break;
 								}
 							}
 							if (!foundField)
-								tableAlterations.Add(conn.queryBuilder.CreateColumn(etm.TableName,efm.FieldName,efm.Type,efm.Size));
+								tableAlterations.Add(conn.queryBuilder.CreateColumn(etm.TableName,efm));
 						}
 						break;
 					}
@@ -905,7 +905,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			foreach (PrimaryKey pk in primaryKeyDrops)
 			{
 				foreach (string field in pk.Fields)
-					alterations.Add(conn.queryBuilder.DropPrimaryKey(pk.Name,field,conn));
+					alterations.Add(conn.queryBuilder.DropPrimaryKey(pk,conn));
 			}
 			alterations.Add(" COMMIT;");
 			

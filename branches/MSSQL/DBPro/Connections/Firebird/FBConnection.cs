@@ -141,12 +141,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 			for (int x=1;x<table.Fields.Count;x++)
 			{
 				ExtractedFieldMap efm = table.Fields[x];
-				if (efm.Type.ToUpper().Contains("CHAR"))
-				{
-					tmp+= "DECLARE VARIABLE "+efm.FieldName+" "+efm.Type+"("+efm.Size.ToString()+");\n";
-				}else{
-					tmp+="DECLARE VARIABLE "+efm.FieldName+" "+efm.Type+";\n";
-				}
+				tmp+="DECLARE VARIABLE "+efm.FieldName+" "+efm.FullFieldType+";\n";
 			}
 			tmp+="BEGIN\n";
 			for (int x=1;x<table.Fields.Count;x++)

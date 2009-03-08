@@ -29,11 +29,11 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 					"AND   c.rdb$trigger_name = '{1}' "+
 					"AND   r.rdb$constraint_type = 'NOT NULL'"; }
 		}
-		
-		internal override string DropNullConstraint(string table, string field, Connection conn)
+        
+        internal override string DropNullConstraint(string table, ExtractedFieldMap field, Connection conn)
 		{
 			string ret = "";
-			conn.ExecuteQuery(String.Format(DropNotNullString,table,field));
+			conn.ExecuteQuery(String.Format(DropNotNullString,table,field.FieldName));
 			if (conn.Read())
 				ret=conn[0].ToString();
 			conn.Close();
@@ -75,14 +75,18 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 			conn.Close();
 			return ret;
 		}
-		
-		internal override string DropPrimaryKey(string table, string field, Connection conn)
+
+
+        internal override string DropPrimaryKey(PrimaryKey key, Connection conn)
 		{
 			string ret="";
-			conn.ExecuteQuery(String.Format(DropPrimaryKeyString,table,field));
-			if (conn.Read())
-				ret=conn[0].ToString();
-			conn.Close();
+            foreach (string str in key.Fields)
+            {
+                conn.ExecuteQuery(String.Format(DropPrimaryKeyString, key.Name, str));
+                if (conn.Read())
+                    ret += conn[0].ToString()+";\n";
+                conn.Close();
+            }
 			return ret;
 		}
 		

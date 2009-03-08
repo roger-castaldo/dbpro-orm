@@ -445,7 +445,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			return ret;
 		}
 		
-		private string FormatParameters(string queryString,List<IDbDataParameter> parameters)
+		private string FormatParameters(string queryString,IDbDataParameter[] parameters)
 		{
 			if (parameters==null)
 				return queryString;
@@ -465,44 +465,56 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		public int ExecuteNonQuery(string queryString)
 		{
-			return ExecuteNonQuery(queryString,null);
+			return ExecuteNonQuery(queryString,new IDbDataParameter[0]);
 		}
+
+        public int ExecuteNonQuery(string queryString, List<IDbDataParameter> parameters)
+        {
+            return ExecuteNonQuery(queryString, parameters.ToArray());
+        }
+
+        public int ExecuteNonQuery(string queryString, IDbDataParameter[] parameters)
+        {
+            comm.CommandText = FormatParameters(queryString + " ", parameters);
+            comm.Parameters.Clear();
+            if (parameters != null)
+            {
+                foreach (IDbDataParameter param in parameters)
+                {
+                    comm.Parameters.Add(param);
+                }
+            }
+            System.Diagnostics.Debug.WriteLine(comm.CommandText);
+            return comm.ExecuteNonQuery();
+        }
 		
-		public int ExecuteNonQuery(string queryString,List<IDbDataParameter> parameters)
-		{
-			comm.CommandText=FormatParameters(queryString+" ",parameters);
-			comm.Parameters.Clear();
-			if (parameters!=null)
-			{
-				foreach (IDbDataParameter param in parameters)
-				{
-					comm.Parameters.Add(param);
-				}
-			}
-			System.Diagnostics.Debug.WriteLine(comm.CommandText);
-			return comm.ExecuteNonQuery();
-		}
+		
 		
 		public void ExecuteQuery(string queryString)
 		{
-			ExecuteQuery(queryString,null);
+			ExecuteQuery(queryString,new IDbDataParameter[0]);
 		}
 		
 		public void ExecuteQuery(string queryString,List<IDbDataParameter> parameters)
 		{
-			reader=null;
-			comm.CommandText=FormatParameters(queryString+" ",parameters);
-			comm.Parameters.Clear();
-			if (parameters!=null)
-			{
-				foreach (IDbDataParameter param in parameters)
-				{
-					comm.Parameters.Add(param);
-				}
-			}
-			System.Diagnostics.Debug.WriteLine(comm.CommandText);
-			reader=comm.ExecuteReader();
+            ExecuteNonQuery(queryString, parameters.ToArray());
 		}
+
+        public void ExecuteQuery(string queryString, IDbDataParameter[] parameters)
+        {
+            reader = null;
+            comm.CommandText = FormatParameters(queryString + " ", parameters);
+            comm.Parameters.Clear();
+            if (parameters != null)
+            {
+                foreach (IDbDataParameter param in parameters)
+                {
+                    comm.Parameters.Add(param);
+                }
+            }
+            System.Diagnostics.Debug.WriteLine(comm.CommandText);
+            reader = comm.ExecuteReader();
+        }
 		
 		#region Reader
 		public int Depth {

@@ -298,5 +298,12 @@ namespace Org.Reddragonit.Dbpro.Connections
 		public bool PrimaryKey { get { return _primaryKey; } }
 		public bool Nullable { get { return _nullable; } }
 		public bool AutoGen {get {return _autogen;} set{_autogen=value;}}
+		public string FullFieldType{
+			get{
+				if (Type.ToUpper().Contains("CHAR"))
+					return Type+"("+Size.ToString()+")";
+				return Type;
+			}
+		}
 	}
 }

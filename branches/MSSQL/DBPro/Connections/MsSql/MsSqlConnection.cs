@@ -12,6 +12,17 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 {
     class MsSqlConnection : Connection 
     {
+        private QueryBuilder _builder;
+        internal override QueryBuilder queryBuilder
+        {
+            get
+            {
+                if (_builder == null)
+                    _builder = new MSSQLQueryBuilder(Pool);
+                return _builder;
+            }
+        }
+
         public MsSqlConnection(ConnectionPool pool, string ConnectionString)
             : base(pool, ConnectionString)
         { }
@@ -23,17 +34,23 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 
 		internal override void GetAddAutogen(string tableName,List<ExtractedFieldMap> primaryFields,ConnectionPool pool, out List<string> queryStrings, out List<Generator> generators, out List<Trigger> triggers)
 		{
-			throw new NotImplementedException();
+			queryStrings=new List<string>();
+			generators=new List<Generator>();
+			triggers = new List<Trigger>();
+			if (primaryFields.Count==1)
+			{
+				queryStrings.Add("ALTER TABLE "+tableName+" ALTER COLUMN "+primaryFields[0].FieldName+" "+primaryFields[0].FullFieldType+" IDENTITY(1,1)");
+			}else{
+				throw new Exception("Unable to create complex primary keys with autogen on this database as it does not support before insert triggers.");
+			}
 		}
 		
 		internal override void GetDropAutogenStrings(string tableName, ExtractedFieldMap field,ConnectionPool pool, out List<string> queryStrings, out List<Generator> generators, out List<Trigger> triggers)
 		{
-			throw new NotImplementedException();
-		}
-		
-		internal override List<string> GetDropTableString(string table,bool isVersioned)
-		{
-			throw new NotImplementedException();
+			queryStrings=new List<string>();
+			generators=new List<Generator>();
+			triggers = new List<Trigger>();
+			queryStrings.Add("ALTER TABLE "+tableName+" ALTER COLUMN "+field.FieldName+" "+field.FullFieldType);
 		}
 
         protected override System.Data.IDbCommand EstablishCommand()
@@ -60,16 +77,16 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
                     ret = "BIT";
                     break;
                 case FieldType.BYTE:
-                    if (fieldLength == -1)
-                        ret = "VARBINARY(MAX)";
-                    else
+                    if ((fieldLength == -1)||(fieldLength>8000))
+                        ret = "IMAGE";
+                    else 
                         ret = "VARBINARY(" + fieldLength.ToString() + ")";
                     break;
                 case FieldType.CHAR:
-                    if (fieldLength == -1)
-                        ret = "NVARCHAR(MAX)";
+                    if ((fieldLength == -1)||(fieldLength>8000))
+                        ret = "TEXT";
                     else
-                        ret = "NVARCHAR(" + fieldLength.ToString() + ")";
+                        ret = "VARCHAR(" + fieldLength.ToString() + ")";
                     break;
                 case FieldType.DATE:
                 case FieldType.DATETIME:
@@ -99,10 +116,10 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
                     ret = "SMALLINT";
                     break;
                 case FieldType.STRING:
-                    if (fieldLength == -1)
+                    if ((fieldLength == -1)||(fieldLength>8000))
                         ret = "TEXT";
                     else
-                        ret = "NVARCHAR(" + fieldLength.ToString() + ")";
+                        ret = "VARCHAR(" + fieldLength.ToString() + ")";
                     break;
             }
             return ret;

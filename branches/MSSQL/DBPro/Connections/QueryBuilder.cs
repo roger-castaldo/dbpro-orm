@@ -137,7 +137,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		protected virtual string DropPrimaryKeyString{
 			get{
-				throw new Exception("Method Not Implemented.");
+				return "ALTER TABLE {0} DROP PRIMARY KEY({1})";
 			}
 		}
 		
@@ -279,9 +279,9 @@ namespace Org.Reddragonit.Dbpro.Connections
 			return String.Format(SelectForeignKeysString,tableName);
 		}
 		
-		internal string SelectCurrentAutoGenIdNumberValue(string fieldName)
+		internal string SelectCurrentAutoGenIdNumberValue(string fieldName,string tableName)
 		{
-			return String.Format(SelectCurrentAutoGenIdValueNumberString,fieldName);
+			return String.Format(SelectCurrentAutoGenIdValueNumberString,fieldName,tableName);
 		}
 		
 		internal string SetCurrentAutoGenIdNumberValue(string fieldName,long IdValue)
@@ -337,27 +337,22 @@ namespace Org.Reddragonit.Dbpro.Connections
 		#endregion
 		
 		#region TableAltering
-		internal string CreateColumn(string table, string field, string type,long size)
+		internal string CreateColumn(string table,ExtractedFieldMap field)
 		{
-			if (type.ToUpper().Contains("CHAR"))
-			{
-				return string.Format(CreateColumnString,table,field,type+"("+size.ToString()+")");
-			}else{
-				return string.Format(CreateColumnString,table,field,type);
-			}
+			return string.Format(CreateColumnString,table,field.FieldName,field.FullFieldType);
 		}
 		
-		internal string AlterFieldType(string table, string field, string type,long size)
+		internal string AlterFieldType(string table, ExtractedFieldMap field)
 		{
-			if (type.Contains("CHAR"))
-				return string.Format(AlterFieldTypeString,table,field,type+"("+size.ToString()+")");
-			else
-				return string.Format(AlterFieldTypeString,table,field,type);
+			return string.Format(AlterFieldTypeString,table,field.FieldName,field.FullFieldType);
 		}
 		
-		internal virtual string DropPrimaryKey(string table,string field,Connection conn)
+		internal virtual string DropPrimaryKey(PrimaryKey key,Connection conn)
 		{
-			return String.Format(DropPrimaryKeyString,table,field);
+			string fields="";
+			foreach (string str in key.Fields)
+				fields+=str+",";
+			return String.Format(DropPrimaryKeyString,key.Name,fields.Substring(0,fields.Length-1));
 		}
 		
 		internal string CreatePrimaryKey(string table, List<string> fields)
@@ -370,14 +365,14 @@ namespace Org.Reddragonit.Dbpro.Connections
 			return string.Format(CreatePrimaryKeyString,table,ret.Substring(0,ret.Length-1));
 		}
 		
-		internal string CreateNullConstraint(string table,string field)
+		internal string CreateNullConstraint(string table,ExtractedFieldMap field)
 		{
-			return string.Format(CreateNullConstraintString,table,field);
+			return string.Format(CreateNullConstraintString,table,field.FieldName,field.FullFieldType);
 		}
 		
-		internal virtual string DropNullConstraint(string table,string field, Connection conn)
+		internal virtual string DropNullConstraint(string table,ExtractedFieldMap field, Connection conn)
 		{
-			return String.Format(DropNotNullString,table,field);
+			return String.Format(DropNotNullString,table,field.FieldName,field.FullFieldType);
 		}
 		
 		internal virtual string DropForeignKey(string table,string field,Connection conn)
@@ -407,10 +402,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			string fields = "";
 			foreach (ExtractedFieldMap efm in table.Fields)
 			{
-				if (efm.Type.ToUpper().Contains("CHAR"))
-					fields+="\t"+efm.FieldName+" "+efm.Type+"("+efm.Size.ToString()+"),\n";
-				else
-					fields+="\t"+efm.FieldName+" "+efm.Type+",\n";
+				fields+="\t"+efm.FieldName+" "+efm.FullFieldType+",\n";
 			}
 			fields = fields.Substring(0,fields.Length-2);
 			return String.Format(CreateTableString,table.TableName,fields);

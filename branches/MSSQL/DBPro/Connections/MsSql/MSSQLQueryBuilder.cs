@@ -1,0 +1,147 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Data;
+
+namespace Org.Reddragonit.Dbpro.Connections.MsSql
+{
+    internal class MSSQLQueryBuilder : QueryBuilder 
+    {
+    	public MSSQLQueryBuilder(ConnectionPool pool) : base(pool)
+    	{}
+    	
+        protected override string SelectTableNamesString
+        {
+            get
+            {
+                return "SELECT LTRIM(RTRIM(name)) FROM sysobjects WHERE xtype = 'U';";
+            }
+        }
+
+        protected override string SelectTableFieldsString
+        {
+            get
+            {
+                return "SELECT  c.column_name 'name', " +
+                            " UPPER(c.data_type) 'type', " +
+                             " (CASE WHEN c.character_maximum_length is null then "+
+			                    " (CASE WHEN UPPER(c.data_type) = 'BIT' THEN 1 "+
+			                    " WHEN UPPER(c.data_type) = 'DATETIME' OR UPPER(c.data_type) = 'DECIMAL' OR UPPER(c.data_type) = 'FLOAT' OR UPPER(c.data_type) = 'BIGINT' OR UPPER(c.data_type) = 'MONEY' THEN 8  "+
+			                    " WHEN UPPER(c.data_type) = 'INT' THEN 4 "+
+			                    " WHEN UPPER(c.data_type) = 'SMALLINT' THEN 2 "+
+			                    " END) "+
+		                      " ELSE  "+
+			                    " (CASE WHEN UPPER(c.data_type)='IMAGE' OR UPPER(c.data_type) = 'TEXT' THEN -1 ELSE c.character_maximum_length END) END) 'length'" +
+                             " (CASE WHEN primarys.IsPrimary is null THEN 'false' ELSE 'true' END) as IsPrimary, " +
+                             " (CASE WHEN c.is_nullable=0 THEN 'false' ELSE 'true' END) as IsNullable, " +
+                             " (CASE WHEN COLUMNPROPERTY( OBJECT_ID('Error_Logging'),c.column_name,'IsIdentity') = 0 THEN 'false' else 'true' END) as IsIdentity " +
+                        " FROM INFORMATION_SCHEMA.COLUMNS c " +
+                            " LEFT JOIN (SELECT k.column_name,1 as IsPrimary FROM  " +
+                                            " INFORMATION_SCHEMA.KEY_COLUMN_USAGE k, INFORMATION_SCHEMA.TABLE_CONSTRAINTS c " +
+                                            " WHERE  " +
+                                            " k.table_name = c.table_name " +
+                                            " AND c.table_name = '{0}' " +
+                                            " AND k.table_schema = c.table_schema " +
+                                            " AND k.table_catalog = c.table_catalog " +
+                                            " AND k.constraint_catalog = c.constraint_catalog " +
+                                            " AND k.constraint_name = c.constraint_name  " +
+                                            " AND c.constraint_type = 'PRIMARY KEY') primarys ON  " +
+                                " c.column_name = primarys.column_name " +
+                       " WHERE c.table_name = '{0}'";
+            }
+        }
+
+        protected override string SelectForeignKeysString
+        {
+            get
+            {
+                return "SELECT    ccu.column_name 'references_field', " +
+                                  " ccu.table_name 'references_table', " +
+                                  " k.column_name field_name, " +
+                                  " rc.update_rule 'on_update', " +
+                                  " rc.delete_rule 'on_delete' " +
+                             " FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE k " +
+                             " LEFT JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS c " +
+                               " ON k.table_name = c.table_name " +
+                              " AND k.table_schema = c.table_schema " +
+                              " AND k.table_catalog = c.table_catalog " +
+                              " AND k.constraint_catalog = c.constraint_catalog " +
+                              " AND k.constraint_name = c.constraint_name " +
+                        " LEFT JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc " +
+                               " ON rc.constraint_schema = c.constraint_schema " +
+                              " AND rc.constraint_catalog = c.constraint_catalog " +
+                              " AND rc.constraint_name = c.constraint_name " +
+                        " LEFT JOIN INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE ccu " +
+                               " ON rc.unique_constraint_schema = ccu.constraint_schema " +
+                              " AND rc.unique_constraint_catalog = ccu.constraint_catalog " +
+                              " AND rc.unique_constraint_name = ccu.constraint_name " +
+                            " WHERE k.constraint_catalog = DB_NAME() " +
+                              " AND k.table_name = '{0}' " +
+                              " AND c.constraint_type = 'FOREIGN KEY';";
+            }
+        }
+        
+		protected override string SelectTriggersString {
+            get
+            {
+                return "SELECT sys1.name trigger_name, " +
+                    " 'ON '+sys2.name+' '+ " +
+                    " (CASE WHEN OBJECTPROPERTY(sys1.id, 'ExecIsInsteadOfTrigger') = 1 " +
+                    " THEN 'INSTEAD OF' ELSE 'AFTER' " +
+                    " END " +
+                    " )+' '+ " +
+                    " ( " +
+                    " CASE " +
+                    " WHEN OBJECTPROPERTY(sys1.id, 'ExecIsInsertTrigger') = 1 THEN 'INSERT' " +
+                    " WHEN OBJECTPROPERTY(sys1.id, 'ExecIsUpdateTrigger') = 1 THEN 'UPDATE' " +
+                    " WHEN OBJECTPROPERTY(sys1.id, 'ExecIsDeleteTrigger') = 1 THEN 'DELETE' " +
+                    " END " +
+                    " )	comm_string, " +
+                    " RIGHT(c.text,LEN(c.text)-PATINDEX('%AS%BEGIN%',c.text)+1) as code " +
+                    " FROM sysobjects sys1 " +
+                    " JOIN sysobjects sys2 ON sys1.parent_obj = sys2.id " +
+                    " JOIN syscomments c ON sys1.id = c.id " +
+                    " WHERE sys1.xtype = 'TR'";
+            }
+		}
+        
+		protected override string SelectCurrentAutoGenIdValueNumberString {
+            get
+            {
+                return "SELECT IDENT_CURRENT(TABLE_NAME) AS Current_Identity FROM INFORMATION_SCHEMA.TABLES " +
+                    " WHERE OBJECTPROPERTY(OBJECT_ID(TABLE_NAME), 'TableHasIdentity') = 1 " +
+                    " AND TABLE_TYPE = 'BASE TABLE' " +
+                    " AND TABLE_NAME='{1}'";
+            }
+		}
+        
+		protected override string SetCurrentAutoGenIdValueNumberString {
+			get { 
+        		return "DBCC CHECKIDENT({0} RESEED, {1})"; 
+        	}
+        }
+        
+		protected override string DropNotNullString {
+            get { return "ALTER TABLE {0} ALTER COLUMN {1} {2} NULL"; }
+		}
+
+        protected override string CreateNullConstraintString
+        {
+            get{return "ALTER TABLE {0} ALTER COLUMN {1} {2} NOT NULL";}
+        }
+        
+		protected override string DropPrimaryKeyString {
+            get { return "SELECT 'ALTER ['+OBJECT_NAME(parent_object_id)+'] DROP CONSTRAINT ['+OBJECT_NAME(OBJECT_ID)+']' AS DROP_STRING FROM sys.objects WHERE type_desc = 'PRIMARY_KEY_CONSTRAINT' AND OBJECT_NAME(parent_object_id)=@TableName"; }
+		}
+
+        internal override string DropPrimaryKey(PrimaryKey key, Connection conn)
+        {
+            string ret = "";
+            conn.ExecuteQuery(DropPrimaryKeyString, new IDbDataParameter[]{conn.CreateParameter("@TableName",key.Name)});
+            if (conn.Read())
+                ret = conn[0].ToString();
+            conn.Close();
+            return ret;
+        }
+    }
+}
