@@ -36,7 +36,7 @@ namespace TestingApp.Structure
 		}
 		
 		private Group _parent;
-		[ForeignField(true,ForeignField.UpdateDeleteAction.CASCADE,ForeignField.UpdateDeleteAction.CASCADE)]
+		[ForeignField(true,ForeignField.UpdateDeleteAction.NO_ACTION,ForeignField.UpdateDeleteAction.NO_ACTION)]
 		public Group ParentGroup
 		{
 			get{return _parent;}

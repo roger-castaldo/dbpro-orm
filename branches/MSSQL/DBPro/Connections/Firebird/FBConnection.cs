@@ -41,15 +41,15 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 
 		}
 		
-		internal override void GetAddAutogen(string tableName,List<ExtractedFieldMap> primaryFields,ConnectionPool pool, out List<string> queryStrings, out List<Generator> generators, out List<Trigger> triggers)
+		internal override void GetAddAutogen(ExtractedTableMap map,ConnectionPool pool, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers)
 		{
-			queryStrings=null;
+			identities=null;
 			generators = new List<Generator>();
 			triggers=new List<Trigger>();
-			ExtractedFieldMap field = primaryFields[0];
-			if ((primaryFields.Count>1)&&(!field.AutoGen))
+			ExtractedFieldMap field = map.PrimaryKeys[0];
+			if ((map.PrimaryKeys.Count>1)&&(!field.AutoGen))
 			{
-				foreach (ExtractedFieldMap efm in primaryFields)
+				foreach (ExtractedFieldMap efm in map.PrimaryKeys)
 				{
 					if (efm.AutoGen)
 					{
@@ -60,27 +60,27 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 			}
 			if (field.Type.ToUpper().Contains("DATE")||field.Type.ToUpper().Contains("TIME"))
 			{
-				triggers.Add(new Trigger(pool.CorrectName(tableName+"_"+field.FieldName+"_GEN"),"FOR "+tableName+" ACTIVE BEFORE INSERT POSITION 0",
+				triggers.Add(new Trigger(pool.CorrectName(map.TableName+"_"+field.FieldName+"_GEN"),"FOR "+map.TableName+" ACTIVE BEFORE INSERT POSITION 0",
 				                         "AS \n" +
 				                         "BEGIN \n" +
 				                         "    NEW." + field.FieldName + " = CURRENT_TIMESTAMP;\n" +
 				                         "END"));
 			}else if (field.Type.ToUpper().Contains("INT"))
 			{
-				if (primaryFields.Count==1)
+				if (map.PrimaryKeys.Count==1)
 				{
-					generators.Add(new Generator(pool.CorrectName("GEN_"+tableName+"_"+field.FieldName)));
-					triggers.Add(new Trigger(pool.CorrectName(tableName+"_"+field.FieldName+"_GEN"),"FOR "+tableName+" ACTIVE BEFORE INSERT POSITION 0",
+					generators.Add(new Generator(pool.CorrectName("GEN_"+map.TableName+"_"+field.FieldName)));
+					triggers.Add(new Trigger(pool.CorrectName(map.TableName+"_"+field.FieldName+"_GEN"),"FOR "+map.TableName+" ACTIVE BEFORE INSERT POSITION 0",
 					                         "AS \n" +
 					                         "BEGIN \n" +
-					                         "    NEW." + field.FieldName + " = GEN_ID("+pool.CorrectName("GEN_" + tableName + "_" + field.FieldName) + ",1);\n" +
+					                         "    NEW." + field.FieldName + " = GEN_ID("+pool.CorrectName("GEN_" + map.TableName + "_" + field.FieldName) + ",1);\n" +
 					                         "END"));
 				}else{
 					string code = "AS \n";
 					string declares="";
 					string sets="";
 					string queryFields="";
-					foreach (ExtractedFieldMap efm in primaryFields)
+					foreach (ExtractedFieldMap efm in map.PrimaryKeys)
 					{
 						declares+="DECLARE VARIABLE "+efm.FieldName+" "+efm.Type+";\n";
 						if (!efm.AutoGen)
@@ -92,31 +92,43 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 					code+=declares;
 					code+="BEGIN \n";
 					code+=sets;
-					code+="SELECT MAX("+field.FieldName+") FROM "+tableName+" WHERE ";
+					code+="SELECT MAX("+field.FieldName+") FROM "+map.TableName+" WHERE ";
 					code+=queryFields.Substring(4)+" INTO :"+field.FieldName+";\n";
 					code+="IF ("+field.FieldName+" is NULL)\n";
 					code+="\tTHEN "+field.FieldName+" = -1;\n";
 					code+="NEW."+field.FieldName+" = "+field.FieldName+"+1;\n";
 					code+="END";
-					triggers.Add(new Trigger(pool.CorrectName(tableName+"_"+field.FieldName+"_GEN"),"FOR "+tableName+" ACTIVE BEFORE INSERT POSITION 0",code));
+					triggers.Add(new Trigger(pool.CorrectName(map.TableName+"_"+field.FieldName+"_GEN"),"FOR "+map.TableName+" ACTIVE BEFORE INSERT POSITION 0",code));
 				}
 			}else
 				throw new Exception("Unable to create autogenerator for non date or digit type.");
 		}
 
-		internal override void GetDropAutogenStrings(string tableName, ExtractedFieldMap field,ConnectionPool pool, out List<string> queryStrings, out List<Generator> generators, out List<Trigger> triggers)
+		internal override void GetDropAutogenStrings(ExtractedTableMap map,ConnectionPool pool, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers)
 		{
-			queryStrings=null;
+			identities=null;
 			triggers=new List<Trigger>();
 			generators=new List<Generator>();
+			ExtractedFieldMap field = map.PrimaryKeys[0];
+			if ((map.PrimaryKeys.Count>1)&&(!field.AutoGen))
+			{
+				foreach (ExtractedFieldMap efm in map.PrimaryKeys)
+				{
+					if (efm.AutoGen)
+					{
+						field=efm;
+						break;
+					}
+				}
+			}
 			if (field.Type.ToUpper().Contains("DATE") || field.Type.ToUpper().Contains("TIME"))
 			{
-				triggers.Add(new Trigger(pool.CorrectName(tableName+"_"+field.FieldName+"_GEN"),"",""));
+				triggers.Add(new Trigger(pool.CorrectName(map.TableName+"_"+field.FieldName+"_GEN"),"",""));
 			}
 			else if (field.Type.ToUpper().Contains("INT"))
 			{
-				triggers.Add(new Trigger(pool.CorrectName(tableName+"_"+field.FieldName+"_GEN"),"",""));
-				generators.Add(new Generator(pool.CorrectName("GEN_"+tableName+"_"+field.FieldName)));
+				triggers.Add(new Trigger(pool.CorrectName(map.TableName+"_"+field.FieldName+"_GEN"),"",""));
+				generators.Add(new Generator(pool.CorrectName("GEN_"+map.TableName+"_"+field.FieldName)));
 			}
 			else
 			{

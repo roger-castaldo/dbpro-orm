@@ -6,6 +6,7 @@
  * 
  * To change this template use Tools | Options | Coding | Edit Standard Headers.
  */
+using Org.Reddragonit.Dbpro.Structure.Attributes;
 using System;
 using System.Collections.Generic;
 
@@ -38,6 +39,38 @@ namespace Org.Reddragonit.Dbpro.Connections
 				_fields.Add(efm.FieldName);
 		}
 	}
+	
+	internal struct IdentityField{
+		private string _tableName;
+		private string _fieldName;
+		private string _fieldType;
+		private string _curValue;
+		
+		public string TableName{
+			get{return _tableName;}
+		}
+		
+		public string FieldName{
+			get{return _fieldName;}
+		}
+				
+		public string CurValue{
+			get{return _curValue;}
+		}
+		
+		public string FieldType{
+			get{return _fieldType;}
+		}
+		
+		public IdentityField(string tableName,string fieldName,string fieldType,string curValue)
+		{
+			_tableName=tableName;
+			_fieldName=fieldName;
+			_fieldType=fieldType;
+			_curValue=curValue;
+		}
+	}
+		
 	
 	internal struct ForeignKey{
 		

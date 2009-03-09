@@ -117,13 +117,13 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
 		}
 		
-		protected virtual string SelectCurrentAutoGenIdValueNumberString{
+		protected virtual string SelectCurrentIdentities{
 			get{
 				throw new Exception("Method Not Implemented.");
 			}
 		}
 		
-		protected virtual string SetCurrentAutoGenIdValueNumberString{
+		protected virtual string CreateIdentityString{
 			get{
 				throw new Exception("Method Not Implemented.");
 			}
@@ -142,6 +142,18 @@ namespace Org.Reddragonit.Dbpro.Connections
 		}
 		
 		protected virtual string DropForeignKeyString{
+			get{
+				throw new Exception("Method Not Implemented.");
+			}
+		}
+		
+		protected virtual string SetIdentityFieldValueString{
+			get{
+				throw new Exception("Method Not Implemented.");
+			}
+		}
+		
+		protected virtual string DropIdentityFieldString{
 			get{
 				throw new Exception("Method Not Implemented.");
 			}
@@ -269,6 +281,11 @@ namespace Org.Reddragonit.Dbpro.Connections
 			return SelectTableNamesString;
 		}
 		
+		internal string SelectIdentities()
+		{
+			return SelectCurrentIdentities;
+		}
+		
 		internal string SelectTableFields(string tableName)
 		{
 			return String.Format(SelectTableFieldsString,tableName);
@@ -277,16 +294,6 @@ namespace Org.Reddragonit.Dbpro.Connections
 		internal string SelectForeignKeys(string tableName)
 		{
 			return String.Format(SelectForeignKeysString,tableName);
-		}
-		
-		internal string SelectCurrentAutoGenIdNumberValue(string fieldName,string tableName)
-		{
-			return String.Format(SelectCurrentAutoGenIdValueNumberString,fieldName,tableName);
-		}
-		
-		internal string SetCurrentAutoGenIdNumberValue(string fieldName,long IdValue)
-		{
-			return String.Format(SetCurrentAutoGenIdValueNumberString,fieldName,IdValue.ToString());
 		}
 		#endregion
 		
@@ -304,6 +311,16 @@ namespace Org.Reddragonit.Dbpro.Connections
 		internal string DropTrigger(string trigger)
 		{
 			return string.Format(DropTriggerString,trigger);
+		}
+		
+		internal string DropIdentityField(IdentityField field)
+		{
+			return string.Format(DropIdentityFieldString,field.TableName,field.FieldName,field.FieldType,field.CurValue);
+		}
+		
+		internal string CreateIdentityField(IdentityField field)
+		{
+			return string.Format(CreateIdentityString,field.TableName,field.FieldName,field.FieldType,field.CurValue);
 		}
 		
 		internal string CreateTrigger(string name,string conditions,string code)
@@ -333,6 +350,11 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		internal string SetGeneratorValue(string name,long value){
 			return string.Format(SetGeneratorValueString,name,value.ToString());
+		}
+		
+		internal string SetIdentityFieldValue(IdentityField field)
+		{
+			return string.Format(SetIdentityFieldValueString,field.TableName,field.FieldName,field.FieldType,field.CurValue);
 		}
 		#endregion
 		
@@ -375,9 +397,9 @@ namespace Org.Reddragonit.Dbpro.Connections
 			return String.Format(DropNotNullString,table,field.FieldName,field.FullFieldType);
 		}
 		
-		internal virtual string DropForeignKey(string table,string field,Connection conn)
+		internal virtual string DropForeignKey(string table,string externalTable,Connection conn)
 		{
-			return string.Format(DropForeignKeyString,table,field);
+			return string.Format(DropForeignKeyString,table,externalTable);
 		}
 		
 		internal string CreateForeignKey(string table, List<string> fields, string ForeignTable, List<string> ForeignFields,string UpdateAction,string DeleteAction)
@@ -433,8 +455,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 								foreach (FieldMap fm in relatedTableMap.PrimaryKeys)
 								{
 									values += conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm)) + ",";
-									insertParameters.Add(conn.CreateParameter("@" + relatedTableMap.Name+"_"+relatedTableMap.GetTableFieldName(fm), null));
-									parameters+=",@"+relatedTableMap.Name+"_"+relatedTableMap.GetTableFieldName(fm);
+									insertParameters.Add(conn.CreateParameter(conn.Pool.CorrectName("@" + efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm)), null));
+									parameters+=","+conn.Pool.CorrectName("@"+efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm));
 									whereConditions+=" AND "+conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm))+" IS NULL ";
 								}
 							}
@@ -444,9 +466,9 @@ namespace Org.Reddragonit.Dbpro.Connections
 								foreach (FieldMap fm in relatedTableMap.PrimaryKeys)
 								{
 									values += conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm)) + ",";
-									insertParameters.Add(conn.CreateParameter("@" + relatedTableMap.Name+"_"+relatedTableMap.GetTableFieldName(fm), relatedTable.GetField(relatedTableMap.GetClassFieldName(fm))));
-									parameters+=",@"+relatedTableMap.Name+"_"+relatedTableMap.GetTableFieldName(fm);
-									whereConditions+=" AND "+conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm))+" =  @" + relatedTableMap.Name+"_"+relatedTableMap.GetTableFieldName(fm);
+									insertParameters.Add(conn.CreateParameter(conn.Pool.CorrectName("@" + efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm)), relatedTable.GetField(relatedTableMap.GetClassFieldName(fm))));
+									parameters+=","+conn.Pool.CorrectName("@"+relatedTableMap.Name+"_"+relatedTableMap.GetTableFieldName(fm));
+									whereConditions+=" AND "+conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm))+" =  "+conn.Pool.CorrectName("@" + relatedTableMap.Name+"_"+relatedTableMap.GetTableFieldName(fm));
 								}
 							}
 						}

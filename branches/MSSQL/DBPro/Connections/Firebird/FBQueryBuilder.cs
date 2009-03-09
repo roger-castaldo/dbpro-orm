@@ -62,16 +62,15 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 					"rel.rdb$constraint_type = 'FOREIGN KEY' "+
 					"and rel.rdb$index_name = idx.rdb$index_name "+
 					"and idx.rdb$index_name = seg.rdb$index_name "+
-					"AND TRIM(rel.RDB$RELATION_NAME) = '{0}'  "+
-					"AND TRIM(RDB$FIELD_NAME) = '{1}'"; }
+					"AND TRIM(rel.RDB$RELATION_NAME) = '{0}'"; }
 		}
 		
-		internal override string DropForeignKey(string table, string field, Connection conn)
+		internal override string DropForeignKey(string table, string tableName, Connection conn)
 		{
 			string ret = "";
-			conn.ExecuteQuery(String.Format(DropForeignKeyString,table,field));
-			if (conn.Read())
-				ret=conn[0].ToString();
+			conn.ExecuteQuery(String.Format(DropForeignKeyString,table));
+			while (conn.Read())
+				ret+=conn[0].ToString()+"\n";
 			conn.Close();
 			return ret;
 		}
@@ -186,15 +185,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		protected override string SetGeneratorValueString {
 			get { return "SET GENERATOR {0} TO {1}"; }
 		}
-		
-		protected override string SelectCurrentAutoGenIdValueNumberString {
-			get { return "SELECT GEN_ID(GEN_{0},0) FROM RDB$DATABASE"; }
-		}
-		
-		protected override string SetCurrentAutoGenIdValueNumberString {
-			get { return "SET GENERATOR GEN_{0} TO {1}"; }
-		}
-		
+				
 		protected override string CreateTriggerString {
 			get { return "CREATE TRIGGER {0} {1} {2}";}
 		}

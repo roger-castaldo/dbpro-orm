@@ -39,6 +39,12 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
 		}
 		
+		internal virtual bool UsesIdentities{
+			get{
+				return false;
+			}
+		}
+		
 		public ConnectionPool Pool{
 			get{return pool;}
 		}
@@ -47,8 +53,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 		protected abstract IDbCommand EstablishCommand();
 		internal abstract IDbDataParameter CreateParameter(string parameterName,object parameterValue);
 		internal abstract string TranslateFieldType(Org.Reddragonit.Dbpro.Structure.Attributes.FieldType type,int fieldLength);
-		internal abstract void GetDropAutogenStrings(string tableName,ExtractedFieldMap field,ConnectionPool pool,out List<string> queryStrings,out List<Generator> generators,out List<Trigger> triggers);
-		internal abstract void GetAddAutogen(string tableName,List<ExtractedFieldMap> primaryFields,ConnectionPool pool, out List<string> queryStrings, out List<Generator> generators, out List<Trigger> triggers);
+		internal abstract void GetDropAutogenStrings(ExtractedTableMap map,ConnectionPool pool,out List<IdentityField> identities,out List<Generator> generators,out List<Trigger> triggers);
+		internal abstract void GetAddAutogen(ExtractedTableMap map,ConnectionPool pool, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers);
 		internal abstract List<Trigger> GetVersionTableTriggers(ExtractedTableMap table,VersionTypes versionType,ConnectionPool pool);
 		
 		internal virtual List<string> GetDropTableString(string table,bool isVersioned)

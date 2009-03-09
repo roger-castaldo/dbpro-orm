@@ -102,6 +102,7 @@
     <Compile Include="Structure\Attributes\PrimaryKeyField.cs" />
     <Compile Include="Structure\Attributes\Table.cs" />
     <Compile Include="Utility.cs" />
+    <EmbeddedResource Include="Connections\MsSql\IdentitySP.sql" />
     <None Include="DbPro.xml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

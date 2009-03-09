@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 
 namespace Org.Reddragonit.Dbpro.Connections.MsSql
@@ -29,7 +30,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 		
 		protected override string[] _ReservedWords {
 			get {
-				return Utility.MergeStringArrays(base.ReservedWords,
+				return Utility.MergeStringArrays(base._ReservedWords,
 				                                 new string[]{
 				                                 	"ADA","AGGREGATE","ALIAS","ARRAY","BREADTH",
 				                                 	"BROWSE","BULK","CLASS","CLOB","CLUSTERED",
@@ -51,7 +52,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 				                                 	"SCOPE","SEARCH","SEQUENCE","SETS","SHUTDOWN",
 				                                 	"SPECIFIC","SPECIFICTYPE","SQLCA","SQLEXCEPTION","STATE",
 				                                 	"STRUCTURE","TERMINATE","TEXTSIZE","THAN","TREAT",
-				                                 	"UNDER","UNNEST","UPDATETEXT","USE","WITHOUT",
+				                                 	"UNDER","UNNEST","UPDATETEXT","USE","WITHOUT"
 				                                 });
 			}
 		}
@@ -63,6 +64,37 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 		protected override Connection CreateConnection()
 		{
 			return new MsSqlConnection(this,connectionString);
+		}
+		
+		protected override void PreInit()
+		{
+			Connection c = CreateConnection();
+			bool exists=false;
+			bool create=false;
+			string query=new StreamReader(this.GetType().Assembly.GetManifestResourceStream("Org.Reddragonit.DBPro.Connections.MsSql.IdentitySP.sql")).ReadToEnd();
+			string version = query.Substring(query.IndexOf("-- Version: ")+12,query.IndexOf("\n",query.IndexOf("-- Version: ")+12)-query.IndexOf("-- Version: ")-12);
+			c.ExecuteQuery("SELECT name FROM sys.procedures where name='Org_Reddragonit_DbPro_Create_Remove_Identity'");
+			if (c.Read())
+			{
+				if (c[0].ToString()!=null)
+					exists=true;
+			}
+			c.Close();
+			if (exists)
+			{
+				c.ExecuteQuery("EXEC Org_Reddragonit_DbPro_Create_Remove_Identity null,null,null,1");
+				c.Read();
+				if (double.Parse(c[0].ToString())!=double.Parse(version))
+					create=true;
+				c.Close();
+				if (create)
+					c.ExecuteNonQuery("DROP PROCEDURE Org_Reddragonit_DbPro_Create_Remove_Identity");
+			}else
+				create=true;
+			if (create)
+				c.ExecuteNonQuery(query);
+			c.Commit();
+			c.CloseConnection();
 		}
 	}
 }
