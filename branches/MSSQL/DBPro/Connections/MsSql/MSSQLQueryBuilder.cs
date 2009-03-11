@@ -92,12 +92,21 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 					" )+' '+ " +
 					" ( " +
 					" CASE " +
-					" WHEN OBJECTPROPERTY(sys1.id, 'ExecIsInsertTrigger') = 1 THEN 'INSERT' " +
-					" WHEN OBJECTPROPERTY(sys1.id, 'ExecIsUpdateTrigger') = 1 THEN 'UPDATE' " +
+					" WHEN OBJECTPROPERTY(sys1.id, 'ExecIsInsertTrigger') = 1 THEN "+
+					" (CASE WHEN OBJECTPROPERTY(sys1.id, 'ExecIsUpdateTrigger') = 1 THEN " +
+					"	(CASE WHEN OBJECTPROPERTY(sys1.id, 'ExecIsDeleteTrigger')=1 THEN 'INSERT, UPDATE, DELETE'" +
+					"	ELSE 'INSERT, UPDATE' END)" +
+					"  ELSE " +
+					"	(CASE WHEN OBJECTPROPERTY(sys1.id, 'ExecIsDeleteTrigger')=1 THEN 'INSERT, DELETE'" +
+					"  	ELSE 'INSERT' END)" +
+					" END)" +
+					" WHEN OBJECTPROPERTY(sys1.id, 'ExecIsUpdateTrigger') = 1 THEN " +
+					" (CASE WHEN OBJECTPROPERTY(sys1.id, 'ExecIsDeleteTrigger') = 1 THEN 'UPDATE, DELETE' " +
+					" ELSE 'UPDATE' END) " +
 					" WHEN OBJECTPROPERTY(sys1.id, 'ExecIsDeleteTrigger') = 1 THEN 'DELETE' " +
 					" END " +
 					" )	comm_string, " +
-					" RIGHT(c.text,LEN(c.text)-PATINDEX('%AS%BEGIN%',c.text)+1) as code " +
+					" RIGHT(c.text,LEN(c.text)-PATINDEX('%AS%BEGIN%',c.text)+2) as code " +
 					" FROM sysobjects sys1 " +
 					" JOIN sysobjects sys2 ON sys1.parent_obj = sys2.id " +
 					" JOIN syscomments c ON sys1.id = c.id " +
@@ -107,7 +116,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 		
 		protected override string SelectCurrentIdentities {
 			get {
-				return "SELECT  c.table_name 'tableName', " +
+				return "SELECT DISTINCT c.table_name 'tableName', " +
 					" c.column_name 'fieldName', " +
 					" UPPER(c.data_type) 'type', " +
 					" CAST(IDENT_CURRENT(c.table_name) as varchar(MAX)) 'curValue' " +
@@ -135,26 +144,31 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 		}
 		
 		protected override string SetIdentityFieldValueString {
-			get { return "DBCC CHECKIDENT('{0}' RESEED, {3})"; }
+			get { return "DBCC CHECKIDENT('{0}', RESEED, {3})"; }
 		}
 		
 		protected override string DropNotNullString {
-			get { return "ALTER TABLE {0} ALTER COLUMN {1} {2} NULL"; }
+			get { return "ALTER TABLE [{0}] ALTER COLUMN [{1}] {2} NULL"; }
 		}
 
 		protected override string CreateNullConstraintString
 		{
-			get{return "ALTER TABLE {0} ALTER COLUMN {1} {2} NOT NULL";}
+			get{return "ALTER TABLE [{0}] ALTER COLUMN [{1}] {2} NOT NULL";}
 		}
+
+        protected override string AlterFieldTypeString
+        {
+            get { return "ALTER TABLE [{0}] ALTER COLUMN [{1}] {2}"; }
+        }
 		
 		protected override string DropPrimaryKeyString {
-			get { return "SELECT 'ALTER ['+OBJECT_NAME(parent_object_id)+'] DROP CONSTRAINT ['+OBJECT_NAME(OBJECT_ID)+']' AS DROP_STRING FROM sys.objects WHERE type_desc = 'PRIMARY_KEY_CONSTRAINT' AND OBJECT_NAME(parent_object_id)=@TableName"; }
+        	get { return "SELECT 'ALTER TABLE ['+OBJECT_NAME(parent_object_id)+'] DROP CONSTRAINT ['+OBJECT_NAME(OBJECT_ID)+']' AS DROP_STRING FROM sys.objects WHERE type_desc = 'PRIMARY_KEY_CONSTRAINT' AND OBJECT_NAME(parent_object_id)="+CreateParameterName("TableName"); }
 		}
 
 		internal override string DropPrimaryKey(PrimaryKey key, Connection conn)
 		{
 			string ret = "";
-			conn.ExecuteQuery(DropPrimaryKeyString, new IDbDataParameter[]{conn.CreateParameter("@TableName",key.Name)});
+			conn.ExecuteQuery(DropPrimaryKeyString, new IDbDataParameter[]{conn.CreateParameter(CreateParameterName("TableName"),key.Name)});
 			if (conn.Read())
 				ret = conn[0].ToString();
 			conn.Close();
@@ -162,7 +176,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 		}
 		
 		protected override string DropForeignKeyString {
-			get { return "select 'ALTER TABLE {0} DROP CONSTRAINT '+ cast(f.name  as varchar(255))+';' "+
+			get { return "select 'ALTER TABLE [{0}] DROP CONSTRAINT '+ cast(f.name  as varchar(255))+';' "+
 					" from sysobjects f "+
 					" inner join sysobjects c on  f.parent_obj = c.id "+
 					" inner join sysreferences r on f.id =  r.constid "+

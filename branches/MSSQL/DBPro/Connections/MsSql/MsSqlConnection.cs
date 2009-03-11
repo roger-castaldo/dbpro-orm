@@ -31,7 +31,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 			: base(pool, ConnectionString)
 		{ }
 
-		internal override System.Data.IDbDataParameter CreateParameter(string parameterName, object parameterValue)
+		public override System.Data.IDbDataParameter CreateParameter(string parameterName, object parameterValue)
 		{
 			return new SqlParameter(parameterName, parameterValue);
 		}
@@ -54,21 +54,22 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 				}
 			}
 			string fields = "";
+			string primarys="";
 			foreach (ExtractedFieldMap efm in map.Fields)
 			{
-				if (!efm.PrimaryKey&&!efm.AutoGen)
+				if (!efm.AutoGen)
 					fields+=","+efm.FieldName;
+				if (efm.PrimaryKey)
+					primarys+="tbl."+efm.FieldName+" = ins."+efm.FieldName+" AND ";
 			}
+			primarys = primarys.Substring(0,primarys.Length-4);
 			if (field.Type.ToUpper().Contains("DATE")||field.Type.ToUpper().Contains("TIME"))
 			{
 				triggers.Add(new Trigger(pool.CorrectName("TRIG_INSERT_"+map.TableName),
 				                         "ON "+map.TableName+" INSTEAD OF INSERT\n",
-				                         "AS DECLARE "+pool.CorrectName("@"+field.FieldName)+" DATETIME;\n"+
+				                         "AS "+
 				                         "BEGIN SET NOCOUNT ON;\n"+
-				                         "SET "+pool.CorrectName("@"+field.FieldName)+" = (SELECT \n"+
-				                         "(CASE WHEN "+field.FieldName+" IS NULL THEN GETDATE() \n"+
-				                         "ELSE "+field.FieldName+" END) FROM INSERTED);\n"+
-				                         "INSERT INTO TESTING SELECT "+pool.CorrectName("@"+field.FieldName)+fields+" from INSERTED;\n"+
+				                         "INSERT INTO "+map.TableName+" SELECT GETDATE()"+fields.Replace(",",",tbl.")+" from INSERTED ins,"+map.TableName+" tbl WHERE "+primarys+";\n"+
 				                         "END"));
 			}else if (field.Type.ToUpper().Contains("INT")){
 				if (map.PrimaryKeys.Count==1)
@@ -81,21 +82,21 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 					string queryFields="";
 					foreach (ExtractedFieldMap efm in map.PrimaryKeys)
 					{
-						declares+="DECLARE "+pool.CorrectName("@"+efm.FieldName)+" "+efm.Type+";\n";
+						declares+="DECLARE "+pool.CorrectName(queryBuilder.CreateParameterName(efm.FieldName))+" "+efm.Type+";\n";
 						if (!efm.AutoGen)
 						{
-							sets+=" SET "+pool.CorrectName("@"+efm.FieldName)+" = (SELECT "+efm.FieldName+" FROM INSERTED);\n";
-							queryFields+=" AND "+efm.FieldName+" = "+pool.CorrectName("@"+efm.FieldName);
+							sets+=" SET "+pool.CorrectName(queryBuilder.CreateParameterName(efm.FieldName))+" = (SELECT "+efm.FieldName+" FROM INSERTED);\n";
+							queryFields+=" AND "+efm.FieldName+" = "+pool.CorrectName(queryBuilder.CreateParameterName(efm.FieldName));
 						}
 					}
 					code+=declares;
 					code+="BEGIN \n";
 					code+=sets;
-					code+="SET "+pool.CorrectName("@"+field.FieldName)+" = (SELECT MAX("+field.FieldName+") FROM "+map.TableName+" WHERE ";
+					code+="SET "+pool.CorrectName(queryBuilder.CreateParameterName(field.FieldName))+" = (SELECT MAX("+field.FieldName+") FROM "+map.TableName+" WHERE ";
 					code+=queryFields.Substring(4)+");\n";
-					code+="IF ("+pool.CorrectName("@"+field.FieldName)+" is NULL)\n";
-					code+="\tTHEN SET "+pool.CorrectName("@"+field.FieldName)+" = -1;\n";
-					code+="INSERT INTO "+map.TableName+" SELECT "+pool.CorrectName("@"+field.FieldName)+"+1"+fields+" FROM INSERTED;\n";
+					code+="IF ("+pool.CorrectName(queryBuilder.CreateParameterName(field.FieldName))+" is NULL)\n";
+					code+="\tSET "+pool.CorrectName(queryBuilder.CreateParameterName(field.FieldName))+" = -1;\n";
+					code+="INSERT INTO "+map.TableName+" SELECT "+pool.CorrectName(queryBuilder.CreateParameterName(field.FieldName))+"+1"+fields.Replace(",",",tbl.")+" from INSERTED ins,"+map.TableName+" tbl WHERE "+primarys+";\n";
 					code+="END";
 					triggers.Add(new Trigger(pool.CorrectName("TRIG_INSERT_"+map.TableName),"ON "+map.TableName+" INSTEAD OF INSERT\n",code));
 				}
@@ -146,7 +147,29 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 		
 		internal override List<Trigger> GetVersionTableTriggers(ExtractedTableMap table,VersionTypes versionType,ConnectionPool pool)
 		{
-			throw new NotImplementedException();
+			List<Trigger> ret = new List<Trigger>();
+			string tmp = "AS \n BEGIN\n";
+			tmp+="\tINSERT INTO "+pool.CorrectName(table.TableName)+" SELECT null";
+			for(int x=1;x<table.Fields.Count;x++)
+			{
+				ExtractedFieldMap efm = table.Fields[x];
+				tmp+=",tbl."+efm.FieldName;
+			}
+			tmp+=" FROM INSERTED ins, "+queryBuilder.RemoveVersionName(table.TableName)+" tbl WHERE ";
+			for (int x=1;x<table.Fields.Count;x++)
+			{
+				ExtractedFieldMap efm = table.Fields[x];
+				if (efm.PrimaryKey)
+				{
+					tmp+="tbl."+efm.FieldName+" = ins."+efm.FieldName+" AND ";					
+				}
+			}
+			tmp=tmp.Substring(0,tmp.Length-4)+";";
+			tmp+="\nEND\n\n";
+			ret.Add(new Trigger(pool.CorrectName(queryBuilder.VersionTableInsertTriggerName(queryBuilder.RemoveVersionName(table.TableName))),
+			                    "ON "+queryBuilder.RemoveVersionName(table.TableName)+" AFTER INSERT,UPDATE ",
+			                                     tmp));
+			return ret;
 		}
 
 		internal override string TranslateFieldType(FieldType type, int fieldLength)

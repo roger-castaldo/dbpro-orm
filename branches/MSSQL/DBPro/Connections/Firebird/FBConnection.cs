@@ -139,17 +139,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		internal override List<Trigger> GetVersionTableTriggers(ExtractedTableMap table,VersionTypes versionType,ConnectionPool pool)
 		{
 			List<Trigger> ret = new List<Trigger>();
-			string tmp = "AS \n"+
-				"DECLARE VARIABLE "+table.Fields[0].FieldName+" ";
-			switch(versionType)
-			{
-				case VersionTypes.NUMBER:
-					tmp+="BIGINT;\n";
-					break;
-				case VersionTypes.DATESTAMP:
-					tmp+="TIMESTAMP;\n";
-					break;
-			}
+			string tmp = "AS \n";
 			for (int x=1;x<table.Fields.Count;x++)
 			{
 				ExtractedFieldMap efm = table.Fields[x];
@@ -161,61 +151,29 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 				ExtractedFieldMap efm = table.Fields[x];
 				tmp+="\t"+efm.FieldName+" = new."+efm.FieldName+";\n";
 			}
-			switch(versionType)
-			{
-				case VersionTypes.NUMBER:
-					tmp+="\t"+table.Fields[0].FieldName+" = 0;\n";
-					break;
-				case VersionTypes.DATESTAMP:
-					tmp+="\t"+table.Fields[0].FieldName+" = CURRENT_TIMESTAMP;\n";
-					break;
-			}
 			tmp+="\tINSERT INTO "+table.TableName+"("+table.Fields[0].FieldName;
 			for (int x=1;x<table.Fields.Count;x++)
 			{
 				ExtractedFieldMap efm = table.Fields[x];
 				tmp+=","+efm.FieldName;
 			}
-			tmp+=") VALUES(:"+table.Fields[0].FieldName ;
+			tmp+=") VALUES(null";
 			for (int x=1;x<table.Fields.Count;x++)
 			{
 				ExtractedFieldMap efm = table.Fields[x];
 				tmp+=",:"+efm.FieldName;
 			}
 			tmp+=");\nEND\n\n";
-			ret.Add(new Trigger(pool.CorrectName(queryBuilder.VersionTableInsertTriggerName(table.TableName)),
-			                    "FOR "+table.TableName+" ACTIVE AFTER INSERT POSITION 0",
+			ret.Add(new Trigger(pool.CorrectName(queryBuilder.VersionTableInsertTriggerName(queryBuilder.RemoveVersionName(table.TableName))),
+			                    "FOR "+queryBuilder.RemoveVersionName(table.TableName)+" ACTIVE AFTER INSERT POSITION 0",
 			                    tmp));
-			tmp = tmp.Replace("AFTER INSERT","BEFORE UPDATE").Replace("_INSERT","_UPDATE");
-			switch(versionType)
-			{
-				case VersionTypes.NUMBER:
-					string maxQuery = "SELECT (MAX("+table.Fields[0].FieldName+")+1) as mid FROM "+table.TableName+"WHERE ";
-					for (int x=1;x<table.Fields.Count;x++)
-					{
-						ExtractedFieldMap efm = table.Fields[x];
-						if (efm.PrimaryKey)
-						{
-							maxQuery+=efm.FieldName+" = :"+efm.FieldName+" AND ";
-						}
-					}
-					if (maxQuery.EndsWith(" WHERE "))
-					{
-						maxQuery=maxQuery.Substring(0,maxQuery.Length-7);
-					}else
-					{
-						maxQuery=maxQuery.Substring(0,maxQuery.Length-4);
-					}
-					tmp.Replace("\t"+table.Fields[0].FieldName+" = 0;\n","\t"+table.Fields[0].FieldName +" = ("+maxQuery+");\n");
-					break;
-			}
 			ret.Add(new Trigger(pool.CorrectName(queryBuilder.VersionTableUpdateTriggerName(table.TableName)),
 			                    "FOR "+table.TableName+" ACTIVE AFTER UPDATE POSITION 0",
 			                    tmp));
 			return ret;
 		}
 		
-		internal override System.Data.IDbDataParameter CreateParameter(string parameterName, object parameterValue)
+		public override System.Data.IDbDataParameter CreateParameter(string parameterName, object parameterValue)
 		{
 			if (parameterValue is bool)
 			{

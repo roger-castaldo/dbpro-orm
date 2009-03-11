@@ -314,7 +314,10 @@ namespace Org.Reddragonit.Dbpro.Connections
 			{
 				_size = long.Parse(type.Substring(type.IndexOf("CHAR(")+5).Replace(")",""));
 				_type = _type.Replace("("+_size.ToString()+")","");
-			}else
+			}else if (type.Contains("VARBINARY(")){
+                _size = long.Parse(type.Substring(type.IndexOf("VARBINARY(")+10).Replace(")",""));
+				_type = _type.Replace("("+_size.ToString()+")","");
+            }else
 				_size = size;
 			_primaryKey = primary;
 			_nullable = nullable;

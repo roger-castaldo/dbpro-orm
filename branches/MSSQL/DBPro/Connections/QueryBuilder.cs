@@ -36,6 +36,11 @@ namespace Org.Reddragonit.Dbpro.Connections
 			_pool=pool;
 		}
 		
+		public virtual string CreateParameterName(string parameter)
+		{
+			return "@"+parameter;
+		}
+		
 		#region VersionTableNaming
 		internal string VersionTableInsertTriggerName(string table)
 		{
@@ -55,6 +60,11 @@ namespace Org.Reddragonit.Dbpro.Connections
 		internal string VersionFieldName(string table)
 		{
 			return table+"_VERSION_ID";
+		}
+		
+		internal string RemoveVersionName(string table)
+		{
+			return table.Substring(0,table.Length-8);
 		}
 		#endregion
 		
@@ -455,8 +465,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 								foreach (FieldMap fm in relatedTableMap.PrimaryKeys)
 								{
 									values += conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm)) + ",";
-									insertParameters.Add(conn.CreateParameter(conn.Pool.CorrectName("@" + efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm)), null));
-									parameters+=","+conn.Pool.CorrectName("@"+efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm));
+									insertParameters.Add(conn.CreateParameter(conn.Pool.CorrectName(CreateParameterName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm))), null));
+									parameters+=","+conn.Pool.CorrectName(CreateParameterName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm)));
 									whereConditions+=" AND "+conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm))+" IS NULL ";
 								}
 							}
@@ -466,9 +476,9 @@ namespace Org.Reddragonit.Dbpro.Connections
 								foreach (FieldMap fm in relatedTableMap.PrimaryKeys)
 								{
 									values += conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm)) + ",";
-									insertParameters.Add(conn.CreateParameter(conn.Pool.CorrectName("@" + efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm)), relatedTable.GetField(relatedTableMap.GetClassFieldName(fm))));
-									parameters+=","+conn.Pool.CorrectName("@"+relatedTableMap.Name+"_"+relatedTableMap.GetTableFieldName(fm));
-									whereConditions+=" AND "+conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm))+" =  "+conn.Pool.CorrectName("@" + relatedTableMap.Name+"_"+relatedTableMap.GetTableFieldName(fm));
+									insertParameters.Add(conn.CreateParameter(conn.Pool.CorrectName(CreateParameterName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm))), relatedTable.GetField(relatedTableMap.GetClassFieldName(fm))));
+									parameters+=","+conn.Pool.CorrectName(CreateParameterName(relatedTableMap.Name+"_"+relatedTableMap.GetTableFieldName(fm)));
+									whereConditions+=" AND "+conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm))+" =  "+conn.Pool.CorrectName(CreateParameterName(relatedTableMap.Name+"_"+relatedTableMap.GetTableFieldName(fm)));
 								}
 							}
 						}
@@ -476,16 +486,16 @@ namespace Org.Reddragonit.Dbpro.Connections
 					else if (!map[fnp].AutoGen&&!map[fnp].IsArray)
 					{
 						values += fnp.TableFieldName + ",";
-						parameters+=",@"+fnp.TableFieldName;
+						parameters+=","+CreateParameterName(fnp.TableFieldName);
 						if (table.IsFieldNull(fnp.ClassFieldName))
 						{
-							insertParameters.Add(conn.CreateParameter("@" + fnp.TableFieldName,null));
+							insertParameters.Add(conn.CreateParameter(CreateParameterName(fnp.TableFieldName),null));
 							whereConditions+=" AND "+fnp.TableFieldName+" IS NULL ";
 						}
 						else
 						{
-							insertParameters.Add(conn.CreateParameter("@" + fnp.TableFieldName, table.GetField(fnp.ClassFieldName)));
-							whereConditions+=" AND "+fnp.TableFieldName+" = @"+fnp.TableFieldName;
+							insertParameters.Add(conn.CreateParameter(CreateParameterName(fnp.TableFieldName), table.GetField(fnp.ClassFieldName)));
+							whereConditions+=" AND "+fnp.TableFieldName+" = "+CreateParameterName(fnp.TableFieldName);
 						}
 					}
 				}
@@ -527,8 +537,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 				TableMap map = ClassMapper.GetTableMap(table.GetType());
 				foreach(InternalFieldMap ifm in map.PrimaryKeys)
 				{
-					conditions+=ifm.FieldName+" = "+pool.CorrectName("@"+ifm.FieldName)+" AND ";
-					parameters.Add(conn.CreateParameter(pool.CorrectName("@"+ifm.FieldName),table.GetField(map.GetClassFieldName(ifm.FieldName))));
+					conditions+=ifm.FieldName+" = "+pool.CorrectName(CreateParameterName(ifm.FieldName))+" AND ";
+					parameters.Add(conn.CreateParameter(pool.CorrectName(CreateParameterName(ifm.FieldName)),table.GetField(map.GetClassFieldName(ifm.FieldName))));
 				}
 				return string.Format(DeleteWithConditions,map.Name,conditions);
 			}catch(Exception e)
@@ -558,8 +568,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 					List<IDbDataParameter> pars = new List<IDbDataParameter>();
 					foreach (InternalFieldMap ifm in map.PrimaryKeys)
 					{
-						delString += map.Name+"_"+ifm.FieldName + " = @" + map.Name+"_"+ifm.FieldName + " AND ";
-						pars.Add(conn.CreateParameter("@"+map.Name+"_" + ifm.FieldName, table.GetField(map.GetClassFieldName(ifm))));
+						delString += map.Name+"_"+ifm.FieldName + " = " + CreateParameterName(map.Name+"_"+ifm.FieldName) + " AND ";
+						pars.Add(conn.CreateParameter(CreateParameterName(map.Name+"_" + ifm.FieldName), table.GetField(map.GetClassFieldName(ifm))));
 					}
 					ret.Add(delString.Substring(0, delString.Length - 4),new List<List<IDbDataParameter>>());
 					ret[delString.Substring(0, delString.Length - 4)].Add(pars);
@@ -568,12 +578,12 @@ namespace Org.Reddragonit.Dbpro.Connections
 					foreach (InternalFieldMap ifm in map.PrimaryKeys)
 					{
 						delString += map.Name+"_"+ifm.FieldName + ",";
-						valueString += "@"+map.Name +"_"+ ifm.FieldName + ",";
+						valueString += CreateParameterName(map.Name +"_"+ ifm.FieldName) + ",";
 					}
 					foreach (InternalFieldMap ifm in relatedMap.PrimaryKeys)
 					{
 						delString += relatedMap.Name+"_"+ifm.FieldName + ",";
-						valueString += "@"+relatedMap.Name+"_" + ifm.FieldName + ",";
+						valueString += CreateParameterName(relatedMap.Name+"_" + ifm.FieldName) + ",";
 					}
 					delString = delString.Substring(0, delString.Length - 1) + ") " + valueString.Substring(0, valueString.Length - 1) + ")";
 					ret.Add(delString,new List<List<IDbDataParameter>>());
@@ -583,13 +593,13 @@ namespace Org.Reddragonit.Dbpro.Connections
 						{
 							for (int x = 0; x < pars.Count; x++)
 							{
-								if (pars[x].ParameterName == "@"+relatedMap.Name+"_" + ifm.FieldName)
+								if (pars[x].ParameterName == CreateParameterName(relatedMap.Name+"_" + ifm.FieldName))
 								{
 									pars.RemoveAt(x);
 									break;
 								}
 							}
-							pars.Add(conn.CreateParameter("@" + relatedMap.Name+"_"+ifm.FieldName, t.GetField(relatedMap.GetClassFieldName(ifm))));
+							pars.Add(conn.CreateParameter(CreateParameterName(relatedMap.Name+"_"+ifm.FieldName), t.GetField(relatedMap.GetClassFieldName(ifm))));
 						}
 						ret[delString].Add(pars);
 					}
@@ -621,8 +631,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 							{
 								foreach (FieldMap fm in relatedTableMap.PrimaryKeys)
 								{
-									fields += conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm)) + " = @" + conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm)) + ", ";
-									queryParameters.Add(conn.CreateParameter("@" + conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm)), null));
+									fields += conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm)) + " = " + CreateParameterName(conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm))) + ", ";
+									queryParameters.Add(conn.CreateParameter(CreateParameterName(conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm))), null));
 								}
 							}
 							else
@@ -630,8 +640,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 								Table relatedTable = (Table)table.GetField(fnp.ClassFieldName);
 								foreach (FieldMap fm in relatedTableMap.PrimaryKeys)
 								{
-									fields += conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm)) + " = @" + conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm)) + ", ";
-									queryParameters.Add(conn.CreateParameter("@" + conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm)), relatedTable.GetField(relatedTableMap.GetClassFieldName(fm))));
+									fields += conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm)) + " = " + CreateParameterName(conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm))) + ", ";
+									queryParameters.Add(conn.CreateParameter(CreateParameterName(conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm))), relatedTable.GetField(relatedTableMap.GetClassFieldName(fm))));
 								}
 							}
 							if (map[fnp].PrimaryKey || !map.HasPrimaryKeys)
@@ -648,8 +658,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 								{
 									foreach (FieldMap fm in relatedTableMap.PrimaryKeys)
 									{
-										conditions += conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm)) + " = @init_" + conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm)) + " AND ";
-										queryParameters.Add(conn.CreateParameter("@init_" + conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm)), relatedTable.GetField(relatedTableMap.GetClassFieldName(fm))));
+										conditions += conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm)) + " = "+CreateParameterName("init_" + conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm))) + " AND ";
+										queryParameters.Add(conn.CreateParameter(CreateParameterName("init_" + conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm))), relatedTable.GetField(relatedTableMap.GetClassFieldName(fm))));
 									}
 								}
 							}
@@ -657,14 +667,14 @@ namespace Org.Reddragonit.Dbpro.Connections
 					}
 					else if (!map[fnp].IsArray)
 					{
-						fields += fnp.TableFieldName+" = @"+fnp.TableFieldName +", ";
+						fields += fnp.TableFieldName+" = "+CreateParameterName(fnp.TableFieldName) +", ";
 						if (table.GetField(fnp.ClassFieldName) == null)
 						{
-							queryParameters.Add(conn.CreateParameter("@" + fnp.TableFieldName, null));
+							queryParameters.Add(conn.CreateParameter(CreateParameterName(fnp.TableFieldName), null));
 						}
 						else
 						{
-							queryParameters.Add(conn.CreateParameter("@" + fnp.TableFieldName, table.GetField(fnp.ClassFieldName)));
+							queryParameters.Add(conn.CreateParameter(CreateParameterName(fnp.TableFieldName), table.GetField(fnp.ClassFieldName)));
 						}
 						if (map[fnp].PrimaryKey || !map.HasPrimaryKeys)
 						{
@@ -674,8 +684,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 							}
 							else
 							{
-								conditions += fnp.TableFieldName + " = @init_"+fnp.TableFieldName +" AND ";
-								queryParameters.Add(conn.CreateParameter("@init_" + fnp.TableFieldName, table.GetInitialPrimaryValue(fnp.ClassFieldName)));
+								conditions += fnp.TableFieldName + " = "+CreateParameterName("init_"+fnp.TableFieldName) +" AND ";
+								queryParameters.Add(conn.CreateParameter(CreateParameterName("init_" + fnp.TableFieldName), table.GetInitialPrimaryValue(fnp.ClassFieldName)));
 							}
 						}
 					}
@@ -809,15 +819,15 @@ namespace Org.Reddragonit.Dbpro.Connections
 						{
 							if (par.FieldName==f.ClassFieldName)
 							{
-								where+=" AND "+f.TableFieldName+" = @parameter_"+parCount.ToString();
-								queryParameters.Add(conn.CreateParameter("@parameter_"+parCount.ToString(),par.FieldValue));
+								where+=" AND "+f.TableFieldName+" = "+CreateParameterName("parameter_"+parCount.ToString());
+								queryParameters.Add(conn.CreateParameter(CreateParameterName("parameter_"+parCount.ToString()),par.FieldValue));
 								parCount++;
 								found=true;
 								break;
 							}else if (par.FieldName==f.TableFieldName)
 							{
-								where+=" AND "+f.TableFieldName+" = @parameter_"+parCount.ToString();
-								queryParameters.Add(conn.CreateParameter("@parameter_"+parCount.ToString(),par.FieldValue));
+								where+=" AND "+f.TableFieldName+" = "+CreateParameterName("parameter_"+parCount.ToString());
+								queryParameters.Add(conn.CreateParameter(CreateParameterName("parameter_"+parCount.ToString()),par.FieldValue));
 								parCount++;
 								found=true;
 								break;
@@ -825,8 +835,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 						}
 						if (!found)
 						{
-							where+=" AND "+par.FieldName+" = @parameter_"+parCount.ToString();
-							queryParameters.Add(conn.CreateParameter("@parameter_"+parCount.ToString(),par.FieldValue));
+							where+=" AND "+par.FieldName+" = "+CreateParameterName("parameter_"+parCount.ToString());
+							queryParameters.Add(conn.CreateParameter(CreateParameterName("parameter_"+parCount.ToString()),par.FieldValue));
 							parCount++;
 						}
 					}
@@ -863,15 +873,15 @@ namespace Org.Reddragonit.Dbpro.Connections
 						{
 							if (par.FieldName==f.ClassFieldName)
 							{
-								where+=" AND "+f.TableFieldName+" = @parameter_"+parCount.ToString();
-								queryParameters.Add(conn.CreateParameter("@parameter_"+parCount.ToString(),par.FieldValue));
+								where+=" AND "+f.TableFieldName+" = "+CreateParameterName("parameter_"+parCount.ToString());
+								queryParameters.Add(conn.CreateParameter(CreateParameterName("parameter_"+parCount.ToString()),par.FieldValue));
 								parCount++;
 								found=true;
 								break;
 							}else if (par.FieldName==f.TableFieldName)
 							{
-								where+=" AND "+f.TableFieldName+" = @parameter_"+parCount.ToString();
-								queryParameters.Add(conn.CreateParameter("@parameter_"+parCount.ToString(),par.FieldValue));
+								where+=" AND "+f.TableFieldName+" = "+CreateParameterName("parameter_"+parCount.ToString());
+								queryParameters.Add(conn.CreateParameter(CreateParameterName("parameter_"+parCount.ToString()),par.FieldValue));
 								parCount++;
 								found=true;
 								break;
@@ -879,8 +889,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 						}
 						if (!found)
 						{
-							where+=" AND "+par.FieldName+" = @parameter_"+parCount.ToString();
-							queryParameters.Add(conn.CreateParameter("@parameter_"+parCount.ToString(),par.FieldValue));
+							where+=" AND "+par.FieldName+" = "+CreateParameterName("parameter_"+parCount.ToString());
+							queryParameters.Add(conn.CreateParameter(CreateParameterName("parameter_"+parCount.ToString()),par.FieldValue));
 							parCount++;
 						}
 					}

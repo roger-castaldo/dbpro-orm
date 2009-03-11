@@ -28,32 +28,37 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 			
 		}
 		
+		private string[] _words = null;
 		protected override string[] _ReservedWords {
 			get {
-				return Utility.MergeStringArrays(base._ReservedWords,
-				                                 new string[]{
-				                                 	"ADA","AGGREGATE","ALIAS","ARRAY","BREADTH",
-				                                 	"BROWSE","BULK","CLASS","CLOB","CLUSTERED",
-				                                 	"COMPLETION","COMPUTE","CONSTRUCTOR","CONTAINSTABLE","CURRENT_PATH",
-				                                 	"CURRENT_ROLE","CYCLE","DATA","DBCC","DENY",
-				                                 	"DEPTH","DEREF","DESTROY","DESTRUCTOR","DETERMINISTIC",
-				                                 	"DICTIONARY","DISK","DISTRIBUTED","DUMMY","DUMP",
-				                                 	"EACH","EQUALS","ERRLVL","EVERY","FILLFACTOR",
-				                                 	"FORTRAN","FREE","FREETEXT","FREETEXTTABLE","GROUPING",
-				                                 	"HOST","IDENTITYCOL","IDENTITY_INSERT","INCLUDE","INITIALIZE",
-				                                 	"ITERATE","KILL","LARGE","LESS","LIMIT",
-				                                 	"LINENO","LOAD","LOCALTIME","LOCALTIMESTAMP","LOCATOR",
-				                                 	"MAP","MODIFIES","NCLOB","NOCHECK","NONCLUSTERED",
-				                                 	"NONE","OFFSETS","OLD","OPENDATASOURCE","OPENQUERY",
-				                                 	"OPENROWSET","OPENXML","OPERATION","ORDINALITY","PASCAL",
-				                                 	"PATH","POSTFIX","PREFIX","PREORDER","READS",
-				                                 	"RECONFIGURE","RECURSIVE","REF","REFERENCING","REPLICATION",
-				                                 	"RESULT","ROUTINE","ROWCOUNT","ROWGUIDCOL","RULE",
-				                                 	"SCOPE","SEARCH","SEQUENCE","SETS","SHUTDOWN",
-				                                 	"SPECIFIC","SPECIFICTYPE","SQLCA","SQLEXCEPTION","STATE",
-				                                 	"STRUCTURE","TERMINATE","TEXTSIZE","THAN","TREAT",
-				                                 	"UNDER","UNNEST","UPDATETEXT","USE","WITHOUT"
-				                                 });
+				if (_words==null)
+				{
+					_words=Utility.MergeStringArrays(base._ReservedWords,
+					                                 new string[]{
+					                                 	"ADA","AGGREGATE","ALIAS","ARRAY","BREADTH",
+					                                 	"BROWSE","BULK","CLASS","CLOB","CLUSTERED",
+					                                 	"COMPLETION","COMPUTE","CONSTRUCTOR","CONTAINSTABLE","CURRENT_PATH",
+					                                 	"CURRENT_ROLE","CYCLE","DATA","DBCC","DENY",
+					                                 	"DEPTH","DEREF","DESTROY","DESTRUCTOR","DETERMINISTIC",
+					                                 	"DICTIONARY","DISK","DISTRIBUTED","DUMMY","DUMP",
+					                                 	"EACH","EQUALS","ERRLVL","EVERY","FILLFACTOR",
+					                                 	"FORTRAN","FREE","FREETEXT","FREETEXTTABLE","GROUPING",
+					                                 	"HOST","IDENTITYCOL","IDENTITY_INSERT","INCLUDE","INITIALIZE",
+					                                 	"ITERATE","KILL","LARGE","LESS","LIMIT",
+					                                 	"LINENO","LOAD","LOCALTIME","LOCALTIMESTAMP","LOCATOR",
+					                                 	"MAP","MODIFIES","NAME","NCLOB","NOCHECK","NONCLUSTERED",
+					                                 	"NONE","OFFSETS","OLD","OPENDATASOURCE","OPENQUERY",
+					                                 	"OPENROWSET","OPENXML","OPERATION","ORDINALITY","PASCAL",
+					                                 	"PATH","POSTFIX","PREFIX","PREORDER","READS",
+					                                 	"RECONFIGURE","RECURSIVE","REF","REFERENCING","REPLICATION",
+					                                 	"RESULT","ROUTINE","ROWCOUNT","ROWGUIDCOL","RULE",
+					                                 	"SCOPE","SEARCH","SEQUENCE","SETS","SHUTDOWN",
+					                                 	"SPECIFIC","SPECIFICTYPE","SQLCA","SQLEXCEPTION","STATE",
+					                                 	"STRUCTURE","TERMINATE","TEXTSIZE","THAN","TREAT",
+					                                 	"UNDER","UNNEST","UPDATETEXT","USE","WITHOUT"
+					                                 });
+				}
+				return _words;
 			}
 		}
 		
@@ -71,7 +76,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 			Connection c = CreateConnection();
 			bool exists=false;
 			bool create=false;
-			string query=new StreamReader(this.GetType().Assembly.GetManifestResourceStream("Org.Reddragonit.DBPro.Connections.MsSql.IdentitySP.sql")).ReadToEnd();
+			string query = new StreamReader(this.GetType().Assembly.GetManifestResourceStream("Org.Reddragonit.Dbpro.Connections.MsSql.IdentitySP.sql")).ReadToEnd();
 			string version = query.Substring(query.IndexOf("-- Version: ")+12,query.IndexOf("\n",query.IndexOf("-- Version: ")+12)-query.IndexOf("-- Version: ")-12);
 			c.ExecuteQuery("SELECT name FROM sys.procedures where name='Org_Reddragonit_DbPro_Create_Remove_Identity'");
 			if (c.Read())

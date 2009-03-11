@@ -1,12 +1,8 @@
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
 -- =============================================
 -- Author:		Roger Castaldo
 -- Create date: March 8, 2009
 -- Description:	This procedure is designed to add or remove identity from a column
--- Version: 1.0
+-- Version: 1.2
 -- =============================================
 CREATE PROCEDURE Org_Reddragonit_DbPro_Create_Remove_Identity
 	@table VARCHAR(250),
@@ -19,7 +15,7 @@ BEGIN
 
 	IF (@version=1)
 		BEGIN
-			SELECT '1.0';
+			SELECT '1.2';
 		END
 	ELSE
 		BEGIN
@@ -40,7 +36,7 @@ BEGIN
 			--extract query to create temp table
 			DECLARE tblSelect CURSOR FOR 
 				SELECT  '['+c.column_name+'] '+UPPER(c.data_type)+  
-					(CASE WHEN c.character_maximum_length is not null then  '('+cast(c.character_maximum_length as varchar(MAX))+')' ELSE '' END)+' '+
+					(CASE WHEN c.character_maximum_length is not null AND UPPER(c.data_type)<>'TEXT' AND UPPER(c.data_type)<>'IMAGE' then  '('+cast(c.character_maximum_length as varchar(MAX))+')' ELSE '' END)+' '+
 					(CASE WHEN c.column_name = @field AND @createIdent=1 THEN 'IDENTITY('+CAST(@curValue as VARCHAR(MAX))+',1)' ELSE '' END)+
 					(CASE WHEN c.is_nullable='NO' THEN ' NOT NULL ' ELSE ' NULL ' END),
 					(CASE WHEN primarys.IsPrimary is null THEN NULL ELSE '['+c.column_name+']' END),
@@ -98,9 +94,17 @@ BEGIN
 			EXEC(@createTableQuery);
 
 			--dump data into temporary table
-			EXEC('SET IDENTITY_INSERT TEMP_'+@table+' ON; '+
-			'INSERT INTO TEMP_'+@table+'('+@fields+') SELECT * FROM '+@table+'; '+
-			'SET IDENTITY_INSERT TEMP_'+@table+' OFF;');
+			IF (@createIdent=1)
+				BEGIN
+					EXEC('SET IDENTITY_INSERT TEMP_'+@table+' ON; '+
+						'INSERT INTO TEMP_'+@table+'('+@fields+') SELECT * FROM '+@table+'; '+
+						'SET IDENTITY_INSERT TEMP_'+@table+' OFF;');
+				END
+			ELSE
+				BEGIN
+					EXEC('INSERT INTO TEMP_'+@table+'('+@fields+') SELECT * FROM '+@table+'; ');
+				END
+			
 
 			--creating list of queries for relationship transfers
 			CREATE TABLE #updates(val varchar(MAX));
@@ -246,4 +250,4 @@ BEGIN
 			DEALLOCATE curUpdates;
 		END
 END
-GO
+

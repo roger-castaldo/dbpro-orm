@@ -359,16 +359,16 @@ namespace Org.Reddragonit.Dbpro.Connections
 					ExtractedTableMap vetm = new ExtractedTableMap(CorrectName(conn.queryBuilder.VersionTableName(tm.Name)));
 					if (tm.VersionType.Value==VersionTypes.DATESTAMP)
 						vetm.Fields.Add(new ExtractedFieldMap(CorrectName(conn.queryBuilder.VersionFieldName(tm.Name)),conn.TranslateFieldType(FieldType.DATETIME,0),8,
-						                                      true,false,false));
+						                                      true,false,true));
 					else
 						vetm.Fields.Add(new ExtractedFieldMap(CorrectName(conn.queryBuilder.VersionFieldName(tm.Name)),conn.TranslateFieldType(FieldType.LONG,0),8,
-						                                      true,false,false));
+						                                      true,false,true));
 					foreach (InternalFieldMap ifm in tm.Fields)
 					{
 						if (ifm.Versionable||ifm.PrimaryKey)
 						{
 							vetm.Fields.Add(new ExtractedFieldMap(ifm.FieldName,conn.TranslateFieldType(ifm.FieldType,ifm.FieldLength),
-							                                      ifm.FieldLength,ifm.PrimaryKey,ifm.Nullable,ifm.AutoGen));
+							                                      ifm.FieldLength,ifm.PrimaryKey,ifm.Nullable,false));
 							if (ifm.PrimaryKey)
 								vetm.ForeignFields.Add(new ForeignRelationMap(ifm.FieldName,etm.TableName,ifm.FieldName,"CASCADE","CASCADE"));
 						}
@@ -502,7 +502,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 				bool found=false;
 				foreach (IdentityField i in expectedIdentities)
 				{
-					if ((idf.TableName==i.TableName)&&(idf.FieldName==i.FieldType)&&(idf.FieldType==i.FieldType))
+					if ((idf.TableName==i.TableName)&&(idf.FieldName==i.FieldName)&&(idf.FieldType==i.FieldType))
 					{
 						found=true;
 						if (idf.CurValue!=i.CurValue)
@@ -520,7 +520,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 				bool found=false;
 				foreach (IdentityField i in curIdentities)
 				{
-					if ((idf.TableName==i.TableName)&&(idf.FieldName==i.FieldType)&&(idf.FieldType==i.FieldType))
+					if ((idf.TableName==i.TableName)&&(idf.FieldName==i.FieldName)&&(idf.FieldType==i.FieldType))
 					{
 						found=true;
 						break;
