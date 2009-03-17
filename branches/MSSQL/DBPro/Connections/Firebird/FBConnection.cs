@@ -173,6 +173,11 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 			return ret;
 		}
 		
+		internal override System.Data.IDbDataParameter CreateParameter(string parameterName, object parameterValue, FieldType type, int fieldLength)
+		{
+			return CreateParameter(parameterName,parameterValue);
+		}
+		
 		public override System.Data.IDbDataParameter CreateParameter(string parameterName, object parameterValue)
 		{
 			if (parameterValue is bool)

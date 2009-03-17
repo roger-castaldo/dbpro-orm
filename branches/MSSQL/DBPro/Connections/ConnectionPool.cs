@@ -121,6 +121,10 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
 		}
 		
+		internal virtual bool AllowChangingBasicAutogenField{
+			get{return true;}
+		}
+		
 		private string[] _reservedWords=null;
 		private Dictionary<string, string> _nameTranslations = new Dictionary<string, string>();
 		

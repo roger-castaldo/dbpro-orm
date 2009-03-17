@@ -31,6 +31,17 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 			: base(pool, ConnectionString)
 		{ }
 
+		internal override IDbDataParameter CreateParameter(string parameterName, object parameterValue, FieldType type, int fieldLength)
+		{
+			IDbDataParameter ret = CreateParameter(parameterName,parameterValue);
+			if (((type==FieldType.CHAR)||(type==FieldType.STRING))
+			    &&((fieldLength == -1)||(fieldLength>8000)))
+			{
+				((SqlParameter)ret).SqlDbType=SqlDbType.Text;
+			}
+			return ret;
+		}
+		
 		public override System.Data.IDbDataParameter CreateParameter(string parameterName, object parameterValue)
 		{
 			return new SqlParameter(parameterName, parameterValue);

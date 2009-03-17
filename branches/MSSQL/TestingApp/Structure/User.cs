@@ -130,7 +130,7 @@ namespace TestingApp.Structure
 		}
 		
 		private string _password;
-		[VersionField("passwrd",FieldType.STRING,false,-1,VersionField.VersionTypes.NUMBER)]
+		[VersionField("passwrd",FieldType.STRING,false,5000,VersionField.VersionTypes.NUMBER)]
 		internal string InternalPassword
 		{
 			get{return _password;}

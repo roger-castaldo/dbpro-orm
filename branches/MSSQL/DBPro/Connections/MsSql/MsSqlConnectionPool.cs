@@ -71,6 +71,10 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 			return new MsSqlConnection(this,connectionString);
 		}
 		
+		internal override bool AllowChangingBasicAutogenField {
+			get { return false; }
+		}
+		
 		protected override void PreInit()
 		{
 			Connection c = CreateConnection();

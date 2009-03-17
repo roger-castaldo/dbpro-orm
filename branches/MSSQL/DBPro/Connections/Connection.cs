@@ -51,6 +51,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		protected abstract IDbConnection EstablishConnection();
 		protected abstract IDbCommand EstablishCommand();
+		internal abstract IDbDataParameter CreateParameter(string parameterName,object parameterValue,Org.Reddragonit.Dbpro.Structure.Attributes.FieldType type, int fieldLength);
 		public abstract IDbDataParameter CreateParameter(string parameterName,object parameterValue);
 		internal abstract string TranslateFieldType(Org.Reddragonit.Dbpro.Structure.Attributes.FieldType type,int fieldLength);
 		internal abstract void GetDropAutogenStrings(ExtractedTableMap map,ConnectionPool pool,out List<IdentityField> identities,out List<Generator> generators,out List<Trigger> triggers);
@@ -156,6 +157,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 			{
 				throw new Exception("Cannot update an entry into a table into the database connection that it was not specified for.");
 			}
+			if ((table.ChangedFields==null)||(table.ChangedFields.Count==0))
+				return table;
 			TableMap map = ClassMapper.GetTableMap(table.GetType());
 			if (map.ParentType!=null)
 			{
