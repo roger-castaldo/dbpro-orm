@@ -38,9 +38,12 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 			
 		}
 		
+		private string[] _words=null;
 		protected override string[] _ReservedWords {
 			get {
-				return Utility.MergeStringArrays(base._ReservedWords,new string[]{
+				if (_words==null)
+				{
+					_words=Utility.MergeStringArrays(base._ReservedWords,new string[]{
 				                                 	"ACTIVE","ASCENDING","AUTO","AUTODDL","BASED",
 				                                 	"BASENAME","BASE_NAME","BLOBEDIT","BUFFER","CACHE",
 				                                 	"CHECK_POINT_LEN","CHECK_POINT_LENGTH","COMMITTED","COMPILETIME","COMPUTED",
@@ -60,6 +63,8 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 				                                 	"SUB_TYPE","SUSPEND","TERMINATOR","UNCOMMITTED","VERSION",
 				                                 	"WEEKDAY","YEARDAY"
 				                                 });
+				}
+				return _words;
 			}
 		}
 		

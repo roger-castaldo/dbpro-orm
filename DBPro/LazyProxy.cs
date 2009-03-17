@@ -26,6 +26,9 @@ namespace Org.Reddragonit.Dbpro
 	{
 		
 		private TableMap _map;
+		private bool _allowPrimaryChange=true;
+		private FieldMap _mainPrimary=null;
+		private List<string> _changedFields = new List<string>();
 		
 		public void Dispose()
 		{
@@ -35,6 +38,9 @@ namespace Org.Reddragonit.Dbpro
 		public LazyProxy(object subject):base(subject.GetType())
 		{
 			_map = ClassMapper.GetTableMap(subject.GetType());
+			_allowPrimaryChange=ConnectionPoolManager.GetConnection(_map.ConnectionName).AllowChangingBasicAutogenField;
+			if ((_map.PrimaryKeys.Count==1)&&(_map.PrimaryKeys[0].AutoGen))
+				_mainPrimary=_map.PrimaryKeys[0];
 			AttachServer((MarshalByRefObject)subject);
 		}
 		
@@ -155,10 +161,26 @@ namespace Org.Reddragonit.Dbpro
 					{
 						if (((Table)owner).IsSaved&&fm.PrimaryKey)
 							throw new AlterPrimaryKeyException(owner.GetType().ToString(),pi.Name);
+						if (((Table)owner)._isSaved)
+						{
+							object curVal = pi.GetValue(owner,new object[0]);
+							if (((curVal==null)&&(mc.Args[0]!=null))||
+							    ((curVal!=null)&&(mc.Args[0]==null))||
+							    ((curVal!=null)&&(mc.Args[0]!=null)&&(!curVal.Equals(mc.Args[0]))))
+							{
+								if (!_changedFields.Contains(pi.Name))
+									_changedFields.Add(pi.Name);
+							}
+						}
 						outVal = mi.Invoke(owner, mc.Args);
 					}
 				}else
-					outVal=mi.Invoke(owner,mc.Args);
+				{
+					if ((pi!=null)&&(pi.Name=="ChangedFields"))
+						outVal=_changedFields;
+					else
+						outVal=mi.Invoke(owner,mc.Args);
+				}
 			}
 			
 			return new ReturnMessage(outVal,mc.Args,mc.Args.Length, mc.LogicalCallContext, mc);

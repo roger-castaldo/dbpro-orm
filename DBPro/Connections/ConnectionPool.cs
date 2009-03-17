@@ -42,6 +42,10 @@ namespace Org.Reddragonit.Dbpro.Connections
 		private string _connectionName;
 		
 		protected abstract Connection CreateConnection();
+		protected virtual void PreInit()
+		{
+			
+		}
 		protected virtual string[] _ReservedWords{
 			get{
 				return new string[]{
@@ -115,6 +119,10 @@ namespace Org.Reddragonit.Dbpro.Connections
 			get{
 				return int.MaxValue;
 			}
+		}
+		
+		internal virtual bool AllowChangingBasicAutogenField{
+			get{return true;}
 		}
 		
 		private string[] _reservedWords=null;
@@ -202,6 +210,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		internal void Init()
 		{
+			PreInit();
 			ClassMapper.CorrectNamesForConnection(this);
 			UpdateStructure(_debugMode);
 			for (int x=0;x<minPoolSize;x++)
@@ -209,11 +218,12 @@ namespace Org.Reddragonit.Dbpro.Connections
 			isReady=true;
 		}
 
-		private void ExtractCurrentStructure(out List<ExtractedTableMap> tables,out List<Trigger> triggers,out List<Generator> generators,Connection conn)
+		private void ExtractCurrentStructure(out List<ExtractedTableMap> tables,out List<Trigger> triggers,out List<Generator> generators,out List<IdentityField> identities,Connection conn)
 		{
 			tables = new List<ExtractedTableMap>();
 			triggers = new List<Trigger>();
 			generators=new List<Generator>();
+			identities=new List<IdentityField>();
 			conn.ExecuteQuery(conn.queryBuilder.SelectTriggers());
 			while (conn.Read())
 			{
@@ -266,16 +276,26 @@ namespace Org.Reddragonit.Dbpro.Connections
 					generators.Insert(x,gen);
 				}
 			}
+			if (conn.UsesIdentities)
+			{
+				conn.ExecuteQuery(conn.queryBuilder.SelectIdentities());
+				while (conn.Read())
+				{
+					identities.Add(new IdentityField((string)conn[0],(string)conn[1],(string)conn[2],(string)conn[3]));
+				}
+				conn.Close();
+			}
 		}
 		
-		private void ExtractExpectedStructure(out List<ExtractedTableMap> tables,out List<Trigger> triggers,out List<Generator> generators,Connection conn)
+		private void ExtractExpectedStructure(out List<ExtractedTableMap> tables,out List<Trigger> triggers,out List<Generator> generators,out List<IdentityField> identities,Connection conn)
 		{
 			tables = new List<ExtractedTableMap>();
 			triggers = new List<Trigger>();
 			generators=new List<Generator>();
+			identities = new List<IdentityField>();
 			List<Trigger> tmpTriggers = new List<Trigger>();
 			List<Generator> tmpGenerators = new List<Generator>();
-			List<string> queryStrings = new List<string>();
+			List<IdentityField> tmpIdentities = new List<IdentityField>();
 			foreach (System.Type type in ClassMapper.TableTypesForConnection(ConnectionName))
 			{
 				TableMap tm = ClassMapper.GetTableMap(type);
@@ -300,11 +320,13 @@ namespace Org.Reddragonit.Dbpro.Connections
 						etmField.Fields.Add(new ExtractedFieldMap(CorrectName(ifm.FieldName+"_VALUE"),conn.TranslateFieldType(ifm.FieldType,ifm.FieldLength),ifm.FieldLength,
 						                                          false,ifm.Nullable,false));
 						tables.Add(etmField);
-						conn.GetAddAutogen(etmField.TableName,etmField.PrimaryKeys,this,out queryStrings,out tmpGenerators,out tmpTriggers);
+						conn.GetAddAutogen(etmField,this,out tmpIdentities,out tmpGenerators,out tmpTriggers);
 						if (tmpGenerators!=null)
 							generators.AddRange(tmpGenerators);
 						if (tmpTriggers!=null)
 							triggers.AddRange(tmpTriggers);
+						if (tmpIdentities!=null)
+							identities.AddRange(tmpIdentities);
 					}
 				}
 				foreach (Type t in tm.ForeignTables)
@@ -341,16 +363,16 @@ namespace Org.Reddragonit.Dbpro.Connections
 					ExtractedTableMap vetm = new ExtractedTableMap(CorrectName(conn.queryBuilder.VersionTableName(tm.Name)));
 					if (tm.VersionType.Value==VersionTypes.DATESTAMP)
 						vetm.Fields.Add(new ExtractedFieldMap(CorrectName(conn.queryBuilder.VersionFieldName(tm.Name)),conn.TranslateFieldType(FieldType.DATETIME,0),8,
-						                                      true,false,false));
+						                                      true,false,true));
 					else
 						vetm.Fields.Add(new ExtractedFieldMap(CorrectName(conn.queryBuilder.VersionFieldName(tm.Name)),conn.TranslateFieldType(FieldType.LONG,0),8,
-						                                      true,false,false));
+						                                      true,false,true));
 					foreach (InternalFieldMap ifm in tm.Fields)
 					{
 						if (ifm.Versionable||ifm.PrimaryKey)
 						{
 							vetm.Fields.Add(new ExtractedFieldMap(ifm.FieldName,conn.TranslateFieldType(ifm.FieldType,ifm.FieldLength),
-							                                      ifm.FieldLength,ifm.PrimaryKey,ifm.Nullable,ifm.AutoGen));
+							                                      ifm.FieldLength,ifm.PrimaryKey,ifm.Nullable,false));
 							if (ifm.PrimaryKey)
 								vetm.ForeignFields.Add(new ForeignRelationMap(ifm.FieldName,etm.TableName,ifm.FieldName,"CASCADE","CASCADE"));
 						}
@@ -368,11 +390,13 @@ namespace Org.Reddragonit.Dbpro.Connections
 				{
 					if (efm.AutoGen)
 					{
-						conn.GetAddAutogen(etm.TableName,etm.PrimaryKeys,this,out queryStrings,out tmpGenerators,out tmpTriggers);
+						conn.GetAddAutogen(etm,this,out tmpIdentities,out tmpGenerators,out tmpTriggers);
 						if (tmpGenerators!=null)
 							generators.AddRange(tmpGenerators);
 						if (tmpTriggers!=null)
 							triggers.AddRange(tmpTriggers);
+						if (tmpIdentities!=null)
+							identities.AddRange(tmpIdentities);
 					}
 				}
 			}
@@ -470,6 +494,47 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
 		}
 		
+		private void CompareIdentities(List<IdentityField> curIdentities,List<IdentityField> expectedIdentities,out List<IdentityField> dropIdentities,out List<IdentityField> createIdentities, out List<IdentityField> setIdentities)
+		{
+			createIdentities=new List<IdentityField>();
+			dropIdentities=new List<IdentityField>();
+			setIdentities=new List<IdentityField>();
+			
+			//remove identities that exist but are not needed
+			foreach (IdentityField idf in curIdentities)
+			{
+				bool found=false;
+				foreach (IdentityField i in expectedIdentities)
+				{
+					if ((idf.TableName==i.TableName)&&(idf.FieldName==i.FieldName)&&(idf.FieldType==i.FieldType))
+					{
+						found=true;
+						if (idf.CurValue!=i.CurValue)
+							setIdentities.Add(idf);
+						break;
+					}
+				}
+				if (!found)
+					dropIdentities.Add(idf);
+			}
+			
+			//add generators that are needed but do not exist
+			foreach (IdentityField idf in expectedIdentities)
+			{
+				bool found=false;
+				foreach (IdentityField i in curIdentities)
+				{
+					if ((idf.TableName==i.TableName)&&(idf.FieldName==i.FieldName)&&(idf.FieldType==i.FieldType))
+					{
+						found=true;
+						break;
+					}
+				}
+				if (!found)
+					createIdentities.Add(idf);
+			}
+		}
+		
 		private void ExtractConstraintDropsCreates(List<ExtractedTableMap> curStructure,List<ExtractedTableMap> expectedStructure,Connection conn,out List<string> constraintDrops, out List<string> constraintCreates)
 		{
 			constraintDrops=new List<string>();
@@ -491,15 +556,15 @@ namespace Org.Reddragonit.Dbpro.Connections
 								{
 									foundField=true;
 									if (efm.Nullable&&!ee.Nullable)
-										constraintDrops.Add(conn.queryBuilder.DropNullConstraint(etm.TableName,efm.FieldName,conn));
+										constraintDrops.Add(conn.queryBuilder.DropNullConstraint(etm.TableName,efm,conn));
 									else if (!efm.Nullable&&ee.Nullable)
-										constraintCreates.Add(conn.queryBuilder.CreateNullConstraint(etm.TableName,efm.FieldName));
+										constraintCreates.Add(conn.queryBuilder.CreateNullConstraint(etm.TableName,efm));
 									break;
 								}
 							}
 							if (!foundField&&!efm.Nullable)
 							{
-								constraintCreates.Add(conn.queryBuilder.CreateNullConstraint(etm.TableName,efm.FieldName));
+								constraintCreates.Add(conn.queryBuilder.CreateNullConstraint(etm.TableName,efm));
 							}
 						}
 						break;
@@ -510,7 +575,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 					foreach (ExtractedFieldMap efm in etm.Fields)
 					{
 						if (!efm.Nullable)
-							constraintCreates.Add(conn.queryBuilder.CreateNullConstraint(etm.TableName,efm.FieldName));
+							constraintCreates.Add(conn.queryBuilder.CreateNullConstraint(etm.TableName,efm));
 					}
 				}
 			}
@@ -535,7 +600,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 								}
 							}
 							if (!foundField)
-								constraintDrops.Add(conn.queryBuilder.DropNullConstraint(etm.TableName,efm.FieldName,conn));
+								constraintDrops.Add(conn.queryBuilder.DropNullConstraint(etm.TableName,efm,conn));
 						}
 						break;
 					}
@@ -545,7 +610,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 					foreach (ExtractedFieldMap efm in etm.Fields)
 					{
 						if (!efm.Nullable)
-							constraintDrops.Add(conn.queryBuilder.DropNullConstraint(etm.TableName,efm.FieldName,conn));
+							constraintDrops.Add(conn.queryBuilder.DropNullConstraint(etm.TableName,efm,conn));
 					}
 				}
 			}
@@ -756,14 +821,16 @@ namespace Org.Reddragonit.Dbpro.Connections
 			List<ExtractedTableMap> curStructure =new List<ExtractedTableMap>();
 			List<Trigger> curTriggers = new List<Trigger>();
 			List<Generator> curGenerators = new List<Generator>();
+			List<IdentityField> curIdentities = new List<IdentityField>();
 			
-			ExtractCurrentStructure(out curStructure,out curTriggers,out curGenerators,conn);
+			ExtractCurrentStructure(out curStructure,out curTriggers,out curGenerators,out curIdentities,conn);
 			
 			List<ExtractedTableMap> expectedStructure = new List<ExtractedTableMap>();
 			List<Trigger> expectedTriggers = new List<Trigger>();
 			List<Generator> expectedGenerators = new List<Generator>();
+			List<IdentityField> expectedIdentities = new List<IdentityField>();
 			
-			ExtractExpectedStructure(out expectedStructure,out expectedTriggers,out expectedGenerators,conn);
+			ExtractExpectedStructure(out expectedStructure,out expectedTriggers,out expectedGenerators,out expectedIdentities,conn);
 			
 			List<Trigger> dropTriggers = new List<Trigger>();
 			List<Trigger> createTriggers = new List<Trigger>();
@@ -789,6 +856,12 @@ namespace Org.Reddragonit.Dbpro.Connections
 			List<ForeignKey> foreignKeyCreations = new List<ForeignKey>();
 			
 			ExtractForeignKeyCreatesDrops(curStructure,expectedStructure,out foreignKeyDrops,out foreignKeyCreations);
+			
+			List<IdentityField> dropIdentities=new List<IdentityField>();
+			List<IdentityField> createIdentities=new List<IdentityField>();
+			List<IdentityField> setIdentities=new List<IdentityField>();
+			
+			CompareIdentities(curIdentities,expectedIdentities,out dropIdentities,out createIdentities,out setIdentities);
 			
 			List<string> tableCreations = new List<string>();
 			List<string> tableAlterations = new List<string>();
@@ -865,13 +938,13 @@ namespace Org.Reddragonit.Dbpro.Connections
 											foreignKeyDrops.Add(new ForeignKey(etm,tbl));
 											foreignKeyCreations.Add(new ForeignKey(etm,tbl));
 										}
-										tableAlterations.Add(conn.queryBuilder.AlterFieldType(etm.TableName,efm.FieldName,efm.Type,efm.Size));
+										tableAlterations.Add(conn.queryBuilder.AlterFieldType(etm.TableName,efm));
 									}
 									break;
 								}
 							}
 							if (!foundField)
-								tableAlterations.Add(conn.queryBuilder.CreateColumn(etm.TableName,efm.FieldName,efm.Type,efm.Size));
+								tableAlterations.Add(conn.queryBuilder.CreateColumn(etm.TableName,efm));
 						}
 						break;
 					}
@@ -896,17 +969,18 @@ namespace Org.Reddragonit.Dbpro.Connections
 			alterations.Add(" COMMIT;");
 			
 			foreach (ForeignKey fk in foreignKeyDrops)
-			{
-				foreach (string field in fk.InternalFields)
-					alterations.Add(conn.queryBuilder.DropForeignKey(fk.InternalTable,field,conn));
-			}
+				alterations.Add(conn.queryBuilder.DropForeignKey(fk.InternalTable,fk.ExternalTable,conn));
 			alterations.Add(" COMMIT;");
 			
 			foreach (PrimaryKey pk in primaryKeyDrops)
 			{
 				foreach (string field in pk.Fields)
-					alterations.Add(conn.queryBuilder.DropPrimaryKey(pk.Name,field,conn));
+					alterations.Add(conn.queryBuilder.DropPrimaryKey(pk,conn));
 			}
+			alterations.Add(" COMMIT;");
+			
+			foreach (IdentityField idf in dropIdentities)
+				alterations.Add(conn.queryBuilder.DropIdentityField(idf));
 			alterations.Add(" COMMIT;");
 			
 			alterations.AddRange(tableAlterations);
@@ -938,6 +1012,14 @@ namespace Org.Reddragonit.Dbpro.Connections
 			{
 				alterations.Add(conn.queryBuilder.CreateTrigger(trig.Name,trig.Conditions,trig.Code));
 			}
+			alterations.Add(" COMMIT;");
+			
+			foreach(IdentityField idf in createIdentities)
+				alterations.Add(conn.queryBuilder.CreateIdentityField(idf));
+			alterations.Add(" COMMIT;");
+			
+			foreach (IdentityField idf in setIdentities)
+				alterations.Add(conn.queryBuilder.SetIdentityFieldValue(idf));
 			alterations.Add(" COMMIT;");
 			
 			Utility.RemoveDuplicateStrings(ref alterations,new string[]{" COMMIT;"});
@@ -981,6 +1063,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 				}
 			}
 			conn.Commit();
+			conn.CloseConnection();
 		}
 		
 		public Connection getConnection()
