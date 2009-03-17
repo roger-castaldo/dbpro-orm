@@ -39,16 +39,23 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
 		}
 		
+		internal virtual bool UsesIdentities{
+			get{
+				return false;
+			}
+		}
+		
 		public ConnectionPool Pool{
 			get{return pool;}
 		}
 		
 		protected abstract IDbConnection EstablishConnection();
 		protected abstract IDbCommand EstablishCommand();
-		internal abstract IDbDataParameter CreateParameter(string parameterName,object parameterValue);
+		internal abstract IDbDataParameter CreateParameter(string parameterName,object parameterValue,Org.Reddragonit.Dbpro.Structure.Attributes.FieldType type, int fieldLength);
+		public abstract IDbDataParameter CreateParameter(string parameterName,object parameterValue);
 		internal abstract string TranslateFieldType(Org.Reddragonit.Dbpro.Structure.Attributes.FieldType type,int fieldLength);
-		internal abstract void GetDropAutogenStrings(string tableName,ExtractedFieldMap field,ConnectionPool pool,out List<string> queryStrings,out List<Generator> generators,out List<Trigger> triggers);
-		internal abstract void GetAddAutogen(string tableName,List<ExtractedFieldMap> primaryFields,ConnectionPool pool, out List<string> queryStrings, out List<Generator> generators, out List<Trigger> triggers);
+		internal abstract void GetDropAutogenStrings(ExtractedTableMap map,ConnectionPool pool,out List<IdentityField> identities,out List<Generator> generators,out List<Trigger> triggers);
+		internal abstract void GetAddAutogen(ExtractedTableMap map,ConnectionPool pool, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers);
 		internal abstract List<Trigger> GetVersionTableTriggers(ExtractedTableMap table,VersionTypes versionType,ConnectionPool pool);
 		
 		internal virtual List<string> GetDropTableString(string table,bool isVersioned)
@@ -150,6 +157,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 			{
 				throw new Exception("Cannot update an entry into a table into the database connection that it was not specified for.");
 			}
+			if ((table.ChangedFields==null)||(table.ChangedFields.Count==0))
+				return table;
 			TableMap map = ClassMapper.GetTableMap(table.GetType());
 			if (map.ParentType!=null)
 			{
@@ -304,22 +313,22 @@ namespace Org.Reddragonit.Dbpro.Connections
 			foreach (InternalFieldMap primary in map.PrimaryKeys)
 			{
 				fields+=Pool.CorrectName(map.Name+"_"+primary.FieldName)+", ";
-				paramString+=Pool.CorrectName("@"+map.Name+"_"+primary.FieldName)+", ";
-				conditions+=Pool.CorrectName(map.Name+"_"+primary.FieldName)+" = "+Pool.CorrectName("@"+map.Name+"_"+primary.FieldName)+" AND ";
-				pars.Add(CreateParameter(Pool.CorrectName("@"+map.Name+"_"+primary.FieldName),table.GetField(map.GetClassFieldName(primary.FieldName))));
+				paramString+=Pool.CorrectName(queryBuilder.CreateParameterName(map.Name+"_"+primary.FieldName))+", ";
+				conditions+=Pool.CorrectName(map.Name+"_"+primary.FieldName)+" = "+Pool.CorrectName(queryBuilder.CreateParameterName(map.Name+"_"+primary.FieldName))+" AND ";
+				pars.Add(CreateParameter(Pool.CorrectName(queryBuilder.CreateParameterName(map.Name+"_"+primary.FieldName)),table.GetField(map.GetClassFieldName(primary.FieldName))));
 			}
 			query = queryBuilder.Delete(Pool.CorrectName(map.Name+"_"+field.FieldName),conditions.Substring(0,conditions.Length-4));
 			ExecuteNonQuery(query,pars);
 			if (values!=null)
 			{
-				pars.Add(CreateParameter(Pool.CorrectName("@"+field.FieldName+"_VALUE"),null));
+				pars.Add(CreateParameter(Pool.CorrectName(queryBuilder.CreateParameterName(field.FieldName+"_VALUE")),null));
 				fields+=Pool.CorrectName(field.FieldName+"_VALUE");
-				paramString+=Pool.CorrectName("@"+field.FieldName+"_VALUE");
+				paramString+=Pool.CorrectName(queryBuilder.CreateParameterName(field.FieldName+"_VALUE"));
 				query = queryBuilder.Insert(Pool.CorrectName(map.Name+"_"+field.FieldName),fields,paramString);
 				foreach (object obj in values)
 				{
 					pars.RemoveAt(pars.Count-1);
-					pars.Add(CreateParameter(Pool.CorrectName("@"+field.FieldName+"_VALUE"),obj));
+					pars.Add(CreateParameter(Pool.CorrectName(queryBuilder.CreateParameterName(field.FieldName+"_VALUE")),obj));
 					ExecuteNonQuery(query,pars);
 				}
 			}
@@ -344,8 +353,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 					string conditions= "";
 					foreach (InternalFieldMap ifm in map.PrimaryKeys)
 					{
-						conditions += map.Name + "_" + external.Name + "." + Pool.CorrectName(map.Name+"_"+ifm.FieldName) + " = @" + map.Name+"_"+ifm.FieldName + " AND ";
-						pars.Add(CreateParameter("@" + map.Name+"_"+ifm.FieldName, t.GetField(map.GetClassFieldName(ifm))));
+						conditions += map.Name + "_" + external.Name + "." + Pool.CorrectName(map.Name+"_"+ifm.FieldName) + " = " + queryBuilder.CreateParameterName(map.Name+"_"+ifm.FieldName) + " AND ";
+						pars.Add(CreateParameter(queryBuilder.CreateParameterName(map.Name+"_"+ifm.FieldName), t.GetField(map.GetClassFieldName(ifm))));
 					}
 					conditions=conditions.Substring(0,conditions.Length-4);
 					query = string.Format(queryBuilder.SelectWithConditions,fields,pool.CorrectName(map.Name+"_"+external.Name),conditions);
@@ -371,14 +380,14 @@ namespace Org.Reddragonit.Dbpro.Connections
 					query = "SELECT "+Pool.CorrectName(ifm.FieldName+"_VALUE")+" FROM "+
 						Pool.CorrectName(map.Name+"_"+ifm.FieldName)+" WHERE ";
 					foreach (InternalFieldMap primary in map.PrimaryKeys)
-						query+=" "+Pool.CorrectName(map.Name+"_"+primary.FieldName)+" = "+Pool.CorrectName("@"+map.Name+"_"+primary.FieldName)+" AND ";
+						query+=" "+Pool.CorrectName(map.Name+"_"+primary.FieldName)+" = "+Pool.CorrectName(queryBuilder.CreateParameterName(map.Name+"_"+primary.FieldName))+" AND ";
 					query = query.Substring(0,query.Length-4);
 					query+=" ORDER BY "+Pool.CorrectName(map.Name+"_"+ifm.FieldName+"_ID")+" ASC";
 					foreach (Table t in ret)
 					{
 						List<IDbDataParameter> pars = new List<IDbDataParameter>();
 						foreach (InternalFieldMap primary in map.PrimaryKeys)
-							pars.Add(CreateParameter(Pool.CorrectName("@"+map.Name+"_"+primary.FieldName),t.GetField(map.GetClassFieldName(primary))));
+							pars.Add(CreateParameter(Pool.CorrectName(queryBuilder.CreateParameterName(map.Name+"_"+primary.FieldName)),t.GetField(map.GetClassFieldName(primary))));
 						ArrayList values = new ArrayList();
 						ExecuteQuery(query,pars);
 						while (Read())
@@ -445,64 +454,81 @@ namespace Org.Reddragonit.Dbpro.Connections
 			return ret;
 		}
 		
-		private string FormatParameters(string queryString,List<IDbDataParameter> parameters)
+		private string FormatParameters(string queryString,ref IDbDataParameter[] parameters)
 		{
 			if (parameters==null)
 				return queryString;
 			else
 			{
 				string ret = queryString;
+				List<IDbDataParameter> pars = new List<IDbDataParameter>();
 				foreach (IDbDataParameter par in parameters)
 				{
 					if (par.Value==null)
 					{
 						ret=ret.Replace("= "+par.ParameterName+" ","is "+par.ParameterName+" ");
-					}
+						ret=ret.Replace(par.ParameterName+",","null,");
+						ret=ret.Replace(par.ParameterName+")","null)");
+					}else
+						pars.Add(par);
 				}
+				parameters=pars.ToArray();
 				return ret;
 			}
 		}
 		
 		public int ExecuteNonQuery(string queryString)
 		{
-			return ExecuteNonQuery(queryString,null);
+			return ExecuteNonQuery(queryString,new IDbDataParameter[0]);
 		}
+
+        public int ExecuteNonQuery(string queryString, List<IDbDataParameter> parameters)
+        {
+            return ExecuteNonQuery(queryString, parameters.ToArray());
+        }
+
+        public int ExecuteNonQuery(string queryString, IDbDataParameter[] parameters)
+        {
+            comm.CommandText = FormatParameters(queryString + " ", ref parameters);
+            comm.Parameters.Clear();
+            if (parameters != null)
+            {
+                foreach (IDbDataParameter param in parameters)
+                {
+                    comm.Parameters.Add(param);
+                }
+            }
+            System.Diagnostics.Debug.WriteLine(comm.CommandText);
+            return comm.ExecuteNonQuery();
+        }
 		
-		public int ExecuteNonQuery(string queryString,List<IDbDataParameter> parameters)
-		{
-			comm.CommandText=FormatParameters(queryString+" ",parameters);
-			comm.Parameters.Clear();
-			if (parameters!=null)
-			{
-				foreach (IDbDataParameter param in parameters)
-				{
-					comm.Parameters.Add(param);
-				}
-			}
-			System.Diagnostics.Debug.WriteLine(comm.CommandText);
-			return comm.ExecuteNonQuery();
-		}
+		
 		
 		public void ExecuteQuery(string queryString)
 		{
-			ExecuteQuery(queryString,null);
+			ExecuteQuery(queryString,new IDbDataParameter[0]);
 		}
 		
 		public void ExecuteQuery(string queryString,List<IDbDataParameter> parameters)
 		{
-			reader=null;
-			comm.CommandText=FormatParameters(queryString+" ",parameters);
-			comm.Parameters.Clear();
-			if (parameters!=null)
-			{
-				foreach (IDbDataParameter param in parameters)
-				{
-					comm.Parameters.Add(param);
-				}
-			}
-			System.Diagnostics.Debug.WriteLine(comm.CommandText);
-			reader=comm.ExecuteReader();
+            ExecuteQuery(queryString, parameters.ToArray());
 		}
+
+        public void ExecuteQuery(string queryString, IDbDataParameter[] parameters)
+        {
+            reader = null;
+            comm.CommandText = FormatParameters(queryString + " ", ref parameters);
+            comm.Parameters.Clear();
+            if (parameters != null)
+            {
+                foreach (IDbDataParameter param in parameters)
+                {
+                    comm.Parameters.Add(param);
+                }
+            }
+            System.Diagnostics.Debug.WriteLine(comm.CommandText);
+            reader = comm.ExecuteReader();
+        }
 		
 		#region Reader
 		public int Depth {

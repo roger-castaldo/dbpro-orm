@@ -33,6 +33,10 @@ namespace Org.Reddragonit.Dbpro.Structure
 			}
 		}
 		
+		internal List<string> ChangedFields{
+			get{return null;}
+		}
+		
 		private void InitPrimaryKeys()
 		{
 			_initialPrimaryKeys.Clear();

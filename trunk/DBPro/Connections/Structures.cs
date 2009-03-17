@@ -6,6 +6,7 @@
  * 
  * To change this template use Tools | Options | Coding | Edit Standard Headers.
  */
+using Org.Reddragonit.Dbpro.Structure.Attributes;
 using System;
 using System.Collections.Generic;
 
@@ -38,6 +39,38 @@ namespace Org.Reddragonit.Dbpro.Connections
 				_fields.Add(efm.FieldName);
 		}
 	}
+	
+	internal struct IdentityField{
+		private string _tableName;
+		private string _fieldName;
+		private string _fieldType;
+		private string _curValue;
+		
+		public string TableName{
+			get{return _tableName;}
+		}
+		
+		public string FieldName{
+			get{return _fieldName;}
+		}
+				
+		public string CurValue{
+			get{return _curValue;}
+		}
+		
+		public string FieldType{
+			get{return _fieldType;}
+		}
+		
+		public IdentityField(string tableName,string fieldName,string fieldType,string curValue)
+		{
+			_tableName=tableName;
+			_fieldName=fieldName;
+			_fieldType=fieldType;
+			_curValue=curValue;
+		}
+	}
+		
 	
 	internal struct ForeignKey{
 		
@@ -281,7 +314,10 @@ namespace Org.Reddragonit.Dbpro.Connections
 			{
 				_size = long.Parse(type.Substring(type.IndexOf("CHAR(")+5).Replace(")",""));
 				_type = _type.Replace("("+_size.ToString()+")","");
-			}else
+			}else if (type.Contains("VARBINARY(")){
+                _size = long.Parse(type.Substring(type.IndexOf("VARBINARY(")+10).Replace(")",""));
+				_type = _type.Replace("("+_size.ToString()+")","");
+            }else
 				_size = size;
 			_primaryKey = primary;
 			_nullable = nullable;
@@ -298,5 +334,12 @@ namespace Org.Reddragonit.Dbpro.Connections
 		public bool PrimaryKey { get { return _primaryKey; } }
 		public bool Nullable { get { return _nullable; } }
 		public bool AutoGen {get {return _autogen;} set{_autogen=value;}}
+		public string FullFieldType{
+			get{
+				if (Type.ToUpper().Contains("CHAR"))
+					return Type+"("+Size.ToString()+")";
+				return Type;
+			}
+		}
 	}
 }
