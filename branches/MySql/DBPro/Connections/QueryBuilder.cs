@@ -31,9 +31,15 @@ namespace Org.Reddragonit.Dbpro.Connections
 			get{return _pool;}
 		}
 		
-		public QueryBuilder(ConnectionPool pool)
+		private Connection _conn;
+		protected Connection conn{
+			get{return _conn;}
+		}
+		
+		public QueryBuilder(ConnectionPool pool,Connection conn)
 		{
 			_pool=pool;
+			_conn=conn;
 		}
 		
 		public virtual string CreateParameterName(string parameter)
@@ -291,7 +297,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			return SelectTableNamesString;
 		}
 		
-		internal string SelectIdentities()
+		internal virtual string SelectIdentities()
 		{
 			return SelectCurrentIdentities;
 		}
@@ -333,9 +339,9 @@ namespace Org.Reddragonit.Dbpro.Connections
 			return string.Format(CreateIdentityString,field.TableName,field.FieldName,field.FieldType,field.CurValue);
 		}
 		
-		internal string CreateTrigger(string name,string conditions,string code)
+		internal string CreateTrigger(Trigger trigger)
 		{
-			return string.Format(CreateTriggerString,name,conditions,code);
+			return string.Format(CreateTriggerString,trigger.Name,trigger.Conditions,trigger.Code);
 		}
 		
 		internal string SelectTriggers(){
@@ -374,12 +380,12 @@ namespace Org.Reddragonit.Dbpro.Connections
 			return string.Format(CreateColumnString,table,field.FieldName,field.FullFieldType);
 		}
 		
-		internal string AlterFieldType(string table, ExtractedFieldMap field)
+		internal virtual string AlterFieldType(string table, ExtractedFieldMap field)
 		{
 			return string.Format(AlterFieldTypeString,table,field.FieldName,field.FullFieldType);
 		}
 		
-		internal virtual string DropPrimaryKey(PrimaryKey key,Connection conn)
+		internal virtual string DropPrimaryKey(PrimaryKey key)
 		{
 			string fields="";
 			foreach (string str in key.Fields)
@@ -387,14 +393,14 @@ namespace Org.Reddragonit.Dbpro.Connections
 			return String.Format(DropPrimaryKeyString,key.Name,fields.Substring(0,fields.Length-1));
 		}
 		
-		internal string CreatePrimaryKey(string table, List<string> fields)
+		internal string CreatePrimaryKey(PrimaryKey key)
 		{
 			string ret="";
-			foreach(string str in fields)
+			foreach(string str in key.Fields)
 			{
 				ret+=str+",";
 			}
-			return string.Format(CreatePrimaryKeyString,table,ret.Substring(0,ret.Length-1));
+			return string.Format(CreatePrimaryKeyString,key.Name,ret.Substring(0,ret.Length-1));
 		}
 		
 		internal string CreateNullConstraint(string table,ExtractedFieldMap field)
@@ -402,31 +408,31 @@ namespace Org.Reddragonit.Dbpro.Connections
 			return string.Format(CreateNullConstraintString,table,field.FieldName,field.FullFieldType);
 		}
 		
-		internal virtual string DropNullConstraint(string table,ExtractedFieldMap field, Connection conn)
+		internal virtual string DropNullConstraint(string table,ExtractedFieldMap field)
 		{
 			return String.Format(DropNotNullString,table,field.FieldName,field.FullFieldType);
 		}
 		
-		internal virtual string DropForeignKey(string table,string externalTable,Connection conn)
+		internal virtual string DropForeignKey(string table,string externalTable)
 		{
 			return string.Format(DropForeignKeyString,table,externalTable);
 		}
 		
-		internal string CreateForeignKey(string table, List<string> fields, string ForeignTable, List<string> ForeignFields,string UpdateAction,string DeleteAction)
+		internal string CreateForeignKey(ForeignKey key)
 		{
 			string field="";
-			foreach (string str in fields)
+			foreach (string str in key.InternalFields)
 			{
 				field+=str+",";
 			}
 			field=field.Substring(0,field.Length-1);
 			string Foreigns = "";
-			foreach (string str in ForeignFields)
+			foreach (string str in key.ExternalFields)
 			{
 				Foreigns+=str+",";
 			}
 			Foreigns=Foreigns.Substring(0,Foreigns.Length-1);
-			return string.Format(CreateForeignKeyString,table,field,ForeignTable,Foreigns,UpdateAction,DeleteAction);
+			return string.Format(CreateForeignKeyString,key.InternalTable,field,key.ExternalTable,Foreigns,key.OnUpdate,key.OnDelete);
 		}
 		
 		internal string CreateTable(ExtractedTableMap table)
@@ -442,7 +448,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		#endregion
 		
 		#region Inserts
-		internal string Insert(Table table,out List<IDbDataParameter> insertParameters,out string select,out List<IDbDataParameter> selectParameters,Connection conn)
+		internal string Insert(Table table,out List<IDbDataParameter> insertParameters,out string select,out List<IDbDataParameter> selectParameters)
 		{
 			TableMap map = ClassMapper.GetTableMap(table.GetType());
 			insertParameters=new List<IDbDataParameter>();
@@ -529,7 +535,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		#endregion
 		
 		#region Deletes
-		internal string Delete(Table table,out List<IDbDataParameter> parameters,Connection conn)
+		internal string Delete(Table table,out List<IDbDataParameter> parameters)
 		{
 			parameters = new List<IDbDataParameter>();
 			try{
@@ -555,7 +561,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		#endregion
 		
 		#region Updates
-		internal Dictionary<string,List<List<IDbDataParameter>>> UpdateMapArray(Table table,ExternalFieldMap efm,Connection conn)
+		internal Dictionary<string,List<List<IDbDataParameter>>> UpdateMapArray(Table table,ExternalFieldMap efm)
 		{
 			Dictionary<string, List<List<IDbDataParameter>>> ret = new Dictionary<string, List<List<IDbDataParameter>>>();
 			try{
@@ -612,7 +618,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			return ret;
 		}
 		
-		internal string Update(Table table,out List<IDbDataParameter> queryParameters,Connection conn)
+		internal string Update(Table table,out List<IDbDataParameter> queryParameters)
 		{
 			queryParameters = new List<IDbDataParameter>();
 			if ((table.ChangedFields==null)||(table.ChangedFields.Count==0))
@@ -799,10 +805,10 @@ namespace Org.Reddragonit.Dbpro.Connections
 		internal string SelectAll(System.Type type)
 		{
 			List<IDbDataParameter> pars = new List<IDbDataParameter>();
-			return Select(type,null,out pars,null);
+			return Select(type,null,out pars);
 		}
 		
-		internal string SelectMax(System.Type type,string maxField,List<SelectParameter> parameters,out List<IDbDataParameter> queryParameters,Connection conn)
+		internal string SelectMax(System.Type type,string maxField,List<SelectParameter> parameters,out List<IDbDataParameter> queryParameters)
 		{
 			TableMap map = ClassMapper.GetTableMap(type);
 			string fields="";
@@ -857,7 +863,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 				return null;
 		}
 		
-		internal string Select(System.Type type,List<SelectParameter> parameters,out List<IDbDataParameter> queryParameters,Connection conn)
+		internal string Select(System.Type type,List<SelectParameter> parameters,out List<IDbDataParameter> queryParameters)
 		{
 			TableMap map = ClassMapper.GetTableMap(type);
 			string fields="";

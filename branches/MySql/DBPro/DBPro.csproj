@@ -63,6 +63,7 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>bin\Debug\FirebirdSql.Data.FirebirdClient.dll</HintPath>
     </Reference>
+    <Reference Include="MySql.Data" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
     <Reference Include="System" />
@@ -73,6 +74,9 @@
     <Compile Include="Connections\ConnectionPool.cs" />
     <Compile Include="Connections\ConnectionPoolManager.cs" />
     <Compile Include="Connections\MsSql\MSSQLQueryBuilder.cs" />
+    <Compile Include="Connections\MySql\MySqlConnection.cs" />
+    <Compile Include="Connections\MySql\MySqlConnectionPool.cs" />
+    <Compile Include="Connections\MySql\MySqlQueryBuilder.cs" />
     <Compile Include="Connections\Structures.cs" />
     <Compile Include="Connections\Firebird\FBConnection.cs" />
     <Compile Include="Connections\Firebird\FBConnectionPool.cs" />
@@ -125,6 +129,7 @@
       <ProductName>.NET Framework 3.5</ProductName>
       <Install>false</Install>
     </BootstrapperPackage>
+    <Folder Include="Connections\MySql" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.Targets" />
 </Project>

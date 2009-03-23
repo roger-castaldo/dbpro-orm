@@ -7,7 +7,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 {
 	internal class MSSQLQueryBuilder : QueryBuilder
 	{
-		public MSSQLQueryBuilder(ConnectionPool pool) : base(pool)
+		public MSSQLQueryBuilder(ConnectionPool pool,Connection conn) : base(pool,conn)
 		{}
 		
 		protected override string SelectTableNamesString
@@ -165,7 +165,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
         	get { return "SELECT 'ALTER TABLE ['+OBJECT_NAME(parent_object_id)+'] DROP CONSTRAINT ['+OBJECT_NAME(OBJECT_ID)+']' AS DROP_STRING FROM sys.objects WHERE type_desc = 'PRIMARY_KEY_CONSTRAINT' AND OBJECT_NAME(parent_object_id)="+CreateParameterName("TableName"); }
 		}
 
-		internal override string DropPrimaryKey(PrimaryKey key, Connection conn)
+		internal override string DropPrimaryKey(PrimaryKey key)
 		{
 			string ret = "";
 			conn.ExecuteQuery(DropPrimaryKeyString, new IDbDataParameter[]{conn.CreateParameter(CreateParameterName("TableName"),key.Name)});
@@ -189,7 +189,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 					" AND cast(p.name as varchar(255)) = '{1}'"; }
 		}
 		
-		internal override string DropForeignKey(string table, string externalTable, Connection conn)
+		internal override string DropForeignKey(string table, string externalTable)
 		{
 			string ret="";
 			conn.ExecuteQuery(string.Format(DropForeignKeyString,table,externalTable));

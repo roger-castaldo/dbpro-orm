@@ -16,7 +16,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 	/// </summary>
 	internal class FBQueryBuilder : QueryBuilder
 	{
-		public FBQueryBuilder(ConnectionPool pool): base(pool)
+		public FBQueryBuilder(ConnectionPool pool,Connection conn): base(pool,conn)
 		{
 		}
 		
@@ -30,7 +30,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 					"AND   r.rdb$constraint_type = 'NOT NULL'"; }
 		}
         
-        internal override string DropNullConstraint(string table, ExtractedFieldMap field, Connection conn)
+        internal override string DropNullConstraint(string table, ExtractedFieldMap field)
 		{
 			string ret = "";
 			conn.ExecuteQuery(String.Format(DropNotNullString,table,field.FieldName));
@@ -65,7 +65,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 					"AND TRIM(rel.RDB$RELATION_NAME) = '{0}'"; }
 		}
 		
-		internal override string DropForeignKey(string table, string tableName, Connection conn)
+		internal override string DropForeignKey(string table, string tableName)
 		{
 			string ret = "";
 			conn.ExecuteQuery(String.Format(DropForeignKeyString,table));
@@ -76,7 +76,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		}
 
 
-        internal override string DropPrimaryKey(PrimaryKey key, Connection conn)
+        internal override string DropPrimaryKey(PrimaryKey key)
 		{
 			string ret="";
             foreach (string str in key.Fields)

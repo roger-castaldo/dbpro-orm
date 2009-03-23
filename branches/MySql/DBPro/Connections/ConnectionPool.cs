@@ -556,7 +556,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 								{
 									foundField=true;
 									if (efm.Nullable&&!ee.Nullable)
-										constraintDrops.Add(conn.queryBuilder.DropNullConstraint(etm.TableName,efm,conn));
+										constraintDrops.Add(conn.queryBuilder.DropNullConstraint(etm.TableName,efm));
 									else if (!efm.Nullable&&ee.Nullable)
 										constraintCreates.Add(conn.queryBuilder.CreateNullConstraint(etm.TableName,efm));
 									break;
@@ -600,7 +600,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 								}
 							}
 							if (!foundField)
-								constraintDrops.Add(conn.queryBuilder.DropNullConstraint(etm.TableName,efm,conn));
+								constraintDrops.Add(conn.queryBuilder.DropNullConstraint(etm.TableName,efm));
 						}
 						break;
 					}
@@ -610,7 +610,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 					foreach (ExtractedFieldMap efm in etm.Fields)
 					{
 						if (!efm.Nullable)
-							constraintDrops.Add(conn.queryBuilder.DropNullConstraint(etm.TableName,efm,conn));
+							constraintDrops.Add(conn.queryBuilder.DropNullConstraint(etm.TableName,efm));
 					}
 				}
 			}
@@ -969,13 +969,13 @@ namespace Org.Reddragonit.Dbpro.Connections
 			alterations.Add(" COMMIT;");
 			
 			foreach (ForeignKey fk in foreignKeyDrops)
-				alterations.Add(conn.queryBuilder.DropForeignKey(fk.InternalTable,fk.ExternalTable,conn));
+				alterations.Add(conn.queryBuilder.DropForeignKey(fk.InternalTable,fk.ExternalTable));
 			alterations.Add(" COMMIT;");
 			
 			foreach (PrimaryKey pk in primaryKeyDrops)
 			{
 				foreach (string field in pk.Fields)
-					alterations.Add(conn.queryBuilder.DropPrimaryKey(pk,conn));
+					alterations.Add(conn.queryBuilder.DropPrimaryKey(pk));
 			}
 			alterations.Add(" COMMIT;");
 			
@@ -994,11 +994,11 @@ namespace Org.Reddragonit.Dbpro.Connections
 			alterations.Add(" COMMIT;");
 			
 			foreach (PrimaryKey pk in primaryKeyCreations)
-				alterations.Add(conn.queryBuilder.CreatePrimaryKey(pk.Name,pk.Fields));
+				alterations.Add(conn.queryBuilder.CreatePrimaryKey(pk));
 			alterations.Add(" COMMIT;");
 			
 			foreach (ForeignKey fk in foreignKeyCreations)
-				alterations.Add(conn.queryBuilder.CreateForeignKey(fk.InternalTable,fk.InternalFields,fk.ExternalTable,fk.ExternalFields,fk.OnUpdate,fk.OnDelete));
+				alterations.Add(conn.queryBuilder.CreateForeignKey(fk));
 			alterations.Add(" COMMIT;");
 			
 			foreach (Generator gen in createGenerators)
@@ -1010,7 +1010,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			
 			foreach (Trigger trig in createTriggers)
 			{
-				alterations.Add(conn.queryBuilder.CreateTrigger(trig.Name,trig.Conditions,trig.Code));
+				alterations.Add(conn.queryBuilder.CreateTrigger(trig));
 			}
 			alterations.Add(" COMMIT;");
 			

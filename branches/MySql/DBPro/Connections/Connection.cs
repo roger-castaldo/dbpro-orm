@@ -28,7 +28,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		{
 			get{
 				if (_qb==null)
-					_qb=new QueryBuilder(pool);
+					_qb=new QueryBuilder(pool,this);
 				return _qb;
 			}
 		}
@@ -186,11 +186,11 @@ namespace Org.Reddragonit.Dbpro.Connections
 				}
 			}
 			List<IDbDataParameter> pars = new List<IDbDataParameter>();
-			string query = queryBuilder.Update(table,out pars,this);
+			string query = queryBuilder.Update(table,out pars);
 			this.ExecuteNonQuery(query, pars);
 			foreach (ExternalFieldMap efm in map.ExternalFieldMapArrays)
 			{
-				Dictionary<string, List<List<IDbDataParameter>>> queries = queryBuilder.UpdateMapArray(table,efm,this);
+				Dictionary<string, List<List<IDbDataParameter>>> queries = queryBuilder.UpdateMapArray(table,efm);
 				foreach (string str in queries.Keys)
 				{
 					foreach (List<IDbDataParameter> p in queries[str])
@@ -260,7 +260,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			string select="";
 			List<IDbDataParameter> pars = new List<IDbDataParameter>();
 			List<IDbDataParameter> selectPars = new List<IDbDataParameter>();
-			query=queryBuilder.Insert(table,out pars,out select,out selectPars,this);
+			query=queryBuilder.Insert(table,out pars,out select,out selectPars);
 			ExecuteNonQuery(query,pars);
 			if (select!=null)
 			{
@@ -280,7 +280,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			table.LoadStatus= LoadStatus.Complete;
 			foreach (ExternalFieldMap efm in map.ExternalFieldMapArrays)
 			{
-				Dictionary<string, List<List<IDbDataParameter>>> queries = queryBuilder.UpdateMapArray(table,efm,this);
+				Dictionary<string, List<List<IDbDataParameter>>> queries = queryBuilder.UpdateMapArray(table,efm);
 				if (queries!=null)
 				{
 					foreach (string str in queries.Keys)
@@ -440,7 +440,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
 			List<Table> ret = new List<Table>();
 			List<IDbDataParameter> pars = new List<IDbDataParameter>();
-			string query = queryBuilder.Select(type,parameters,out pars,this);
+			string query = queryBuilder.Select(type,parameters,out pars);
 			ExecuteQuery(query,pars);
 			while (Read())
 			{
@@ -482,25 +482,25 @@ namespace Org.Reddragonit.Dbpro.Connections
 			return ExecuteNonQuery(queryString,new IDbDataParameter[0]);
 		}
 
-        public int ExecuteNonQuery(string queryString, List<IDbDataParameter> parameters)
-        {
-            return ExecuteNonQuery(queryString, parameters.ToArray());
-        }
+		public int ExecuteNonQuery(string queryString, List<IDbDataParameter> parameters)
+		{
+			return ExecuteNonQuery(queryString, parameters.ToArray());
+		}
 
-        public int ExecuteNonQuery(string queryString, IDbDataParameter[] parameters)
-        {
-            comm.CommandText = FormatParameters(queryString + " ", ref parameters);
-            comm.Parameters.Clear();
-            if (parameters != null)
-            {
-                foreach (IDbDataParameter param in parameters)
-                {
-                    comm.Parameters.Add(param);
-                }
-            }
-            System.Diagnostics.Debug.WriteLine(comm.CommandText);
-            return comm.ExecuteNonQuery();
-        }
+		public int ExecuteNonQuery(string queryString, IDbDataParameter[] parameters)
+		{
+			comm.CommandText = FormatParameters(queryString + " ", ref parameters);
+			comm.Parameters.Clear();
+			if (parameters != null)
+			{
+				foreach (IDbDataParameter param in parameters)
+				{
+					comm.Parameters.Add(param);
+				}
+			}
+			System.Diagnostics.Debug.WriteLine(comm.CommandText);
+			return comm.ExecuteNonQuery();
+		}
 		
 		
 		
@@ -511,24 +511,26 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		public void ExecuteQuery(string queryString,List<IDbDataParameter> parameters)
 		{
-            ExecuteQuery(queryString, parameters.ToArray());
+			ExecuteQuery(queryString, parameters.ToArray());
 		}
 
-        public void ExecuteQuery(string queryString, IDbDataParameter[] parameters)
-        {
-            reader = null;
-            comm.CommandText = FormatParameters(queryString + " ", ref parameters);
-            comm.Parameters.Clear();
-            if (parameters != null)
-            {
-                foreach (IDbDataParameter param in parameters)
-                {
-                    comm.Parameters.Add(param);
-                }
-            }
-            System.Diagnostics.Debug.WriteLine(comm.CommandText);
-            reader = comm.ExecuteReader();
-        }
+		public void ExecuteQuery(string queryString, IDbDataParameter[] parameters)
+		{
+			if ((queryString!=null)&&(queryString.Length>0)){
+				reader = null;
+				comm.CommandText = FormatParameters(queryString + " ", ref parameters);
+				comm.Parameters.Clear();
+				if (parameters != null)
+				{
+					foreach (IDbDataParameter param in parameters)
+					{
+						comm.Parameters.Add(param);
+					}
+				}
+				System.Diagnostics.Debug.WriteLine(comm.CommandText);
+				reader = comm.ExecuteReader();
+			}
+		}
 		
 		#region Reader
 		public int Depth {
@@ -572,6 +574,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		public bool Read()
 		{
+			if ((reader==null)||reader.IsClosed)
+				return false;
 			return reader.Read();
 		}
 		
