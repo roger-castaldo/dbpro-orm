@@ -124,6 +124,14 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
 			return null;
 		}
+		
+		public static ConnectionPool GetConnection(Type type)
+		{
+			TableMap tmp = ClassMapper.GetTableMap(type);
+			if (tmp!=null)
+				return GetConnection(tmp.ConnectionName);
+			return null;
+		}
 
 		public static ConnectionPool GetConnection(string name)
 		{

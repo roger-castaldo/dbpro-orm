@@ -63,6 +63,7 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>bin\Debug\FirebirdSql.Data.FirebirdClient.dll</HintPath>
     </Reference>
+    <Reference Include="MySql.Data" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
     <Reference Include="System" />
@@ -73,6 +74,9 @@
     <Compile Include="Connections\ConnectionPool.cs" />
     <Compile Include="Connections\ConnectionPoolManager.cs" />
     <Compile Include="Connections\MsSql\MSSQLQueryBuilder.cs" />
+    <Compile Include="Connections\MySql\MySqlConnection.cs" />
+    <Compile Include="Connections\MySql\MySqlConnectionPool.cs" />
+    <Compile Include="Connections\MySql\MySqlQueryBuilder.cs" />
     <Compile Include="Connections\Structures.cs" />
     <Compile Include="Connections\Firebird\FBConnection.cs" />
     <Compile Include="Connections\Firebird\FBConnectionPool.cs" />
@@ -92,6 +96,8 @@
     <Compile Include="Structure\Mapping\FieldMap.cs" />
     <Compile Include="Structure\Mapping\InternalFieldMap.cs" />
     <Compile Include="Structure\Mapping\TableMap.cs" />
+    <Compile Include="Structure\PagedTableListEnumerator.cs" />
+    <Compile Include="Structure\PagedTableList.cs" />
     <Compile Include="Structure\Table.cs" />
     <Compile Include="Structure\Attributes\Field.cs" />
     <Compile Include="Structure\Attributes\ForiegnField.cs" />
