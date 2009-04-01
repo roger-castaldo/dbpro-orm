@@ -149,6 +149,12 @@ namespace TestingApp.Structure
 		{
 			get{return _password;}
 			set{
+				if (_seedIsNull)
+				{
+					MT19937 m = new MT19937();
+					Seed=m.genrand_int31();
+					_seedIsNull=false;
+				}
 				_password=SecurePassword(value);
 			}
 		}
@@ -323,10 +329,10 @@ namespace TestingApp.Structure
 			}
 		}
 		
+		private bool _seedIsNull=true;
+		
 		public User()
 		{
-			MT19937 m = new MT19937();
-			Seed=m.genrand_int31();
 		}
 		
 		internal static User Save(User user)

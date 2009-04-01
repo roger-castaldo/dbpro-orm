@@ -1,9 +1,11 @@
 
+using Org.Reddragonit.Dbpro.Structure;
 using System;
-using System.Data;
 using System.Collections.Generic;
-using TestingApp.Structure;
+using System.Data;
 using Org.Reddragonit.Dbpro.Connections;
+using TestingApp.Structure;
+
 namespace TestingApp
 {
 	/// <summary>
@@ -36,6 +38,13 @@ namespace TestingApp
 				Console.WriteLine("Unable to login user.");
 			else
 				Console.WriteLine("User logged in.");
+			
+			PagedTableList lst = new PagedTableList(typeof(User),null,null);
+			PagedTableListEnumerator e = lst.GetEnumerator();
+			while (e.MoveNext())
+			{
+				Console.WriteLine(((User)e.Current).UserName);
+			}
 			
             pool.ClosePool();
             Console.ReadLine();

@@ -18,7 +18,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 			get
 			{
 				if (_builder == null)
-					_builder = new MSSQLQueryBuilder(Pool);
+					_builder = new MSSQLQueryBuilder(Pool,this);
 				return _builder;
 			}
 		}
