@@ -96,6 +96,8 @@
     <Compile Include="Structure\Mapping\FieldMap.cs" />
     <Compile Include="Structure\Mapping\InternalFieldMap.cs" />
     <Compile Include="Structure\Mapping\TableMap.cs" />
+    <Compile Include="Structure\PagedTableListEnumerator.cs" />
+    <Compile Include="Structure\PagedTableList.cs" />
     <Compile Include="Structure\Table.cs" />
     <Compile Include="Structure\Attributes\Field.cs" />
     <Compile Include="Structure\Attributes\ForiegnField.cs" />
@@ -129,7 +131,6 @@
       <ProductName>.NET Framework 3.5</ProductName>
       <Install>false</Install>
     </BootstrapperPackage>
-    <Folder Include="Connections\MySql" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.Targets" />
 </Project>

@@ -199,5 +199,13 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		protected override string CreateNullConstraintString {
 			get { return "UPDATE RDB$RELATION_FIELDS SET RDB$NULL_FLAG = 1 WHERE RDB$FIELD_NAME = '{1}' AND RDB$RELATION_NAME = '{0}'"; }
 		}
+
+		protected override string SelectWithPagingIncludeOffset
+        {
+            get
+            {
+                return "SELECT FIRST {2} SKIP {1} * FROM ({0}) tbl";
+            }
+        }
 	}
 }

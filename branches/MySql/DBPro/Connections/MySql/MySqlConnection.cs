@@ -91,7 +91,6 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 				{
 					identities.Add(new IdentityField(map.TableName,field.FieldName,field.FullFieldType,"0"));
 				}else{
-					//TODO Add code to select max value for complex integer insert.
                     string code = "FOR EACH ROW\nBEGIN\n";
 					string queryFields="";
 					foreach (ExtractedFieldMap efm in map.PrimaryKeys)

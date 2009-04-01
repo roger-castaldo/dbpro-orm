@@ -430,6 +430,14 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		public List<Table> Select(System.Type type,List<SelectParameter> parameters)
 		{
+			if (parameters==null)
+				return Select(type,new SelectParameter[0]);
+			else
+				return Select(type,parameters.ToArray());
+		}
+		
+		public List<Table> Select(System.Type type,SelectParameter[] parameters)
+		{
 			if (!type.IsSubclassOf(typeof(Table)))
 			{
 				throw new Exception("Unable to perform select on Type object without object inheriting Org.Reddragonit.DbPro.Structure.Table");
@@ -441,6 +449,68 @@ namespace Org.Reddragonit.Dbpro.Connections
 			List<Table> ret = new List<Table>();
 			List<IDbDataParameter> pars = new List<IDbDataParameter>();
 			string query = queryBuilder.Select(type,parameters,out pars);
+			ExecuteQuery(query,pars);
+			while (Read())
+			{
+				Table t = (Table)LazyProxy.Instance(type.GetConstructor(System.Type.EmptyTypes).Invoke(new object[0]));
+				t.SetValues(this);
+				t.LoadStatus=LoadStatus.Complete;
+				ret.Add(t);
+			}
+			Close();
+			ret = AddArrayedTablesToSelect(ret, type);
+			return ret;
+		}
+		
+		public long SelectCount(System.Type type,List<SelectParameter> parameters)
+		{
+			if (parameters==null)
+				return SelectCount(type,new SelectParameter[0]);
+			else
+				return SelectCount(type,parameters.ToArray());
+		}
+		
+		public long SelectCount(System.Type type,SelectParameter[] parameters)
+		{
+			if (!type.IsSubclassOf(typeof(Table)))
+			{
+				throw new Exception("Unable to perform select on Type object without object inheriting Org.Reddragonit.DbPro.Structure.Table");
+			}
+			if (((Table)type.GetConstructor(System.Type.EmptyTypes).Invoke(new object[0])).ConnectionName!=ConnectionName)
+			{
+				throw new Exception("Cannot select from a table from the database connection that it was not specified for.");
+			}
+			long ret=0;
+			List<IDbDataParameter> pars = new List<IDbDataParameter>();
+			string query = queryBuilder.SelectCount(type,parameters,out pars);
+			ExecuteQuery(query,pars);
+			if (Read())
+				ret=long.Parse(this[0].ToString());
+			Close();
+			return ret;
+		}
+		
+		public List<Table> SelectPaged(System.Type type,List<SelectParameter> parameters,ulong? StartIndex,ulong? RowCount)
+		{
+			if (parameters==null)
+				return SelectPaged(type,new SelectParameter[0],StartIndex,RowCount);
+			else
+				return SelectPaged(type,parameters.ToArray(),StartIndex,RowCount);
+		}
+		
+		public List<Table> SelectPaged(System.Type type,SelectParameter[] parameters,ulong? StartIndex,ulong? RowCount)
+		{
+			if (!type.IsSubclassOf(typeof(Table)))
+			{
+				throw new Exception("Unable to perform select on Type object without object inheriting Org.Reddragonit.DbPro.Structure.Table");
+			}
+			if (((Table)type.GetConstructor(System.Type.EmptyTypes).Invoke(new object[0])).ConnectionName!=ConnectionName)
+			{
+				throw new Exception("Cannot select from a table from the database connection that it was not specified for.");
+			}
+			List<Table> ret = new List<Table>();
+			List<IDbDataParameter> pars = new List<IDbDataParameter>();
+			string query = queryBuilder.SelectPaged(type,parameters,out pars,StartIndex,RowCount);
 			ExecuteQuery(query,pars);
 			while (Read())
 			{

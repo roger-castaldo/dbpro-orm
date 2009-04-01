@@ -204,6 +204,15 @@ namespace Org.Reddragonit.Dbpro.Connections
 		{
 			get{return " ORDER BY {0}";}
 		}
+
+		protected virtual string SelectWithPagingIncludeOffset
+		{
+			get { return "{0} LIMIT {1},{2}"; }
+		}
+		
+		protected virtual string SelectCountString{
+			get{return "SELECT COUNT(*) FROM({0}) tbl";}
+		}
 		#endregion
 		
 		#region Insert
@@ -805,10 +814,18 @@ namespace Org.Reddragonit.Dbpro.Connections
 		internal string SelectAll(System.Type type)
 		{
 			List<IDbDataParameter> pars = new List<IDbDataParameter>();
-			return Select(type,null,out pars);
+			return Select(type,new SelectParameter[0],out pars);
 		}
 		
 		internal string SelectMax(System.Type type,string maxField,List<SelectParameter> parameters,out List<IDbDataParameter> queryParameters)
+		{
+			if (parameters==null)
+				return SelectMax(type,maxField,new SelectParameter[0],out queryParameters);
+			else
+				return SelectMax(type,maxField,parameters.ToArray(),out queryParameters);
+		}
+		
+		internal string SelectMax(System.Type type,string maxField,SelectParameter[] parameters,out List<IDbDataParameter> queryParameters)
 		{
 			TableMap map = ClassMapper.GetTableMap(type);
 			string fields="";
@@ -820,7 +837,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			if (ObtainFieldTableWhereList(out fields,out tables, out joins,out where, type))
 			{
 				fields = maxField;
-				if ((parameters!=null)&&(parameters.Count>0))
+				if ((parameters!=null)&&(parameters.Length>0))
 				{
 					startAnd=(where.Length>0);
 					int parCount=0;
@@ -865,6 +882,14 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		internal string Select(System.Type type,List<SelectParameter> parameters,out List<IDbDataParameter> queryParameters)
 		{
+			if (parameters==null)
+				return Select(type,new SelectParameter[0],out queryParameters);
+			else
+				return Select(type,parameters.ToArray(),out queryParameters);
+		}
+		
+		internal string Select(System.Type type,SelectParameter[] parameters,out List<IDbDataParameter> queryParameters)
+		{
 			TableMap map = ClassMapper.GetTableMap(type);
 			string fields="";
 			string tables="";
@@ -874,7 +899,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			queryParameters=new List<IDbDataParameter>();
 			if (ObtainFieldTableWhereList(out fields,out tables, out joins,out where,type))
 			{
-				if ((parameters!=null)&&(parameters.Count>0))
+				if ((parameters!=null)&&(parameters.Length>0))
 				{
 					startAnd=(where.Length>0);
 					int parCount=0;
@@ -915,6 +940,42 @@ namespace Org.Reddragonit.Dbpro.Connections
 					return String.Format(SelectWithoutConditions,fields,joins+tables);
 			}else
 				return null;
+		}
+		
+		internal string SelectCount(System.Type type,List<SelectParameter> parameters,out List<IDbDataParameter> queryParameters)
+		{
+			if (parameters==null)
+				return SelectCount(type,new SelectParameter[0],out queryParameters);
+			else
+				return SelectCount(type,parameters.ToArray(),out queryParameters);
+		}
+		
+		internal string SelectCount(System.Type type,SelectParameter[] parameters,out List<IDbDataParameter> queryParameters)
+		{
+			string query=Select(type,parameters,out queryParameters);
+			return String.Format(SelectCountString,query);
+		}
+		
+		internal string SelectPaged(System.Type type,List<SelectParameter> parameters,out List<IDbDataParameter> queryParameters,ulong? start,ulong? recordCount)
+		{
+			if (parameters==null)
+				return SelectPaged(type,new SelectParameter[0],out queryParameters,start,recordCount);
+			else
+				return SelectPaged(type,parameters.ToArray(),out queryParameters,start,recordCount);
+		}
+		
+		internal string SelectPaged(System.Type type,SelectParameter[] parameters,out List<IDbDataParameter> queryParameters,ulong? start,ulong? recordCount)
+		{
+			string query = Select(type,parameters,out queryParameters);
+			if (queryParameters==null)
+				queryParameters = new List<IDbDataParameter>();
+			if (!start.HasValue)
+				start=0;
+			if (!recordCount.HasValue)
+				recordCount=0;
+			queryParameters.Add(conn.CreateParameter(CreateParameterName("startIndex"),start.Value));
+			queryParameters.Add(conn.CreateParameter(CreateParameterName("rowCount"),recordCount.Value));
+			return String.Format(SelectWithPagingIncludeOffset,query,CreateParameterName("startIndex"),CreateParameterName("rowCount"));
 		}
 		#endregion
 	}
