@@ -64,6 +64,9 @@
       <HintPath>bin\Debug\FirebirdSql.Data.FirebirdClient.dll</HintPath>
     </Reference>
     <Reference Include="MySql.Data" />
+    <Reference Include="Npgsql">
+      <HintPath>C:\Program Files\PostgreSQL\Npgsql\bin\Npgsql.dll</HintPath>
+    </Reference>
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
     <Reference Include="System" />
@@ -77,6 +80,9 @@
     <Compile Include="Connections\MySql\MySqlConnection.cs" />
     <Compile Include="Connections\MySql\MySqlConnectionPool.cs" />
     <Compile Include="Connections\MySql\MySqlQueryBuilder.cs" />
+    <Compile Include="Connections\PgSql\PgSqlConnection.cs" />
+    <Compile Include="Connections\PgSql\PgSqlConnectionPool.cs" />
+    <Compile Include="Connections\PgSql\PgSqlQueryBuilder.cs" />
     <Compile Include="Connections\Structures.cs" />
     <Compile Include="Connections\Firebird\FBConnection.cs" />
     <Compile Include="Connections\Firebird\FBConnectionPool.cs" />
@@ -131,6 +137,7 @@
       <ProductName>.NET Framework 3.5</ProductName>
       <Install>false</Install>
     </BootstrapperPackage>
+    <Folder Include="Connections\PgSql" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.Targets" />
 </Project>

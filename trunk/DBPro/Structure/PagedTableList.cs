@@ -30,14 +30,37 @@ namespace Org.Reddragonit.Dbpro.Structure
         private List<Table> _data;
         private int _count=0;
         private Connection _conn;
+        private bool _transationSafe;
+        
+        public PagedTableList(Type type) : this(type,null,null,true)
+        {}
+        
+        public PagedTableList(Type type,int PageSize) : this(type,PageSize,null,true)
+        {}
+        
+        public PagedTableList(Type type,SelectParameter[] SelectParams) : this(type,null,SelectParams,true)
+        {}
+        
+        public PagedTableList(Type type,bool transactionSafe) : this(type,null,null,transactionSafe)
+        {}
+        
+        public PagedTableList(Type type,int PageSize,bool transactionSafe) : this(type,PageSize,null,transactionSafe)
+        {}
+        
+        public PagedTableList(Type type,SelectParameter[] SelectParams,bool transactionSafe) : this(type,null,SelectParams,transactionSafe)
+        {}
+        
+        public PagedTableList(Type type,int? PageSize,SelectParameter[] SelectParams) : this(type,PageSize,SelectParams,true)
+        {}
 
-        public PagedTableList(Type type,int? PageSize,SelectParameter[] SelectParams)
+        public PagedTableList(Type type,int? PageSize,SelectParameter[] SelectParams,bool transationSafe)
         {
         	if (!type.IsSubclassOf(typeof(Table)))
         		throw new Exception("cannot produce a Paged Table List from a class that does not inherit Table");
         	_tableType=type;
             _pageSize = PageSize;
             _pars = SelectParams;
+            _transationSafe=transationSafe;
             _conn = ConnectionPoolManager.GetConnection(type).getConnection();
             _count = (int)_conn.SelectCount(type,_pars);
             if (!_pageSize.HasValue)
@@ -48,9 +71,16 @@ namespace Org.Reddragonit.Dbpro.Structure
         
         private void LoadToIndex(int index)
         {
+        	if (_conn==null)
+        		_conn = ConnectionPoolManager.GetConnection(_tableType).getConnection();
         	while((_data.Count-1<index)&&(_data.Count<Count))
         	{
         		_data.AddRange(_conn.SelectPaged(TableType,SelectParams,(ulong)_data.Count,(ulong)PageSize));
+        	}
+        	if (!_transationSafe)
+        	{
+        		_conn.CloseConnection();
+        		_conn=null;
         	}
         }
         

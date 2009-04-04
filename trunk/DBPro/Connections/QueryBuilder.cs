@@ -964,7 +964,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 				return SelectPaged(type,parameters.ToArray(),out queryParameters,start,recordCount);
 		}
 		
-		internal string SelectPaged(System.Type type,SelectParameter[] parameters,out List<IDbDataParameter> queryParameters,ulong? start,ulong? recordCount)
+		internal virtual string SelectPaged(System.Type type,SelectParameter[] parameters,out List<IDbDataParameter> queryParameters,ulong? start,ulong? recordCount)
 		{
 			string query = Select(type,parameters,out queryParameters);
 			if (queryParameters==null)
