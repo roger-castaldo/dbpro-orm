@@ -1,7 +1,8 @@
-﻿using System;
+﻿using Org.Reddragonit.Dbpro.Structure.Mapping;
+using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Data;
+using System.Text;
 
 namespace Org.Reddragonit.Dbpro.Connections.MsSql
 {
@@ -196,6 +197,34 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 			while (conn.Read())
 				ret+=conn[0].ToString()+"\n";
 			return ret;
+		}
+		
+		protected override string SelectCountString {
+			get { 
+				return "SELECT * FROM (SELECT ROW_NUMBER() OVER (ORDER BY {3}) RowNum,"+
+					"* FROM ({0}) internalTbl) cntTbl WHERE RowNum BETWEEN {1} AND {1}+{2}";
+			}
+		}
+		
+		internal override string SelectPaged(Type type, SelectParameter[] parameters, out List<IDbDataParameter> queryParameters, Nullable<ulong> start, Nullable<ulong> recordCount)
+		{
+			string query = Select(type,parameters,out queryParameters);
+			if (queryParameters==null)
+				queryParameters = new List<IDbDataParameter>();
+			if (!start.HasValue)
+				start=0;
+			if (!recordCount.HasValue)
+				recordCount=0;
+			queryParameters.Add(conn.CreateParameter(CreateParameterName("startIndex"),start.Value));
+			queryParameters.Add(conn.CreateParameter(CreateParameterName("rowCount"),recordCount.Value));
+			string primarys = "";
+			TableMap map = ClassMapper.GetTableMap(type);
+			foreach (InternalFieldMap ifm in map.PrimaryKeys)
+			{
+				primarys+=","+ifm.FieldName;
+			}
+			primarys=primarys.Substring(1);
+			return String.Format(SelectWithPagingIncludeOffset,query,CreateParameterName("startIndex"),CreateParameterName("rowCount"),primarys);
 		}
 	}
 }

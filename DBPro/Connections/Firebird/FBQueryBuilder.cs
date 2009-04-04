@@ -29,8 +29,8 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 					"AND   c.rdb$trigger_name = '{1}' "+
 					"AND   r.rdb$constraint_type = 'NOT NULL'"; }
 		}
-        
-        internal override string DropNullConstraint(string table, ExtractedFieldMap field)
+		
+		internal override string DropNullConstraint(string table, ExtractedFieldMap field)
 		{
 			string ret = "";
 			conn.ExecuteQuery(String.Format(DropNotNullString,table,field.FieldName));
@@ -54,21 +54,22 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		}
 		
 		protected override string DropForeignKeyString {
-			get { return "select 'ALTER TABLE {0} DROP CONSTRAINT '||rel.rdb$CONSTRAINT_NAME from "+
-					"rdb$relation_constraints rel, "+
-					"rdb$indices idx, "+
-					"rdb$index_segments seg "+
-					"where "+
-					"rel.rdb$constraint_type = 'FOREIGN KEY' "+
-					"and rel.rdb$index_name = idx.rdb$index_name "+
-					"and idx.rdb$index_name = seg.rdb$index_name "+
-					"AND TRIM(rel.RDB$RELATION_NAME) = '{0}'"; }
+			get { return "SELECT 'ALTER TABLE {0} DROP CONSTRAINT '||rc.RDB$CONSTRAINT_NAME "+
+					" FROM   "+
+					" rdb$relation_constraints rc   "+
+					" inner join rdb$indices fidx ON (rc.rdb$index_name = fidx.rdb$index_name AND rc.rdb$constraint_type = 'FOREIGN KEY')   "+
+					" inner join rdb$index_segments fseg ON fidx.rdb$index_name = fseg.rdb$index_name   "+
+					" inner join rdb$indices pidx ON fidx.rdb$foreign_key = pidx.rdb$index_name   "+
+					" inner join rdb$index_segments pseg ON (pidx.rdb$index_name = pseg.rdb$index_name AND pseg.rdb$field_position=fseg.rdb$field_position)   "+
+					" inner join RDB$REF_CONSTRAINTS actions ON rc.rdb$constraint_name = actions.RDB$constraint_name   "+
+					" WHERE TRIM(rc.rdb$relation_name) = '{0}' "+
+					" AND TRIM(pidx.rdb$relation_name) = '{1}'"; }
 		}
 		
 		internal override string DropForeignKey(string table, string tableName)
 		{
 			string ret = "";
-			conn.ExecuteQuery(String.Format(DropForeignKeyString,table));
+			conn.ExecuteQuery(String.Format(DropForeignKeyString,table,tableName));
 			while (conn.Read())
 				ret+=conn[0].ToString()+"\n";
 			conn.Close();
@@ -76,16 +77,16 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		}
 
 
-        internal override string DropPrimaryKey(PrimaryKey key)
+		internal override string DropPrimaryKey(PrimaryKey key)
 		{
 			string ret="";
-            foreach (string str in key.Fields)
-            {
-                conn.ExecuteQuery(String.Format(DropPrimaryKeyString, key.Name, str));
-                if (conn.Read())
-                    ret += conn[0].ToString()+";\n";
-                conn.Close();
-            }
+			foreach (string str in key.Fields)
+			{
+				conn.ExecuteQuery(String.Format(DropPrimaryKeyString, key.Name, str));
+				if (conn.Read())
+					ret += conn[0].ToString()+";\n";
+				conn.Close();
+			}
 			return ret;
 		}
 		
@@ -185,7 +186,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		protected override string SetGeneratorValueString {
 			get { return "SET GENERATOR {0} TO {1}"; }
 		}
-				
+		
 		protected override string CreateTriggerString {
 			get { return "CREATE TRIGGER {0} {1} {2}";}
 		}
@@ -201,11 +202,8 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		}
 
 		protected override string SelectWithPagingIncludeOffset
-        {
-            get
-            {
-                return "SELECT FIRST {2} SKIP {1} * FROM ({0}) tbl";
-            }
-        }
+		{
+			get{ return "SELECT FIRST {2} SKIP {1} * FROM ({0}) tbl"; }
+		}
 	}
 }
