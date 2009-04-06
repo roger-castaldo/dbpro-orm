@@ -6,12 +6,13 @@
  * 
  * To change this template use Tools | Options | Coding | Edit Standard Headers.
  */
-using Org.Reddragonit.Dbpro.Connections;
+using Org.Reddragonit.Dbpro.Connections.Parameters;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.Remoting.Messaging;
 using System.Runtime.Remoting.Proxies;
+using Org.Reddragonit.Dbpro.Connections;
 using Org.Reddragonit.Dbpro.Exceptions;
 using Org.Reddragonit.Dbpro.Structure;
 using Org.Reddragonit.Dbpro.Structure.Mapping;
@@ -106,7 +107,7 @@ namespace Org.Reddragonit.Dbpro
 						{
 							List<SelectParameter> pars = new List<SelectParameter>();
 							foreach (InternalFieldMap ifm in _map.PrimaryKeys)
-								pars.Add(new SelectParameter(_map.GetClassFieldName(ifm.FieldName),((Table)owner).GetField(_map.GetClassFieldName(ifm.FieldName))));
+								pars.Add(new EqualParameter(_map.GetClassFieldName(ifm.FieldName),((Table)owner).GetField(_map.GetClassFieldName(ifm.FieldName))));
 							Connection conn = ConnectionPoolManager.GetConnection(_map.ConnectionName).getConnection();
 							Table tmp = conn.Select(owner.GetType(),pars)[0];
 							foreach (FieldNamePair fnp in _map.FieldNamePairs)
@@ -133,7 +134,7 @@ namespace Org.Reddragonit.Dbpro
 									List<SelectParameter> pars = new List<SelectParameter>();
 									foreach (InternalFieldMap ifm in map.PrimaryKeys)
 									{
-										pars.Add(new SelectParameter(map.GetClassFieldName(ifm.FieldName),vals[x].GetField(map.GetClassFieldName(ifm.FieldName))));
+										pars.Add(new EqualParameter(map.GetClassFieldName(ifm.FieldName),vals[x].GetField(map.GetClassFieldName(ifm.FieldName))));
 									}
 									vals[x]=conn.Select(efm.Type,pars)[0];
 								}
@@ -148,7 +149,7 @@ namespace Org.Reddragonit.Dbpro
 									TableMap map = ClassMapper.GetTableMap(t.GetType());
 									foreach (InternalFieldMap ifm in map.PrimaryKeys)
 									{
-										pars.Add(new SelectParameter(map.GetClassFieldName(ifm.FieldName),t.GetField(map.GetClassFieldName(ifm.FieldName))));
+										pars.Add(new EqualParameter(map.GetClassFieldName(ifm.FieldName),t.GetField(map.GetClassFieldName(ifm.FieldName))));
 									}
 									Connection conn = ConnectionPoolManager.GetConnection(_map.ConnectionName).getConnection();
 									t = conn.Select(outVal.GetType(),pars)[0];

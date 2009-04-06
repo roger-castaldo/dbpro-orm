@@ -6,6 +6,7 @@
  * 
  * To change this template use Tools | Options | Coding | Edit Standard Headers.
  */
+using Org.Reddragonit.Dbpro.Connections.Parameters;
 using System;
 using System.Collections.Generic;
 using Org.Reddragonit.Dbpro.Connections;
@@ -68,7 +69,7 @@ namespace TestingApp.Structure
 			SecurityRight sr = new SecurityRight();
 			sr.Name=Name;
 			List<SelectParameter> pars = new List<SelectParameter>();
-			pars.Add(new SelectParameter("Name",Name));
+			pars.Add(new EqualParameter("Name",Name));
 			Connection c = conn;
 			List<Org.Reddragonit.Dbpro.Structure.Table> rights = c.Select(sr.GetType(),pars);
 			if (rights.Count>0)
