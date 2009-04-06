@@ -7,16 +7,17 @@
  * To change this template use Tools | Options | Coding | Edit Standard Headers.
  */
 
+using Org.Reddragonit.Dbpro.Connections.Parameters;
 using System;
 using System.Collections.Generic;
 using System.Data;
-using Org.Reddragonit.Dbpro.Structure.Mapping;
 using Org.Reddragonit.Dbpro.Structure;
-using FieldNamePair = Org.Reddragonit.Dbpro.Structure.Mapping.TableMap.FieldNamePair;
-using ExtractedTableMap = Org.Reddragonit.Dbpro.Connections.ExtractedTableMap;
+using Org.Reddragonit.Dbpro.Structure.Mapping;
 using ExtractedFieldMap = Org.Reddragonit.Dbpro.Connections.ExtractedFieldMap;
-using VersionTypes = Org.Reddragonit.Dbpro.Structure.Attributes.VersionField.VersionTypes;
+using ExtractedTableMap = Org.Reddragonit.Dbpro.Connections.ExtractedTableMap;
+using FieldNamePair = Org.Reddragonit.Dbpro.Structure.Mapping.TableMap.FieldNamePair;
 using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.FieldType;
+using VersionTypes = Org.Reddragonit.Dbpro.Structure.Attributes.VersionField.VersionTypes;
 
 namespace Org.Reddragonit.Dbpro.Connections
 {
@@ -840,37 +841,17 @@ namespace Org.Reddragonit.Dbpro.Connections
 				if ((parameters!=null)&&(parameters.Length>0))
 				{
 					startAnd=(where.Length>0);
+					string appended="";
 					int parCount=0;
 					foreach (SelectParameter par in parameters)
 					{
-						bool found=false;
-						foreach (FieldNamePair f in map.FieldNamePairs)
-						{
-							if (par.FieldName==f.ClassFieldName)
-							{
-								where+=" AND "+f.TableFieldName+" = "+CreateParameterName("parameter_"+parCount.ToString());
-								queryParameters.Add(conn.CreateParameter(CreateParameterName("parameter_"+parCount.ToString()),par.FieldValue,((InternalFieldMap)map[f]).FieldType,((InternalFieldMap)map[f]).FieldLength));
-								parCount++;
-								found=true;
-								break;
-							}else if (par.FieldName==f.TableFieldName)
-							{
-								where+=" AND "+f.TableFieldName+" = "+CreateParameterName("parameter_"+parCount.ToString());
-								queryParameters.Add(conn.CreateParameter(CreateParameterName("parameter_"+parCount.ToString()),par.FieldValue,((InternalFieldMap)map[f]).FieldType,((InternalFieldMap)map[f]).FieldLength));
-								parCount++;
-								found=true;
-								break;
-							}
-						}
-						if (!found)
-						{
-							where+=" AND "+par.FieldName+" = "+CreateParameterName("parameter_"+parCount.ToString());
-							queryParameters.Add(conn.CreateParameter(CreateParameterName("parameter_"+parCount.ToString()),par.FieldValue));
-							parCount++;
-						}
+						appended="("+par.ConstructString(map,conn,this,ref queryParameters,ref parCount)+") AND ";
 					}
+					appended=appended.Substring(0,appended.Length-4);
 					if (!startAnd)
-						where = where.Substring(4);
+						where = "("+appended+")";
+					else
+						where+=" AND ("+appended+")";
 				}
 				if (where.Length>0)
 					return String.Format(SelectMaxWithConditions ,fields,joins+tables,where);
@@ -902,37 +883,17 @@ namespace Org.Reddragonit.Dbpro.Connections
 				if ((parameters!=null)&&(parameters.Length>0))
 				{
 					startAnd=(where.Length>0);
+					string appended="";
 					int parCount=0;
 					foreach (SelectParameter par in parameters)
 					{
-						bool found=false;
-						foreach (FieldNamePair f in map.FieldNamePairs)
-						{
-							if (par.FieldName==f.ClassFieldName)
-							{
-								where+=" AND "+f.TableFieldName+" = "+CreateParameterName("parameter_"+parCount.ToString());
-								queryParameters.Add(conn.CreateParameter(CreateParameterName("parameter_"+parCount.ToString()),par.FieldValue,((InternalFieldMap)map[f]).FieldType,((InternalFieldMap)map[f]).FieldLength));
-								parCount++;
-								found=true;
-								break;
-							}else if (par.FieldName==f.TableFieldName)
-							{
-								where+=" AND "+f.TableFieldName+" = "+CreateParameterName("parameter_"+parCount.ToString());
-								queryParameters.Add(conn.CreateParameter(CreateParameterName("parameter_"+parCount.ToString()),par.FieldValue,((InternalFieldMap)map[f]).FieldType,((InternalFieldMap)map[f]).FieldLength));
-								parCount++;
-								found=true;
-								break;
-							}
-						}
-						if (!found)
-						{
-							where+=" AND "+par.FieldName+" = "+CreateParameterName("parameter_"+parCount.ToString());
-							queryParameters.Add(conn.CreateParameter(CreateParameterName("parameter_"+parCount.ToString()),par.FieldValue));
-							parCount++;
-						}
+						appended="("+par.ConstructString(map,conn,this,ref queryParameters,ref parCount)+") AND ";
 					}
+					appended=appended.Substring(0,appended.Length-4);
 					if (!startAnd)
-						where = where.Substring(4);
+						where = "("+appended+")";
+					else
+						where+=" AND ("+appended+")";
 				}
 				if (where.Length>0)
 					return String.Format(SelectWithConditions,fields,joins+tables,where);

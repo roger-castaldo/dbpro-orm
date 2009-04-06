@@ -6,13 +6,14 @@
  * 
  * To change this template use Tools | Options | Coding | Edit Standard Headers.
  */
+using Org.Reddragonit.Dbpro.Connections.Parameters;
 using System;
+using System.Collections.Generic;
 using System.Security;
 using System.Security.Cryptography;
-using System.Collections.Generic;
+using MersenneTwister;
 using Org.Reddragonit.Dbpro.Connections;
 using Org.Reddragonit.Dbpro.Structure.Attributes;
-using MersenneTwister;
 
 namespace TestingApp.Structure
 {
@@ -360,7 +361,7 @@ namespace TestingApp.Structure
 			List<Org.Reddragonit.Dbpro.Structure.Table> users=new List<Org.Reddragonit.Dbpro.Structure.Table>();
 			Connection c = conn;
 			List<SelectParameter> pars = new List<SelectParameter>();
-            pars.Add(new SelectParameter("UserName",username ));
+            pars.Add(new EqualParameter("UserName",username ));
             users.AddRange(c.Select(typeof(User),pars).ToArray());
             c.CloseConnection();
             foreach (User u in users)

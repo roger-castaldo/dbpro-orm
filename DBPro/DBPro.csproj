@@ -80,6 +80,18 @@
     <Compile Include="Connections\MySql\MySqlConnection.cs" />
     <Compile Include="Connections\MySql\MySqlConnectionPool.cs" />
     <Compile Include="Connections\MySql\MySqlQueryBuilder.cs" />
+    <Compile Include="Connections\Parameters\AndParameter.cs" />
+    <Compile Include="Connections\Parameters\CompareParameter.cs" />
+    <Compile Include="Connections\Parameters\EqualParameter.cs" />
+    <Compile Include="Connections\Parameters\GreaterThanEqualToParameter.cs" />
+    <Compile Include="Connections\Parameters\GreaterThanParameter.cs" />
+    <Compile Include="Connections\Parameters\InParameter.cs" />
+    <Compile Include="Connections\Parameters\JoinParameter.cs" />
+    <Compile Include="Connections\Parameters\LessThanEqualToParameter.cs" />
+    <Compile Include="Connections\Parameters\LessThanParameter.cs" />
+    <Compile Include="Connections\Parameters\LikeParameter.cs" />
+    <Compile Include="Connections\Parameters\OrParameter.cs" />
+    <Compile Include="Connections\Parameters\SelectParameter.cs" />
     <Compile Include="Connections\PgSql\PgSqlConnection.cs" />
     <Compile Include="Connections\PgSql\PgSqlConnectionPool.cs" />
     <Compile Include="Connections\PgSql\PgSqlQueryBuilder.cs" />
@@ -90,7 +102,6 @@
     <Compile Include="Connections\MsSql\MsSqlConnection.cs" />
     <Compile Include="Connections\MsSql\MsSqlConnectionPool.cs" />
     <Compile Include="Connections\QueryBuilder.cs" />
-    <Compile Include="Connections\SelectParameter.cs" />
     <Compile Include="Exceptions\Exceptions.cs" />
     <Compile Include="LazyProxy.cs" />
     <Compile Include="Structure\Attributes\INullable.cs" />
@@ -137,6 +148,7 @@
       <ProductName>.NET Framework 3.5</ProductName>
       <Install>false</Install>
     </BootstrapperPackage>
+    <Folder Include="Connections\Parameters" />
     <Folder Include="Connections\PgSql" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.Targets" />
