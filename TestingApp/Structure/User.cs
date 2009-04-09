@@ -17,6 +17,13 @@ using Org.Reddragonit.Dbpro.Structure.Attributes;
 
 namespace TestingApp.Structure
 {
+	
+	public enum UserTypes{
+		Normal,
+		Admin,
+		ReadOnly
+	}
+	
 	/// <summary>
 	/// Description of User.
 	/// </summary>
@@ -144,6 +151,13 @@ namespace TestingApp.Structure
 		{
 			get{return _active;}
 			set{_active=value;}
+		}
+		
+		private UserTypes _type;
+		[Field(FieldType.ENUM)]
+		public UserTypes Type{
+			get{return _type;}
+			set{_type=value;}
 		}
 		
 		public string Password

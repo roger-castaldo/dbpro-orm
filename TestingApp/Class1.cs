@@ -31,6 +31,7 @@ namespace TestingApp
 			u.UserGroup=g;
 			u.UserName="rcastaldo";
 			u.Password="copperbed1";
+			u.Type=UserTypes.Admin;
 			u = User.Save(u);
 			
 			u = User.LoginUser("rcastaldo","copperbed1");

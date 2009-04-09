@@ -23,6 +23,12 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 		{
 		}
 		
+		internal override string DefaultTableString {
+			get {
+				return "information_schema.tables";
+			}
+		}
+		
 		public override IDbDataParameter CreateParameter(string parameterName, object parameterValue)
 		{
 			return new NpgsqlParameter(parameterName,parameterValue);

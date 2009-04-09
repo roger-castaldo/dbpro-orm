@@ -23,6 +23,12 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 			}
 		}
 		
+		internal override string DefaultTableString {
+			get {
+				return "sysobjects";
+			}
+		}
+		
 		internal override bool UsesIdentities {
 			get { return true; }
 		}

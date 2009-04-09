@@ -30,6 +30,12 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 			}
 		}
 		
+		internal override string DefaultTableString {
+			get {
+				return "information_schema.COLUMNS";
+			}
+		}
+		
 		internal override bool UsesIdentities {
 			get { return true; }
 		}

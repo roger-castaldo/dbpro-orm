@@ -51,6 +51,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
 			bool found=false;
 			string ret="";
 			FieldType? type=null;
+			Type _objType=null;
 			int fieldLength=0;
 			foreach (FieldNamePair f in map.FieldNamePairs)
 			{
@@ -58,6 +59,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
 				{
 					ret=f.TableFieldName+" ";
 					type=((InternalFieldMap)map[f]).FieldType;
+					_objType = map[f].ObjectType;
 					fieldLength=((InternalFieldMap)map[f]).FieldLength;
 					found=true;
 					break;
@@ -65,6 +67,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
 				{
 					ret=f.TableFieldName+" ";
 					type=((InternalFieldMap)map[f]).FieldType;
+					_objType = map[f].ObjectType;
 					fieldLength=((InternalFieldMap)map[f]).FieldLength;
 					found=true;
 					break;
@@ -80,42 +83,75 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
 				if (FieldValue.GetType().IsArray||(FieldValue is IEnumerable)){
 					foreach (object obj in (IEnumerable)FieldValue)
 					{
+						if (_objType==null)
+							_objType=obj.GetType();
 						ret+=builder.CreateParameterName("parameter_"+parCount.ToString())+",";
+						if ((_objType!=null)&&_objType.IsEnum)
+						{
+							queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_"+parCount.ToString()),conn.Pool.GetEnumID(_objType,obj.ToString())));
+						}else{
+							if (type.HasValue)
+								queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_"+parCount.ToString()),obj,type.Value,fieldLength));
+							else
+								queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_"+parCount.ToString()),obj));
+						}
 						parCount++;
-						if (type.HasValue)
-							queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_"+parCount.ToString()),obj,type.Value,fieldLength));
-						else
-							queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_"+parCount.ToString()),obj));
 					}
 					ret = ret.Substring(0,ret.Length-1);
 				}else{
-					if (type.HasValue)
+					ret+=builder.CreateParameterName("parameter_"+parCount.ToString());
+					if (_objType==null)
+							_objType=FieldValue.GetType();
+					if ((_objType!=null)&&_objType.IsEnum)
+					{
+						queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_"+parCount.ToString()),conn.Pool.GetEnumID(_objType,FieldValue.ToString())));
+					}else{
+						if (type.HasValue)
 							queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_"+parCount.ToString()),FieldValue,type.Value,fieldLength));
 						else
 							queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_"+parCount.ToString()),FieldValue));
+					}
+					parCount++;
 				}
 				ret+=")";
 			}else{
-				if (FieldValue.GetType().IsArray||(FieldValue is IEnumerable)){
+				if (FieldValue.GetType().IsArray||(FieldValue is ICollection)){
 					string tmp = ret;
 					tmp+=ComparatorString;
-					ret = "( ";
+					ret+= "( ";
 					foreach (object obj in (IEnumerable)FieldValue)
 					{
+						if (_objType==null)
+							_objType=obj.GetType();
 						ret+=tmp+builder.CreateParameterName("parameter_"+parCount.ToString())+" AND ";
+						if ((_objType!=null)&&_objType.IsEnum)
+						{
+							queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_"+parCount.ToString()),conn.Pool.GetEnumID(_objType,obj.ToString())));
+						}else{
+							if (type.HasValue)
+								queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_"+parCount.ToString()),obj,type.Value,fieldLength));
+							else
+								queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_"+parCount.ToString()),obj));
+						}
 						parCount++;
-						if (type.HasValue)
-							queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_"+parCount.ToString()),obj,type.Value,fieldLength));
-						else
-							queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_"+parCount.ToString()),obj));
 					}
-					ret = ret.Substring(0,ret.Length-4);
+					ret = ret.Substring(0,tmp.Length-4);
 					ret+=" )";
 				}else{
-					if (type.HasValue)
+					ret+=ComparatorString;
+					ret+=builder.CreateParameterName("parameter_"+parCount.ToString());
+					if (_objType==null)
+							_objType=FieldValue.GetType();
+					if ((_objType!=null)&&_objType.IsEnum)
+					{
+						queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_"+parCount.ToString()),conn.Pool.GetEnumID(_objType,FieldValue.ToString())));
+					}else{
+						if (type.HasValue)
 							queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_"+parCount.ToString()),FieldValue,type.Value,fieldLength));
 						else
 							queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_"+parCount.ToString()),FieldValue));
+					}
+					parCount++;
 				}
 			}
 			return ret;
