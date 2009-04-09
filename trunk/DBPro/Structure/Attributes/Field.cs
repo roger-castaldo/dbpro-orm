@@ -20,7 +20,8 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 		DECIMAL,
 		IMAGE,
 		FLOAT,
-		DOUBLE
+		DOUBLE,
+		ENUM
 	};
 	
 	[AttributeUsage(AttributeTargets.Property)]
@@ -28,7 +29,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 	{
 
 		private string _fieldName=null ;
-		private FieldType _fieldType;
+		private FieldType? _fieldType;
 		private int _fieldLength=int.MinValue ;
 		private bool _nullable=true;
 
@@ -95,7 +96,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 			get
 			{
 				string t = Name;
-				return _fieldType;
+				return _fieldType.Value;
 			}
 		}
 
@@ -137,13 +138,8 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 				}
 				if (_fieldName[_fieldName.Length-1]=='_')
 					_fieldName=_fieldName.Substring(0,_fieldName.Length-1);
-				string type = p.ToString().Split(" ".ToCharArray())[0];
-				if (type.IndexOf(".") >= 0)
-				{
-					type = type.Substring(type.LastIndexOf(".") + 1);
-				}
-				type = type.Replace(" ", "").Replace("[]", "");
-				_fieldType = GetFieldType(type);
+				if (!_fieldType.HasValue)
+					_fieldType = GetFieldType(p.PropertyType);
 				if ((_fieldLength==int.MinValue)&&((_fieldType == FieldType.STRING) || (_fieldType == FieldType.BYTE)))
 				{
 					if ((_fieldType== FieldType.BYTE)&&(!p.PropertyType.IsArray))
@@ -155,9 +151,9 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 			}
 		}
 
-		private FieldType GetFieldType(string name)
+		private FieldType GetFieldType(Type propertyType)
 		{
-			switch (name.ToUpper())
+			switch (propertyType.Name.ToUpper())
 			{
 				case "INT64":
 				case "LONG":
@@ -182,7 +178,10 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 				case "INT32":
 					return FieldType.INTEGER;
 				default:
-					return FieldType.STRING;
+					if (propertyType.IsEnum)
+						return FieldType.ENUM;
+					else
+						return FieldType.STRING;
 			}
 		}
 

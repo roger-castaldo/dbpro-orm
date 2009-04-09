@@ -32,6 +32,12 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 			}
 		}
 		
+		internal override string DefaultTableString {
+			get {
+				return "RDB$DATABASE";
+			}
+		}
+		
 		internal override bool UsesGenerators {
 			get { return true; }
 		}

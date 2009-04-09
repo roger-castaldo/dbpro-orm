@@ -27,7 +27,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 		
 		public FieldMap(PropertyInfo info)
 		{
-			_isArray = info.ToString().Contains("[]");
+			_isArray = info.PropertyType.IsArray;
 			_objectType=info.PropertyType;
 			foreach (object obj in info.GetCustomAttributes(true))
 			{

@@ -5,6 +5,7 @@ using System.Threading;
 using Org.Reddragonit.Dbpro.Connections;
 using Org.Reddragonit.Dbpro.Structure.Mapping;
 using FieldNamePair = Org.Reddragonit.Dbpro.Structure.Mapping.TableMap.FieldNamePair;
+using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.FieldType;
 
 namespace Org.Reddragonit.Dbpro.Structure
 {
@@ -147,7 +148,10 @@ namespace Org.Reddragonit.Dbpro.Structure
 						}
 						else
 						{
-							this.SetField(fnp.ClassFieldName, conn[fnp.TableFieldName]);
+							if (((InternalFieldMap)map[fnp]).FieldType==FieldType.ENUM)
+								this.SetField(fnp.ClassFieldName, conn.Pool.GetEnumValue(map[fnp].ObjectType,(int)conn[fnp.TableFieldName]));
+							else
+								this.SetField(fnp.ClassFieldName, conn[fnp.TableFieldName]);
 						}
 					}
 				}

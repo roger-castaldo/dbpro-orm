@@ -44,8 +44,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 		protected abstract Connection CreateConnection();
 		protected virtual void PreInit()
 		{
-			
 		}
+		
 		protected virtual string[] _ReservedWords{
 			get{
 				return new string[]{
@@ -127,6 +127,9 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		private string[] _reservedWords=null;
 		private Dictionary<string, string> _nameTranslations = new Dictionary<string, string>();
+		private Dictionary<Type, string> _enumTableMaps = new Dictionary<Type, string>();
+		private Dictionary<Type,Dictionary<string, int>> _enumValuesMap = new Dictionary<Type, Dictionary<string, int>>();
+		private Dictionary<Type, Dictionary<int,string>> _enumReverseValuesMap = new Dictionary<Type, Dictionary<int, string>>();
 		
 		internal string[] ReservedWords{
 			get{
@@ -194,6 +197,16 @@ namespace Org.Reddragonit.Dbpro.Connections
 				return false;
 			}
 			return connectionString==((ConnectionPool)obj).connectionString;
+		}
+		
+		internal object GetEnumValue(Type enumType,int ID)
+		{
+			return Enum.Parse(enumType,_enumReverseValuesMap[enumType][ID]);
+		}
+		
+		internal int GetEnumID(Type enumType,string enumName)
+		{
+			return _enumValuesMap[enumType][enumName];
 		}
 		
 		protected ConnectionPool(string connectionString,int minPoolSize,int maxPoolSize,long maxKeepAlive,bool UpdateStructureDebugMode,string connectionName)
@@ -303,8 +316,50 @@ namespace Org.Reddragonit.Dbpro.Connections
 				foreach (InternalFieldMap ifm in tm.Fields)
 				{
 					if (!ifm.IsArray)
-						etm.Fields.Add(new ExtractedFieldMap(ifm.FieldName,conn.TranslateFieldType(ifm.FieldType,ifm.FieldLength),
-					                                     ifm.FieldLength,ifm.PrimaryKey,ifm.Nullable,ifm.AutoGen));
+					{
+						if (ifm.FieldType==FieldType.ENUM)
+						{
+							if (!_enumTableMaps.ContainsKey(ifm.ObjectType))
+							{
+								string[] split = ifm.ObjectType.FullName.Split(".".ToCharArray());
+								string name="ENUM_";
+								if (split.Length>1)
+									name+=split[split.Length-2]+"_"+split[split.Length-1];
+								else
+									name+=split[0];
+								name=CorrectName(name.ToUpper());
+								ExtractedTableMap enumMap = new ExtractedTableMap(CorrectName(name));
+								enumMap.Fields.Add(new ExtractedFieldMap("ID",conn.TranslateFieldType(FieldType.INTEGER,4),
+								                                         4,true,false,true));
+								enumMap.Fields.Add(new ExtractedFieldMap(CorrectName("VALUE"),conn.TranslateFieldType(FieldType.STRING,500),
+								                                         500,false,false,false));
+								tables.Add(enumMap);
+								conn.GetAddAutogen(enumMap,this,out tmpIdentities,out tmpGenerators,out tmpTriggers);
+								if (tmpGenerators!=null)
+								{
+									generators.AddRange(tmpGenerators);
+									tmpGenerators.Clear();
+								}
+								if (tmpTriggers!=null)
+								{
+									triggers.AddRange(tmpTriggers);
+									tmpTriggers.Clear();
+								}
+								if (tmpIdentities!=null)
+								{
+									identities.AddRange(tmpIdentities);
+									tmpIdentities.Clear();
+								}
+								_enumTableMaps.Add(ifm.ObjectType,name);
+							}
+							etm.Fields.Add(new ExtractedFieldMap(ifm.FieldName,conn.TranslateFieldType(FieldType.INTEGER,4),4,ifm.PrimaryKey,ifm.Nullable,false));
+							etm.ForeignFields.Add(new ForeignRelationMap(ifm.FieldName,CorrectName(_enumTableMaps[ifm.ObjectType]),
+							                                             "ID",UpdateDeleteAction.SET_NULL.ToString(),UpdateDeleteAction.SET_NULL.ToString()));
+						}
+						else
+							etm.Fields.Add(new ExtractedFieldMap(ifm.FieldName,conn.TranslateFieldType(ifm.FieldType,ifm.FieldLength),
+							                                     ifm.FieldLength,ifm.PrimaryKey,ifm.Nullable,ifm.AutoGen));
+					}
 					else
 					{
 						ExtractedTableMap etmField = new ExtractedTableMap(CorrectName(tm.Name+"_"+ifm.FieldName));
@@ -1022,6 +1077,30 @@ namespace Org.Reddragonit.Dbpro.Connections
 				alterations.Add(conn.queryBuilder.SetIdentityFieldValue(idf));
 			alterations.Add(" COMMIT;");
 			
+			foreach (Type t in _enumTableMaps.Keys)
+			{
+				foreach (string str in Enum.GetNames(t))
+				{
+					alterations.Add(String.Format(
+						"INSERT INTO {2}({0}) SELECT VAL FROM "+
+						" ( "+
+						" SELECT VAL, SUM(CNT) AS CNT "+
+						" FROM ( "+
+						" SELECT '{1}' AS VAL, "+
+						" SUM(CASE RES_VALUE WHEN '{1}' THEN 1 ELSE 0 END) CNT   "+
+						" FROM {2} "+
+						" UNION    "+
+						" SELECT '{1}' AS VAL, 0 AS CNT FROM {3} "+
+						" ) tbl GROUP BY VAL "+
+						" ) sums "+
+						" WHERE CNT=0;",CorrectName("VALUE"),
+						str,_enumTableMaps[t],conn.DefaultTableString 
+					));
+				}
+				alterations.Add(" COMMIT;");
+			}
+			
+			
 			Utility.RemoveDuplicateStrings(ref alterations,new string[]{" COMMIT;"});
 			
 			if (alterations.Count>12)
@@ -1063,6 +1142,29 @@ namespace Org.Reddragonit.Dbpro.Connections
 				}
 			}
 			conn.Commit();
+			
+			if (!Debug&&(_enumTableMaps.Count>0))
+			{
+				foreach (Type t in _enumTableMaps.Keys)
+				{
+					_enumValuesMap.Add(t,new Dictionary<string, int>());
+					_enumReverseValuesMap.Add(t,new Dictionary<int, string>());
+					foreach (string str in Enum.GetNames(t))
+					{
+						conn.ExecuteQuery(String.Format(
+							"SELECT ID FROM {0} WHERE {1} = '{2}'",
+							_enumTableMaps[t],
+							CorrectName("VALUE"),
+							str
+						));
+						conn.Read();
+						_enumValuesMap[t].Add(str,(int)conn[0]);
+						_enumReverseValuesMap[t].Add((int)conn[0],str);
+						conn.Close();
+					}
+				}
+			}
+			
 			conn.CloseConnection();
 		}
 		

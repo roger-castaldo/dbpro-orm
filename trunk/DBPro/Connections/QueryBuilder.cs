@@ -510,8 +510,14 @@ namespace Org.Reddragonit.Dbpro.Connections
 						}
 						else
 						{
-							insertParameters.Add(conn.CreateParameter(CreateParameterName(fnp.TableFieldName), table.GetField(fnp.ClassFieldName),((InternalFieldMap)map[fnp]).FieldType,((InternalFieldMap)map[fnp]).FieldLength));
-							whereConditions+=" AND "+fnp.TableFieldName+" = "+CreateParameterName(fnp.TableFieldName);
+							if (((InternalFieldMap)map[fnp]).FieldType==FieldType.ENUM)
+							{
+								insertParameters.Add(conn.CreateParameter(CreateParameterName(fnp.TableFieldName), conn.Pool.GetEnumID(map[fnp].ObjectType,table.GetField(fnp.ClassFieldName).ToString())));
+								whereConditions+=" AND "+fnp.TableFieldName+" = "+CreateParameterName(fnp.TableFieldName);
+							}else{
+								insertParameters.Add(conn.CreateParameter(CreateParameterName(fnp.TableFieldName), table.GetField(fnp.ClassFieldName),((InternalFieldMap)map[fnp]).FieldType,((InternalFieldMap)map[fnp]).FieldLength));
+								whereConditions+=" AND "+fnp.TableFieldName+" = "+CreateParameterName(fnp.TableFieldName);
+							}
 						}
 					}
 				}

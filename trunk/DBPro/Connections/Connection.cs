@@ -52,6 +52,9 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		protected abstract IDbConnection EstablishConnection();
 		protected abstract IDbCommand EstablishCommand();
+		internal abstract string DefaultTableString{
+			get;
+		}
 		internal abstract IDbDataParameter CreateParameter(string parameterName,object parameterValue,Org.Reddragonit.Dbpro.Structure.Attributes.FieldType type, int fieldLength);
 		public abstract IDbDataParameter CreateParameter(string parameterName,object parameterValue);
 		internal abstract string TranslateFieldType(Org.Reddragonit.Dbpro.Structure.Attributes.FieldType type,int fieldLength);

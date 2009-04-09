@@ -40,6 +40,8 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 					_versionable=true;
 				}
 			}
+			if ((FieldType==FieldType.ENUM)&&(!info.PropertyType.IsEnum))
+				throw new Exception("Unable to cast a field that is not of the type enum to use the ENUM field type.");
 		}
 		
 		internal InternalFieldMap(InternalFieldMap map,bool primary) : base(primary,map.Nullable,false)
