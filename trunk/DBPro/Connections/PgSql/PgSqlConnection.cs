@@ -6,10 +6,11 @@
  * 
  * To change this template use Tools | Options | Coding | Edit Standard Headers.
  */
+using NpgsqlTypes;
 using System;
+using System.Collections.Generic;
 using System.Data;
 using Npgsql;
-using System.Collections.Generic;
 using Org.Reddragonit.Dbpro.Structure.Attributes;
 
 namespace Org.Reddragonit.Dbpro.Connections.PgSql
@@ -31,7 +32,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 		
 		public override IDbDataParameter CreateParameter(string parameterName, object parameterValue)
 		{
-			return new NpgsqlParameter(parameterName,parameterValue);
+			return  new NpgsqlParameter(parameterName,parameterValue);
 		}
 		
 		internal override IDbDataParameter CreateParameter(string parameterName, object parameterValue, Org.Reddragonit.Dbpro.Structure.Attributes.FieldType type, int fieldLength)
@@ -51,22 +52,112 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 		
 		internal override void GetAddAutogen(ExtractedTableMap map, ConnectionPool pool, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers)
 		{
-			throw new NotImplementedException();
+			identities=null;
+			generators = new List<Generator>();
+			triggers=new List<Trigger>();
+			ExtractedFieldMap field = map.PrimaryKeys[0];
+			if ((map.PrimaryKeys.Count>1)&&(!field.AutoGen))
+			{
+				foreach (ExtractedFieldMap efm in map.PrimaryKeys)
+				{
+					if (efm.AutoGen)
+					{
+						field=efm;
+						break;
+					}
+				}
+			}
+			if (field.Type.ToUpper().Contains("DATE")||field.Type.ToUpper().Contains("TIME"))
+			{
+				triggers.Add(new Trigger(pool.CorrectName(map.TableName+"_"+field.FieldName+"_GEN"),"BEFORE INSERT ON "+map.TableName+" FOR EACH ROW",
+				                         "    NEW." + field.FieldName + " := CURRENT_TIMESTAMP;\n"));
+			}else if (field.Type.ToUpper().Contains("INT"))
+			{
+				if (map.PrimaryKeys.Count==1)
+				{
+					Generator gen = new Generator(pool.CorrectName("GEN_"+map.TableName+"_"+field.FieldName));
+					gen.Value=1;
+					generators.Add(gen);
+					triggers.Add(new Trigger(pool.CorrectName(map.TableName+"_"+field.FieldName+"_GEN"),"BEFORE INSERT ON "+map.TableName+" FOR EACH ROW",
+					                         "    NEW." + field.FieldName + " := nextval('"+pool.CorrectName("GEN_" + map.TableName + "_" + field.FieldName) + "');\n"));
+				}else{
+					string code="";
+					string queryFields="";
+					foreach (ExtractedFieldMap efm in map.PrimaryKeys)
+					{
+						if (!efm.AutoGen)
+						{
+							queryFields+=" AND "+efm.FieldName+" = NEW."+efm.FieldName;
+						}
+					}
+					code+="NEW."+field.FieldName+" := (SELECT COALESCE(MAX("+field.FieldName+"),-1)+1 FROM "+map.TableName+" WHERE ";
+					code+=queryFields.Substring(4)+");";
+					triggers.Add(new Trigger(pool.CorrectName(map.TableName+"_"+field.FieldName+"_GEN"),"BEFORE INSERT ON "+map.TableName+" FOR EACH ROW",code));
+				}
+			}else
+				throw new Exception("Unable to create autogenerator for non date or digit type.");
 		}
 		
 		internal override void GetDropAutogenStrings(ExtractedTableMap map, ConnectionPool pool, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers)
 		{
-			throw new NotImplementedException();
-		}
-		
-		internal override List<string> GetDropTableString(string table, bool isVersioned)
-		{
-			return base.GetDropTableString(table, isVersioned);
+			identities=null;
+			triggers=new List<Trigger>();
+			generators=new List<Generator>();
+			ExtractedFieldMap field = map.PrimaryKeys[0];
+			if ((map.PrimaryKeys.Count>1)&&(!field.AutoGen))
+			{
+				foreach (ExtractedFieldMap efm in map.PrimaryKeys)
+				{
+					if (efm.AutoGen)
+					{
+						field=efm;
+						break;
+					}
+				}
+			}
+			if (field.Type.ToUpper().Contains("DATE") || field.Type.ToUpper().Contains("TIME"))
+			{
+				triggers.Add(new Trigger(pool.CorrectName(map.TableName+"_"+field.FieldName+"_GEN"),"",""));
+			}
+			else if (field.Type.ToUpper().Contains("INT"))
+			{
+				triggers.Add(new Trigger(pool.CorrectName(map.TableName+"_"+field.FieldName+"_GEN"),"",""));
+				generators.Add(new Generator(pool.CorrectName("GEN_"+map.TableName+"_"+field.FieldName)));
+			}
+			else
+			{
+				throw new Exception("Unable to create autogenerator for non date or digit type.");
+			}
 		}
 		
 		internal override List<Trigger> GetVersionTableTriggers(ExtractedTableMap table, VersionField.VersionTypes versionType, ConnectionPool pool)
 		{
-			throw new NotImplementedException();
+			List<Trigger> ret = new List<Trigger>();
+			string tmp = "";
+			tmp += "\tINSERT INTO " + table.TableName + "(" + table.Fields[0].FieldName;
+			for (int x = 1; x < table.Fields.Count; x++)
+			{
+				ExtractedFieldMap efm = table.Fields[x];
+				tmp += "," + efm.FieldName;
+			}
+			tmp += ") VALUES(";
+			if (table.Fields[0].Type=="DATETIME")
+				tmp+="CURRENT_DATE()";
+			else
+				tmp+="0";
+			for (int x = 1; x < table.Fields.Count; x++)
+			{
+				ExtractedFieldMap efm = table.Fields[x];
+				tmp += ",NEW." + efm.FieldName;
+			}
+			tmp += ");";
+			ret.Add(new Trigger(pool.CorrectName(queryBuilder.VersionTableInsertTriggerName(queryBuilder.RemoveVersionName(table.TableName))),
+			                    "AFTER INSERT ON " + queryBuilder.RemoveVersionName(table.TableName)+ " FOR EACH ROW",
+			                    tmp));
+			ret.Add(new Trigger(pool.CorrectName(queryBuilder.VersionTableUpdateTriggerName(table.TableName)),
+			                    "AFTER UPDATE ON " + table.TableName+" FOR EACH ROW",
+			                    tmp));
+			return ret;
 		}
 		
 		internal override string TranslateFieldType(Org.Reddragonit.Dbpro.Structure.Attributes.FieldType type, int fieldLength)
@@ -79,7 +170,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 					break;
 				case FieldType.BYTE:
 					if (fieldLength==1)
-						ret="TINYINT";
+						ret="NUMERIC(3,0)";
 					else
 						ret="OID";
 					break;
@@ -105,7 +196,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 					ret="FLOAT";
 					break;
 				case FieldType.IMAGE:
-					ret="BLOB";
+					ret="OID";
 					break;
 				case FieldType.INTEGER:
 					ret="INTEGER";

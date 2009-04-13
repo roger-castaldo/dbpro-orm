@@ -481,7 +481,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 								foreach (FieldMap fm in relatedTableMap.PrimaryKeys)
 								{
 									values += conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm)) + ",";
-									insertParameters.Add(conn.CreateParameter(conn.Pool.CorrectName(CreateParameterName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm))), null));
+									insertParameters.Add(conn.CreateParameter(conn.Pool.CorrectName(CreateParameterName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm))), null,((InternalFieldMap)fm).FieldType,((InternalFieldMap)fm).FieldLength));
 									parameters+=","+conn.Pool.CorrectName(CreateParameterName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm)));
 									whereConditions+=" AND "+conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm))+" IS NULL ";
 								}
@@ -505,7 +505,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 						parameters+=","+CreateParameterName(fnp.TableFieldName);
 						if (table.IsFieldNull(fnp.ClassFieldName))
 						{
-							insertParameters.Add(conn.CreateParameter(CreateParameterName(fnp.TableFieldName),null));
+							insertParameters.Add(conn.CreateParameter(CreateParameterName(fnp.TableFieldName),null,((InternalFieldMap)map[fnp]).FieldType,((InternalFieldMap)map[fnp]).FieldLength));
 							whereConditions+=" AND "+fnp.TableFieldName+" IS NULL ";
 						}
 						else
@@ -940,8 +940,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 				start=0;
 			if (!recordCount.HasValue)
 				recordCount=0;
-			queryParameters.Add(conn.CreateParameter(CreateParameterName("startIndex"),start.Value));
-			queryParameters.Add(conn.CreateParameter(CreateParameterName("rowCount"),recordCount.Value));
+			queryParameters.Add(conn.CreateParameter(CreateParameterName("startIndex"),(long)start.Value));
+			queryParameters.Add(conn.CreateParameter(CreateParameterName("rowCount"),(long)recordCount.Value));
 			return String.Format(SelectWithPagingIncludeOffset,query,CreateParameterName("startIndex"),CreateParameterName("rowCount"));
 		}
 		#endregion

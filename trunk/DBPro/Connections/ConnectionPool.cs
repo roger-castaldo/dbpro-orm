@@ -1087,7 +1087,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 						" SELECT VAL, SUM(CNT) AS CNT "+
 						" FROM ( "+
 						" SELECT '{1}' AS VAL, "+
-						" SUM(CASE RES_VALUE WHEN '{1}' THEN 1 ELSE 0 END) CNT   "+
+						" SUM(CASE RES_VALUE WHEN '{1}' THEN 1 ELSE 0 END) AS CNT   "+
 						" FROM {2} "+
 						" UNION    "+
 						" SELECT '{1}' AS VAL, 0 AS CNT FROM {3} "+
