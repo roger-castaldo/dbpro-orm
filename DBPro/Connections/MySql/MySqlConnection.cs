@@ -147,19 +147,6 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
             }
 		}
 		
-		internal override List<string> GetDropTableString(string table, bool isVersioned)
-		{
-			List<string> ret = new List<string>();
-			ret.Add(queryBuilder.DropTable(table));
-			if (isVersioned)
-			{
-				ret.Add(queryBuilder.DropTrigger(queryBuilder.VersionTableInsertTriggerName(table)));
-				ret.Add(queryBuilder.DropTrigger(queryBuilder.VersionTableUpdateTriggerName(table)));
-				ret.Add(queryBuilder.DropTable(table));
-			}
-			return ret;
-		}
-		
 		internal override List<Trigger> GetVersionTableTriggers(ExtractedTableMap table, VersionField.VersionTypes versionType, ConnectionPool pool)
 		{
             List<Trigger> ret = new List<Trigger>();

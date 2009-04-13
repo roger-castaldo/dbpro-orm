@@ -20,12 +20,13 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 			get{return _dbName;}
 		}
 		
-		public PgSqlConnectionPool(string username, string password, string database, string databaseServer, int minPoolSize, int maxPoolSize, long maxKeepAlive,bool UpdateStructureDebugMode,string connectionName) : this(username,password,database,databaseServer,3306,minPoolSize,maxPoolSize,maxKeepAlive,UpdateStructureDebugMode,connectionName)
+		public PgSqlConnectionPool(string username, string password, string database, string databaseServer, int minPoolSize, int maxPoolSize, long maxKeepAlive,bool UpdateStructureDebugMode,string connectionName) 
+			: this(username,password,database,databaseServer,5432,minPoolSize,maxPoolSize,maxKeepAlive,UpdateStructureDebugMode,connectionName)
 		{ }
 
 		public PgSqlConnectionPool(string username, string password, string database, string databaseServer, int port, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode,string connectionName)
-			: base("Uid="+username+";" +
-			       "Pwd="+password+";" +
+			: base("User Id="+username+";" +
+			       "Password="+password+";" +
 			       "Database="+database+";" +
 			       "Server="+databaseServer+";" +
 			       "Port="+port.ToString()+";",minPoolSize,maxPoolSize,maxKeepAlive,UpdateStructureDebugMode,connectionName)
@@ -34,7 +35,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 		}
 
 		public PgSqlConnectionPool(string username, string password, string database, string databaseServer, bool UpdateStructureDebugMode,string connectionName)
-			: this(username, password, database, databaseServer, 3306,UpdateStructureDebugMode,connectionName)
+			: this(username, password, database, databaseServer, 5432,UpdateStructureDebugMode,connectionName)
 		{}
 
 		public PgSqlConnectionPool(string username, string password, string database, string databaseServer, int port, bool UpdateStructureDebugMode,string connectionName)

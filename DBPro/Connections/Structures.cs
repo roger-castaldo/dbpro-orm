@@ -317,6 +317,11 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}else if (type.Contains("VARBINARY(")){
                 _size = long.Parse(type.Substring(type.IndexOf("VARBINARY(")+10).Replace(")",""));
 				_type = _type.Replace("("+_size.ToString()+")","");
+			}
+			else if (type.Contains("VARYING(")){
+				_size = long.Parse(type.Substring(type.IndexOf("VARYING(")+8).Replace(")",""));
+				_type = _type.Replace("("+_size.ToString()+")","");
+			
             }else
 				_size = size;
 			_primaryKey = primary;
