@@ -109,6 +109,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 					_fieldLength=8;
 					break;
 				case FieldType.INTEGER:
+				case FieldType.ENUM:
 					_fieldLength=4;
 					break;
 				case FieldType.SHORT:

@@ -12,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
+using Org.Reddragonit.Dbpro.Validation;
 
 namespace Org.Reddragonit.Dbpro.Structure.Mapping
 {
@@ -19,6 +20,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 	internal static class ClassMapper
 	{
 		private static Dictionary<System.Type,TableMap> map=null;
+        private static Dictionary<System.Type, Dictionary<string, List<ValidationAttribute>>> _validations = null;
 		private static Dictionary<Type, object> constructed = new Dictionary<Type, object>();
 		private static Mutex mut = new Mutex(false);
 		private static List<Type> types;

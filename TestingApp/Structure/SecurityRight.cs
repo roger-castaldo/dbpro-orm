@@ -62,7 +62,12 @@ namespace TestingApp.Structure
 			return ret;
 		}
 		
-		public SecurityRight(){}
+		protected SecurityRight(){}
+		
+		public static SecurityRight Instance()
+		{
+			return (SecurityRight)Instance(typeof(SecurityRight));
+		}
 		
 		public static SecurityRight CreateSecurityRight(string Name)
 		{

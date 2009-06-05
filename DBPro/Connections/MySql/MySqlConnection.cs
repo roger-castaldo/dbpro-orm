@@ -23,7 +23,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 		
 		private QueryBuilder _queryBuilder = null;
 		internal override QueryBuilder queryBuilder {
-			get { 
+			get {
 				if (_queryBuilder==null)
 					_queryBuilder=new MySqlQueryBuilder(Pool,this);
 				return _queryBuilder;
@@ -97,7 +97,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 				{
 					identities.Add(new IdentityField(map.TableName,field.FieldName,field.FullFieldType,"0"));
 				}else{
-                    string code = "FOR EACH ROW\nBEGIN\n";
+					string code = "FOR EACH ROW\nBEGIN\n";
 					string queryFields="";
 					foreach (ExtractedFieldMap efm in map.PrimaryKeys)
 					{
@@ -107,7 +107,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 					code+="SET NEW."+field.FieldName+" = (SELECT (CASE WHEN MAX("+field.FieldName+") IS NULL THEN 0 ELSE MAX("+field.FieldName+")+1 END) FROM "+map.TableName+" WHERE ";
 					code+=queryFields.Substring(4)+");\n";
 					code+="END";
-                    triggers.Add(new Trigger(pool.CorrectName(map.TableName + "_" + field.FieldName + "_GEN"), "BEFORE INSERT ON " + map.TableName, code));
+					triggers.Add(new Trigger(pool.CorrectName(map.TableName + "_" + field.FieldName + "_GEN"), "BEFORE INSERT ON " + map.TableName, code));
 				}
 			}else
 				throw new Exception("Unable to create autogenerator for non date or digit type.");
@@ -116,65 +116,65 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 		internal override void GetDropAutogenStrings(ExtractedTableMap map, ConnectionPool pool, out System.Collections.Generic.List<IdentityField> identities, out System.Collections.Generic.List<Generator> generators, out System.Collections.Generic.List<Trigger> triggers)
 		{
 			identities=new List<IdentityField>();
-            triggers = new List<Trigger>();
-            generators = null;
-            ExtractedFieldMap field = map.PrimaryKeys[0];
-            if ((map.PrimaryKeys.Count > 1) && (!field.AutoGen))
-            {
-                foreach (ExtractedFieldMap efm in map.PrimaryKeys)
-                {
-                    if (efm.AutoGen)
-                    {
-                        field = efm;
-                        break;
-                    }
-                }
-            }
-            if (field.Type.ToUpper().Contains("DATE") || field.Type.ToUpper().Contains("TIME"))
-            {
-                triggers.Add(new Trigger(pool.CorrectName(map.TableName + "_" + field.FieldName + "_GEN"), "", ""));
-            }
-            else if (field.Type.ToUpper().Contains("INT"))
-            {
-                if (map.PrimaryKeys.Count>1)
-                    triggers.Add(new Trigger(pool.CorrectName(map.TableName + "_" + field.FieldName + "_GEN"), "", ""));
-                else
-                    identities.Add(new IdentityField(map.TableName, field.FieldName, field.FullFieldType,""));
-            }
-            else
-            {
-                throw new Exception("Unable to create autogenerator for non date or digit type.");
-            }
+			triggers = new List<Trigger>();
+			generators = null;
+			ExtractedFieldMap field = map.PrimaryKeys[0];
+			if ((map.PrimaryKeys.Count > 1) && (!field.AutoGen))
+			{
+				foreach (ExtractedFieldMap efm in map.PrimaryKeys)
+				{
+					if (efm.AutoGen)
+					{
+						field = efm;
+						break;
+					}
+				}
+			}
+			if (field.Type.ToUpper().Contains("DATE") || field.Type.ToUpper().Contains("TIME"))
+			{
+				triggers.Add(new Trigger(pool.CorrectName(map.TableName + "_" + field.FieldName + "_GEN"), "", ""));
+			}
+			else if (field.Type.ToUpper().Contains("INT"))
+			{
+				if (map.PrimaryKeys.Count>1)
+					triggers.Add(new Trigger(pool.CorrectName(map.TableName + "_" + field.FieldName + "_GEN"), "", ""));
+				else
+					identities.Add(new IdentityField(map.TableName, field.FieldName, field.FullFieldType,""));
+			}
+			else
+			{
+				throw new Exception("Unable to create autogenerator for non date or digit type.");
+			}
 		}
 		
 		internal override List<Trigger> GetVersionTableTriggers(ExtractedTableMap table, VersionField.VersionTypes versionType, ConnectionPool pool)
 		{
-            List<Trigger> ret = new List<Trigger>();
-            string tmp = "FOR EACH ROW\nBEGIN\n";
-            tmp += "\tINSERT INTO " + table.TableName + "(" + table.Fields[0].FieldName;
-            for (int x = 1; x < table.Fields.Count; x++)
-            {
-                ExtractedFieldMap efm = table.Fields[x];
-                tmp += "," + efm.FieldName;
-            }
-            tmp += ") VALUES(";
-            if (table.Fields[0].Type=="DATETIME")
-            	tmp+="CURRENT_DATE()";
-            else
-            	tmp+="0";
-            for (int x = 1; x < table.Fields.Count; x++)
-            {
-                ExtractedFieldMap efm = table.Fields[x];
-                tmp += ",NEW." + efm.FieldName;
-            }
-            tmp += ");\nEND\n\n";
-            ret.Add(new Trigger(pool.CorrectName(queryBuilder.VersionTableInsertTriggerName(queryBuilder.RemoveVersionName(table.TableName))),
-                                "AFTER INSERT ON " + queryBuilder.RemoveVersionName(table.TableName),
-                                tmp));
-            ret.Add(new Trigger(pool.CorrectName(queryBuilder.VersionTableUpdateTriggerName(table.TableName)),
-                                "AFTER UPDATE ON " + table.TableName,
-                                tmp));
-            return ret;
+			List<Trigger> ret = new List<Trigger>();
+			string tmp = "FOR EACH ROW\nBEGIN\n";
+			tmp += "\tINSERT INTO " + table.TableName + "(" + table.Fields[0].FieldName;
+			for (int x = 1; x < table.Fields.Count; x++)
+			{
+				ExtractedFieldMap efm = table.Fields[x];
+				tmp += "," + efm.FieldName;
+			}
+			tmp += ") VALUES(";
+			if (table.Fields[0].Type=="DATETIME")
+				tmp+="CURRENT_DATE()";
+			else
+				tmp+="0";
+			for (int x = 1; x < table.Fields.Count; x++)
+			{
+				ExtractedFieldMap efm = table.Fields[x];
+				tmp += ",NEW." + efm.FieldName;
+			}
+			tmp += ");\nEND\n\n";
+			ret.Add(new Trigger(pool.CorrectName(queryBuilder.VersionTableInsertTriggerName(queryBuilder.RemoveVersionName(table.TableName))),
+			                    "AFTER INSERT ON " + queryBuilder.RemoveVersionName(table.TableName),
+			                    tmp));
+			ret.Add(new Trigger(pool.CorrectName(queryBuilder.VersionTableUpdateTriggerName(table.TableName)),
+			                    "AFTER UPDATE ON " + table.TableName,
+			                    tmp));
+			return ret;
 		}
 		
 		internal override string TranslateFieldType(Org.Reddragonit.Dbpro.Structure.Attributes.FieldType type, int fieldLength)
@@ -221,6 +221,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 					ret="BLOB";
 					break;
 				case FieldType.INTEGER:
+				case FieldType.ENUM:
 					ret="INTEGER";
 					break;
 				case FieldType.LONG:

@@ -346,8 +346,13 @@ namespace TestingApp.Structure
 		
 		private bool _seedIsNull=true;
 		
-		public User()
+		protected User()
 		{
+		}
+		
+		public static User Instance()
+		{
+			return (User)Instance(typeof(User));
 		}
 		
 		internal static User Save(User user)

@@ -21,9 +21,16 @@ namespace Org.Reddragonit.Dbpro.Structure
 		private LoadStatus _loadStatus=LoadStatus.NotLoaded;
 		private Dictionary<string, object> _initialPrimaryKeys = new Dictionary<string, object>();
 
-		public Table()
+		protected Table()
 		{
 			InitPrimaryKeys();
+		}
+		
+		protected static Table Instance(Type type)
+		{
+			if (!type.IsSubclassOf(typeof(Table)))
+				throw new Exception("Cannot create instance of a class that is not a table.");
+			return (Table)LazyProxy.Instance(type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
 		}
 		
 		internal LoadStatus LoadStatus{

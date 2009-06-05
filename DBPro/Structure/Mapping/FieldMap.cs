@@ -44,6 +44,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 					IPrimaryKeyField p = (IPrimaryKeyField)obj;
 					_primaryKey=true;
 					_autogen=p.AutoGen;
+					_nullable=false;
 				}else if (obj is IVersionField)
 				{
 					_versionable=true;

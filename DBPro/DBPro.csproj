@@ -8,8 +8,7 @@
     <AssemblyName>DBPro</AssemblyName>
     <OutputType>Library</OutputType>
     <ApplicationIcon />
-    <RunPostBuildEvent>OnSuccessfulBuild</RunPostBuildEvent>
-    <PreBuildEvent />
+    <RunPostBuildEvent>OnBuildSuccess</RunPostBuildEvent>
     <PostBuildEvent />
     <StartupObject />
     <NoConfig>false</NoConfig>
@@ -33,6 +32,7 @@
     <IsWebBootstrapper>false</IsWebBootstrapper>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
+    <SourceAnalysisOverrideSettingsFile>C:\Documents and Settings\Roger\Application Data\ICSharpCode/SharpDevelop3.0\Settings.SourceAnalysis</SourceAnalysisOverrideSettingsFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <NoStdLib>false</NoStdLib>
@@ -45,6 +45,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <OutputPath>bin\Debug\</OutputPath>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <DebugType>Full</DebugType>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <NoStdLib>false</NoStdLib>
@@ -59,13 +60,15 @@
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="FirebirdSql.Data.FirebirdClient, Version=2.1.0.0, Culture=neutral, PublicKeyToken=3750abcc3150b00c, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>bin\Debug\FirebirdSql.Data.FirebirdClient.dll</HintPath>
+    <Reference Include="FirebirdSql.Data.FirebirdClient">
+      <Private>True</Private>
     </Reference>
-    <Reference Include="MySql.Data" />
+    <Reference Include="MySql.Data">
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Npgsql">
       <HintPath>C:\Program Files\PostgreSQL\Npgsql\bin\Npgsql.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
@@ -103,6 +106,7 @@
     <Compile Include="Connections\MsSql\MsSqlConnectionPool.cs" />
     <Compile Include="Connections\QueryBuilder.cs" />
     <Compile Include="Exceptions\Exceptions.cs" />
+    <Compile Include="Initializer.cs" />
     <Compile Include="LazyProxy.cs" />
     <Compile Include="Structure\Attributes\INullable.cs" />
     <Compile Include="Structure\Attributes\IVersionField.cs" />
@@ -125,6 +129,9 @@
     <Compile Include="Structure\Attributes\PrimaryKeyField.cs" />
     <Compile Include="Structure\Attributes\Table.cs" />
     <Compile Include="Utility.cs" />
+    <Compile Include="Validation\NotNullValidation.cs" />
+    <Compile Include="Validation\RegexValidation.cs" />
+    <Compile Include="Validation\ValidationAttribute.cs" />
     <EmbeddedResource Include="Connections\MsSql\IdentitySP.sql" />
     <None Include="DbPro.xml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -148,8 +155,9 @@
       <ProductName>.NET Framework 3.5</ProductName>
       <Install>false</Install>
     </BootstrapperPackage>
-    <Folder Include="Connections\Parameters" />
-    <Folder Include="Connections\PgSql" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.Targets" />
+  <PropertyGroup>
+    <PostBuildEvent>"C:\Program Files\Microsoft\ILMerge\ILMerge.exe" /out:mergedDBPro.dll DBPro.dll FirebirdSql.Data.FirebirdClient.dll Mono.Security.dll MySql.Data.dll Npgsql.dll .\de\Npgsql.resources.dll .\es\Npgsql.resources.dll .\fi\Npgsql.resources.dll .\fr\Npgsql.resources.dll .\ja\Npgsql.resources.dll .\zh-CN\Npgsql.resources.dll</PostBuildEvent>
+  </PropertyGroup>
 </Project>
