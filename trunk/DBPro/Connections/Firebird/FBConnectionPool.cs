@@ -26,7 +26,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 			       "Database="+databasePath+";" +
 			       "DataSource="+databaseServer+";" +
 			       "Port="+port.ToString()+";",minPoolSize,maxPoolSize,maxKeepAlive,UpdateStructureDebugMode,connectionName)
-		{}
+		{ }
 
 		public FBConnectionPool(string username, string password, string databasePath, string databaseServer, bool UpdateStructureDebugMode,string connectionName)
 			: this(username, password, databasePath, databaseServer, 3050,UpdateStructureDebugMode,connectionName)

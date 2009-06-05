@@ -1,6 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 10.00
 # Visual Studio 2008
+# SharpDevelop 3.0.0.3437
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DBPro", "DBPro\DBPro.csproj", "{804A5915-5770-4B62-AF13-E10AE65B5901}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestingApp", "TestingApp\TestingApp.csproj", "{BA852BCE-1638-464A-9DBB-47E5ABE48BEF}"

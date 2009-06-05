@@ -110,7 +110,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 					" (CASE WHEN fld.rdb$field_sub_type = 1 THEN  'BLOB SUB_TYPE TEXT' "+
 					"  ELSE 'BLOB' END) "+
 					" WHEN 14 THEN 'CHAR' "+
-					" WHEN 27 THEN 'DOUBLE' "+
+					" WHEN 27 THEN 'DOUBLE PRECISION' "+
 					" WHEN 10 THEN 'FLOAT' "+
 					" WHEN 16 THEN "+
 					" (CASE WHEN fld.rdb$field_sub_type = 2 THEN 'DECIMAL('||CAST(fld.rdb$field_precision as varchar(100))||', '||cast((0-fld.rdb$field_scale) as varchar(100))||')' "+

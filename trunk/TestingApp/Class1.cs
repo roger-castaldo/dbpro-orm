@@ -21,11 +21,11 @@ namespace TestingApp
 		{
 			ConnectionPool pool = ConnectionPoolManager.GetConnection("Security");
 			Connection c = pool.getConnection();
-			Group g = new Group();
+			Group g = Group.Instance();
 			g.InheritParentRights=false;
 			g.Name="Admin";
 			g=Group.Save(g);
-			User u= new User();
+			User u= User.Instance();
 			u.FirstName="Roger";
 			u.LastName="Castaldo";
 			u.UserGroup=g;

@@ -199,6 +199,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 					ret="OID";
 					break;
 				case FieldType.INTEGER:
+				case FieldType.ENUM:
 					ret="INTEGER";
 					break;
 				case FieldType.LONG:

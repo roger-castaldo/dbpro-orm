@@ -104,8 +104,13 @@ namespace TestingApp.Structure
 			return ret;
 		}
 		
-		public Group()
+		protected Group()
 		{
+		}
+		
+		public static Group Instance()
+		{
+			return (Group)Instance(typeof(Group));
 		}
 	}
 }

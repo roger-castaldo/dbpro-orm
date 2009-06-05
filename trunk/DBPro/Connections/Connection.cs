@@ -1,13 +1,15 @@
-using Org.Reddragonit.Dbpro.Connections.Parameters;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
+
+using Org.Reddragonit.Dbpro.Connections.Parameters;
 using Org.Reddragonit.Dbpro.Structure;
 using Org.Reddragonit.Dbpro.Structure.Mapping;
 using FieldNamePair = Org.Reddragonit.Dbpro.Structure.Mapping.TableMap.FieldNamePair;
 using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.FieldType;
 using VersionTypes = Org.Reddragonit.Dbpro.Structure.Attributes.VersionField.VersionTypes;
+using System.Reflection;
 
 namespace Org.Reddragonit.Dbpro.Connections
 {
@@ -171,11 +173,14 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
 			foreach (Type t in map.ForeignTables)
 			{
-				Table ext = (Table)table.GetField(map.GetClassPropertyName(map.GetFieldInfoForForeignTable(t)));
-				if (ext != null)
+				foreach (ExternalFieldMap efm in map.GetFieldInfoForForeignTable(t))
 				{
-					ext=Save(ext);
-					table.SetField(map.GetClassPropertyName(map.GetFieldInfoForForeignTable(t)),ext);
+					Table ext = (Table)table.GetField(map.GetClassPropertyName(efm));
+					if (ext != null)
+					{
+						ext=Save(ext);
+						table.SetField(map.GetClassPropertyName(efm),ext);
+					}
 				}
 			}
 			foreach (ExternalFieldMap efm in map.ExternalFieldMapArrays)
@@ -242,11 +247,14 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
 			foreach (Type t in map.ForeignTables)
 			{
-				Table ext = (Table)table.GetField(map.GetClassPropertyName(map.GetFieldInfoForForeignTable(t)));
-				if (ext != null)
+				foreach(ExternalFieldMap efm in map.GetFieldInfoForForeignTable(t))
 				{
-					ext=Save(ext);
-					table.SetField(map.GetClassPropertyName(map.GetFieldInfoForForeignTable(t)),ext);
+					Table ext = (Table)table.GetField(map.GetClassPropertyName(efm));
+					if (ext != null)
+					{
+						ext=Save(ext);
+						table.SetField(map.GetClassPropertyName(efm),ext);
+					}
 				}
 			}
 			foreach (ExternalFieldMap efm in map.ExternalFieldMapArrays)

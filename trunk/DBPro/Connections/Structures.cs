@@ -270,7 +270,9 @@ namespace Org.Reddragonit.Dbpro.Connections
 			foreach (ForeignRelationMap frm in ForeignFields)
 			{
 				if (frm.ExternalTable==tableName)
+				{
 					ret.Add(frm);
+				}
 			}
 			return ret;
 		}

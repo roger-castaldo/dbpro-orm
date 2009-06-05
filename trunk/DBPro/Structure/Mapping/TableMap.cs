@@ -133,7 +133,8 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 				}
 				foreach (InternalFieldMap ifm in t.PrimaryKeys)
 				{
-					_fields.Add(t.GetClassFieldName(ifm.FieldName),new InternalFieldMap(ifm,true));
+					if (t.GetClassFieldName(ifm.FieldName)!=null)
+						_fields.Add(t.GetClassFieldName(ifm.FieldName),new InternalFieldMap(ifm,true));
 				}
 			}
 			int autoGenCount=0;
@@ -269,15 +270,18 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			}
 		}
 		
-		public ExternalFieldMap GetFieldInfoForForeignTable(System.Type table)
+		public List<ExternalFieldMap> GetFieldInfoForForeignTable(System.Type table)
 		{
+			List<ExternalFieldMap> ret = new List<ExternalFieldMap>();
 			foreach (FieldMap f in _fields.Values )
 			{
 				if ((f is ExternalFieldMap)&&(((ExternalFieldMap)f).Type==table))
 				{
-					return (ExternalFieldMap)f;
+					ret.Add((ExternalFieldMap)f);
 				}
 			}
+			if (ret.Count>0)
+				return ret;
 			return null;
 		}
 		
@@ -289,7 +293,8 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 					if (f is ExternalFieldMap && !((ExternalFieldMap)f).IsArray )
 					{
 						ExternalFieldMap efm = (ExternalFieldMap)f;
-						ret.Add(efm.Type);
+						if (!ret.Contains(efm.Type))
+							ret.Add(efm.Type);
 					}
 				}
 				return ret;

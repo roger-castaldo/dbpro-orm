@@ -235,7 +235,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 					ret="DECIMAL(18,9)";
 					break;
 				case FieldType.DOUBLE:
-					ret="DOUBLE";
+					ret="DOUBLE PRECISION";
 					break;
 				case FieldType.FLOAT:
 					ret="FLOAT";
@@ -244,6 +244,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 					ret="BLOB";
 					break;
 				case FieldType.INTEGER:
+				case FieldType.ENUM:
 					ret="INTEGER";
 					break;
 				case FieldType.LONG:

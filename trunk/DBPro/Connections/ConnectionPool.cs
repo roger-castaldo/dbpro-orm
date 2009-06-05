@@ -387,11 +387,12 @@ namespace Org.Reddragonit.Dbpro.Connections
 				foreach (Type t in tm.ForeignTables)
 				{
 					TableMap ftm = ClassMapper.GetTableMap(t);
-					ExternalFieldMap efm = tm.GetFieldInfoForForeignTable(t);
-					foreach (InternalFieldMap ifm in ftm.PrimaryKeys)
-					{
-						etm.ForeignFields.Add(new ForeignRelationMap(CorrectName(efm.AddOnName+"_"+ifm.FieldName),ftm.Name,
-						                                             ifm.FieldName,efm.OnUpdate.ToString(),efm.OnDelete.ToString()));
+					foreach (ExternalFieldMap efm in tm.GetFieldInfoForForeignTable(t)){
+						foreach (InternalFieldMap ifm in ftm.PrimaryKeys)
+						{
+							etm.ForeignFields.Add(new ForeignRelationMap(CorrectName(efm.AddOnName+"_"+ifm.FieldName),ftm.Name,
+							                                             ifm.FieldName,efm.OnUpdate.ToString(),efm.OnDelete.ToString()));
+						}
 					}
 				}
 				tables.Add(etm);
@@ -869,6 +870,40 @@ namespace Org.Reddragonit.Dbpro.Connections
 				}
 			}
 		}
+		
+		private void CleanUpForeignKeys(ref List<ForeignKey> foreignKeys)
+		{
+			for (int x=0;x<foreignKeys.Count;x++)
+			{
+				ForeignKey key = foreignKeys[x];
+				if (key.ExternalFields.Count>1){
+					if (key.ExternalFields.IndexOf(key.ExternalFields[0],1)>=1)
+					{
+						List<string> externalFields = new List<string>();
+						List<string> internalFields = new List<string>();
+						for (int y=0;y<key.ExternalFields.Count;y++)
+						{
+							string str = key.ExternalFields[y];
+							if (externalFields.Contains(str))
+							{
+								foreignKeys.Add(new ForeignKey(key.InternalTable,internalFields,
+								                               key.ExternalTable,externalFields,
+								                               key.OnUpdate,key.OnDelete));
+								internalFields=new List<string>();
+								externalFields=new List<string>();
+							}
+							externalFields.Add(str);
+							internalFields.Add(key.InternalFields[y]);
+						}
+						foreignKeys.Add(new ForeignKey(key.InternalTable,internalFields,
+						                               key.ExternalTable,externalFields,
+						                               key.OnUpdate,key.OnDelete));
+						foreignKeys.RemoveAt(x);
+						x--;
+					}
+				}
+			}
+		}
 
 		private void UpdateStructure(bool Debug)
 		{
@@ -1010,6 +1045,9 @@ namespace Org.Reddragonit.Dbpro.Connections
 				}
 			}
 			
+			CleanUpForeignKeys(ref foreignKeyDrops);
+			CleanUpForeignKeys(ref foreignKeyCreations);
+			
 			List<string> alterations = new List<string>();
 			//add drops to alterations
 			alterations.AddRange(constraintDrops);
@@ -1094,7 +1132,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 						" ) tbl GROUP BY VAL "+
 						" ) sums "+
 						" WHERE CNT=0;",CorrectName("VALUE"),
-						str,_enumTableMaps[t],conn.DefaultTableString 
+						str,_enumTableMaps[t],conn.DefaultTableString
 					));
 				}
 				alterations.Add(" COMMIT;");

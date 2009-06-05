@@ -225,6 +225,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 					ret = "IMAGE";
 					break;
 				case FieldType.INTEGER:
+				case FieldType.ENUM:
 					ret = "INT";
 					break;
 				case FieldType.LONG:
