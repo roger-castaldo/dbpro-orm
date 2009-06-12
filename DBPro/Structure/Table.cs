@@ -283,7 +283,12 @@ namespace Org.Reddragonit.Dbpro.Structure
 				}
 			}
 			object cur = pi.GetValue(this,new object[0]);
-			if ((pi.PropertyType.Equals(typeof(bool))&&!ClassMapper.GetTableMap(this.GetType())[FieldName].Nullable))
+			if ((
+                (pi.PropertyType.Equals(typeof(bool))||
+                (pi.PropertyType.Equals(typeof(int))&&(int)cur==0)||
+                (pi.PropertyType.Equals(typeof(long))&&(long)cur==0)
+                )
+                &&!ClassMapper.GetTableMap(this.GetType())[FieldName].Nullable))
 				return false;
 			return equalObjects(cur,ClassMapper.InitialValueForClassField(this.GetType(),FieldName));
 		}

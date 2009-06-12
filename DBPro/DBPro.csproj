@@ -66,9 +66,9 @@
     <Reference Include="MySql.Data">
       <Private>True</Private>
     </Reference>
-    <Reference Include="Npgsql">
-      <HintPath>C:\Program Files\PostgreSQL\Npgsql\bin\Npgsql.dll</HintPath>
-      <Private>True</Private>
+    <Reference Include="Npgsql, Version=2.0.5.0, Culture=neutral, PublicKeyToken=5d8b90d52f46fda7, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\npgsql\Npgsql.dll</HintPath>
     </Reference>
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
@@ -76,6 +76,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.cs" />
+    <Compile Include="Connections\ClassSQL\ClassQueryTranslator.cs" />
+    <Compile Include="Connections\ClassSQL\Enums.cs" />
+    <Compile Include="Connections\ClassSQL\QueryFunctions.cs" />
+    <Compile Include="Connections\ClassSQL\QueryKeywords.cs" />
+    <Compile Include="Connections\ClassSQL\QueryToken.cs" />
     <Compile Include="Connections\Connection.cs" />
     <Compile Include="Connections\ConnectionPool.cs" />
     <Compile Include="Connections\ConnectionPoolManager.cs" />
@@ -98,6 +103,7 @@
     <Compile Include="Connections\PgSql\PgSqlConnection.cs" />
     <Compile Include="Connections\PgSql\PgSqlConnectionPool.cs" />
     <Compile Include="Connections\PgSql\PgSqlQueryBuilder.cs" />
+    <Compile Include="Connections\ClassSQL\QueryTokenizer.cs" />
     <Compile Include="Connections\Structures.cs" />
     <Compile Include="Connections\Firebird\FBConnection.cs" />
     <Compile Include="Connections\Firebird\FBConnectionPool.cs" />

@@ -621,9 +621,16 @@ namespace Org.Reddragonit.Dbpro.Connections
 									break;
 								}
 							}
-							pars.Add(conn.CreateParameter(CreateParameterName(relatedMap.Name+"_"+ifm.FieldName), t.GetField(relatedMap.GetClassFieldName(ifm)),ifm.FieldType,ifm.FieldLength));
+                            object val = null;
+                            if (relatedMap.GetClassFieldName(ifm) == null)
+                                val = LocateFieldValue(t, relatedMap, ifm.FieldName);
+                            else
+                                val = t.GetField(relatedMap.GetClassFieldName(ifm));
+							pars.Add(conn.CreateParameter(CreateParameterName(relatedMap.Name+"_"+ifm.FieldName), val,ifm.FieldType,ifm.FieldLength));
 						}
-						ret[delString].Add(pars);
+                        List<IDbDataParameter> tmp = new List<IDbDataParameter>();
+                        tmp.AddRange(pars.ToArray());
+                        ret[delString].Add(tmp);
 					}
 				}
 			}catch (Exception e)
@@ -633,6 +640,35 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
 			return ret;
 		}
+
+        private object LocateFieldValue(Table table, TableMap relatedMap,string fieldName)
+        {
+            foreach (Type t in relatedMap.ForeignTables)
+            {
+                foreach (ExternalFieldMap efm in relatedMap.GetFieldInfoForForeignTable(t))
+                {
+                    if (fieldName.StartsWith(efm.AddOnName + "_"))
+                    {
+                        TableMap etm = ClassMapper.GetTableMap(efm.ObjectType);
+                        foreach (InternalFieldMap ifm in etm.Fields)
+                        {
+                            if (_pool.CorrectName(efm.AddOnName + "_" + ifm.FieldName) == fieldName)
+                            {
+                                if (etm.GetClassFieldName(ifm) != null)
+                                    return ((Table)table.GetField(relatedMap.GetClassFieldName(efm))).GetField(etm.GetClassFieldName(ifm));
+                                else
+                                {
+                                    object obj = LocateFieldValue((Table)table.GetField(relatedMap.GetClassFieldName(efm)), etm, ifm.FieldName);
+                                    if (obj != null)
+                                        return obj;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return null;
+        }
 		
 		internal string Update(Table table,out List<IDbDataParameter> queryParameters)
 		{
