@@ -50,6 +50,13 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
         {
         	_versionType=VersionType;
         }
+        
+        public VersionField(int fieldLength,bool nullable) : base (fieldLength,nullable)
+        {}
+        
+        public VersionField(int fieldLength,bool nullable,VersionTypes VersionType) : base(fieldLength,nullable){
+        	_versionType=VersionType;
+        }
 		
 		public VersionField(string FieldName,FieldType type):this(FieldName,type,true,0)
 		{

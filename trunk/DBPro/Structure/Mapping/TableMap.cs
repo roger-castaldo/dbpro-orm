@@ -201,6 +201,20 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 				return ret;
 			}
 		}
+
+        public List<string> ExternalPrimaryKeyProperties
+        {
+            get
+            {
+                List<string> ret = new List<string>();
+                foreach (string str in _fields.Keys)
+                {
+                    if (_fields[str].PrimaryKey && _fields[str] is ExternalFieldMap)
+                        ret.Add(str);
+                }
+                return ret;
+            }
+        }
 		
 		public List<FieldNamePair> ParentFieldNamePairs
 		{
@@ -261,6 +275,20 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 				return false;
 			}
 		}
+
+        public List<ExternalFieldMap> ExternalFieldMaps
+        {
+            get
+            {
+                List<ExternalFieldMap> ret = new List<ExternalFieldMap>();
+                foreach (FieldMap f in _fields.Values)
+                {
+                    if (f is ExternalFieldMap)
+                        ret.Add((ExternalFieldMap)f);
+                }
+                return ret;
+            }
+        }
 
 		public bool HasPrimaryKeys
 		{

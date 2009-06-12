@@ -583,6 +583,16 @@ namespace Org.Reddragonit.Dbpro.Connections
 				}
 			}
 			System.Diagnostics.Debug.WriteLine(comm.CommandText);
+            if (parameters != null)
+            {
+                foreach (IDbDataParameter param in parameters)
+                {
+                    if (param.Value!=null)
+                        System.Diagnostics.Debug.WriteLine(param.ParameterName+": "+param.Value.ToString());
+                    else
+                        System.Diagnostics.Debug.WriteLine(param.ParameterName +": NULL");
+                }
+            }
 			return comm.ExecuteNonQuery();
 		}
 		

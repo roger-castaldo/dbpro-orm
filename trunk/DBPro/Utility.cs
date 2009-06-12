@@ -10,6 +10,7 @@ using Org.Reddragonit.Dbpro.Connections;
 using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using System.Reflection;
 
 namespace Org.Reddragonit.Dbpro
 {
@@ -18,6 +19,20 @@ namespace Org.Reddragonit.Dbpro
 	/// </summary>
 	public class Utility
 	{
+		
+		public static Type LocateType(string name)
+		{
+			Type ret = null;
+			try{
+				foreach (Assembly asm in AppDomain.CurrentDomain.GetAssemblies())
+				{
+					ret=asm.GetType(name,false);
+					if (ret!=null)
+						break;
+				}
+			}catch (Exception e){}
+			return ret;
+		}
 		
 		public static string CorrectName(ConnectionPool pool,string name)
 		{
