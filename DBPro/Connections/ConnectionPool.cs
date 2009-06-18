@@ -395,6 +395,14 @@ namespace Org.Reddragonit.Dbpro.Connections
 						}
 					}
 				}
+                if (tm.ParentType != null)
+                {
+                    TableMap parentMap = ClassMapper.GetTableMap(tm.ParentType);
+                    foreach (InternalFieldMap ifm in parentMap.PrimaryKeys)
+                    {
+                        etm.ForeignFields.Add(new ForeignRelationMap(CorrectName(ifm.FieldName), CorrectName(parentMap.Name), CorrectName(ifm.FieldName), UpdateDeleteAction.CASCADE.ToString(), UpdateDeleteAction.CASCADE.ToString()));
+                    }
+                }
 				tables.Add(etm);
 				foreach (ExternalFieldMap efm in tm.ExternalFieldMapArrays)
 				{
