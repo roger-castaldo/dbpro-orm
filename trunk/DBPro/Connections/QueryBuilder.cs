@@ -468,7 +468,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			try{
 				string values="";
 				string parameters="";
-				foreach (FieldNamePair fnp in ClassMapper.GetTableMap(table.GetType()).FieldNamePairs)
+				foreach (FieldNamePair fnp in map.FieldNamePairs)
 				{
 					if (map[fnp] is ExternalFieldMap)
 					{
@@ -489,12 +489,20 @@ namespace Org.Reddragonit.Dbpro.Connections
 							else
 							{
 								Table relatedTable = (Table)table.GetField(fnp.ClassFieldName);
-								foreach (FieldMap fm in relatedTableMap.PrimaryKeys)
+								foreach (InternalFieldMap ifm in relatedTableMap.PrimaryKeys)
 								{
-									values += conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm)) + ",";
-									insertParameters.Add(conn.CreateParameter(conn.Pool.CorrectName(CreateParameterName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm))), relatedTable.GetField(relatedTableMap.GetClassFieldName(fm)),((InternalFieldMap)fm).FieldType,((InternalFieldMap)fm).FieldLength));
-									parameters+=","+conn.Pool.CorrectName(CreateParameterName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm)));
-									whereConditions+=" AND "+conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm))+" =  "+conn.Pool.CorrectName(CreateParameterName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm)));
+                                    object val = null;
+                                    if (relatedTableMap.GetClassFieldName(ifm) == null)
+                                        val = LocateFieldValue(relatedTable, relatedTableMap, ifm.FieldName);
+                                    else
+                                        val = relatedTable.GetField(relatedTableMap.GetClassFieldName(ifm));
+                                    string fieldName = relatedTableMap.GetTableFieldName(ifm);
+                                    if (fieldName == null)
+                                        fieldName = ifm.FieldName;
+									values += conn.Pool.CorrectName(efm.AddOnName+"_"+fieldName) + ",";
+									insertParameters.Add(conn.CreateParameter(conn.Pool.CorrectName(CreateParameterName(efm.AddOnName+"_"+fieldName)), val,ifm.FieldType,ifm.FieldLength));
+									parameters+=","+conn.Pool.CorrectName(CreateParameterName(efm.AddOnName+"_"+fieldName));
+									whereConditions+=" AND "+conn.Pool.CorrectName(efm.AddOnName+"_"+fieldName)+" =  "+conn.Pool.CorrectName(CreateParameterName(efm.AddOnName+"_"+fieldName));
 								}
 							}
 						}
@@ -560,7 +568,12 @@ namespace Org.Reddragonit.Dbpro.Connections
 				foreach(InternalFieldMap ifm in map.PrimaryKeys)
 				{
 					conditions+=ifm.FieldName+" = "+pool.CorrectName(CreateParameterName(ifm.FieldName))+" AND ";
-					parameters.Add(conn.CreateParameter(pool.CorrectName(CreateParameterName(ifm.FieldName)),table.GetField(map.GetClassFieldName(ifm.FieldName)),ifm.FieldType,ifm.FieldLength));
+                    object val = null;
+                    if (map.GetClassFieldName(ifm) == null)
+                        val = LocateFieldValue(table,map , ifm.FieldName);
+                    else
+                        val = table.GetField(map.GetClassFieldName(ifm));
+					parameters.Add(conn.CreateParameter(pool.CorrectName(CreateParameterName(ifm.FieldName)),val,ifm.FieldType,ifm.FieldLength));
 				}
 				return string.Format(DeleteWithConditions,map.Name,conditions);
 			}catch(Exception e)
@@ -796,7 +809,9 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
 			foreach (InternalFieldMap ifm in parentMap.PrimaryKeys)
 			{
-				where+="table_"+count.ToString()+"."+ifm.FieldName+" = table_"+(count+1).ToString()+"."+ifm.FieldName+" AND";
+                if (!fields.Contains("table_"+count.ToString()+"."+ifm.FieldName+","))
+                    fields+="table_"+count.ToString()+"."+ifm.FieldName+",";
+				where+=" table_"+count.ToString()+"."+ifm.FieldName+" = table_"+(count+1).ToString()+"."+ifm.FieldName+" AND";
 			}
 			count++;
 			foreach (string str in map.ParentDatabaseFieldNames)
@@ -845,7 +860,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 				fields=fields.Substring(1);
 				if (where.Length>0)
 				{
-					where.Substring(0,where.Length-4);
+					where = where.Substring(0,where.Length-4);
 				}
 			}catch (Exception e)
 			{

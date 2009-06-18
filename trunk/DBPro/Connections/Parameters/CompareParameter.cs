@@ -45,116 +45,249 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
 		protected virtual bool SupportsList{
 			get{return false;}
 		}
-		
-		internal sealed override string ConstructString(TableMap map,Connection conn,QueryBuilder builder,ref List<IDbDataParameter> queryParameters,ref int parCount)
-		{
-			bool found=false;
-			string ret="";
-			FieldType? type=null;
-			Type _objType=null;
-			int fieldLength=0;
-			foreach (FieldNamePair f in map.FieldNamePairs)
-			{
-				if (FieldName==f.ClassFieldName)
-				{
-					ret=f.TableFieldName+" ";
-					type=((InternalFieldMap)map[f]).FieldType;
-					_objType = map[f].ObjectType;
-					fieldLength=((InternalFieldMap)map[f]).FieldLength;
-					found=true;
-					break;
-				}else if (FieldName==f.TableFieldName)
-				{
-					ret=f.TableFieldName+" ";
-					type=((InternalFieldMap)map[f]).FieldType;
-					_objType = map[f].ObjectType;
-					fieldLength=((InternalFieldMap)map[f]).FieldLength;
-					found=true;
-					break;
-				}
-			}
-			if (!found)
-			{
-				ret=FieldName+" ";
-			}
-			if (SupportsList)
-			{
-				ret+=ComparatorString+" (";
-				if (FieldValue.GetType().IsArray||(FieldValue is IEnumerable)){
-					foreach (object obj in (IEnumerable)FieldValue)
-					{
-						if (_objType==null)
-							_objType=obj.GetType();
-						ret+=builder.CreateParameterName("parameter_"+parCount.ToString())+",";
-						if ((_objType!=null)&&_objType.IsEnum)
-						{
-							queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_"+parCount.ToString()),conn.Pool.GetEnumID(_objType,obj.ToString())));
-						}else{
-							if (type.HasValue)
-								queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_"+parCount.ToString()),obj,type.Value,fieldLength));
-							else
-								queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_"+parCount.ToString()),obj));
-						}
-						parCount++;
-					}
-					ret = ret.Substring(0,ret.Length-1);
-				}else{
-					ret+=builder.CreateParameterName("parameter_"+parCount.ToString());
-					if (_objType==null)
-							_objType=FieldValue.GetType();
-					if ((_objType!=null)&&_objType.IsEnum)
-					{
-						queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_"+parCount.ToString()),conn.Pool.GetEnumID(_objType,FieldValue.ToString())));
-					}else{
-						if (type.HasValue)
-							queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_"+parCount.ToString()),FieldValue,type.Value,fieldLength));
-						else
-							queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_"+parCount.ToString()),FieldValue));
-					}
-					parCount++;
-				}
-				ret+=")";
-			}else{
-				if (FieldValue.GetType().IsArray||(FieldValue is ICollection)){
-					string tmp = ret;
-					tmp+=ComparatorString;
-					ret+= "( ";
-					foreach (object obj in (IEnumerable)FieldValue)
-					{
-						if (_objType==null)
-							_objType=obj.GetType();
-						ret+=tmp+builder.CreateParameterName("parameter_"+parCount.ToString())+" AND ";
-						if ((_objType!=null)&&_objType.IsEnum)
-						{
-							queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_"+parCount.ToString()),conn.Pool.GetEnumID(_objType,obj.ToString())));
-						}else{
-							if (type.HasValue)
-								queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_"+parCount.ToString()),obj,type.Value,fieldLength));
-							else
-								queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_"+parCount.ToString()),obj));
-						}
-						parCount++;
-					}
-					ret = ret.Substring(0,tmp.Length-4);
-					ret+=" )";
-				}else{
-					ret+=ComparatorString;
-					ret+=builder.CreateParameterName("parameter_"+parCount.ToString());
-					if (_objType==null)
-							_objType=FieldValue.GetType();
-					if ((_objType!=null)&&_objType.IsEnum)
-					{
-						queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_"+parCount.ToString()),conn.Pool.GetEnumID(_objType,FieldValue.ToString())));
-					}else{
-						if (type.HasValue)
-							queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_"+parCount.ToString()),FieldValue,type.Value,fieldLength));
-						else
-							queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_"+parCount.ToString()),FieldValue));
-					}
-					parCount++;
-				}
-			}
-			return ret;
-		}
+
+        private FieldNamePair? LocateFieldNamePair(TableMap map,out bool ClassBased,out bool isExternal)
+        {
+            ClassBased = false;
+            isExternal = false;
+            FieldNamePair? ret = null;
+            foreach (FieldNamePair f in map.FieldNamePairs)
+            {
+                if (f.ClassFieldName == FieldName)
+                {
+                    isExternal = map[f] is ExternalFieldMap;
+                    ClassBased = true;
+                    ret = f;
+                    break;
+                }
+                else if (f.TableFieldName == FieldName)
+                {
+                    isExternal = map[f] is ExternalFieldMap;
+                    ret = f;
+                    break;
+                }
+            }
+            if (!ret.HasValue)
+            {
+                foreach (FieldNamePair f in map.ParentFieldNamePairs)
+                {
+                    if (f.ClassFieldName == FieldName)
+                    {
+                        TableMap m = ClassMapper.GetTableMap(map.ParentType);
+                        while (m[f] == null)
+                        {
+                            if (m.ParentType != null)
+                                m = ClassMapper.GetTableMap(m.ParentType);
+                            else
+                                throw new Exception("Unable to Locate Parent Field.");
+                        }
+                        isExternal = m[f] is ExternalFieldMap;
+                        ClassBased = true;
+                        ret = f;
+                        break;
+                    }
+                    else if (f.TableFieldName == FieldName)
+                    {
+                        TableMap m = ClassMapper.GetTableMap(map.ParentType);
+                        while (m[f] == null)
+                        {
+                            if (m.ParentType != null)
+                                m = ClassMapper.GetTableMap(m.ParentType);
+                            else
+                                throw new Exception("Unable to Locate Parent Field.");
+                        }
+                        isExternal = m[f] is ExternalFieldMap;
+                        ret = f;
+                        break;
+                    }
+                }
+            }
+            return ret;
+        }
+
+        internal sealed override string ConstructString(TableMap map, Connection conn, QueryBuilder builder, ref List<IDbDataParameter> queryParameters, ref int parCount)
+        {
+            bool found = false;
+            string ret = "";
+            FieldType? type = null;
+            Type _objType = null;
+            int fieldLength = 0;
+            bool isExternal = false;
+            bool isClassBased=false;
+            FieldNamePair? fnp = LocateFieldNamePair(map, out isClassBased, out isExternal);
+            found = fnp.HasValue;
+            if (isExternal)
+            {
+                if (found)
+                {
+                    ExternalFieldMap efm = (ExternalFieldMap)map[fnp.Value];
+                    if (efm == null)
+                    {
+                        TableMap m = ClassMapper.GetTableMap(map.ParentType);
+                        while (m[fnp.Value] == null)
+                        {
+                            if (m.ParentType != null)
+                                m = ClassMapper.GetTableMap(m.ParentType);
+                            else
+                                throw new Exception("Unable to Locate Parent Field.");
+                        }
+                        efm = (ExternalFieldMap)m[fnp.Value];
+                    }
+                    TableMap relatedMap = ClassMapper.GetTableMap(FieldValue.GetType());
+                    foreach (InternalFieldMap ifm in relatedMap.PrimaryKeys)
+                    {
+                        ret += " AND " + efm.AddOnName + "_" + ifm.FieldName + " " + ComparatorString + " ";
+                        type = ifm.FieldType;
+                        _objType = ifm.ObjectType;
+                        fieldLength = ifm.FieldLength;
+                        ret += builder.CreateParameterName("parameter_" + parCount.ToString());
+                        if (_objType == null)
+                            _objType = ((Org.Reddragonit.Dbpro.Structure.Table)FieldValue).GetField(relatedMap.GetClassFieldName(ifm)).GetType();
+                        if ((_objType != null) && _objType.IsEnum)
+                        {
+                            queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), conn.Pool.GetEnumID(_objType, ((Org.Reddragonit.Dbpro.Structure.Table)FieldValue).GetField(relatedMap.GetClassFieldName(ifm)).ToString())));
+                        }
+                        else
+                        {
+                            if (type.HasValue)
+                                queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), ((Org.Reddragonit.Dbpro.Structure.Table)FieldValue).GetField(relatedMap.GetClassFieldName(ifm)), type.Value, fieldLength));
+                            else
+                                queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + ((Org.Reddragonit.Dbpro.Structure.Table)FieldValue).GetField(relatedMap.GetClassFieldName(ifm))), FieldValue));
+                        }
+                        parCount++;
+                    }
+                    ret = ret.Substring(4);
+                }else
+                    throw new Exception("Unable to handler external fields without specifying class name.");
+            }
+            else
+            {
+                if (fnp.HasValue)
+                {
+                    InternalFieldMap ifm = (InternalFieldMap)map[fnp.Value];
+                    if (ifm == null)
+                    {
+
+                        TableMap m = ClassMapper.GetTableMap(map.ParentType);
+                        while (m[fnp.Value] == null)
+                        {
+                            if (m.ParentType != null)
+                                m = ClassMapper.GetTableMap(m.ParentType);
+                            else
+                                throw new Exception("Unable to Locate Parent Field.");
+                        }
+                        ifm = (InternalFieldMap)m[fnp.Value];
+                    }
+                    ret = fnp.Value.TableFieldName + " ";
+                    type = ifm.FieldType;
+                    _objType = ifm.ObjectType;
+                    fieldLength = ifm.FieldLength;
+                }
+                if (!found)
+                {
+                    ret = FieldName + " ";
+                }
+                if (SupportsList)
+                {
+                    ret += ComparatorString + " (";
+                    if (FieldValue.GetType().IsArray || (FieldValue is IEnumerable))
+                    {
+                        foreach (object obj in (IEnumerable)FieldValue)
+                        {
+                            if (_objType == null)
+                                _objType = obj.GetType();
+                            ret += builder.CreateParameterName("parameter_" + parCount.ToString()) + ",";
+                            if ((_objType != null) && _objType.IsEnum)
+                            {
+                                queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), conn.Pool.GetEnumID(_objType, obj.ToString())));
+                            }
+                            else
+                            {
+                                if (type.HasValue)
+                                    queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), obj, type.Value, fieldLength));
+                                else
+                                    queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), obj));
+                            }
+                            parCount++;
+                        }
+                        ret = ret.Substring(0, ret.Length - 1);
+                    }
+                    else
+                    {
+                        ret += builder.CreateParameterName("parameter_" + parCount.ToString());
+                        if (_objType == null)
+                            _objType = FieldValue.GetType();
+                        if ((_objType != null) && _objType.IsEnum)
+                        {
+                            queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), conn.Pool.GetEnumID(_objType, FieldValue.ToString())));
+                        }
+                        else
+                        {
+                            if (type.HasValue)
+                                queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), FieldValue, type.Value, fieldLength));
+                            else
+                                queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), FieldValue));
+                        }
+                        parCount++;
+                    }
+                    ret += ")";
+                }
+                else
+                {
+                    if (FieldValue == null)
+                    {
+                        ret += ComparatorString + builder.CreateParameterName("parameter_" + parCount.ToString());
+                        queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), FieldValue));
+                        parCount++;
+                    }
+                    else if (FieldValue.GetType().IsArray || (FieldValue is ICollection))
+                    {
+                        string tmp = ret;
+                        tmp += ComparatorString;
+                        ret += "( ";
+                        foreach (object obj in (IEnumerable)FieldValue)
+                        {
+                            if (_objType == null)
+                                _objType = obj.GetType();
+                            ret += tmp + builder.CreateParameterName("parameter_" + parCount.ToString()) + " AND ";
+                            if ((_objType != null) && _objType.IsEnum)
+                            {
+                                queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), conn.Pool.GetEnumID(_objType, obj.ToString())));
+                            }
+                            else
+                            {
+                                if (type.HasValue)
+                                    queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), obj, type.Value, fieldLength));
+                                else
+                                    queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), obj));
+                            }
+                            parCount++;
+                        }
+                        ret = ret.Substring(0, tmp.Length - 4);
+                        ret += " )";
+                    }
+                    else
+                    {
+                        ret += ComparatorString;
+                        ret += builder.CreateParameterName("parameter_" + parCount.ToString());
+                        if (_objType == null)
+                            _objType = FieldValue.GetType();
+                        if ((_objType != null) && _objType.IsEnum)
+                        {
+                            queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), conn.Pool.GetEnumID(_objType, FieldValue.ToString())));
+                        }
+                        else
+                        {
+                            if (type.HasValue)
+                                queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), FieldValue, type.Value, fieldLength));
+                            else
+                                queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), FieldValue));
+                        }
+                        parCount++;
+                    }
+                }
+            }
+            return ret;
+        }
 	}
 }

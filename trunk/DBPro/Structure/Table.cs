@@ -125,7 +125,7 @@ namespace Org.Reddragonit.Dbpro.Structure
 					if (!((ExternalFieldMap)map[fnp]).IsArray)
 					{
 						ExternalFieldMap efm = (ExternalFieldMap)map[fnp];
-						Table t = (Table)efm.Type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
+                        Table t = (Table)LazyProxy.Instance(efm.Type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
                         bool setValue = false;
 						foreach (InternalFieldMap ifm in ClassMapper.GetTableMap(t.GetType()).PrimaryKeys)
 						{
@@ -135,7 +135,7 @@ namespace Org.Reddragonit.Dbpro.Structure
                                 setValue = true;
 							}
 						}
-						t._loadStatus= LoadStatus.Partial;
+						t.LoadStatus= LoadStatus.Partial;
 						if (!t.AllFieldsNull&&setValue)
 						{
 							t.InitPrimaryKeys();
@@ -217,6 +217,8 @@ namespace Org.Reddragonit.Dbpro.Structure
 		
 		internal void SetField(string FieldName,object value)
 		{
+            if (FieldName == null)
+                return;
 			if (value==null)
 				value = ClassMapper.InitialValueForClassField(this.GetType(),FieldName);
 			PropertyInfo pi = this.GetType().GetProperty(FieldName);
@@ -266,6 +268,8 @@ namespace Org.Reddragonit.Dbpro.Structure
 		
 		internal bool IsFieldNull(string FieldName)
 		{
+            if (FieldName == null)
+                return true;
 			PropertyInfo pi = this.GetType().GetProperty(FieldName);
 			if (pi==null)
 			{
@@ -283,13 +287,14 @@ namespace Org.Reddragonit.Dbpro.Structure
 				}
 			}
 			object cur = pi.GetValue(this,new object[0]);
-			if ((
-                (pi.PropertyType.Equals(typeof(bool))||
-                (pi.PropertyType.Equals(typeof(int))&&(int)cur==0)||
-                (pi.PropertyType.Equals(typeof(long))&&(long)cur==0)
-                )
-                &&!ClassMapper.GetTableMap(this.GetType())[FieldName].Nullable))
-				return false;
+            if (ClassMapper.GetTableMap(this.GetType())[FieldName] != null)
+            {
+                if (((pi.PropertyType.Equals(typeof(bool))||pi.PropertyType.IsEnum)
+                    && !ClassMapper.GetTableMap(this.GetType())[FieldName].Nullable) ||
+                    (ClassMapper.GetTableMap(this.GetType())[FieldName].PrimaryKey && this.IsSaved)||
+                    !ClassMapper.GetTableMap(this.GetType())[FieldName].Nullable)
+                    return false;
+            }
 			return equalObjects(cur,ClassMapper.InitialValueForClassField(this.GetType(),FieldName));
 		}
 
@@ -417,8 +422,11 @@ namespace Org.Reddragonit.Dbpro.Structure
 			                                                         BindingFlags.Instance |    //Get instance members
 			                                                         BindingFlags.DeclaredOnly))
 			{
-				if (!this.IsFieldNull(pi.Name))
-					pi.SetValue(ret,pi.GetValue(this,new object[0]),new object[0]);
+                if (pi.CanWrite)
+                {
+                    if (!this.IsFieldNull(pi.Name))
+                        pi.SetValue(ret, pi.GetValue(this, new object[0]), new object[0]);
+                }
 			}
 			((Table)ret).InitPrimaryKeys();
 			return ret;

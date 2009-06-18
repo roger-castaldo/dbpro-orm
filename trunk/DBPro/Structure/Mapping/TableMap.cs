@@ -137,6 +137,18 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 						_fields.Add(t.GetClassFieldName(ifm.FieldName),new InternalFieldMap(ifm,true));
 				}
 			}
+            System.Diagnostics.Debug.WriteLine("Checking Primary Key Fields...");
+            foreach (FieldMap fm in _fields.Values)
+            {
+                if (fm.PrimaryKey)
+                {
+                    System.Diagnostics.Debug.Write("Located Primary Key Field (");
+                    if (fm is InternalFieldMap)
+                        System.Diagnostics.Debug.WriteLine(((InternalFieldMap)fm).FieldName + ")");
+                    else
+                        System.Diagnostics.Debug.WriteLine(((ExternalFieldMap)fm).AddOnName + " to " + ((ExternalFieldMap)fm).Type.ToString() + ")");
+                }
+            }
 			int autoGenCount=0;
 			System.Diagnostics.Debug.WriteLine("Checking Autogen Conditions");
 			foreach (InternalFieldMap  pkf in PrimaryKeys)
@@ -224,7 +236,8 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 				{
 					TableMap parentMap = ClassMapper.GetTableMap(ParentType);
 					ret.AddRange(parentMap.FieldNamePairs);
-					ret.AddRange(ParentFieldNamePairs);
+                    if (parentMap.ParentType!=null)
+					    ret.AddRange(ClassMapper.GetTableMap(parentMap.ParentType).ParentFieldNamePairs);
 				}
 				return ret;
 			}
@@ -379,6 +392,27 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 						ret.Add(new FieldNamePair(str, str));
 					}
 				}
+                if (this.ParentType != null)
+                {
+                    TableMap parentMap = ClassMapper.GetTableMap(this.ParentType);
+                    foreach (FieldNamePair fnp in parentMap.FieldNamePairs)
+                    {
+                        if (parentMap[fnp].PrimaryKey)
+                        {
+                            bool add = true;
+                            foreach (FieldNamePair f in ret)
+                            {
+                                if (f.ClassFieldName == fnp.ClassFieldName)
+                                {
+                                    add = false;
+                                    break;
+                                }
+                            }
+                            if (add)
+                                ret.Add(fnp);
+                        }
+                    }
+                }
 				return ret;
 			}
 		}
@@ -415,6 +449,8 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 					return fnp.ClassFieldName;
 				}
 			}
+            if (ParentType != null)
+                return ClassMapper.GetTableMap(ParentType).GetClassFieldName(TableFieldName);
 			return null;
 		}
 
@@ -427,12 +463,14 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 					return fnp.TableFieldName;
 				}
 			}
+            if (ParentType != null)
+                return ClassMapper.GetTableMap(ParentType).GetTableFieldName(ClassFieldName);
 			return null;
 		}
 
 		public string GetTableFieldName(FieldMap fm)
 		{
-			return GetTableFieldName(GetClassPropertyName(fm));
+           return GetTableFieldName(GetClassPropertyName(fm));
 		}
 
 		public string GetClassFieldName(FieldMap fm)
@@ -449,6 +487,8 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 					return str;
 				}
 			}
+            if (ParentType != null)
+                return ClassMapper.GetTableMap(ParentType).GetClassPropertyName(fi);
 			return null;
 		}
 		
@@ -510,6 +550,23 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 						ret.Add((InternalFieldMap)f);
 					}
 				}
+                if (this.ParentType != null)
+                {
+                    foreach (InternalFieldMap ifm in ClassMapper.GetTableMap(this.ParentType).PrimaryKeys)
+                    {
+                        bool add = true;
+                        foreach (InternalFieldMap f in ret)
+                        {
+                            if (f.FieldName == ifm.FieldName)
+                            {
+                                add = false;
+                                break;
+                            }
+                        }
+                        if (add)
+                            ret.Add(ifm);
+                    }
+                }
 				return ret;
 			}
 		}
