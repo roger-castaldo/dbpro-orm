@@ -493,7 +493,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 								{
                                     object val = null;
                                     if (relatedTableMap.GetClassFieldName(ifm) == null)
-                                        val = LocateFieldValue(relatedTable, relatedTableMap, ifm.FieldName);
+                                        val = LocateFieldValue(relatedTable, relatedTableMap, ifm.FieldName,_pool);
                                     else
                                         val = relatedTable.GetField(relatedTableMap.GetClassFieldName(ifm));
                                     string fieldName = relatedTableMap.GetTableFieldName(ifm);
@@ -570,7 +570,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 					conditions+=ifm.FieldName+" = "+pool.CorrectName(CreateParameterName(ifm.FieldName))+" AND ";
                     object val = null;
                     if (map.GetClassFieldName(ifm) == null)
-                        val = LocateFieldValue(table,map , ifm.FieldName);
+                        val = LocateFieldValue(table,map , ifm.FieldName,_pool);
                     else
                         val = table.GetField(map.GetClassFieldName(ifm));
 					parameters.Add(conn.CreateParameter(pool.CorrectName(CreateParameterName(ifm.FieldName)),val,ifm.FieldType,ifm.FieldLength));
@@ -636,7 +636,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 							}
                             object val = null;
                             if (relatedMap.GetClassFieldName(ifm) == null)
-                                val = LocateFieldValue(t, relatedMap, ifm.FieldName);
+                                val = LocateFieldValue(t, relatedMap, ifm.FieldName,_pool);
                             else
                                 val = t.GetField(relatedMap.GetClassFieldName(ifm));
 							pars.Add(conn.CreateParameter(CreateParameterName(relatedMap.Name+"_"+ifm.FieldName), val,ifm.FieldType,ifm.FieldLength));
@@ -654,7 +654,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			return ret;
 		}
 
-        private object LocateFieldValue(Table table, TableMap relatedMap,string fieldName)
+        internal static object LocateFieldValue(Table table, TableMap relatedMap,string fieldName,ConnectionPool pool)
         {
             foreach (Type t in relatedMap.ForeignTables)
             {
@@ -665,13 +665,13 @@ namespace Org.Reddragonit.Dbpro.Connections
                         TableMap etm = ClassMapper.GetTableMap(efm.ObjectType);
                         foreach (InternalFieldMap ifm in etm.Fields)
                         {
-                            if (_pool.CorrectName(efm.AddOnName + "_" + ifm.FieldName) == fieldName)
+                            if (pool.CorrectName(efm.AddOnName + "_" + ifm.FieldName) == fieldName)
                             {
                                 if (etm.GetClassFieldName(ifm) != null)
                                     return ((Table)table.GetField(relatedMap.GetClassFieldName(efm))).GetField(etm.GetClassFieldName(ifm));
                                 else
                                 {
-                                    object obj = LocateFieldValue((Table)table.GetField(relatedMap.GetClassFieldName(efm)), etm, ifm.FieldName);
+                                    object obj = LocateFieldValue((Table)table.GetField(relatedMap.GetClassFieldName(efm)), etm, ifm.FieldName,pool);
                                     if (obj != null)
                                         return obj;
                                 }

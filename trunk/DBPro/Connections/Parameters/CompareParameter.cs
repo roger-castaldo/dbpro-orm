@@ -133,7 +133,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                         }
                         efm = (ExternalFieldMap)m[fnp.Value];
                     }
-                    TableMap relatedMap = ClassMapper.GetTableMap(FieldValue.GetType());
+                    TableMap relatedMap = ClassMapper.GetTableMap(efm.Type);
                     foreach (InternalFieldMap ifm in relatedMap.PrimaryKeys)
                     {
                         ret += " AND " + efm.AddOnName + "_" + ifm.FieldName + " " + ComparatorString + " ";
@@ -149,10 +149,13 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                         }
                         else
                         {
+                            object val = ((Org.Reddragonit.Dbpro.Structure.Table)FieldValue).GetField(relatedMap.GetClassFieldName(ifm));
+                            if (val==null)
+                                val = QueryBuilder.LocateFieldValue((Org.Reddragonit.Dbpro.Structure.Table)FieldValue,relatedMap,ifm.FieldName,conn.Pool);
                             if (type.HasValue)
-                                queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), ((Org.Reddragonit.Dbpro.Structure.Table)FieldValue).GetField(relatedMap.GetClassFieldName(ifm)), type.Value, fieldLength));
+                                queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), val, type.Value, fieldLength));
                             else
-                                queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + ((Org.Reddragonit.Dbpro.Structure.Table)FieldValue).GetField(relatedMap.GetClassFieldName(ifm))), FieldValue));
+                                queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), val));
                         }
                         parCount++;
                     }

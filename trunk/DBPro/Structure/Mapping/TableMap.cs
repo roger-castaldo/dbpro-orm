@@ -454,6 +454,22 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			return null;
 		}
 
+        public string GetExternalClassFieldName(string TableFieldName)
+        {
+            foreach (ExternalFieldMap efm in ExternalFieldMaps)
+            {
+                TableMap extMap = ClassMapper.GetTableMap(efm.Type);
+                foreach (InternalFieldMap ifm in extMap.PrimaryKeys)
+                {
+                    if (efm.AddOnName + "_" + ifm.FieldName == TableFieldName)
+                    {
+                        return GetClassFieldName(efm);
+                    }
+                }
+            }
+            return null;
+        }
+
 		public string GetTableFieldName(string ClassFieldName)
 		{
 			foreach (FieldNamePair fnp in FieldNamePairs)
