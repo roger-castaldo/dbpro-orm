@@ -115,6 +115,38 @@ namespace Org.Reddragonit.Dbpro.Structure
 			RecurSetValues(map,conn);
 			_isSaved = true;
 		}
+
+        private void SetExternalValues(TableMap map, Connection conn, string additionalAddOnName, out bool setValue, ref Table table)
+        {
+            setValue = false;
+            foreach (InternalFieldMap ifm in map.PrimaryKeys)
+            {
+                if (conn.ContainsField(conn.Pool.CorrectName(additionalAddOnName + "_" + ifm.FieldName)) && !conn.IsDBNull(conn.GetOrdinal(conn.Pool.CorrectName(additionalAddOnName + "_" + ifm.FieldName))))
+                {
+                    table.SetField(map.GetClassFieldName(ifm.FieldName), conn[conn.Pool.CorrectName(additionalAddOnName + "_" + ifm.FieldName)]);
+                    setValue = true;
+                }
+            }
+            foreach (FieldNamePair fnp in map.FieldNamePairs)
+            {
+                if ((map[fnp] is ExternalFieldMap)&&map[fnp].PrimaryKey)
+                {
+                    if (!((ExternalFieldMap)map[fnp]).IsArray)
+                    {
+                        ExternalFieldMap efm = (ExternalFieldMap)map[fnp];
+                        Table t = (Table)LazyProxy.Instance(efm.Type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
+                        bool sValue = false;
+                        SetExternalValues(ClassMapper.GetTableMap(t.GetType()), conn, additionalAddOnName + "_" + efm.AddOnName, out sValue, ref t);
+                        if (!t.AllFieldsNull && sValue)
+                        {
+                            t.InitPrimaryKeys();
+                            table.SetField(fnp.ClassFieldName, t);
+                        }
+                    }
+                }
+            }
+            table.LoadStatus = LoadStatus.Partial;
+        }
 		
 		private void RecurSetValues(TableMap map,Connection conn)
 		{
@@ -127,15 +159,7 @@ namespace Org.Reddragonit.Dbpro.Structure
 						ExternalFieldMap efm = (ExternalFieldMap)map[fnp];
                         Table t = (Table)LazyProxy.Instance(efm.Type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
                         bool setValue = false;
-						foreach (InternalFieldMap ifm in ClassMapper.GetTableMap(t.GetType()).PrimaryKeys)
-						{
-							if (conn.ContainsField(conn.Pool.CorrectName(efm.AddOnName+"_"+ifm.FieldName))&&!conn.IsDBNull(conn.GetOrdinal(conn.Pool.CorrectName(efm.AddOnName+"_"+ifm.FieldName))))
-							{
-								t.SetField(map.GetClassFieldName(ifm.FieldName),conn[conn.Pool.CorrectName(efm.AddOnName+"_"+ifm.FieldName)]);
-                                setValue = true;
-							}
-						}
-						t.LoadStatus= LoadStatus.Partial;
+                        SetExternalValues(ClassMapper.GetTableMap(efm.Type), conn, efm.AddOnName, out setValue, ref t);
 						if (!t.AllFieldsNull&&setValue)
 						{
 							t.InitPrimaryKeys();

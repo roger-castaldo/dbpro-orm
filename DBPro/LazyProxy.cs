@@ -102,7 +102,12 @@ namespace Org.Reddragonit.Dbpro
                     {
                         List<SelectParameter> pars = new List<SelectParameter>();
                         foreach (InternalFieldMap ifm in _map.PrimaryKeys)
-                            pars.Add(new EqualParameter(_map.GetClassFieldName(ifm.FieldName), ((Table)owner).GetField(_map.GetClassFieldName(ifm.FieldName))));
+                        {
+                            if (_map.GetClassFieldName(ifm.FieldName) == null)
+                                pars.Add(new EqualParameter(_map.GetExternalClassFieldName(ifm.FieldName), ((Table)owner).GetField(_map.GetExternalClassFieldName(ifm.FieldName))));
+                            else
+                                pars.Add(new EqualParameter(_map.GetClassFieldName(ifm.FieldName), ((Table)owner).GetField(_map.GetClassFieldName(ifm.FieldName))));
+                        }
                         Connection conn = ConnectionPoolManager.GetConnection(_map.ConnectionName).getConnection();
                         Table tmp = conn.Select(owner.GetType(), pars)[0];
                         foreach (FieldNamePair fnp in _map.FieldNamePairs)
@@ -214,6 +219,7 @@ namespace Org.Reddragonit.Dbpro
                         }
                         catch (Exception ex)
                         {
+                            System.Diagnostics.Debug.WriteLine("Method Call: " + mc.MethodName);
                             System.Diagnostics.Debug.WriteLine(ex.Message);
                             System.Diagnostics.Debug.WriteLine(ex.Source);
                             System.Diagnostics.Debug.WriteLine(ex.StackTrace);
