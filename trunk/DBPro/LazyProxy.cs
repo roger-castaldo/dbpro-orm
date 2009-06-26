@@ -162,10 +162,13 @@ namespace Org.Reddragonit.Dbpro
 								for (int x=0;x<vals.Length;x++)
 								{
 									List<SelectParameter> pars = new List<SelectParameter>();
-									foreach (InternalFieldMap ifm in map.PrimaryKeys)
-									{
-										pars.Add(new EqualParameter(map.GetClassFieldName(ifm.FieldName),vals[x].GetField(map.GetClassFieldName(ifm.FieldName))));
-									}
+                                    foreach (InternalFieldMap ifm in map.PrimaryKeys)
+                                    {
+                                        if (map.GetClassFieldName(ifm.FieldName) == null)
+                                            pars.Add(new EqualParameter(map.GetExternalClassFieldName(ifm.FieldName), ((Table)vals[x]).GetField(map.GetExternalClassFieldName(ifm.FieldName))));
+                                        else
+                                            pars.Add(new EqualParameter(map.GetClassFieldName(ifm.FieldName), ((Table)vals[x]).GetField(map.GetClassFieldName(ifm.FieldName))));
+                                    }
 									vals[x]=conn.Select(efm.Type,pars)[0];
 								}
 								pi.SetValue(owner,vals,new object[0]);
@@ -177,10 +180,13 @@ namespace Org.Reddragonit.Dbpro
 								{
 									List<SelectParameter> pars = new List<SelectParameter>();
 									TableMap map = ClassMapper.GetTableMap(t.GetType());
-									foreach (InternalFieldMap ifm in map.PrimaryKeys)
-									{
-										pars.Add(new EqualParameter(map.GetClassFieldName(ifm.FieldName),t.GetField(map.GetClassFieldName(ifm.FieldName))));
-									}
+                                    foreach (InternalFieldMap ifm in map.PrimaryKeys)
+                                    {
+                                        if (map.GetClassFieldName(ifm.FieldName) == null)
+                                            pars.Add(new EqualParameter(map.GetExternalClassFieldName(ifm.FieldName), t.GetField(map.GetExternalClassFieldName(ifm.FieldName))));
+                                        else
+                                            pars.Add(new EqualParameter(map.GetClassFieldName(ifm.FieldName), t.GetField(map.GetClassFieldName(ifm.FieldName))));
+                                    }
 									Connection conn = ConnectionPoolManager.GetConnection(_map.ConnectionName).getConnection();
 									t = conn.Select(outVal.GetType(),pars)[0];
 									pi.SetValue(owner,t,new object[0]);

@@ -116,7 +116,7 @@ namespace Org.Reddragonit.Dbpro.Structure
 			_isSaved = true;
 		}
 
-        private void SetExternalValues(TableMap map, Connection conn, string additionalAddOnName, out bool setValue, ref Table table)
+        private Table SetExternalValues(TableMap map, Connection conn, string additionalAddOnName, out bool setValue,Table table)
         {
             setValue = false;
             foreach (InternalFieldMap ifm in map.PrimaryKeys)
@@ -136,7 +136,9 @@ namespace Org.Reddragonit.Dbpro.Structure
                         ExternalFieldMap efm = (ExternalFieldMap)map[fnp];
                         Table t = (Table)LazyProxy.Instance(efm.Type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
                         bool sValue = false;
-                        SetExternalValues(ClassMapper.GetTableMap(t.GetType()), conn, additionalAddOnName + "_" + efm.AddOnName, out sValue, ref t);
+                        t = SetExternalValues(ClassMapper.GetTableMap(t.GetType()), conn, additionalAddOnName + "_" + efm.AddOnName, out sValue,t);
+                        if (sValue)
+                            setValue = true;
                         if (!t.AllFieldsNull && sValue)
                         {
                             t.InitPrimaryKeys();
@@ -146,6 +148,7 @@ namespace Org.Reddragonit.Dbpro.Structure
                 }
             }
             table.LoadStatus = LoadStatus.Partial;
+            return table;
         }
 		
 		private void RecurSetValues(TableMap map,Connection conn)
@@ -159,7 +162,7 @@ namespace Org.Reddragonit.Dbpro.Structure
 						ExternalFieldMap efm = (ExternalFieldMap)map[fnp];
                         Table t = (Table)LazyProxy.Instance(efm.Type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
                         bool setValue = false;
-                        SetExternalValues(ClassMapper.GetTableMap(efm.Type), conn, efm.AddOnName, out setValue, ref t);
+                        t = SetExternalValues(ClassMapper.GetTableMap(efm.Type), conn, efm.AddOnName, out setValue,t);
 						if (!t.AllFieldsNull&&setValue)
 						{
 							t.InitPrimaryKeys();

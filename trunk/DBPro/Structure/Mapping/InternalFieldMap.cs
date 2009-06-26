@@ -40,7 +40,10 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 					_versionable=true;
 				}
 			}
-			if ((FieldType==FieldType.ENUM)&&(!info.PropertyType.IsEnum))
+            Type propertyType = info.PropertyType;
+            if (propertyType.IsGenericType && propertyType.GetGenericTypeDefinition() == typeof(Nullable<>))
+                propertyType = propertyType.GetGenericArguments()[0];
+            if ((FieldType == FieldType.ENUM) && (!propertyType.IsEnum))
 				throw new Exception("Unable to cast a field that is not of the type enum to use the ENUM field type.");
 		}
 		
