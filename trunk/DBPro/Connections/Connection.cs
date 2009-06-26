@@ -161,6 +161,17 @@ namespace Org.Reddragonit.Dbpro.Connections
 		{
 			comm.CommandType=type;
 		}
+
+        public void Delete(Table table)
+        {
+            if (!table.IsSaved)
+                throw new Exception("Unable to delete an object from the database that is not saved.");
+            if (table.ConnectionName != ConnectionName)
+                throw new Exception("Unable to delete an object from a database connection it is not part of.");
+            List<IDbDataParameter> pars;
+            string del = queryBuilder.Delete(table, out pars);
+            ExecuteNonQuery(del, pars);
+        }
 		
 		private Table Update(Table table)
 		{
