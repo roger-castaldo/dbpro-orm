@@ -76,6 +76,11 @@ namespace Org.Reddragonit.Dbpro.Connections
 			ret.Add(queryBuilder.DropTable(table));
 			return ret;
 		}
+
+        public string CreateParameterName(string parameter)
+        {
+            return queryBuilder.CreateParameterName(parameter);
+        }
 		
 		public Connection(ConnectionPool pool,string connectionString){
 			creationTime=System.DateTime.Now;
@@ -381,7 +386,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 					}
 					Close();
 					Array obj = Array.CreateInstance(f.Type , values.Count);
-					values.CopyTo(obj);
+                    for (int x = 0; x < values.Count; x++)
+                        ((object[])obj)[x] = values[x];
 					t.SetField(map.GetClassFieldName(f),obj);
 				}
 			}
@@ -408,7 +414,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 						}
 						Close();
 						Array obj = Array.CreateInstance(ifm.ObjectType,values.Count);
-						values.CopyTo(obj);
+                        for (int x = 0; x < values.Count; x++)
+                            ((object[])obj)[x] = values[x];
 						t.SetField(map.GetClassFieldName(ifm),obj);
 					}
 				}

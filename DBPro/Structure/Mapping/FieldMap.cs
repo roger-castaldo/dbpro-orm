@@ -29,6 +29,8 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 		{
 			_isArray = info.PropertyType.IsArray;
 			_objectType=info.PropertyType;
+            if (_objectType.IsGenericType && _objectType.GetGenericTypeDefinition() == typeof(Nullable<>))
+                _objectType = _objectType.GetGenericArguments()[0];
 			foreach (object obj in info.GetCustomAttributes(true))
 			{
 				if (obj is INullable)

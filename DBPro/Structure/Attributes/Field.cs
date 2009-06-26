@@ -153,6 +153,8 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 
 		private FieldType GetFieldType(Type propertyType)
 		{
+            if (propertyType.IsGenericType && propertyType.GetGenericTypeDefinition() == typeof(Nullable<>))
+                propertyType = propertyType.GetGenericArguments()[0];
 			switch (propertyType.Name.ToUpper())
 			{
 				case "INT64":
