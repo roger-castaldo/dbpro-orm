@@ -17,11 +17,19 @@ using Org.Reddragonit.Dbpro.Exceptions;
 using Org.Reddragonit.Dbpro.Structure;
 using Org.Reddragonit.Dbpro.Structure.Mapping;
 using FieldNamePair = Org.Reddragonit.Dbpro.Structure.Mapping.TableMap.FieldNamePair;
+using Org.Reddragonit.Dbpro.Validation;
 
 namespace Org.Reddragonit.Dbpro
 {
 	/// <summary>
-	/// Description of LazyProxy.
+	/// This class is designed to produce a virtual proxy around each instance of a table.
+    /// The proxy's purpose is to wrap lazy calls into the system to allow partial loading where 
+    /// necessary such as with externally related tables.  It does this by loading the minimum
+    /// amount of data, primary keys, into the table class and marking it as paritally loaded.
+    /// When a call is made to finish the loading, the proxy here detects that a call
+    /// was made to the item itself and executes the code to load the particiular table
+    /// completely.  There is a tag called CompleteLazyLoadPriorToCall that 
+    /// forces the loading to be completed when the attributed funcion is called.
 	/// </summary>
 	internal class LazyProxy : RealProxy, IDisposable
 	{
@@ -50,6 +58,9 @@ namespace Org.Reddragonit.Dbpro
 			return new LazyProxy(obj).GetTransparentProxy();
 		}
 		
+        //this function is called to convert the called method into a propertyinfo
+        //object if it is in fact a property, otherwise it returns a null.  It also
+        //inidicates if the function is a get or a set call.
 		protected static PropertyInfo GetMethodProperty(MethodInfo methodInfo, object owner, out bool IsGet)
 		{
 			foreach(PropertyInfo aProp in owner.GetType().GetProperties(BindingFlags.Public |      //Get public members
@@ -76,16 +87,37 @@ namespace Org.Reddragonit.Dbpro
 			return null;
 		}
 		
+        //called to override the hashcode and get it from the underlying object
 		public override int GetHashCode()
 		{
 			return GetUnwrappedServer().GetHashCode();
 		}
 		
+        //called to override the tostring and get it from the underlying object.
 		public override string ToString()
 		{
 			return GetUnwrappedServer().ToString();
 		}
 		
+        /*
+         * This is the main function in the lazy proxy.  Any time a method or property is called
+         * within a proxied class this will get called.  The first stage is to check for the 
+         * CompleteLazyLoadPriorToCall attribute, if it is there and
+         * the load status is only partial and that we are not calling functions to set field
+         * values, ie already loading, then establish a select using the 
+         * primary keys as parameters to the query, execute it and 
+         * load the values into the current table object.  Following this we then check to
+         * see if the object is null, if it is simply call the function and return the results.
+         * If its not null then attempt to pull the property info, if it is a property and it
+         * is a get call, then checks are performed for the object being a lazy loaded object,
+         * or the table being lazy loaded and the call not being for a primary key,
+         * or it being an array of lazy loaded object, in all cases, complete their
+         * loading and set the value of the object, then return the value.  If it is a set call
+         * then we need to log if the field has now become set to a null value, or
+         * if it has changed at all, in either case mark it for use when update is called
+         * on the object.
+         * 
+         */
 		public override IMessage Invoke(System.Runtime.Remoting.Messaging.IMessage msg)
 		{
 			MethodCallMessageWrapper mc = new MethodCallMessageWrapper((IMethodCallMessage)msg);
@@ -209,6 +241,15 @@ namespace Org.Reddragonit.Dbpro
 									_changedFields.Add(pi.Name);
 							}
 						}
+                        foreach (object obj in pi.GetCustomAttributes(true))
+                        {
+                            if (obj is ValidationAttribute)
+                            {
+                                ValidationAttribute va = (ValidationAttribute)obj;
+                                if (!va.IsValidValue(mc.Args[0]))
+                                    va.FailValidation(owner.GetType().ToString(), pi.Name);
+                            }
+                        }
 						outVal = mi.Invoke(owner, mc.Args);
 					}
 				}else
