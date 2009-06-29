@@ -25,5 +25,9 @@ namespace Org.Reddragonit.Dbpro.Validation
             return r.IsMatch(value.ToString());
         }
 
+        public override string ValidationNotes
+        {
+            get { return "Matching Regex " + RegularExpression; }
+        }
     }
 }

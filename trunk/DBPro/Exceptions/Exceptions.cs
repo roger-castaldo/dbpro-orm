@@ -16,4 +16,10 @@ namespace Org.Reddragonit.Dbpro.Exceptions
 		{
 		}
 	}
+
+    public class ValidationException : Exception
+    {
+        public ValidationException(string clazz,string field,string validationNotes) :
+            base("Unable to set the Field: "+field+" in Class: "+clazz+" because it failed validation ("+validationNotes+")"){}
+    }
 }

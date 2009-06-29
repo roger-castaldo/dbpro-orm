@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Org.Reddragonit.Dbpro.Exceptions;
 
 namespace Org.Reddragonit.Dbpro.Validation
 {
@@ -40,6 +41,25 @@ namespace Org.Reddragonit.Dbpro.Validation
             _errorMessage = errorMessage;
         }
 
+        public void FailValidation(string clazz,string field)
+        {
+            string msg=ErrorMessage;
+            if (msg == null)
+                msg = "Validation of type "+this.GetType().ToString()+" failed validation("+ValidationNotes+") for Class: "+clazz+" on Field: "+field;
+            if (WriteToConsole)
+                Console.WriteLine(msg);
+            if (WriteToDebug)
+                System.Diagnostics.Debug.WriteLine(msg);
+            if (ThrowExceptionOnError)
+            {
+                if (ErrorMessage == null)
+                    throw new ValidationException(clazz, field, ValidationNotes);
+                else
+                    throw new Exception(msg);
+            }
+        }
+
         public abstract bool IsValidValue(object value);
+        public abstract string ValidationNotes { get; }
     }
 }

@@ -13,5 +13,10 @@ namespace Org.Reddragonit.Dbpro.Validation
         public sealed override bool IsValidValue(object value){
             return (value != null) && (value.ToString().Length > 0);
         }
+
+        public override string ValidationNotes
+        {
+            get {return "Not Null"; }
+        }
     }
 }
