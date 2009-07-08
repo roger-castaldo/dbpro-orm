@@ -140,6 +140,10 @@
     <Compile Include="Validation\RegexValidation.cs" />
     <Compile Include="Validation\ValidationAttribute.cs" />
     <EmbeddedResource Include="Connections\MsSql\IdentitySP.sql" />
+    <EmbeddedResource Include="Connections\Firebird\CALCULATE_HASH.sql" />
+    <EmbeddedResource Include="Connections\Firebird\CONVERT_BIGINT_CHARSTRING.sql" />
+    <EmbeddedResource Include="Connections\Firebird\GENERATE_UNIQUE_ID.sql" />
+    <EmbeddedResource Include="Connections\Firebird\RAND.sql" />
     <None Include="DbPro.xml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

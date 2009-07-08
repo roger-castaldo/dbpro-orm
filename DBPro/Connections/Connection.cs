@@ -465,6 +465,26 @@ namespace Org.Reddragonit.Dbpro.Connections
 			else
 				return Select(type,parameters.ToArray());
 		}
+
+        public object SelectMax(string fieldName, System.Type type, List<SelectParameter> parameters)
+        {
+            if (parameters == null)
+                return SelectMax(fieldName,type, new SelectParameter[0]);
+            else
+                return SelectMax(fieldName, type, parameters.ToArray());
+        }
+
+        public object SelectMax(string fieldName, System.Type type, SelectParameter[] parameters)
+        {
+            object ret = null;
+            List<IDbDataParameter> pars = new List<IDbDataParameter>();
+            string query = queryBuilder.SelectMax(type, fieldName, parameters, out pars);
+            ExecuteQuery(query, pars);
+            if (this.Read())
+                ret = this[0];
+            Close();
+            return ret;
+        }
 		
 		public List<Table> Select(System.Type type,SelectParameter[] parameters)
 		{

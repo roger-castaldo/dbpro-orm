@@ -9,6 +9,7 @@
 
 using System;
 using Org.Reddragonit.Dbpro.Connections;
+using System.IO;
 
 namespace Org.Reddragonit.Dbpro.Connections.Firebird
 {
@@ -76,6 +77,57 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		{
 			return new FBConnection(this,connectionString);
 		}
+
+        protected override void PreInit()
+        {
+            Connection c = CreateConnection();
+            bool exists = false;
+            string query = new StreamReader(this.GetType().Assembly.GetManifestResourceStream("Org.Reddragonit.Dbpro.Connections.Firebird.RAND.sql")).ReadToEnd();
+            c.ExecuteQuery("SELECT RDB$PROCEDURE_NAME FROM RDB$PROCEDURES WHERE RDB$PROCEDURE_NAME = 'RAND'");
+            if (c.Read())
+            {
+                if (c[0].ToString() != null)
+                    exists = true;
+            }
+            c.Close();
+            if (!exists)
+                c.ExecuteNonQuery(query);
+            c.Commit();
+            query = new StreamReader(this.GetType().Assembly.GetManifestResourceStream("Org.Reddragonit.Dbpro.Connections.Firebird.CALCULATE_HASH.sql")).ReadToEnd();
+            c.ExecuteQuery("SELECT RDB$PROCEDURE_NAME FROM RDB$PROCEDURES WHERE RDB$PROCEDURE_NAME = 'CALCULATE_HASH'");
+            if (c.Read())
+            {
+                if (c[0].ToString() != null)
+                    exists = true;
+            }
+            c.Close();
+            if (!exists)
+                c.ExecuteNonQuery(query);
+            c.Commit();
+            query = new StreamReader(this.GetType().Assembly.GetManifestResourceStream("Org.Reddragonit.Dbpro.Connections.Firebird.CONVERT_BIGINT_CHARSTRING.sql")).ReadToEnd();
+            c.ExecuteQuery("SELECT RDB$PROCEDURE_NAME FROM RDB$PROCEDURES WHERE RDB$PROCEDURE_NAME = 'CONVERT_BIGINT_CHARSTRING'");
+            if (c.Read())
+            {
+                if (c[0].ToString() != null)
+                    exists = true;
+            }
+            c.Close();
+            if (!exists)
+                c.ExecuteNonQuery(query);
+            c.Commit();
+            query = new StreamReader(this.GetType().Assembly.GetManifestResourceStream("Org.Reddragonit.Dbpro.Connections.Firebird.GENERATE_UNIQUE_ID.sql")).ReadToEnd();
+            c.ExecuteQuery("SELECT RDB$PROCEDURE_NAME FROM RDB$PROCEDURES WHERE RDB$PROCEDURE_NAME = 'CONVERT_BIGINT_CHARSTRING'");
+            if (c.Read())
+            {
+                if (c[0].ToString() != null)
+                    exists = true;
+            }
+            c.Close();
+            if (!exists)
+                c.ExecuteNonQuery(query);
+            c.Commit();
+            c.CloseConnection();
+        }
 		
 	}
 }

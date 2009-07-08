@@ -5,6 +5,9 @@ using System.Text.RegularExpressions;
 
 namespace Org.Reddragonit.Dbpro.Validation
 {
+    /*
+     *This attribute is to tag a regular expression validation to a property. 
+     */
     public class RegexValidation : ValidationAttribute
     {
 

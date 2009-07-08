@@ -5,6 +5,14 @@ using Org.Reddragonit.Dbpro.Exceptions;
 
 namespace Org.Reddragonit.Dbpro.Validation
 {
+    /*
+     * This is an abstract class used to do some simple backended validation
+     * for properties that are being set through the lazy proxy.  Each settings defines 
+     * what happens on failure.  It will output the error message, if set, or generate a generic 
+     * message to the console, debug and throw an error depending on which are flagged for the
+     * operation.  Validation Notes are used to generate the generic message to handle
+     * when no error message is set.
+     */
     [AttributeUsage(AttributeTargets.Property)]
     public abstract class ValidationAttribute : Attribute 
     {
@@ -41,6 +49,8 @@ namespace Org.Reddragonit.Dbpro.Validation
             _errorMessage = errorMessage;
         }
 
+        //called by the lazy proxy when the validation fails
+        //in order to output the appropraite errors according to its settings.
         public void FailValidation(string clazz,string field)
         {
             string msg=ErrorMessage;
@@ -59,7 +69,9 @@ namespace Org.Reddragonit.Dbpro.Validation
             }
         }
 
+        //called to validate that the value attempting to be set is a valid value.
         public abstract bool IsValidValue(object value);
+        //called to obtain the generic validation message for the current instance.
         public abstract string ValidationNotes { get; }
     }
 }
