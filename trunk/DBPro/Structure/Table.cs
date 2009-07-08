@@ -9,6 +9,9 @@ using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.FieldType;
 
 namespace Org.Reddragonit.Dbpro.Structure
 {
+    /*
+     * Houses the different loaded states a table can be in for the Lazy proxy to handle special calls.
+     */
 	internal enum LoadStatus{
 		Complete,
 		Partial,
@@ -17,8 +20,11 @@ namespace Org.Reddragonit.Dbpro.Structure
 	
 	public abstract class Table : MarshalByRefObject,IConvertible
 	{
+        //Whether or not the table has been saved in the database.
 		internal bool _isSaved = false;
+        //Houses the current load state for the table object.
 		private LoadStatus _loadStatus=LoadStatus.NotLoaded;
+        //Houses the initial values for the primary keys prior to editing them.
 		private Dictionary<string, object> _initialPrimaryKeys = new Dictionary<string, object>();
 
 		protected Table()
@@ -26,6 +32,7 @@ namespace Org.Reddragonit.Dbpro.Structure
 			InitPrimaryKeys();
 		}
 		
+        //Creates a new instance of a table object wrapping it in the proxy class.
 		protected static Table Instance(Type type)
 		{
 			if (!type.IsSubclassOf(typeof(Table)))
@@ -33,6 +40,7 @@ namespace Org.Reddragonit.Dbpro.Structure
 			return (Table)LazyProxy.Instance(type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
 		}
 		
+        //access the load status of the current table object.
 		internal LoadStatus LoadStatus{
 			get{return _loadStatus;}
 			set{_loadStatus=value;
@@ -41,10 +49,14 @@ namespace Org.Reddragonit.Dbpro.Structure
 			}
 		}
 		
+        /*virtual function doesn't do anything, calls are caught by the proxy to 
+         * to return the changed fields according to the proxy.
+        */
 		internal List<string> ChangedFields{
 			get{return null;}
 		}
 		
+        //Load the initial primary keys into the table object for later comparison.
 		private void InitPrimaryKeys()
 		{
 			_initialPrimaryKeys.Clear();
@@ -58,6 +70,7 @@ namespace Org.Reddragonit.Dbpro.Structure
 			}
 		}
 		
+        //called to get the initial value of a primary key field
 		internal object GetInitialPrimaryValue(string ClassFieldName)
 		{
 			if ((_initialPrimaryKeys!=null)&&(_initialPrimaryKeys.ContainsKey(ClassFieldName)))
@@ -65,6 +78,7 @@ namespace Org.Reddragonit.Dbpro.Structure
 			return null;
 		}
 		
+        //called to copy values from an existing table object, this is done for table inheritance
 		internal void CopyValuesFrom(Table table)
 		{
 			foreach (PropertyInfo pi in table.GetType().GetProperties(BindingFlags.Public |      //Get public members
@@ -83,6 +97,7 @@ namespace Org.Reddragonit.Dbpro.Structure
 			InitPrimaryKeys();
 		}
 		
+        //returns the connection name that this table is linked to
 		internal string ConnectionName
 		{
 			get{
@@ -100,6 +115,7 @@ namespace Org.Reddragonit.Dbpro.Structure
 			}
 		}
 
+        //returns if the table object has been saved in the database.
 		internal bool IsSaved
 		{
 			get
@@ -108,6 +124,7 @@ namespace Org.Reddragonit.Dbpro.Structure
 			}
 		}
 
+        //called by a connection to set the values in the table object from the generated query.
 		internal void SetValues(Connection conn)
 		{
 			_initialPrimaryKeys.Clear();
@@ -116,6 +133,8 @@ namespace Org.Reddragonit.Dbpro.Structure
 			_isSaved = true;
 		}
 
+        //called to set values onto a table that is externally mapped to this current table
+        //this is used through lazy loading proxies by only setting the primary key fields.
         private Table SetExternalValues(TableMap map, Connection conn, string additionalAddOnName, out bool setValue,Table table)
         {
             setValue = false;
@@ -151,6 +170,7 @@ namespace Org.Reddragonit.Dbpro.Structure
             return table;
         }
 		
+        //recursively sets values 
 		private void RecurSetValues(TableMap map,Connection conn)
 		{
 			foreach (FieldNamePair fnp in map.FieldNamePairs)

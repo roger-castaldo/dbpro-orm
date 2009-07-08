@@ -10,6 +10,7 @@ using System;
 
 namespace Org.Reddragonit.Dbpro.Exceptions
 {
+    //Exception thrown when an attempt to alter the primary key of a saved table is made.
 	public class AlterPrimaryKeyException : Exception 
 	{
 		public AlterPrimaryKeyException(string clazz, string field) : base("Unable to change the primary key value of a saved object.  Class: "+clazz+", Field: "+field)
@@ -17,6 +18,7 @@ namespace Org.Reddragonit.Dbpro.Exceptions
 		}
 	}
 
+    //Generic exception to be thrown for a validation failure.
     public class ValidationException : Exception
     {
         public ValidationException(string clazz,string field,string validationNotes) :

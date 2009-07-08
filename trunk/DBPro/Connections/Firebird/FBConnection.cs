@@ -106,8 +106,24 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 					code+="END";
 					triggers.Add(new Trigger(pool.CorrectName(map.TableName+"_"+field.FieldName+"_GEN"),"FOR "+map.TableName+" ACTIVE BEFORE INSERT POSITION 0",code));
 				}
-			}else
-				throw new Exception("Unable to create autogenerator for non date or digit type.");
+            }else if (field.Type.ToUpper().Contains("VARCHAR"))
+            {
+                string code = "AS \n";
+                code += "DECLARE VARIABLE IDVAL VARCHAR(36);\n"+
+                    "DECLARE VARIABLE CNT INT;\n";
+                code += "BEGIN \n";
+                code += "CNT=1;\n";
+                code += "WHILE (CNT>0) BEGIN\n";
+                code += "EXECUTE PROCEDURE GENERATE_UNIQUE_ID returning_values IDVAL;";
+                code += "SELECT COUNT(*) FROM " + map.TableName + " WHERE ";
+                code += field.FieldName+" = :IDVAL INTO :CNT;\n";
+                code += "END\n";
+                code += "NEW." + field.FieldName + " = IDVAL;\n";
+                code += "END";
+                triggers.Add(new Trigger(pool.CorrectName(map.TableName + "_" + field.FieldName + "_GEN"), "FOR " + map.TableName + " ACTIVE BEFORE INSERT POSITION 0", code));
+            }
+            else
+                throw new Exception("Unable to create autogenerator for non date or digit type.");
 		}
 
 		internal override void GetDropAutogenStrings(ExtractedTableMap map,ConnectionPool pool, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers)

@@ -4,6 +4,9 @@ using System.Text;
 
 namespace Org.Reddragonit.Dbpro.Validation
 {
+    /*
+     * This attribute is to define the property as being not nullable.
+     */
     public class NotNullValidation : ValidationAttribute 
     {
         public NotNullValidation(string ErrorMessage, bool ThrowOnError, bool WriteToConsole, bool WriteToDebug)
