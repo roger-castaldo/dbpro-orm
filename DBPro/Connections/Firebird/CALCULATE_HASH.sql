@@ -1,5 +1,4 @@
-﻿SET TERM ^ ;
-CREATE PROCEDURE CALCULATE_HASH (
+﻿CREATE PROCEDURE CALCULATE_HASH (
     STRINGTOHASH Varchar(4000) )
 RETURNS (
     RET Bigint )
@@ -31,6 +30,4 @@ BEGIN
     lastChar=curChar;
     counter = counter+1;
   END
-END^
-SET TERM ; ^
-
+END
