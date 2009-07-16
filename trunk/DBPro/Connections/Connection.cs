@@ -483,6 +483,8 @@ namespace Org.Reddragonit.Dbpro.Connections
             if (this.Read())
                 ret = this[0];
             Close();
+            if (ret is DBNull)
+            	ret=null;
             return ret;
         }
 		

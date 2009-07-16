@@ -894,7 +894,10 @@ namespace Org.Reddragonit.Dbpro.Connections
 			queryParameters = new List<IDbDataParameter>();
 			if (ObtainFieldTableWhereList(out fields,out tables, out joins,out where, type))
 			{
-				fields = maxField;
+				if (map.GetTableFieldName(maxField)!=null)
+					fields=map.GetTableFieldName(maxField);
+				else
+					fields = maxField;
 				if ((parameters!=null)&&(parameters.Length>0))
 				{
 					startAnd=(where.Length>0);
@@ -902,7 +905,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 					int parCount=0;
 					foreach (SelectParameter par in parameters)
 					{
-						appended="("+par.ConstructString(map,conn,this,ref queryParameters,ref parCount)+") AND ";
+						appended+="("+par.ConstructString(map,conn,this,ref queryParameters,ref parCount)+") AND ";
 					}
 					appended=appended.Substring(0,appended.Length-4);
 					if (!startAnd)

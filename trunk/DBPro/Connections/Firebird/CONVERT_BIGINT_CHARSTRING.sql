@@ -1,5 +1,4 @@
-﻿SET TERM ^ ;
-CREATE PROCEDURE CONVERT_BIGINT_CHARSTRING (
+﻿CREATE PROCEDURE CONVERT_BIGINT_CHARSTRING (
     INTVAL Bigint )
 RETURNS (
     RET Varchar(50) )
@@ -34,5 +33,4 @@ BEGIN
     ret = ret || ASCII_CHAR(numVal);
     counter = counter+1;
   END
-END^
-SET TERM ; ^
+END
