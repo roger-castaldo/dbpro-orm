@@ -237,6 +237,7 @@ namespace Org.Reddragonit.Dbpro.Structure
 
         internal PropertyInfo LocatePropertyInfo(string FieldName)
         {
+            TableMap map = ClassMapper.GetTableMap(this.GetType());
             PropertyInfo ret = this.GetType().GetProperty(FieldName);
             if (ret == null)
             {
@@ -255,7 +256,6 @@ namespace Org.Reddragonit.Dbpro.Structure
             }
             if (ret == null)
             {
-                TableMap map = ClassMapper.GetTableMap(this.GetType());
                 if (map.ParentType != null)
                 {
                     while (map.ParentType != null)
@@ -278,17 +278,58 @@ namespace Org.Reddragonit.Dbpro.Structure
                     }
                 }
             }
+            if (ret == null)
+            {
+                map = ClassMapper.GetTableMap(this.GetType());
+                if (map.GetClassFieldName(FieldName) != null)
+                {
+                    ret = LocatePropertyInfo(map.GetClassFieldName(FieldName));
+                }
+            }
+            return ret;
+        }
+
+        internal object GetField(string FieldName, bool searchExternal)
+        {
+            object ret = GetField(FieldName);
+            if ((ret == null)&&(searchExternal))
+            {
+                TableMap map = ClassMapper.GetTableMap(this.GetType());
+                foreach (FieldNamePair fnp in map.FieldNamePairs)
+                {
+                    if (map[fnp] is ExternalFieldMap)
+                    {
+                        ExternalFieldMap efm = (ExternalFieldMap)map[fnp];
+                        TableMap extMap = ClassMapper.GetTableMap(efm.Type);
+                        foreach (InternalFieldMap ifm in extMap.PrimaryKeys)
+                        {
+                            if (efm.AddOnName + "_" + ifm.FieldName == FieldName)
+                            {
+                                Table obj = (Table)GetField(fnp.ClassFieldName);
+                                if (obj != null)
+                                    ret = obj.GetField(FieldName.Substring(efm.AddOnName.Length+1), true);
+                                if (ret != null)
+                                    break;
+                            }
+                        }
+                    }
+                }
+            }
             return ret;
         }
 		
 		internal object GetField(string FieldName)
 		{
+            if (FieldName == null)
+                return null;
+            PropertyInfo pi = LocatePropertyInfo(FieldName);
+            if (pi == null)
+                return null;
 			if (IsFieldNull(FieldName))
 			{
 				return null;
 			}else
 			{
-                PropertyInfo pi = LocatePropertyInfo(FieldName);
 				return pi.GetValue(this,new object[0]);
 			}
 		}

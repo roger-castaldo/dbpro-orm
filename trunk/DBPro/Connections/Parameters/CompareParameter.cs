@@ -141,15 +141,20 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                         _objType = ifm.ObjectType;
                         fieldLength = ifm.FieldLength;
                         ret += builder.CreateParameterName("parameter_" + parCount.ToString());
+                        string className = ifm.FieldName;
+                        if (relatedMap.GetClassFieldName(ifm.FieldName)!=null)
+                            className=ifm.FieldName;
                         if (_objType == null)
-                            _objType = ((Org.Reddragonit.Dbpro.Structure.Table)FieldValue).GetField(relatedMap.GetClassFieldName(ifm)).GetType();
+                        {
+                            _objType = ((Org.Reddragonit.Dbpro.Structure.Table)FieldValue).GetField(className,true).GetType();
+                        }
                         if ((_objType != null) && _objType.IsEnum)
                         {
-                            queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), conn.Pool.GetEnumID(_objType, ((Org.Reddragonit.Dbpro.Structure.Table)FieldValue).GetField(relatedMap.GetClassFieldName(ifm)).ToString())));
+                            queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), conn.Pool.GetEnumID(_objType, ((Org.Reddragonit.Dbpro.Structure.Table)FieldValue).GetField(className,true).ToString())));
                         }
                         else
                         {
-                            object val = ((Org.Reddragonit.Dbpro.Structure.Table)FieldValue).GetField(relatedMap.GetClassFieldName(ifm));
+                            object val = ((Org.Reddragonit.Dbpro.Structure.Table)FieldValue).GetField(className,true);
                             if (val==null)
                                 val = QueryBuilder.LocateFieldValue((Org.Reddragonit.Dbpro.Structure.Table)FieldValue,relatedMap,ifm.FieldName,conn.Pool);
                             if (type.HasValue)
