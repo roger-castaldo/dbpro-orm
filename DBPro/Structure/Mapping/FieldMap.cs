@@ -27,7 +27,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 		
 		public FieldMap(PropertyInfo info)
 		{
-			_isArray = info.PropertyType.IsArray;
+			_isArray = info.PropertyType.IsArray&&!info.PropertyType.ToString().ToUpper().Contains("BYTE");
 			_objectType=info.PropertyType;
             if (_objectType.IsGenericType && _objectType.GetGenericTypeDefinition() == typeof(Nullable<>))
                 _objectType = _objectType.GetGenericArguments()[0];

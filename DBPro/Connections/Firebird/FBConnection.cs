@@ -88,7 +88,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 					string queryFields="";
 					foreach (ExtractedFieldMap efm in map.PrimaryKeys)
 					{
-						declares+="DECLARE VARIABLE "+efm.FieldName+" "+efm.Type+";\n";
+						declares+="DECLARE VARIABLE "+efm.FieldName+" "+efm.FullFieldType+";\n";
 						if (!efm.AutoGen)
 						{
 							sets+=efm.FieldName+" = new."+efm.FieldName+";\n";
@@ -109,12 +109,13 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
             }else if (field.Type.ToUpper().Contains("VARCHAR"))
             {
                 string code = "AS \n";
-                code += "DECLARE VARIABLE IDVAL VARCHAR(36);\n"+
-                    "DECLARE VARIABLE CNT INT;\n";
+                code += "DECLARE VARIABLE IDVAL VARCHAR(38);\n"+
+                    "DECLARE VARIABLE CNT BIGINT;\n";
                 code += "BEGIN \n";
                 code += "CNT=1;\n";
-                code += "WHILE (CNT>0) BEGIN\n";
-                code += "EXECUTE PROCEDURE GENERATE_UNIQUE_ID returning_values IDVAL;";
+                code += "WHILE (CNT>0) DO\n";
+                code += "BEGIN\n";
+                code += "EXECUTE PROCEDURE GENERATE_UNIQUE_ID returning_values IDVAL;\n";
                 code += "SELECT COUNT(*) FROM " + map.TableName + " WHERE ";
                 code += field.FieldName+" = :IDVAL INTO :CNT;\n";
                 code += "END\n";

@@ -66,23 +66,8 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			{
 				if (!constructed.ContainsKey(type))
 					constructed.Add(type,type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
-				PropertyInfo pi = type.GetProperty(ClassFieldName);
-				if (pi==null)
-				{
-					foreach (PropertyInfo p in type.GetProperties(BindingFlags.Public |      //Get public members
-					                                                        BindingFlags.NonPublic |   //Get private/protected/internal members
-					                                                        BindingFlags.Static |      //Get static members
-					                                                        BindingFlags.Instance |    //Get instance members
-					                                                        BindingFlags.DeclaredOnly  ))
-					{
-						if (p.Name==ClassFieldName)
-						{
-							pi=p;
-							break;
-						}
-					}
-				}
-				ret = pi.GetValue(constructed[type],new object[0]);
+                PropertyInfo pi = ((Table)constructed[type]).LocatePropertyInfo(ClassFieldName);
+                ret = pi.GetValue(constructed[type], new object[0]);
 			}
 			mut.ReleaseMutex();
 			return ret;
