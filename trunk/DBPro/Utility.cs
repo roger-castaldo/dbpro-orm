@@ -114,7 +114,7 @@ namespace Org.Reddragonit.Dbpro
 				bool process=true;
 				foreach (string str in ignores)
 				{
-					if (str.Equals(list[x]))
+                    if (StringsEqualIgnoreWhitespace(list[x],str))
 					{
 						process=false;
 						break;
@@ -124,7 +124,7 @@ namespace Org.Reddragonit.Dbpro
 				{
 					for (int y=x+1;y<list.Count;y++)
 					{
-						if (list[x].Equals(list[y]))
+                        if (StringsEqualIgnoreWhitespace(list[y],list[x]))
 						{
 							list.RemoveAt(y);
 							y--;

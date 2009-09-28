@@ -139,6 +139,9 @@
     <Compile Include="Validation\NotNullValidation.cs" />
     <Compile Include="Validation\RegexValidation.cs" />
     <Compile Include="Validation\ValidationAttribute.cs" />
+    <Compile Include="Virtual\Attributes\VirtualField.cs" />
+    <Compile Include="Virtual\Attributes\VirtualTableAttribute.cs" />
+    <Compile Include="Virtual\VirtualTableConnection.cs" />
     <EmbeddedResource Include="Connections\MsSql\IdentitySP.sql" />
     <EmbeddedResource Include="Connections\Firebird\CALCULATE_HASH.sql" />
     <EmbeddedResource Include="Connections\Firebird\CONVERT_BIGINT_CHARSTRING.sql" />

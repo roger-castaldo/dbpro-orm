@@ -375,14 +375,14 @@ namespace Org.Reddragonit.Dbpro.Connections
 					string fields = "";
 					foreach (InternalFieldMap ifm in external.PrimaryKeys)
 					{
-						fields+=pool.CorrectName(external.Name+"_"+ifm.FieldName)+" AS "+ifm.FieldName+", ";
+						fields+=pool.CorrectName("child_"+ifm.FieldName)+" AS "+ifm.FieldName+", ";
 					}
 					fields = fields.Substring(0,fields.Length-2);
 					string conditions= "";
 					foreach (InternalFieldMap ifm in map.PrimaryKeys)
 					{
-						conditions += map.Name + "_" + external.Name + "." + Pool.CorrectName(map.Name+"_"+ifm.FieldName) + " = " + queryBuilder.CreateParameterName(map.Name+"_"+ifm.FieldName) + " AND ";
-						pars.Add(CreateParameter(queryBuilder.CreateParameterName(map.Name+"_"+ifm.FieldName), t.GetField(map.GetClassFieldName(ifm))));
+                        conditions += map.Name + "_" + external.Name + "." + Pool.CorrectName("parent_" + ifm.FieldName) + " = " + queryBuilder.CreateParameterName("parent_" + ifm.FieldName) + " AND ";
+                        pars.Add(CreateParameter(queryBuilder.CreateParameterName("parent_" + ifm.FieldName), t.GetField(map.GetClassFieldName(ifm))));
 					}
 					conditions=conditions.Substring(0,conditions.Length-4);
 					query = string.Format(queryBuilder.SelectWithConditions,fields,pool.CorrectName(map.Name+"_"+external.Name),conditions);

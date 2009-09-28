@@ -146,7 +146,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 				foreach (string str in _nameTranslations.Keys)
 				{
 					if (_nameTranslations[str]==currentName)
-						return str;
+						return str.ToUpper();
 				}
 				return null;
 			}
@@ -175,7 +175,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 				}
 				if (!_nameTranslations.ContainsKey(ret))
 					_nameTranslations.Add(ret,currentName);
-				return ret;
+				return ret.ToUpper();
 			}
 		}
 		
@@ -410,15 +410,15 @@ namespace Org.Reddragonit.Dbpro.Connections
 					ExtractedTableMap aetm = new ExtractedTableMap(CorrectName(tm.Name+"_"+ftm.Name));
 					foreach (InternalFieldMap ifm in tm.PrimaryKeys)
 					{
-						aetm.Fields.Add(new ExtractedFieldMap(CorrectName(tm.Name+"_"+ifm.FieldName),conn.TranslateFieldType(ifm.FieldType,ifm.FieldLength),
+						aetm.Fields.Add(new ExtractedFieldMap(CorrectName("parent_"+ifm.FieldName),conn.TranslateFieldType(ifm.FieldType,ifm.FieldLength),
 						                                      ifm.FieldLength,true,false,false));
-						aetm.ForeignFields.Add(new ForeignRelationMap(tm.Name+"_"+ifm.FieldName,tm.Name,ifm.FieldName,efm.OnUpdate.ToString(),efm.OnDelete.ToString()));
+						aetm.ForeignFields.Add(new ForeignRelationMap("parent_"+ifm.FieldName,tm.Name,ifm.FieldName,efm.OnUpdate.ToString(),efm.OnDelete.ToString()));
 					}
 					foreach (InternalFieldMap ifm in ftm.PrimaryKeys)
 					{
-						aetm.Fields.Add(new ExtractedFieldMap(CorrectName(ftm.Name+"_"+ifm.FieldName),conn.TranslateFieldType(ifm.FieldType,ifm.FieldLength),
+						aetm.Fields.Add(new ExtractedFieldMap(CorrectName("child_"+ifm.FieldName),conn.TranslateFieldType(ifm.FieldType,ifm.FieldLength),
 						                                      ifm.FieldLength,true,false,false));
-						aetm.ForeignFields.Add(new ForeignRelationMap(CorrectName(ftm.Name+"_"+ifm.FieldName),ftm.Name,ifm.FieldName,efm.OnUpdate.ToString(),efm.OnDelete.ToString()));
+						aetm.ForeignFields.Add(new ForeignRelationMap(CorrectName("child_"+ifm.FieldName),ftm.Name,ifm.FieldName,efm.OnUpdate.ToString(),efm.OnDelete.ToString()));
 					}
 					tables.Add(aetm);
 				}
@@ -932,6 +932,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			
 			List<Trigger> dropTriggers = new List<Trigger>();
 			List<Trigger> createTriggers = new List<Trigger>();
+            List<Trigger> recreateTriggers = new List<Trigger>();
 			
 			CompareTriggers(curTriggers,expectedTriggers,out dropTriggers,out createTriggers);
 			
@@ -952,14 +953,14 @@ namespace Org.Reddragonit.Dbpro.Connections
 			
 			List<ForeignKey> foreignKeyDrops = new List<ForeignKey>();
 			List<ForeignKey> foreignKeyCreations = new List<ForeignKey>();
-			
-			ExtractForeignKeyCreatesDrops(curStructure,expectedStructure,out foreignKeyDrops,out foreignKeyCreations);
+
+            ExtractForeignKeyCreatesDrops(curStructure, expectedStructure, out foreignKeyDrops, out foreignKeyCreations);
 			
 			List<IdentityField> dropIdentities=new List<IdentityField>();
 			List<IdentityField> createIdentities=new List<IdentityField>();
 			List<IdentityField> setIdentities=new List<IdentityField>();
-			
-			CompareIdentities(curIdentities,expectedIdentities,out dropIdentities,out createIdentities,out setIdentities);
+
+            CompareIdentities(curIdentities, expectedIdentities, out dropIdentities, out createIdentities, out setIdentities);
 			
 			List<string> tableCreations = new List<string>();
 			List<string> tableAlterations = new List<string>();
@@ -995,6 +996,13 @@ namespace Org.Reddragonit.Dbpro.Connections
 				}
 				if (!found)
 				{
+                    foreach (Trigger t in curTriggers)
+                    {
+                        if (t.Conditions.Contains("FOR " + etm.TableName + " "))
+                        {
+                            dropTriggers.Add(t);
+                        }
+                    }
 					tableAlterations.Add(conn.queryBuilder.DropTable(etm.TableName));
 				}
 			}
@@ -1016,7 +1024,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 								if (efm.FieldName==ee.FieldName)
 								{
 									foundField=true;
-									if ((efm.Type!=ee.Type)||(efm.Size!=ee.Size))
+									if (((efm.Type!=ee.Type)||(efm.Size!=ee.Size))&&
+                                        !((efm.Type=="BLOB")&&(ee.Type=="BLOB")))
 									{
 										if (efm.PrimaryKey&&ee.PrimaryKey)
 										{
@@ -1036,7 +1045,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 											foreignKeyDrops.Add(new ForeignKey(etm,tbl));
 											foreignKeyCreations.Add(new ForeignKey(etm,tbl));
 										}
-										tableAlterations.Add(conn.queryBuilder.AlterFieldType(etm.TableName,efm));
+										tableAlterations.Add(conn.queryBuilder.AlterFieldType(etm.TableName,efm,ee));
 									}
 									break;
 								}
@@ -1052,6 +1061,20 @@ namespace Org.Reddragonit.Dbpro.Connections
 					tableCreations.Add(conn.queryBuilder.CreateTable(etm));
 				}
 			}
+
+            foreach (PrimaryKey pk in primaryKeyDrops)
+            {
+                foreach (Trigger t in curTriggers)
+                {
+                    if (t.Conditions.Contains("FOR " + pk.Name + " "))
+                        dropTriggers.Add(t);
+                }
+                foreach (Trigger t in expectedTriggers)
+                {
+                    if (t.Conditions.Contains("FOR " + pk.Name + " "))
+                        createTriggers.Add(t);
+                }
+            }
 			
 			CleanUpForeignKeys(ref foreignKeyDrops);
 			CleanUpForeignKeys(ref foreignKeyCreations);
@@ -1146,8 +1169,29 @@ namespace Org.Reddragonit.Dbpro.Connections
 				alterations.Add(" COMMIT;");
 			}
 			
-			
-			Utility.RemoveDuplicateStrings(ref alterations,new string[]{" COMMIT;"});
+            for (int x = 0; x < alterations.Count; x++)
+            {
+                if (alterations[x].Contains(";ALTER"))
+                {
+                    string tmp = alterations[x];
+                    alterations.RemoveAt(x);
+                    alterations.Insert(x, tmp.Substring(0, tmp.IndexOf(";ALTER") + 1));
+                    alterations.Insert(x + 1, tmp.Substring(tmp.IndexOf(";ALTER") + 1));
+                }
+                else if (alterations[x].Contains(";\nALTER"))
+                {
+                    string tmp = alterations[x];
+                    alterations.RemoveAt(x);
+                    alterations.Insert(x, tmp.Substring(0, tmp.IndexOf(";\nALTER") + 1));
+                    alterations.Insert(x + 1, tmp.Substring(tmp.IndexOf(";\nALTER") + 1));
+                }
+                if (alterations[x].StartsWith("ALTER") && !alterations[x].TrimEnd(new char[]{'\n',' ','\t'}).EndsWith(";"))
+                {
+                    alterations[x] = alterations[x] + ";";
+                }
+            }
+
+            Utility.RemoveDuplicateStrings(ref alterations, new string[] { " COMMIT;" });
 			
 			if (alterations.Count>12)
 			{

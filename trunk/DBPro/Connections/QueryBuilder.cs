@@ -390,7 +390,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			return string.Format(CreateColumnString,table,field.FieldName,field.FullFieldType);
 		}
 		
-		internal virtual string AlterFieldType(string table, ExtractedFieldMap field)
+		internal virtual string AlterFieldType(string table, ExtractedFieldMap field,ExtractedFieldMap oldFieldInfo)
 		{
 			return string.Format(AlterFieldTypeString,table,field.FieldName,field.FullFieldType);
 		}
@@ -603,8 +603,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 					List<IDbDataParameter> pars = new List<IDbDataParameter>();
 					foreach (InternalFieldMap ifm in map.PrimaryKeys)
 					{
-						delString += map.Name+"_"+ifm.FieldName + " = " + CreateParameterName(map.Name+"_"+ifm.FieldName) + " AND ";
-						pars.Add(conn.CreateParameter(CreateParameterName(map.Name+"_" + ifm.FieldName), table.GetField(map.GetClassFieldName(ifm)),ifm.FieldType,ifm.FieldLength));
+                        delString += "parent_" + ifm.FieldName + " = " + CreateParameterName("parent_" + ifm.FieldName) + " AND ";
+                        pars.Add(conn.CreateParameter(CreateParameterName("parent_" + ifm.FieldName), table.GetField(map.GetClassFieldName(ifm)), ifm.FieldType, ifm.FieldLength));
 					}
 					ret.Add(delString.Substring(0, delString.Length - 4),new List<List<IDbDataParameter>>());
 					ret[delString.Substring(0, delString.Length - 4)].Add(pars);
@@ -612,13 +612,13 @@ namespace Org.Reddragonit.Dbpro.Connections
 					string valueString = "VALUES(";
 					foreach (InternalFieldMap ifm in map.PrimaryKeys)
 					{
-						delString += map.Name+"_"+ifm.FieldName + ",";
-						valueString += CreateParameterName(map.Name +"_"+ ifm.FieldName) + ",";
+						delString += "parent_"+ifm.FieldName + ",";
+                        valueString += CreateParameterName("parent_" + ifm.FieldName) + ",";
 					}
 					foreach (InternalFieldMap ifm in relatedMap.PrimaryKeys)
 					{
-						delString += relatedMap.Name+"_"+ifm.FieldName + ",";
-						valueString += CreateParameterName(relatedMap.Name+"_" + ifm.FieldName) + ",";
+						delString += "child_"+ifm.FieldName + ",";
+                        valueString += CreateParameterName("child_" + ifm.FieldName) + ",";
 					}
 					delString = delString.Substring(0, delString.Length - 1) + ") " + valueString.Substring(0, valueString.Length - 1) + ")";
 					ret.Add(delString,new List<List<IDbDataParameter>>());
@@ -628,7 +628,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 						{
 							for (int x = 0; x < pars.Count; x++)
 							{
-								if (pars[x].ParameterName == CreateParameterName(relatedMap.Name+"_" + ifm.FieldName))
+								if (pars[x].ParameterName == CreateParameterName("child_" + ifm.FieldName))
 								{
 									pars.RemoveAt(x);
 									break;
@@ -639,7 +639,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                                 val = LocateFieldValue(t, relatedMap, ifm.FieldName,_pool);
                             else
                                 val = t.GetField(relatedMap.GetClassFieldName(ifm));
-							pars.Add(conn.CreateParameter(CreateParameterName(relatedMap.Name+"_"+ifm.FieldName), val,ifm.FieldType,ifm.FieldLength));
+							pars.Add(conn.CreateParameter(CreateParameterName("child_"+ifm.FieldName), val,ifm.FieldType,ifm.FieldLength));
 						}
                         List<IDbDataParameter> tmp = new List<IDbDataParameter>();
                         tmp.AddRange(pars.ToArray());
@@ -947,7 +947,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 					int parCount=0;
 					foreach (SelectParameter par in parameters)
 					{
-						appended="("+par.ConstructString(map,conn,this,ref queryParameters,ref parCount)+") AND ";
+						appended+="("+par.ConstructString(map,conn,this,ref queryParameters,ref parCount)+") AND ";
 					}
 					appended=appended.Substring(0,appended.Length-4);
 					if (!startAnd)

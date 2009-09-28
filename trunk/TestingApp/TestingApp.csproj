@@ -56,13 +56,17 @@
     <Compile Include="Structure\Group.cs" />
     <Compile Include="Structure\SecurityRight.cs" />
     <Compile Include="Structure\User.cs" />
+    <Compile Include="UserGroupList.cs" />
+    <None Include="..\DBPro\DbPro.xml">
+      <Link>DbPro.xml</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>
     <ProjectReference Include="..\DBPro\DBPro.csproj">
       <Project>{804A5915-5770-4B62-AF13-E10AE65B5901}</Project>
       <Name>DBPro</Name>
-      <Private />
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.Targets" />

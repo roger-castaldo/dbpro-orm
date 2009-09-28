@@ -1,9 +1,10 @@
 
-using Org.Reddragonit.Dbpro.Structure;
+using Org.Reddragonit.Dbpro.Virtual;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using Org.Reddragonit.Dbpro.Connections;
+using Org.Reddragonit.Dbpro.Structure;
 using TestingApp.Structure;
 
 namespace TestingApp
@@ -19,36 +20,11 @@ namespace TestingApp
 		[STAThread]
 		static void Main(string[] args)
 		{
-			ConnectionPool pool = ConnectionPoolManager.GetConnection("Security");
-			Connection c = pool.getConnection();
-			Group g = Group.Instance();
-			g.InheritParentRights=false;
-			g.Name="Admin";
-			g=Group.Save(g);
-			User u= User.Instance();
-			u.FirstName="Roger";
-			u.LastName="Castaldo";
-			u.UserGroup=g;
-			u.UserName="rcastaldo";
-			u.Password="copperbed1";
-			u.Type=UserTypes.Admin;
-			u = User.Save(u);
-			
-			u = User.LoginUser("rcastaldo","copperbed1");
-			if (u==null)
-				Console.WriteLine("Unable to login user.");
-			else
-				Console.WriteLine("User logged in.");
-			
-			PagedTableList lst = new PagedTableList(typeof(User),null,null);
-			PagedTableListEnumerator e = lst.GetEnumerator();
-			while (e.MoveNext())
-			{
-				Console.WriteLine(((User)e.Current).UserName);
-			}
-			
-            pool.ClosePool();
-            Console.ReadLine();
+			Console.WriteLine("Selecting from a Virtual Table...");
+			VirtualTableConnection vtb = new VirtualTableConnection();
+			vtb.SelectVirtualTable(typeof(UserGroupList));
+			Console.WriteLine("Examine Diagnostics messages.");
+			Console.ReadLine();
 		}
 	}
 }

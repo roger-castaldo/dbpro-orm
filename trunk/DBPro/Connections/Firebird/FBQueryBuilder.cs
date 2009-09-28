@@ -41,7 +41,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		}
 		
 		protected override string DropPrimaryKeyString {
-			get { return "select 'ALTER TABLE {0} DROP CONSTRAINT '||rel.rdb$CONSTRAINT_NAME from  "+
+			get { return "select DISTINCT 'ALTER TABLE {0} DROP CONSTRAINT '||rel.rdb$CONSTRAINT_NAME from  "+
 					"rdb$relation_constraints rel, "+
 					"rdb$indices idx, "+
 					"rdb$index_segments seg "+
@@ -54,7 +54,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		}
 		
 		protected override string DropForeignKeyString {
-			get { return "SELECT 'ALTER TABLE {0} DROP CONSTRAINT '||rc.RDB$CONSTRAINT_NAME "+
+			get { return "SELECT DISTINCT 'ALTER TABLE {0} DROP CONSTRAINT '||rc.RDB$CONSTRAINT_NAME "+
 					" FROM   "+
 					" rdb$relation_constraints rc   "+
 					" inner join rdb$indices fidx ON (rc.rdb$index_name = fidx.rdb$index_name AND rc.rdb$constraint_type = 'FOREIGN KEY')   "+
@@ -71,7 +71,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 			string ret = "";
 			conn.ExecuteQuery(String.Format(DropForeignKeyString,table,tableName));
 			while (conn.Read())
-				ret+=conn[0].ToString()+"\n";
+				ret+=conn[0].ToString()+";\n";
 			conn.Close();
 			return ret;
 		}
@@ -205,5 +205,13 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		{
 			get{ return "SELECT FIRST {2} SKIP {1} * FROM ({0}) tbl"; }
 		}
+
+        internal override string  AlterFieldType(string table, ExtractedFieldMap field, ExtractedFieldMap oldFieldInfo)
+        {
+            if ((field.FullFieldType.ToUpper() == "BLOB")||(oldFieldInfo.FullFieldType.ToUpper()=="BLOB"))
+                return DropColumn(table, field.FieldName) + ";" + CreateColumn(table, field)+";";
+            else
+                return base.AlterFieldType(table, field,oldFieldInfo);
+        }
 	}
 }

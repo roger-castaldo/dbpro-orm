@@ -147,6 +147,13 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 					else
 						_fieldLength = -1;
 				}
+                if ((_fieldType == FieldType.STRING) && (this is PrimaryKeyField))
+                {
+                    if (((PrimaryKeyField)this).AutoGen)
+                    {
+                        _fieldLength = 38;
+                    }
+                }
 				System.Diagnostics.Debug.WriteLine("Located Field Name: "+_fieldName);
 			}
 		}
@@ -155,7 +162,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 		{
             if (propertyType.IsGenericType && propertyType.GetGenericTypeDefinition() == typeof(Nullable<>))
                 propertyType = propertyType.GetGenericArguments()[0];
-			switch (propertyType.Name.ToUpper())
+			switch (propertyType.Name.ToUpper().Replace("[]",""))
 			{
 				case "INT64":
 				case "LONG":

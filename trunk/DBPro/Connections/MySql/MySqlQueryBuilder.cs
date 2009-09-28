@@ -170,12 +170,12 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 		protected override string AlterFieldTypeString {
 			get { return "ALTER TABLE {0} MODIFY COLUMN {1} {2} {3} NULL";}
 		}
-		
-		internal override string AlterFieldType(string table, ExtractedFieldMap field)
-		{
-			if (!field.Nullable)
-				return string.Format(AlterFieldTypeString,table,field.FieldName,field.FullFieldType,"NOT");
-			return string.Format(AlterFieldTypeString,table,field.FieldName,field.FullFieldType,"");
-		}
+
+        internal override string AlterFieldType(string table, ExtractedFieldMap field, ExtractedFieldMap oldFieldInfo)
+        {
+            if (!field.Nullable)
+                return string.Format(AlterFieldTypeString, table, field.FieldName, field.FullFieldType, "NOT");
+            return string.Format(AlterFieldTypeString, table, field.FieldName, field.FullFieldType, "");
+        }
 	}
 }

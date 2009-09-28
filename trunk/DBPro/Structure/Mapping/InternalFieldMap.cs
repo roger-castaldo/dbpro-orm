@@ -45,6 +45,8 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
                 propertyType = propertyType.GetGenericArguments()[0];
             if ((FieldType == FieldType.ENUM) && (!propertyType.IsEnum))
 				throw new Exception("Unable to cast a field that is not of the type enum to use the ENUM field type.");
+            if ((FieldType == FieldType.STRING) && (this.PrimaryKey) && (this.AutoGen))
+                _fieldLength = 38;
 		}
 		
 		internal InternalFieldMap(InternalFieldMap map,bool primary) : base(primary,map.Nullable,false)

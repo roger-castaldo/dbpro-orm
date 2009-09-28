@@ -234,6 +234,52 @@ namespace Org.Reddragonit.Dbpro.Structure
 				return true;
 			}
 		}
+
+        internal PropertyInfo LocatePropertyInfo(string FieldName)
+        {
+            PropertyInfo ret = this.GetType().GetProperty(FieldName);
+            if (ret == null)
+            {
+                foreach (PropertyInfo p in this.GetType().GetProperties(BindingFlags.Public |      //Get public members
+                                                                            BindingFlags.NonPublic |   //Get private/protected/internal members
+                                                                            BindingFlags.Static |      //Get static members
+                                                                            BindingFlags.Instance |    //Get instance members
+                                                                            BindingFlags.DeclaredOnly))
+                {
+                    if (p.Name == FieldName)
+                    {
+                        ret = p;
+                        break;
+                    }
+                }
+            }
+            if (ret == null)
+            {
+                TableMap map = ClassMapper.GetTableMap(this.GetType());
+                if (map.ParentType != null)
+                {
+                    while (map.ParentType != null)
+                    {
+                        foreach (PropertyInfo p in map.ParentType.GetProperties(BindingFlags.Public |      //Get public members
+                                                                            BindingFlags.NonPublic |   //Get private/protected/internal members
+                                                                            BindingFlags.Static |      //Get static members
+                                                                            BindingFlags.Instance |    //Get instance members
+                                                                            BindingFlags.DeclaredOnly))
+                        {
+                            if (p.Name == FieldName)
+                            {
+                                ret = p;
+                                break;
+                            }
+                        }
+                        if (ret != null)
+                            break;
+                        map = ClassMapper.GetTableMap(map.ParentType);
+                    }
+                }
+            }
+            return ret;
+        }
 		
 		internal object GetField(string FieldName)
 		{
@@ -242,22 +288,7 @@ namespace Org.Reddragonit.Dbpro.Structure
 				return null;
 			}else
 			{
-				PropertyInfo pi = this.GetType().GetProperty(FieldName);
-				if (pi==null)
-				{
-					foreach (PropertyInfo p in this.GetType().GetProperties(BindingFlags.Public |      //Get public members
-					                                                        BindingFlags.NonPublic |   //Get private/protected/internal members
-					                                                        BindingFlags.Static |      //Get static members
-					                                                        BindingFlags.Instance |    //Get instance members
-					                                                        BindingFlags.DeclaredOnly  ))
-					{
-						if (p.Name==FieldName)
-						{
-							pi=p;
-							break;
-						}
-					}
-				}
+                PropertyInfo pi = LocatePropertyInfo(FieldName);
 				return pi.GetValue(this,new object[0]);
 			}
 		}
@@ -268,22 +299,7 @@ namespace Org.Reddragonit.Dbpro.Structure
                 return;
 			if (value==null)
 				value = ClassMapper.InitialValueForClassField(this.GetType(),FieldName);
-			PropertyInfo pi = this.GetType().GetProperty(FieldName);
-			if (pi==null)
-			{
-				foreach (PropertyInfo p in this.GetType().GetProperties(BindingFlags.Public |      //Get public members
-				                                                        BindingFlags.NonPublic |   //Get private/protected/internal members
-				                                                        BindingFlags.Static |      //Get static members
-				                                                        BindingFlags.Instance |    //Get instance members
-				                                                        BindingFlags.DeclaredOnly  ))
-				{
-					if (p.Name==FieldName)
-					{
-						pi=p;
-						break;
-					}
-				}
-			}
+            PropertyInfo pi = LocatePropertyInfo(FieldName);
 			if (pi.PropertyType.Equals(typeof(bool))&&!(value.GetType().Equals(typeof(bool))))
 			{
 				if (value.GetType().Equals(typeof(int)))
@@ -317,22 +333,7 @@ namespace Org.Reddragonit.Dbpro.Structure
 		{
             if (FieldName == null)
                 return true;
-			PropertyInfo pi = this.GetType().GetProperty(FieldName);
-			if (pi==null)
-			{
-				foreach (PropertyInfo p in this.GetType().GetProperties(BindingFlags.Public |      //Get public members
-				                                                        BindingFlags.NonPublic |   //Get private/protected/internal members
-				                                                        BindingFlags.Static |      //Get static members
-				                                                        BindingFlags.Instance |    //Get instance members
-				                                                        BindingFlags.DeclaredOnly  ))
-				{
-					if (p.Name==FieldName)
-					{
-						pi=p;
-						break;
-					}
-				}
-			}
+            PropertyInfo pi = LocatePropertyInfo(FieldName);
 			object cur = pi.GetValue(this,new object[0]);
             if (ClassMapper.GetTableMap(this.GetType())[FieldName] != null)
             {
@@ -463,13 +464,14 @@ namespace Org.Reddragonit.Dbpro.Structure
 			if (!this.GetType().IsSubclassOf(conversionType))
 				throw new Exception("Cannot convert object to type that is not a parent of the current class.");
 			object ret = conversionType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
+            TableMap map = ClassMapper.GetTableMap(conversionType);
 			foreach (PropertyInfo pi in conversionType.GetProperties(BindingFlags.Public |      //Get public members
 			                                                         BindingFlags.NonPublic |   //Get private/protected/internal members
 			                                                         BindingFlags.Static |      //Get static members
 			                                                         BindingFlags.Instance |    //Get instance members
 			                                                         BindingFlags.DeclaredOnly))
 			{
-                if (pi.CanWrite)
+                if ((pi.CanWrite)&&(map.GetTableFieldName(pi.Name)!=null))
                 {
                     if (!this.IsFieldNull(pi.Name))
                         pi.SetValue(ret, pi.GetValue(this, new object[0]), new object[0]);
