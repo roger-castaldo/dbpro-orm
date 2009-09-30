@@ -551,8 +551,17 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 									if (fm.PrimaryKey&&(fm is InternalFieldMap))
 									{
 										InternalFieldMap ifm = (InternalFieldMap)fm;
-										ret.Add(new InternalFieldMap(ifm.FieldLength,Utility.CorrectName(_pool,efm.AddOnName+"_"+ifm.FieldName),ifm.FieldType,efm.PrimaryKey,false,efm.Nullable,efm.Versionable));
-									}
+										ret.Add(new InternalFieldMap(ifm.FieldLength,Utility.CorrectName(_pool,efm.AddOnName+"_"+ifm.FieldName),ifm.FieldType,false,false,efm.Nullable,efm.Versionable));
+                                    }
+                                    else if (fm.PrimaryKey && (fm is ExternalFieldMap))
+                                    {
+                                        ExternalFieldMap subEFM = (ExternalFieldMap)fm;
+                                        TableMap tm = ClassMapper.GetTableMap(subEFM.Type);
+                                        foreach (InternalFieldMap subFM in tm.PrimaryKeys)
+                                        {
+                                            ret.Add(new InternalFieldMap(subFM.FieldLength, Utility.CorrectName(_pool, efm.AddOnName + "_" + subEFM.AddOnName + "_" + subFM.FieldName), subFM.FieldType, false, false, subFM.Nullable, subFM.Versionable));
+                                        }
+                                    }
 								}
 							}else{
 								TableMap tm = ClassMapper.GetTableMap(((ExternalFieldMap)f).Type);
