@@ -99,12 +99,13 @@ namespace TestingApp.Structure
 		{
 			List<Group> ret = new List<Group>();
 			Connection c = conn;
-			ret.AddRange((Group[])c.SelectAll(typeof(Group)).ToArray());
+			foreach (Org.Reddragonit.Dbpro.Structure.Table tbl in c.SelectAll(typeof(Group)))
+				ret.Add((Group)tbl);
 			c.CloseConnection();
 			return ret;
 		}
 		
-		protected Group()
+		public Group()
 		{
 		}
 		

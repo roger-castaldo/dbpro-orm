@@ -258,6 +258,10 @@ namespace Org.Reddragonit.Dbpro
                         outVal = _changedFields;
                     else if (mi.Name == "GetType")
                         outVal = owner.GetType();
+                    else if ((mi.Name=="FieldSetter")&&(mc.Args.Length==3)&&(mc.Args[1].ToString().Trim()=="_isSaved"))
+                    	((Table)owner)._isSaved=(bool)mc.Args[2];
+                    else if ((mi.Name=="FieldGetter")&&(mc.Args.Length==2)&&(mc.Args[1].ToString().Trim()=="_isSaved"))
+                    	outVal = ((Table)owner)._isSaved;
                     else
                     {
                         try

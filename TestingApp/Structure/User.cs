@@ -346,7 +346,7 @@ namespace TestingApp.Structure
 		
 		private bool _seedIsNull=true;
 		
-		protected User()
+		public User()
 		{
 		}
 		
