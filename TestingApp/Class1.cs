@@ -1,10 +1,11 @@
 
-using Org.Reddragonit.Dbpro.Virtual;
+using Org.Reddragonit.Dbpro.Connections.ClassSQL;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using Org.Reddragonit.Dbpro.Connections;
 using Org.Reddragonit.Dbpro.Structure;
+using Org.Reddragonit.Dbpro.Virtual;
 using TestingApp.Structure;
 
 namespace TestingApp
@@ -20,7 +21,7 @@ namespace TestingApp
 		[STAThread]
 		static void Main(string[] args)
 		{
-			Console.WriteLine("Selecting from a Virtual Table...");
+			/*Console.WriteLine("Selecting from a Virtual Table...");
 			User u = User.Instance();
 			u.Active=true;
 			u.FirstName="Roger";
@@ -34,7 +35,8 @@ namespace TestingApp
 			List<object> tmp =vtb.SelectVirtualTable(typeof(UserGroupList));
 			foreach (UserGroupList ugl in tmp){
 				Console.WriteLine("FirstName: "+ugl.FirstName+"\tLastName: "+ugl.LastName+"\tGroup: "+ugl.GroupName);
-			}
+			}*/
+			new ClassQueryTranslator("TestingApp.Structure","SELECT u.FirstName||' '||u.LastName AS PersonName,u.Group.Name FROM User u WHERE FirstName=@firstName").Translate();
 			Console.WriteLine("Examine Diagnostics messages.");
 			Console.ReadLine();
 		}
