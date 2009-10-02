@@ -223,6 +223,7 @@ namespace Org.Reddragonit.Dbpro
 									t = conn.Select(outVal.GetType(),pars)[0];
 									pi.SetValue(owner,t,new object[0]);
 									outVal=t;
+                                    conn.CloseConnection();
 								}
 							}
 						}
@@ -254,6 +255,8 @@ namespace Org.Reddragonit.Dbpro
 					}
 				}else
 				{
+                    if (mi.Name == "Update")
+                        ((Table)owner)._changedFields = _changedFields;
                     if ((pi != null) && (pi.Name == "ChangedFields"))
                         outVal = _changedFields;
                     else if (mi.Name == "GetType")
@@ -286,7 +289,13 @@ namespace Org.Reddragonit.Dbpro
                     }
 				}
 			}
-			
+
+            if (mi.Name == "Update")
+            {
+                _changedFields = new List<string>();
+                ((Table)owner)._changedFields = null;
+            }
+
 			return new ReturnMessage(outVal,mc.Args,mc.Args.Length, mc.LogicalCallContext, mc);
 		}
 	}

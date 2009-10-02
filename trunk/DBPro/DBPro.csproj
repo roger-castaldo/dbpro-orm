@@ -100,6 +100,7 @@
     <Compile Include="Connections\Parameters\LessThanEqualToParameter.cs" />
     <Compile Include="Connections\Parameters\LessThanParameter.cs" />
     <Compile Include="Connections\Parameters\LikeParameter.cs" />
+    <Compile Include="Connections\Parameters\NotParameter.cs" />
     <Compile Include="Connections\Parameters\OrParameter.cs" />
     <Compile Include="Connections\Parameters\SelectParameter.cs" />
     <Compile Include="Connections\PgSql\PgSqlConnection.cs" />

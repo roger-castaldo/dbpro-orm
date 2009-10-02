@@ -145,8 +145,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 				comm.CommandText="";
 				comm.Parameters.Clear();
 				comm.Transaction=trans;
-				pool.returnConnection(this);
 			}
+            pool.returnConnection(this);
 		}
 		
 		~Connection()
@@ -232,26 +232,26 @@ namespace Org.Reddragonit.Dbpro.Connections
 			return table;
 		}
 
-		public Table Save(Table table)
-		{
-			if (table.ConnectionName!=ConnectionName)
-			{
-				throw new Exception("Cannot insert an entry into a table into the database connection that it was not specified for.");
-			}
-			if (table.LoadStatus== LoadStatus.Partial)
-				return table;
-			if (table.IsSaved)
-			{
-				if (table.LoadStatus== LoadStatus.Complete)
-					return Update(table);
-				else
-					return table;
-			}
-			else
-			{
-				return Insert(table);
-			}
-		}
+        public Table Save(Table table)
+        {
+            if (table.ConnectionName != ConnectionName)
+            {
+                throw new Exception("Cannot insert an entry into a table into the database connection that it was not specified for.");
+            }
+            if (table.LoadStatus == LoadStatus.Partial)
+                return table;
+            if (table.IsSaved)
+            {
+                if (table.LoadStatus == LoadStatus.Complete)
+                    return Update(table);
+                else
+                    return table;
+            }
+            else
+            {
+                return Insert(table);
+            }
+        }
 		
 		private Table Insert(Table table)
 		{
@@ -485,6 +485,28 @@ namespace Org.Reddragonit.Dbpro.Connections
             Close();
             if (ret is DBNull)
             	ret=null;
+            return ret;
+        }
+
+        public object SelectMin(string fieldName, System.Type type, List<SelectParameter> parameters)
+        {
+            if (parameters == null)
+                return SelectMin(fieldName, type, new SelectParameter[0]);
+            else
+                return SelectMin(fieldName, type, parameters.ToArray());
+        }
+
+        public object SelectMin(string fieldName, System.Type type, SelectParameter[] parameters)
+        {
+            object ret = null;
+            List<IDbDataParameter> pars = new List<IDbDataParameter>();
+            string query = queryBuilder.SelectMin(type, fieldName, parameters, out pars);
+            ExecuteQuery(query, pars);
+            if (this.Read())
+                ret = this[0];
+            Close();
+            if (ret is DBNull)
+                ret = null;
             return ret;
         }
 		

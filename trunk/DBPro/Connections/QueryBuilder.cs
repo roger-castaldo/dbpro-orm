@@ -200,6 +200,16 @@ namespace Org.Reddragonit.Dbpro.Connections
 		{
 			get{return "SELECT MAX({0}) FROM {1}";}
 		}
+
+        protected virtual string SelectMinWithConditions
+        {
+            get { return "SELECT MIN({0}) FROM {1} WHERE {2}"; }
+        }
+
+        protected virtual string SelectMinWithoutConditions
+        {
+            get { return "SELECT Min({0}) FROM {1}"; }
+        }
 		
 		protected virtual string OrderBy
 		{
@@ -478,12 +488,12 @@ namespace Org.Reddragonit.Dbpro.Connections
 							TableMap relatedTableMap = ClassMapper.GetTableMap(efm.Type);
 							if (table.GetField(fnp.ClassFieldName) == null)
 							{
-								foreach (FieldMap fm in relatedTableMap.PrimaryKeys)
+								foreach (InternalFieldMap fm in relatedTableMap.PrimaryKeys)
 								{
-									values += conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm)) + ",";
-									insertParameters.Add(conn.CreateParameter(conn.Pool.CorrectName(CreateParameterName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm))), null,((InternalFieldMap)fm).FieldType,((InternalFieldMap)fm).FieldLength));
-									parameters+=","+conn.Pool.CorrectName(CreateParameterName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm)));
-									whereConditions+=" AND "+conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm))+" IS NULL ";
+									values += conn.Pool.CorrectName(efm.AddOnName+"_"+fm.FieldName) + ",";
+                                    insertParameters.Add(conn.CreateParameter(conn.Pool.CorrectName(CreateParameterName(efm.AddOnName + "_" + fm.FieldName)), null, fm.FieldType, fm.FieldLength));
+									parameters+=","+conn.Pool.CorrectName(CreateParameterName(efm.AddOnName+"_"+fm.FieldName));
+                                    whereConditions += " AND " + conn.Pool.CorrectName(efm.AddOnName + "_" + fm.FieldName) + " IS NULL ";
 								}
 							}
 							else
@@ -575,6 +585,8 @@ namespace Org.Reddragonit.Dbpro.Connections
                         val = table.GetField(map.GetClassFieldName(ifm));
 					parameters.Add(conn.CreateParameter(pool.CorrectName(CreateParameterName(ifm.FieldName)),val,ifm.FieldType,ifm.FieldLength));
 				}
+                if (conditions.Length > 0)
+                    conditions = conditions.Substring(0, conditions.Length - 4);
 				return string.Format(DeleteWithConditions,map.Name,conditions);
 			}catch(Exception e)
 			{
@@ -686,13 +698,23 @@ namespace Org.Reddragonit.Dbpro.Connections
 		internal string Update(Table table,out List<IDbDataParameter> queryParameters)
 		{
 			queryParameters = new List<IDbDataParameter>();
-			if ((table.ChangedFields==null)||(table.ChangedFields.Count==0))
-				return "";
+            if ((table.ChangedFields == null) || (table.ChangedFields.Count == 0))
+                return "";
 			try{
 				TableMap map = ClassMapper.GetTableMap(table.GetType());
 				string fields = "";
 				string conditions = "";
 				List<string> changedFields=table.ChangedFields;
+                if (changedFields == null)
+                {
+                    changedFields = new List<string>();
+                    foreach (FieldNamePair fnp in map.FieldNamePairs)
+                    {
+                        changedFields.Add(fnp.ClassFieldName);
+                    }
+                }
+                if (changedFields.Count == 0)
+                    return "";
 				foreach (FieldNamePair fnp in map.FieldNamePairs)
 				{
 					if (changedFields.Contains(fnp.ClassFieldName))
@@ -920,6 +942,53 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}else
 				return null;
 		}
+
+        internal string SelectMin(System.Type type, string maxField, List<SelectParameter> parameters, out List<IDbDataParameter> queryParameters)
+        {
+            if (parameters == null)
+                return SelectMin(type, maxField, new SelectParameter[0], out queryParameters);
+            else
+                return SelectMin(type, maxField, parameters.ToArray(), out queryParameters);
+        }
+
+        internal string SelectMin(System.Type type, string maxField, SelectParameter[] parameters, out List<IDbDataParameter> queryParameters)
+        {
+            TableMap map = ClassMapper.GetTableMap(type);
+            string fields = "";
+            string tables = "";
+            string joins = "";
+            string where = "";
+            bool startAnd = false;
+            queryParameters = new List<IDbDataParameter>();
+            if (ObtainFieldTableWhereList(out fields, out tables, out joins, out where, type))
+            {
+                if (map.GetTableFieldName(maxField) != null)
+                    fields = map.GetTableFieldName(maxField);
+                else
+                    fields = maxField;
+                if ((parameters != null) && (parameters.Length > 0))
+                {
+                    startAnd = (where.Length > 0);
+                    string appended = "";
+                    int parCount = 0;
+                    foreach (SelectParameter par in parameters)
+                    {
+                        appended += "(" + par.ConstructString(map, conn, this, ref queryParameters, ref parCount) + ") AND ";
+                    }
+                    appended = appended.Substring(0, appended.Length - 4);
+                    if (!startAnd)
+                        where = "(" + appended + ")";
+                    else
+                        where += " AND (" + appended + ")";
+                }
+                if (where.Length > 0)
+                    return String.Format(SelectMinWithConditions, fields, joins + tables, where);
+                else
+                    return String.Format(SelectMinWithoutConditions, fields, joins + tables);
+            }
+            else
+                return null;
+        }
 		
 		internal string Select(System.Type type,List<SelectParameter> parameters,out List<IDbDataParameter> queryParameters)
 		{

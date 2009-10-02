@@ -29,6 +29,15 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 					"AND   c.rdb$trigger_name = '{1}' "+
 					"AND   r.rdb$constraint_type = 'NOT NULL'"; }
 		}
+
+        private string DropNullStringV2
+        {
+            get
+            {
+                return "UPDATE RDB$RELATION_FIELDS SET RDB$NULL_FLAG = NULL "+
+                    "WHERE RDB$FIELD_NAME = '{1}' AND RDB$RELATION_NAME = '{0}'";
+            }
+        }
 		
 		internal override string DropNullConstraint(string table, ExtractedFieldMap field)
 		{
@@ -37,6 +46,8 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 			if (conn.Read())
 				ret=conn[0].ToString();
 			conn.Close();
+            if (ret == "")
+                ret = String.Format(DropNullStringV2, table, field.FieldName);
 			return ret;
 		}
 		

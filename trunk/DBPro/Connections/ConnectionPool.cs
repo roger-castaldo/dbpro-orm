@@ -26,6 +26,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 	/// </summary>
 	public abstract class ConnectionPool
 	{
+
+        private const int MaxGetConnectionTrials = 20;
 		
 		private List<Connection> locked=new List<Connection>();
 		private Queue<Connection> unlocked=new Queue<Connection>();
@@ -1047,6 +1049,30 @@ namespace Org.Reddragonit.Dbpro.Connections
 										}
 										tableAlterations.Add(conn.queryBuilder.AlterFieldType(etm.TableName,efm,ee));
 									}
+                                    if (efm.Nullable!=ee.Nullable){
+                                        if (efm.PrimaryKey && ee.PrimaryKey)
+                                        {
+                                            primaryKeyDrops.Add(new PrimaryKey(etm));
+                                            primaryKeyCreations.Add(new PrimaryKey(etm));
+                                            for (int x = 0; x < expectedStructure.Count; x++)
+                                            {
+                                                if (expectedStructure[x].RelatesToField(etm.TableName, efm.FieldName))
+                                                {
+                                                    foreignKeyDrops.Add(new ForeignKey(expectedStructure[x], etm.TableName));
+                                                    foreignKeyCreations.Add(new ForeignKey(expectedStructure[x], etm.TableName));
+                                                }
+                                            }
+                                        }
+                                        foreach (string tbl in etm.ExternalTablesForField(efm.FieldName))
+                                        {
+                                            foreignKeyDrops.Add(new ForeignKey(etm, tbl));
+                                            foreignKeyCreations.Add(new ForeignKey(etm, tbl));
+                                        }
+                                        if (!efm.Nullable)
+                                            constraintCreations.Add(conn.queryBuilder.CreateNullConstraint(etm.TableName, efm));
+                                        else
+                                            constraintDrops.Add(conn.queryBuilder.DropNullConstraint(etm.TableName, efm));
+                                    }
 									break;
 								}
 							}
@@ -1267,6 +1293,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			if (isClosed)
 				return null;
 			Connection ret=null;
+            int count = 0;
 			while(true)
 			{
 				mut.WaitOne();
@@ -1283,7 +1310,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 				}
 				if (isClosed)
 					break;
-				if (!checkMin())
+				if (!checkMax())
 				{
 					ret=CreateConnection();
 					break;
@@ -1292,6 +1319,9 @@ namespace Org.Reddragonit.Dbpro.Connections
 				try{
 					Thread.Sleep(100);
 				}catch (Exception e){}
+                count++;
+                if (count > MaxGetConnectionTrials)
+                    throw new Exception("Unable to obtain a connection after " + MaxGetConnectionTrials.ToString() + " tries.  Assuming deadlock.");
 			}
 			if (ret!=null)
 				locked.Add(ret);
@@ -1317,7 +1347,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			mut.WaitOne();
 			locked.Remove(conn);
 			mut.ReleaseMutex();
-			if (!checkMax()&&!isClosed&&!conn.isPastKeepAlive(maxKeepAlive))
+			if (checkMax()&&!isClosed&&!conn.isPastKeepAlive(maxKeepAlive))
 			{
 				mut.WaitOne();
 				unlocked.Enqueue(conn);
@@ -1326,12 +1356,18 @@ namespace Org.Reddragonit.Dbpro.Connections
 			{
 				conn.Disconnect();
 			}
+            while (!checkMin())
+            {
+                mut.WaitOne();
+                unlocked.Enqueue(CreateConnection());
+                mut.ReleaseMutex();
+            }
 		}
 		
 		private bool checkMax()
 		{
 			if (maxPoolSize<=0) return false;
-			else return maxPoolSize>(locked.Count+unlocked.Count);
+			else return maxPoolSize<(locked.Count+unlocked.Count);
 		}
 		
 		private bool checkMin()

@@ -48,12 +48,14 @@ namespace Org.Reddragonit.Dbpro.Structure
 					_isSaved=true;
 			}
 		}
-		
+
+
+        internal List<string> _changedFields = null;
         /*virtual function doesn't do anything, calls are caught by the proxy to 
          * to return the changed fields according to the proxy.
         */
 		internal List<string> ChangedFields{
-			get{return null;}
+			get{return _changedFields;}
 		}
 		
         //Load the initial primary keys into the table object for later comparison.
@@ -521,5 +523,25 @@ namespace Org.Reddragonit.Dbpro.Structure
 			((Table)ret).InitPrimaryKeys();
 			return ret;
 		}
+
+        //Called to delete the instance of the table object.
+        public void Delete()
+        {
+            if (!this.IsSaved)
+                throw new Exception("Cannot delete an object from the database if it is not in the database.");
+            Connection conn = ConnectionPoolManager.GetConnection(this.GetType()).getConnection();
+            conn.Delete(this);
+            conn.CloseConnection();
+        }
+
+        //Called to update the instance of the table object.
+        public void Update()
+        {
+            if (!this.IsSaved)
+                throw new Exception("Cannot update an object that is not in the database.");
+            Connection conn = ConnectionPoolManager.GetConnection(this.GetType()).getConnection();
+            conn.Save(this);
+            conn.CloseConnection();
+        }
 	}
 }
