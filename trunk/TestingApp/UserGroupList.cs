@@ -37,7 +37,7 @@ namespace TestingApp
 		}
 		
 		private string _groupName;
-		[VirtualField(typeof(Group),"Name")]
+		[VirtualField(typeof(Group),"UserGroup.Name")]
 		public string GroupName{
 			get{return _groupName;}
 			set{_groupName=value;}

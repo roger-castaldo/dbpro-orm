@@ -21,7 +21,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		static ConnectionPoolManager()
 		{
 			mut.WaitOne();
-			string basePath=AppDomain.CurrentDomain.SetupInformation.ConfigurationFile.Substring(0,AppDomain.CurrentDomain.SetupInformation.ConfigurationFile.LastIndexOf("\\"));
+			string basePath=AppDomain.CurrentDomain.SetupInformation.ConfigurationFile.Substring(0,AppDomain.CurrentDomain.SetupInformation.ConfigurationFile.LastIndexOf(Path.DirectorySeparatorChar));
 			FileInfo fi = RecurLocateConfigFile(new DirectoryInfo(basePath));
 			if (fi!=null)
 			{

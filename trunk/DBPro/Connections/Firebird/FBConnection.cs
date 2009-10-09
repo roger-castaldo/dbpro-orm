@@ -14,6 +14,7 @@ using Org.Reddragonit.Dbpro.Connections;
 using Org.Reddragonit.Dbpro.Structure.Mapping;
 using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.FieldType;
 using VersionTypes = Org.Reddragonit.Dbpro.Structure.Attributes.VersionField.VersionTypes;
+using System.Text;
 
 namespace Org.Reddragonit.Dbpro.Connections.Firebird
 {
@@ -209,7 +210,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 					parameterValue='T';
 				else
 					parameterValue='F';
-			}
+            }
 			return new FbParameter(parameterName,parameterValue);
 		}
 		

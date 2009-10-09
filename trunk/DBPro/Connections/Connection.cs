@@ -625,7 +625,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		public int ExecuteNonQuery(string queryString)
 		{
-			return ExecuteNonQuery(queryString,new IDbDataParameter[0]);
+            return ExecuteNonQuery(queryString, new IDbDataParameter[0]);
 		}
 
 		public int ExecuteNonQuery(string queryString, List<IDbDataParameter> parameters)
@@ -655,7 +655,25 @@ namespace Org.Reddragonit.Dbpro.Connections
                         System.Diagnostics.Debug.WriteLine(param.ParameterName +": NULL");
                 }
             }
-			return comm.ExecuteNonQuery();
+            try
+            {
+                return comm.ExecuteNonQuery();
+            }
+            catch (Exception e)
+            {
+                string pars = "";
+                if (parameters != null)
+                {
+                    foreach (IDbDataParameter param in parameters)
+                    {
+                        if (param.Value != null)
+                            pars+=param.ParameterName + ": " + param.Value.ToString()+"\n";
+                        else
+                            pars+=param.ParameterName + ": NULL"+"\n";
+                    }
+                }
+                throw new Exception("An error occured in executing the query: "+queryString+"\nwith the parameters: "+pars,e);
+            }
 		}
 		
 		
@@ -694,7 +712,25 @@ namespace Org.Reddragonit.Dbpro.Connections
                             System.Diagnostics.Debug.WriteLine(param.ParameterName + ": NULL");
                     }
                 }
-                reader = comm.ExecuteReader();
+                try
+                {
+                    reader = comm.ExecuteReader();
+                }
+                catch (Exception e)
+                {
+                    string pars = "";
+                    if (parameters != null)
+                    {
+                        foreach (IDbDataParameter param in parameters)
+                        {
+                            if (param.Value != null)
+                                pars += param.ParameterName + ": " + param.Value.ToString() + "\n";
+                            else
+                                pars += param.ParameterName + ": NULL" + "\n";
+                        }
+                    }
+                    throw new Exception("An error occured in executing the query: " + queryString + "\nwith the parameters: " + pars, e);
+                }
 			}
 		}
 		
