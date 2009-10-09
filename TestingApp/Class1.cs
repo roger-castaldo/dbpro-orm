@@ -30,13 +30,13 @@ namespace TestingApp
 			u.Type=UserTypes.Normal;
 			u.UserGroup=Group.LoadAllGroups()[0];
 			u.UserName="rcastaldo";
-			u=User.Save(u);
+			u=User.Save(u);*/
 			VirtualTableConnection vtb = new VirtualTableConnection();
 			List<object> tmp =vtb.SelectVirtualTable(typeof(UserGroupList));
 			foreach (UserGroupList ugl in tmp){
 				Console.WriteLine("FirstName: "+ugl.FirstName+"\tLastName: "+ugl.LastName+"\tGroup: "+ugl.GroupName);
-			}*/
-			new ClassQueryTranslator("TestingApp.Structure","SELECT u.FirstName||' '||u.LastName AS PersonName,u.Group.Name FROM User u WHERE FirstName=@firstName").Translate();
+			}
+			new ClassQueryTranslator("TestingApp.Structure","SELECT u.FirstName||' '||u.LastName AS PersonName,u.UserGroup.Name FROM User u WHERE FirstName=@firstName").Translate();
 			Console.WriteLine("Examine Diagnostics messages.");
 			Console.ReadLine();
 		}

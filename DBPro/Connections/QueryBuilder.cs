@@ -616,7 +616,10 @@ namespace Org.Reddragonit.Dbpro.Connections
 					foreach (InternalFieldMap ifm in map.PrimaryKeys)
 					{
                         delString += "parent_" + ifm.FieldName + " = " + CreateParameterName("parent_" + ifm.FieldName) + " AND ";
-                        pars.Add(conn.CreateParameter(CreateParameterName("parent_" + ifm.FieldName), table.GetField(map.GetClassFieldName(ifm)), ifm.FieldType, ifm.FieldLength));
+                        if (map.GetClassFieldName(ifm) == null)
+                            pars.Add(conn.CreateParameter(CreateParameterName("parent_" + ifm.FieldName), LocateFieldValue(table,map,ifm.FieldName,pool), ifm.FieldType, ifm.FieldLength));
+                        else
+                            pars.Add(conn.CreateParameter(CreateParameterName("parent_" + ifm.FieldName), table.GetField(map.GetClassFieldName(ifm)), ifm.FieldType, ifm.FieldLength));
 					}
 					ret.Add(delString.Substring(0, delString.Length - 4),new List<List<IDbDataParameter>>());
 					ret[delString.Substring(0, delString.Length - 4)].Add(pars);
