@@ -24,4 +24,12 @@ namespace Org.Reddragonit.Dbpro.Exceptions
         public ValidationException(string clazz,string field,string validationNotes) :
             base("Unable to set the Field: "+field+" in Class: "+clazz+" because it failed validation ("+validationNotes+")"){}
     }
+    
+    public class CannotLocateTable : Exception{
+    	public CannotLocateTable(string tableName): base("Unable to locate a corresponding type to the table "+tableName){}
+    }
+
+    public class InvalidClassQuery : Exception{
+        public InvalidClassQuery() : base("You cannot execute a class query other than to select.  All other required functionality exists in the base connection classes.") { }
+    }
 }

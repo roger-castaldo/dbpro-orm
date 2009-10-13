@@ -127,11 +127,17 @@ namespace Org.Reddragonit.Dbpro.Structure
 		}
 
         //called by a connection to set the values in the table object from the generated query.
-		internal void SetValues(Connection conn)
+        internal void SetValues(Connection conn)
+        {
+            SetValues(conn, null);
+        }
+
+        //called by a connection to set the values in the table object from the generated query.
+		internal void SetValues(Connection conn,string addOnName)
 		{
 			_initialPrimaryKeys.Clear();
 			TableMap map = ClassMapper.GetTableMap(this.GetType());
-			RecurSetValues(map,conn);
+			RecurSetValues(map,conn,addOnName);
 			_isSaved = true;
 		}
 
@@ -173,7 +179,7 @@ namespace Org.Reddragonit.Dbpro.Structure
         }
 		
         //recursively sets values 
-		private void RecurSetValues(TableMap map,Connection conn)
+		private void RecurSetValues(TableMap map,Connection conn,string addOnName)
 		{
 			foreach (FieldNamePair fnp in map.FieldNamePairs)
 			{
@@ -184,7 +190,10 @@ namespace Org.Reddragonit.Dbpro.Structure
 						ExternalFieldMap efm = (ExternalFieldMap)map[fnp];
                         Table t = (Table)LazyProxy.Instance(efm.Type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
                         bool setValue = false;
-                        t = SetExternalValues(ClassMapper.GetTableMap(efm.Type), conn, efm.AddOnName, out setValue,t);
+                        if (addOnName != null)
+                            t = SetExternalValues(ClassMapper.GetTableMap(efm.Type), conn, addOnName+"_"+efm.AddOnName, out setValue, t);
+                        else
+                            t = SetExternalValues(ClassMapper.GetTableMap(efm.Type), conn, efm.AddOnName, out setValue, t);
 						if (!t.AllFieldsNull&&setValue)
 						{
 							t.InitPrimaryKeys();
@@ -194,9 +203,12 @@ namespace Org.Reddragonit.Dbpro.Structure
 				}
 				else
 				{
-					if (conn.ContainsField(fnp.TableFieldName))
+                    string fieldName = fnp.TableFieldName;
+                    if (addOnName != null)
+                        fieldName = addOnName + "_" + fieldName;
+					if (conn.ContainsField(fieldName))
 					{
-						if (conn.IsDBNull(conn.GetOrdinal(fnp.TableFieldName)))
+						if (conn.IsDBNull(conn.GetOrdinal(fieldName)))
 						{
 							try{
 								this.SetField(fnp.ClassFieldName,null);
@@ -205,9 +217,9 @@ namespace Org.Reddragonit.Dbpro.Structure
 						else
 						{
 							if (((InternalFieldMap)map[fnp]).FieldType==FieldType.ENUM)
-								this.SetField(fnp.ClassFieldName, conn.Pool.GetEnumValue(map[fnp].ObjectType,(int)conn[fnp.TableFieldName]));
+								this.SetField(fnp.ClassFieldName, conn.Pool.GetEnumValue(map[fnp].ObjectType,(int)conn[fieldName]));
 							else
-								this.SetField(fnp.ClassFieldName, conn[fnp.TableFieldName]);
+								this.SetField(fnp.ClassFieldName, conn[fieldName]);
 						}
 					}
 				}
@@ -218,7 +230,7 @@ namespace Org.Reddragonit.Dbpro.Structure
 			}
 			if (map.ParentType!=null)
 			{
-				RecurSetValues(ClassMapper.GetTableMap(map.ParentType),conn);
+				RecurSetValues(ClassMapper.GetTableMap(map.ParentType),conn,addOnName);
 			}
 		}
 
