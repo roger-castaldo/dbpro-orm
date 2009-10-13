@@ -79,7 +79,7 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="CompleteLazyLoadPriorToCall.cs" />
-    <Compile Include="Connections\ClassSQL\ClassQueryTranslator.cs" />
+    <Compile Include="Connections\ClassSQL\ClassQuery.cs" />
     <Compile Include="Connections\ClassSQL\Enums.cs" />
     <Compile Include="Connections\ClassSQL\QueryFunctions.cs" />
     <Compile Include="Connections\ClassSQL\QueryKeywords.cs" />
