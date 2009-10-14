@@ -212,7 +212,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
 			List<IDbDataParameter> pars = new List<IDbDataParameter>();
 			string query = queryBuilder.Update(table,out pars);
-			this.ExecuteNonQuery(query, pars);
+            if (query.Length>0)
+			    this.ExecuteNonQuery(query, pars);
 			foreach (ExternalFieldMap efm in map.ExternalFieldMapArrays)
 			{
 				Dictionary<string, List<List<IDbDataParameter>>> queries = queryBuilder.UpdateMapArray(table,efm);
@@ -343,7 +344,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 				fields+=Pool.CorrectName(map.Name+"_"+primary.FieldName)+", ";
 				paramString+=Pool.CorrectName(queryBuilder.CreateParameterName(map.Name+"_"+primary.FieldName))+", ";
 				conditions+=Pool.CorrectName(map.Name+"_"+primary.FieldName)+" = "+Pool.CorrectName(queryBuilder.CreateParameterName(map.Name+"_"+primary.FieldName))+" AND ";
-				pars.Add(CreateParameter(Pool.CorrectName(queryBuilder.CreateParameterName(map.Name+"_"+primary.FieldName)),table.GetField(map.GetClassFieldName(primary.FieldName))));
+				pars.Add(CreateParameter(Pool.CorrectName(queryBuilder.CreateParameterName(map.Name+"_"+primary.FieldName)),QueryBuilder.LocateFieldValue(table,map,primary.FieldName,pool)));
 			}
 			query = queryBuilder.Delete(Pool.CorrectName(map.Name+"_"+field.FieldName),conditions.Substring(0,conditions.Length-4));
 			ExecuteNonQuery(query,pars);
@@ -379,11 +380,11 @@ namespace Org.Reddragonit.Dbpro.Connections
 					}
 					fields = fields.Substring(0,fields.Length-2);
 					string conditions= "";
-					foreach (InternalFieldMap ifm in map.PrimaryKeys)
-					{
+                    foreach (InternalFieldMap ifm in map.PrimaryKeys)
+                    {
                         conditions += map.Name + "_" + external.Name + "." + Pool.CorrectName("parent_" + ifm.FieldName) + " = " + queryBuilder.CreateParameterName("parent_" + ifm.FieldName) + " AND ";
-                        pars.Add(CreateParameter(queryBuilder.CreateParameterName("parent_" + ifm.FieldName), t.GetField(map.GetClassFieldName(ifm))));
-					}
+                        pars.Add(CreateParameter(queryBuilder.CreateParameterName("parent_" + ifm.FieldName), QueryBuilder.LocateFieldValue(t, map, ifm.FieldName, pool)));
+                    }
 					conditions=conditions.Substring(0,conditions.Length-4);
 					query = string.Format(queryBuilder.SelectWithConditions,fields,pool.CorrectName(map.Name+"_"+external.Name),conditions);
 					ArrayList values = new ArrayList();
@@ -416,7 +417,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 					{
 						List<IDbDataParameter> pars = new List<IDbDataParameter>();
 						foreach (InternalFieldMap primary in map.PrimaryKeys)
-							pars.Add(CreateParameter(Pool.CorrectName(queryBuilder.CreateParameterName(map.Name+"_"+primary.FieldName)),t.GetField(map.GetClassFieldName(primary))));
+							pars.Add(CreateParameter(Pool.CorrectName(queryBuilder.CreateParameterName(map.Name+"_"+primary.FieldName)),QueryBuilder.LocateFieldValue(t,map,primary.FieldName,pool)));
 						ArrayList values = new ArrayList();
 						ExecuteQuery(query,pars);
 						while (Read())

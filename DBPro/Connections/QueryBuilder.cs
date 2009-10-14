@@ -671,6 +671,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         internal static object LocateFieldValue(Table table, TableMap relatedMap,string fieldName,ConnectionPool pool)
         {
+            if (relatedMap.GetClassFieldName(fieldName) != null)
+                return table.GetField(relatedMap.GetClassFieldName(fieldName));
             foreach (Type t in relatedMap.ForeignTables)
             {
                 foreach (ExternalFieldMap efm in relatedMap.GetFieldInfoForForeignTable(t))
@@ -792,6 +794,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 						}
 					}
 				}
+                if (fields.Length == 0)
+                    return "";
 				fields = fields.Substring(0,fields.Length-2);
 				if (conditions.Length>0)
 				{
