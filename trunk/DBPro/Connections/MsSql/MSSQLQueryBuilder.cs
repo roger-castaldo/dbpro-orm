@@ -197,6 +197,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 			conn.ExecuteQuery(string.Format(DropForeignKeyString,table,externalTable));
 			while (conn.Read())
 				ret+=conn[0].ToString()+"\n";
+            conn.CloseConnection();
 			return ret;
 		}
 		
