@@ -227,5 +227,22 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 			primarys=primarys.Substring(1);
 			return String.Format(SelectWithPagingIncludeOffset,query,CreateParameterName("startIndex"),CreateParameterName("rowCount"),primarys);
 		}
+
+        internal override string SelectPaged(string baseQuery, TableMap mainMap, ref List<IDbDataParameter> queryParameters, ulong? start, ulong? recordCount)
+        {
+            if (!start.HasValue)
+                start = 0;
+            if (!recordCount.HasValue)
+                recordCount = 0;
+            queryParameters.Add(conn.CreateParameter(CreateParameterName("startIndex"), start.Value));
+            queryParameters.Add(conn.CreateParameter(CreateParameterName("rowCount"), recordCount.Value));
+            string primarys = "";
+            foreach (InternalFieldMap ifm in mainMap.PrimaryKeys)
+            {
+                primarys += "," + ifm.FieldName;
+            }
+            primarys = primarys.Substring(1);
+            return String.Format(SelectWithPagingIncludeOffset, baseQuery, CreateParameterName("startIndex"), CreateParameterName("rowCount"), primarys);
+        }
 	}
 }

@@ -709,6 +709,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 				TableMap map = ClassMapper.GetTableMap(table.GetType());
 				string fields = "";
 				string conditions = "";
+                bool addedAutogenCorrection = false;
 				List<string> changedFields=table.ChangedFields;
                 if (changedFields == null)
                 {
@@ -724,6 +725,32 @@ namespace Org.Reddragonit.Dbpro.Connections
 				{
 					if (changedFields.Contains(fnp.ClassFieldName))
 					{
+                        if (map[fnp].PrimaryKey && !map[fnp].AutoGen && !addedAutogenCorrection&&map.HasComplexNumberAutogen)
+                        {
+                            foreach (InternalFieldMap ifm in map.PrimaryKeys)
+                            {
+                                if (ifm.AutoGen)
+                                {
+                                    fields += pool.CorrectName(ifm.FieldName) + " = (SELECT (CASE WHEN MAX("+pool.CorrectName(ifm.FieldName)+") IS NULL THEN 0 ELSE MAX("+pool.CorrectName(ifm.FieldName)+") END)+1 FROM "+pool.CorrectName(map.Name)+" WHERE ";
+                                    int cnt = 0;
+                                    foreach (InternalFieldMap i in map.PrimaryKeys)
+                                    {
+                                        object val = LocateFieldValue(table, map, ifm.FieldName, pool);
+                                        if (val == null)
+                                            fields += pool.CorrectName(ifm.FieldName) + " IS NULL AND ";
+                                        else
+                                        {
+                                            fields += pool.CorrectName(ifm.FieldName) + " = " + CreateParameterName(ifm.FieldName + "_" + cnt.ToString());
+                                            queryParameters.Add(conn.CreateParameter(CreateParameterName(ifm.FieldName + "_" + cnt.ToString()),val));
+                                        }
+                                    }
+                                    fields = fields.Substring(0, fields.Length - 4);
+                                    fields+="), ";
+                                    break;
+                                }
+                            }
+                            addedAutogenCorrection = true;
+                        }
 						if (map[fnp] is ExternalFieldMap)
 						{
 							if (!((ExternalFieldMap)map[fnp]).IsArray)
@@ -1074,6 +1101,17 @@ namespace Org.Reddragonit.Dbpro.Connections
 			queryParameters.Add(conn.CreateParameter(CreateParameterName("rowCount"),(long)recordCount.Value));
 			return String.Format(SelectWithPagingIncludeOffset,query,CreateParameterName("startIndex"),CreateParameterName("rowCount"));
 		}
+
+        internal virtual string SelectPaged(string baseQuery,TableMap mainMap, ref List<IDbDataParameter> queryParameters, ulong? start, ulong? recordCount)
+        {
+            if (!start.HasValue)
+                start = 0;
+            if (!recordCount.HasValue)
+                recordCount = 0;
+            queryParameters.Add(conn.CreateParameter(CreateParameterName("startIndex"), (long)start.Value));
+            queryParameters.Add(conn.CreateParameter(CreateParameterName("rowCount"), (long)recordCount.Value));
+            return String.Format(SelectWithPagingIncludeOffset, baseQuery, CreateParameterName("startIndex"), CreateParameterName("rowCount"));
+        }
 		#endregion
 	}
 }

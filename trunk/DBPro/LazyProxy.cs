@@ -229,7 +229,7 @@ namespace Org.Reddragonit.Dbpro
 						}
 					}else
 					{
-						if (((Table)owner).IsSaved&&fm.PrimaryKey)
+						if (((Table)owner).IsSaved&&fm.PrimaryKey&&fm.AutoGen)
 							throw new AlterPrimaryKeyException(owner.GetType().ToString(),pi.Name);
 						if (((Table)owner)._isSaved)
 						{

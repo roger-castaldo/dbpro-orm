@@ -214,6 +214,34 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			}
 		}
 
+        public bool HasComplexPrimary
+        {
+            get
+            {
+                bool ret = false;
+                if (PrimaryKeys.Count > 1)
+                {
+                    foreach (InternalFieldMap ifm in PrimaryKeys)
+                        ret = ret || ifm.AutoGen;
+                }
+                return ret;
+            }
+        }
+
+        public bool HasComplexNumberAutogen
+        {
+            get
+            {
+                bool ret = false;
+                if (PrimaryKeys.Count > 1)
+                {
+                    foreach (InternalFieldMap ifm in PrimaryKeys)
+                        ret = ret || (ifm.AutoGen&&(ifm.FieldType==FieldType.LONG||ifm.FieldType==FieldType.INTEGER||ifm.FieldType==FieldType.SHORT));
+                }
+                return ret;
+            }
+        }
+
         public List<string> ExternalPrimaryKeyProperties
         {
             get

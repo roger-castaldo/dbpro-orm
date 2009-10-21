@@ -5,6 +5,7 @@ using Org.Reddragonit.Dbpro.Virtual.Attributes;
 using Org.Reddragonit.Dbpro.Connections;
 using System.Reflection;
 using Org.Reddragonit.Dbpro.Structure.Mapping;
+using System.Data;
 
 namespace Org.Reddragonit.Dbpro.Virtual
 {
@@ -94,79 +95,116 @@ namespace Org.Reddragonit.Dbpro.Virtual
 
 		public List<object> SelectVirtualTable(Type type)
 		{
-			if (type.GetCustomAttributes(typeof(VirtualTableAttribute), true).Length == 0)
-				throw new Exception("Unable to execute a Virtual Table Query from a class that does not have a VirtualTableAttribute attached to it.");
-			List<object> ret = new List<object>();
-			Type mainTable = VirtualTableAttribute.GetMainTableTypeForVirtualTable(type);
-			Connection conn = ConnectionPoolManager.GetConnection(mainTable).getConnection();
-			TableMap mainMap = ClassMapper.GetTableMap(mainTable);
-			string originalQuery = conn.queryBuilder.SelectAll(mainTable);
-			string fieldString = "";
-			List<ExtractedVirtualField> fields = ExtractFieldFromType(type);
-			List<ExtractedVirtualField> fieldsUsed = new List<ExtractedVirtualField>();
-			List<TablePath> paths = new List<TablePath>();
-			foreach (TableMap.FieldNamePair fnp in mainMap.FieldNamePairs){
-				if (mainMap[fnp] is ExternalFieldMap){
-					ExternalFieldMap efm = (ExternalFieldMap)mainMap[fnp];
-					TableMap extMap = ClassMapper.GetTableMap(efm.Type);
-					string innerJoin = " INNER JOIN ";
-					if (efm.Nullable)
-						innerJoin=" LEFT JOIN ";
-					if (efm.IsArray){
-						innerJoin+=conn.Pool.CorrectName(mainMap.Name+"_"+extMap.Name)+" main_intermediate_"+fnp.ClassFieldName +" ON ";
-						foreach (InternalFieldMap ifm in mainMap.PrimaryKeys)
-							innerJoin+=" virtualTable."+conn.Pool.CorrectName(ifm.FieldName)+" = main_intermediate_"+fnp.ClassFieldName +"."+conn.Pool.CorrectName("PARENT_"+ifm.FieldName)+" AND ";
-						innerJoin=innerJoin.Substring(0,innerJoin.Length-5);
-						innerJoin+=" INNER JOIN "+conn.Pool.CorrectName(extMap.Name)+" main_"+fnp.ClassFieldName+" ON ";
-						foreach (InternalFieldMap ifm in extMap.PrimaryKeys)
-							innerJoin+=" main_intermediate_"+fnp.ClassFieldName+"."+conn.Pool.CorrectName("CHILD_"+ifm.FieldName)+" = main_"+fnp.ClassFieldName+"."+conn.Pool.CorrectName(ifm.FieldName)+" AND ";
-						innerJoin=innerJoin.Substring(0,innerJoin.Length-5);
-					}else{
-						innerJoin+=conn.Pool.CorrectName(extMap.Name)+" main_"+fnp.ClassFieldName+" ON ";
-						foreach (InternalFieldMap ifm in extMap.PrimaryKeys)
-							innerJoin+=" virtualTable."+conn.Pool.CorrectName(efm.AddOnName+"_"+ifm.FieldName)+" = main_"+fnp.ClassFieldName+"."+conn.Pool.CorrectName(ifm.FieldName)+" AND ";
-						innerJoin=innerJoin.Substring(0,innerJoin.Length-5);
-					}
-					paths.Add(new TablePath("main_"+fnp.ClassFieldName,innerJoin,efm.Type));
-				}
-			}
-			RecurExtractPaths(ref paths,conn);
-			string appendedJoins = "";
-			foreach (ExtractedVirtualField field in fields)
-			{
-				if (field.IsInternal){
-					fieldString += ", virtualTable." + mainMap.GetTableFieldName(field.FieldName) + " AS " + field.ClassFieldName;
-					fieldsUsed.Add(field);
-				}
-				else{
-					foreach (TablePath tp in paths){
-						if (tp.EndTable == field.TablePath){
-							if (!appendedJoins.Contains(tp.Path))
-								appendedJoins+=" "+tp.Path;
-							fieldString+=", "+field.TablePath+"."+conn.Pool.CorrectName(ClassMapper.GetTableMap(tp.EndType).GetTableFieldName(field.FieldName))+" AS "+field.ClassFieldName;
-							break;
-						}
-					}
-					if (!appendedJoins.Contains(field.TablePath))
-						throw new Exception("Unable to tie relation from "+mainMap.Name+" through field "+field.FullName);
-				}
-			}
-			fieldString = "SELECT " + fieldString.Substring(1) + " FROM (" + originalQuery+") virtualTable "+appendedJoins;
-			conn.ExecuteQuery(fieldString);
-			while (conn.Read()){
-				object obj = type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
-				for (int x=0;x<conn.FieldCount;x++){
-					PropertyInfo pi = type.GetProperty(fields[x].ClassFieldName);
-					if (conn.IsDBNull(x))
-						pi.SetValue(obj,null,new object[0]);
-					else
-						pi.SetValue(obj,conn.GetValue(x),new object[0]);
-				}
-				ret.Add(obj);
-			}
-			conn.CloseConnection();
-			return ret;
+            Connection conn;
+            List<IDbDataParameter> parameters;
+            TableMap mainMap;
+            List<ExtractedVirtualField> fields;
+            string fieldString = ConstructQuery(type, out parameters, out mainMap, out conn,out fields);
+            return LoadFromQuery(type,conn, fieldString, parameters, fields);
 		}
+
+        public List<object> SelectVirtualTable(Type type, ulong? startIndex, ulong? rowCount)
+        {
+            Connection conn;
+            List<IDbDataParameter> parameters;
+            TableMap mainMap;
+            List<ExtractedVirtualField> fields;
+            string fieldString = ConstructQuery(type, out parameters, out mainMap, out conn, out fields);
+            fieldString = conn.queryBuilder.SelectPaged(fieldString, mainMap, ref parameters, startIndex, rowCount);
+            return LoadFromQuery(type, conn, fieldString, parameters, fields);
+        }
+
+        private List<object> LoadFromQuery(Type type,Connection conn,string fieldString, List<IDbDataParameter> parameters, List<ExtractedVirtualField> fields)
+        {
+            List<object> ret = new List<object>();
+            conn.ExecuteQuery(fieldString,parameters);
+            while (conn.Read())
+            {
+                object obj = type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
+                for (int x = 0; x < conn.FieldCount; x++)
+                {
+                    PropertyInfo pi = type.GetProperty(fields[x].ClassFieldName);
+                    if (conn.IsDBNull(x))
+                        pi.SetValue(obj, null, new object[0]);
+                    else
+                        pi.SetValue(obj, conn.GetValue(x), new object[0]);
+                }
+                ret.Add(obj);
+            }
+            conn.CloseConnection();
+            return ret;
+        }
+
+        private string ConstructQuery(Type type, out List<IDbDataParameter> parameters, out TableMap mainMap, out Connection conn,out List<ExtractedVirtualField> fields)
+        {
+            if (type.GetCustomAttributes(typeof(VirtualTableAttribute), true).Length == 0)
+                throw new Exception("Unable to execute a Virtual Table Query from a class that does not have a VirtualTableAttribute attached to it.");
+            Type mainTable = VirtualTableAttribute.GetMainTableTypeForVirtualTable(type);
+            conn = ConnectionPoolManager.GetConnection(mainTable).getConnection();
+            mainMap = ClassMapper.GetTableMap(mainTable);
+            parameters=new List<IDbDataParameter>();
+            string originalQuery = conn.queryBuilder.SelectAll(mainTable);
+            string fieldString = "";
+            fields = ExtractFieldFromType(type);
+            List<ExtractedVirtualField> fieldsUsed = new List<ExtractedVirtualField>();
+            List<TablePath> paths = new List<TablePath>();
+            foreach (TableMap.FieldNamePair fnp in mainMap.FieldNamePairs)
+            {
+                if (mainMap[fnp] is ExternalFieldMap)
+                {
+                    ExternalFieldMap efm = (ExternalFieldMap)mainMap[fnp];
+                    TableMap extMap = ClassMapper.GetTableMap(efm.Type);
+                    string innerJoin = " INNER JOIN ";
+                    if (efm.Nullable)
+                        innerJoin = " LEFT JOIN ";
+                    if (efm.IsArray)
+                    {
+                        innerJoin += conn.Pool.CorrectName(mainMap.Name + "_" + extMap.Name) + " main_intermediate_" + fnp.ClassFieldName + " ON ";
+                        foreach (InternalFieldMap ifm in mainMap.PrimaryKeys)
+                            innerJoin += " virtualTable." + conn.Pool.CorrectName(ifm.FieldName) + " = main_intermediate_" + fnp.ClassFieldName + "." + conn.Pool.CorrectName("PARENT_" + ifm.FieldName) + " AND ";
+                        innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
+                        innerJoin += " INNER JOIN " + conn.Pool.CorrectName(extMap.Name) + " main_" + fnp.ClassFieldName + " ON ";
+                        foreach (InternalFieldMap ifm in extMap.PrimaryKeys)
+                            innerJoin += " main_intermediate_" + fnp.ClassFieldName + "." + conn.Pool.CorrectName("CHILD_" + ifm.FieldName) + " = main_" + fnp.ClassFieldName + "." + conn.Pool.CorrectName(ifm.FieldName) + " AND ";
+                        innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
+                    }
+                    else
+                    {
+                        innerJoin += conn.Pool.CorrectName(extMap.Name) + " main_" + fnp.ClassFieldName + " ON ";
+                        foreach (InternalFieldMap ifm in extMap.PrimaryKeys)
+                            innerJoin += " virtualTable." + conn.Pool.CorrectName(efm.AddOnName + "_" + ifm.FieldName) + " = main_" + fnp.ClassFieldName + "." + conn.Pool.CorrectName(ifm.FieldName) + " AND ";
+                        innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
+                    }
+                    paths.Add(new TablePath("main_" + fnp.ClassFieldName, innerJoin, efm.Type));
+                }
+            }
+            RecurExtractPaths(ref paths, conn);
+            string appendedJoins = "";
+            foreach (ExtractedVirtualField field in fields)
+            {
+                if (field.IsInternal)
+                {
+                    fieldString += ", virtualTable." + mainMap.GetTableFieldName(field.FieldName) + " AS " + field.ClassFieldName;
+                    fieldsUsed.Add(field);
+                }
+                else
+                {
+                    foreach (TablePath tp in paths)
+                    {
+                        if (tp.EndTable == field.TablePath)
+                        {
+                            if (!appendedJoins.Contains(tp.Path))
+                                appendedJoins += " " + tp.Path;
+                            fieldString += ", " + field.TablePath + "." + conn.Pool.CorrectName(ClassMapper.GetTableMap(tp.EndType).GetTableFieldName(field.FieldName)) + " AS " + field.ClassFieldName;
+                            break;
+                        }
+                    }
+                    if (!appendedJoins.Contains(field.TablePath))
+                        throw new Exception("Unable to tie relation from " + mainMap.Name + " through field " + field.FullName);
+                }
+            }
+            return "SELECT " + fieldString.Substring(1) + " FROM (" + originalQuery + ") virtualTable " + appendedJoins;
+        }
 		
 		private void RecurExtractPaths(ref List<TablePath> paths,Connection conn){
 			bool changed=true;
