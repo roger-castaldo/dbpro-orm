@@ -225,9 +225,11 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		internal void Init()
 		{
-			PreInit();
+            if (!_debugMode)
+			    PreInit();
 			ClassMapper.CorrectNamesForConnection(this);
-			UpdateStructure(_debugMode);
+            if (!(_debugMode&&(ClassMapper.TableTypesForConnection(this.ConnectionName).Count==0)))
+			    UpdateStructure(_debugMode);
 			for (int x=0;x<minPoolSize;x++)
 				unlocked.Enqueue(CreateConnection());
 			isReady=true;
