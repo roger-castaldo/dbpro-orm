@@ -638,6 +638,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		{
 			comm.CommandText = FormatParameters(queryString + " ", ref parameters);
 			comm.Parameters.Clear();
+            comm.CommandType = CommandType.Text;
 			if (parameters != null)
 			{
 				foreach (IDbDataParameter param in parameters)
@@ -676,9 +677,61 @@ namespace Org.Reddragonit.Dbpro.Connections
                 throw new Exception("An error occured in executing the query: "+queryString+"\nwith the parameters: "+pars,e);
             }
 		}
-		
-		
-		
+
+        public int ExecuteStoredProcedureNoReturn(string procedureName)
+        {
+            return ExecuteStoredProcedureNoReturn(procedureName, new IDbDataParameter[0]);
+        }
+
+        public int ExecuteStoredProcedureNoReturn(string procedureName,List<IDbDataParameter> parameters)
+        {
+            return ExecuteStoredProcedureNoReturn(procedureName, parameters.ToArray());
+        }
+
+        public int ExecuteStoredProcedureNoReturn(string procedureName,IDbDataParameter[] parameters)
+        {
+            comm.CommandText = procedureName;
+            comm.Parameters.Clear();
+            comm.CommandType = CommandType.StoredProcedure;
+            if (parameters != null)
+            {
+                foreach (IDbDataParameter param in parameters)
+                {
+                    comm.Parameters.Add(param);
+                }
+            }
+            System.Diagnostics.Debug.WriteLine(comm.CommandText);
+            if (parameters != null)
+            {
+                foreach (IDbDataParameter param in parameters)
+                {
+                    if (param.Value != null)
+                        System.Diagnostics.Debug.WriteLine(param.ParameterName + ": " + param.Value.ToString());
+                    else
+                        System.Diagnostics.Debug.WriteLine(param.ParameterName + ": NULL");
+                }
+            }
+            try
+            {
+                return comm.ExecuteNonQuery();
+            }
+            catch (Exception e)
+            {
+                string pars = "";
+                if (parameters != null)
+                {
+                    foreach (IDbDataParameter param in parameters)
+                    {
+                        if (param.Value != null)
+                            pars += param.ParameterName + ": " + param.Value.ToString() + "\n";
+                        else
+                            pars += param.ParameterName + ": NULL" + "\n";
+                    }
+                }
+                throw new Exception("An error occured in executing the procedure: " + procedureName + "\nwith the parameters: " + pars, e);
+            }
+        }
+
 		public void ExecuteQuery(string queryString)
 		{
 			ExecuteQuery(queryString,new IDbDataParameter[0]);
@@ -695,6 +748,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 				reader = null;
 				comm.CommandText = FormatParameters(queryString + " ", ref parameters);
 				comm.Parameters.Clear();
+                comm.CommandType = CommandType.Text;
 				if (parameters != null)
 				{
 					foreach (IDbDataParameter param in parameters)
@@ -734,6 +788,61 @@ namespace Org.Reddragonit.Dbpro.Connections
                 }
 			}
 		}
+
+        public void ExecuteStoredProcedureReturn(string procedureName)
+        {
+            ExecuteStoredProcedureReturn(procedureName, new IDbDataParameter[0]);
+        }
+
+        public void ExecuteStoredProcedureReturn(string procedureName, List<IDbDataParameter> parameters)
+        {
+            ExecuteStoredProcedureReturn(procedureName, parameters.ToArray());
+        }
+
+        public void ExecuteStoredProcedureReturn(string procedureName, IDbDataParameter[] parameters)
+        {
+            reader = null;
+            comm.CommandText = procedureName;
+            comm.Parameters.Clear();
+            comm.CommandType = CommandType.StoredProcedure;
+            if (parameters != null)
+            {
+                foreach (IDbDataParameter param in parameters)
+                {
+                    comm.Parameters.Add(param);
+                }
+            }
+            System.Diagnostics.Debug.WriteLine(comm.CommandText);
+            if (parameters != null)
+            {
+                foreach (IDbDataParameter param in parameters)
+                {
+                    if (param.Value != null)
+                        System.Diagnostics.Debug.WriteLine(param.ParameterName + ": " + param.Value.ToString());
+                    else
+                        System.Diagnostics.Debug.WriteLine(param.ParameterName + ": NULL");
+                }
+            }
+            try
+            {
+                reader = comm.ExecuteReader();
+            }
+            catch (Exception e)
+            {
+                string pars = "";
+                if (parameters != null)
+                {
+                    foreach (IDbDataParameter param in parameters)
+                    {
+                        if (param.Value != null)
+                            pars += param.ParameterName + ": " + param.Value.ToString() + "\n";
+                        else
+                            pars += param.ParameterName + ": NULL" + "\n";
+                    }
+                }
+                throw new Exception("An error occured in executing the procedure: " + procedureName+ "\nwith the parameters: " + pars, e);
+            }
+        }
 		
 		#region Reader
 		public int Depth {
