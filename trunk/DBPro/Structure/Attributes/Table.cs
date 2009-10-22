@@ -61,6 +61,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 								_tableName = _tableName[1].ToString().ToUpper() + _tableName.Substring(2);
 							}
 							_tableName = _tableName.ToUpper();
+                            _tableName = _tableName.Replace("__", "_");
 						}
 					}
 				}

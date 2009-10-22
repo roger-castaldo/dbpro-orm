@@ -122,6 +122,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		public void Commit()
 		{
+            System.Diagnostics.Debug.WriteLine("COMMIT");
 			trans.Commit();
 			trans=conn.BeginTransaction();
 			comm.Transaction=trans;
