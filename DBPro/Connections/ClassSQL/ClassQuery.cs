@@ -73,7 +73,14 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
         #region ConnectionFunctions
         public void Execute()
         {
-            _conn.ExecuteQuery(_outputQuery);
+            try
+            {
+                _conn.ExecuteQuery(_outputQuery);
+            }
+            catch (Exception e)
+            {
+                throw new Exception("An error occured executing translated query: " + _outputQuery, e);
+            }
         }
 
         private int TranslateFieldIndex(int i)
@@ -341,6 +348,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 			QueryToken field = _tokenizer.Tokens[index];
 			string tableName = "";
 			string fieldName = _tokenizer.Tokens[index].Value;
+            string tableAlias = "";
 			if (field.Value.Contains("."))
 			{
 				tableName = field.Value.Substring(0, field.Value.IndexOf("."));
@@ -354,6 +362,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 				}
 			}
 			ret.Add(field.Value);
+            tableAlias = tableName;
 			if (tableAliases.ContainsKey(tableName))
 				tableName = tableAliases[tableName];
 			Type t = LocateTableType(tableName);
@@ -414,7 +423,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 							}
 						}else{
 							ret.RemoveAt(0);
-							ret.Add(map.GetTableFieldName(fieldName));
+							ret.Add(tableAlias+"."+map.GetTableFieldName(fieldName));
 						}
 					}
 				}
@@ -433,7 +442,6 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 				    	(_tokenizer.Tokens[x - 1].Value.ToUpper() == "CAST") ||
 				    	(_tokenizer.Tokens[x - 1].Value == ",") ||
 				    	((_tokenizer.Tokens[x - 1].Value == "(") && (_tokenizer.Tokens[x-2].Value.ToUpper()!="IN") )||
-				    	(_tokenizer.Tokens[x + 1].Type == TokenType.OPERATOR) ||
 				    	(_tokenizer.Tokens[x - 1].Type == TokenType.OPERATOR) ||
 				    	(_tokenizer.Tokens[x - 1].Value.ToUpper() == "WHEN") ||
 				    	(_tokenizer.Tokens[x - 1].Value.ToUpper() == "THEN") ||
@@ -442,7 +450,8 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 				    	 (
 				    	 	(_tokenizer.Tokens[x+1].Value.ToUpper()=="NOT")||
 				    	 	(_tokenizer.Tokens[x+1].Value.ToUpper()=="IN")||
-				    	 	(_tokenizer.Tokens[x+1].Value.ToUpper()=="LIKE")
+				    	 	(_tokenizer.Tokens[x+1].Value.ToUpper()=="LIKE")||
+                            (_tokenizer.Tokens[x + 1].Type == TokenType.OPERATOR)
 				    	 )
 				    	)
 				    ))

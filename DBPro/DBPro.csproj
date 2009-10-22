@@ -117,6 +117,7 @@
     <Compile Include="Connections\QueryBuilder.cs" />
     <Compile Include="Exceptions\Exceptions.cs" />
     <Compile Include="LazyProxy.cs" />
+    <Compile Include="Logger.cs" />
     <Compile Include="Structure\Attributes\INullable.cs" />
     <Compile Include="Structure\Attributes\IVersionField.cs" />
     <Compile Include="Structure\Attributes\VersionField.cs" />

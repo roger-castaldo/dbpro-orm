@@ -33,7 +33,20 @@ namespace Org.Reddragonit.Dbpro.Connections
 					if (node.Name=="DBConnection")
 					{
 						ExtractConnectionFromXml(node);
-					}
+                    }
+                    else if (node.Name == "LogDiagnosticsOutput")
+                    {
+                        if (Path.DirectorySeparatorChar.ToString() == "\\")
+                        {
+                            if (node.Attributes["WindowsPath"] != null)
+                                Logger.AddLogger(node.Attributes["WindowsPath"].Value);
+                        }
+                        else
+                        {
+                            if (node.Attributes["LinuxPath"] != null)
+                                Logger.AddLogger(node.Attributes["LinuxPath"].Value);
+                        }
+                    }
 				}
 			}
 			string[] tmp = new string[_connectionPools.Count];

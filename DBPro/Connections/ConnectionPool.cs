@@ -143,43 +143,77 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		internal string CorrectName(string currentName)
 		{
-			if (_nameTranslations.ContainsValue(currentName))
-			{
-				foreach (string str in _nameTranslations.Keys)
-				{
-					if (_nameTranslations[str]==currentName)
-						return str.ToUpper();
-				}
-				return null;
-			}
-			else{
-				string ret = currentName;
-				bool reserved=false;
-				foreach (string str in ReservedWords)
-				{
-					if (Utility.StringsEqualIgnoreCaseWhitespace(str,currentName))
-					{
-						reserved=true;
-						break;
-					}
-				}
-				if (reserved)
-					ret="RES_"+ret;
-				if (ret.Length>MaxFieldNameLength)
-				{
-					int _nameCounter=0;
-					while (_nameTranslations.ContainsKey(ret.Substring(0,MaxFieldNameLength-1-(_nameCounter.ToString().Length))+"_"+_nameCounter.ToString()))
-					{
-						_nameCounter++;
-					}
-					ret=ret.Substring(0,MaxFieldNameLength-1-(_nameCounter.ToString().Length));
-					ret+="_"+_nameCounter.ToString();
-				}
-				if (!_nameTranslations.ContainsKey(ret))
-					_nameTranslations.Add(ret,currentName);
-				return ret.ToUpper();
-			}
+            if (_nameTranslations.ContainsValue(currentName.ToUpper()))
+            {
+                foreach (string str in _nameTranslations.Keys)
+                {
+                    if (_nameTranslations[str] == currentName.ToUpper())
+                        return str.ToUpper();
+                }
+                return null;
+            }
+            else if (_nameTranslations.ContainsKey(currentName))
+                return currentName;
+            else
+            {
+                string ret = currentName;
+                bool reserved = false;
+                foreach (string str in ReservedWords)
+                {
+                    if (Utility.StringsEqualIgnoreCaseWhitespace(str, currentName))
+                    {
+                        reserved = true;
+                        break;
+                    }
+                }
+                if (reserved)
+                    ret = "RES_" + ret;
+                ret = ShortenName(ret);
+                if (_nameTranslations.ContainsKey(ret))
+                {
+                    int _nameCounter = 0;
+                    while (_nameTranslations.ContainsKey(ret.Substring(0, MaxFieldNameLength - 1 - (_nameCounter.ToString().Length)) + "_" + _nameCounter.ToString()))
+                    {
+                        _nameCounter++;
+                    }
+                    ret = ret.Substring(0, MaxFieldNameLength - 1 - (_nameCounter.ToString().Length));
+                    ret += "_" + _nameCounter.ToString();
+                }
+                if (!_nameTranslations.ContainsKey(ret))
+                    _nameTranslations.Add(ret, currentName.ToUpper());
+                return ret.ToUpper();
+            }
 		}
+
+        private string ShortenName(string name)
+        {
+            if (name.Length <= MaxFieldNameLength)
+                return name;
+            string ret = "";
+            if (name.Contains("_"))
+            {
+                string[] tmp = name.Split('_');
+                int len = (int)Math.Floor((double)MaxFieldNameLength / (double)tmp.Length);
+                foreach (string str in tmp)
+                {
+                    if (str.Length != 0)
+                    {
+                        if (str.Length > len - 1)
+                            ret += str.Substring(0, len - 1) + "_";
+                        else
+                            ret += str + "_";
+                    }
+                }
+                ret = ret.Substring(0, ret.Length - 1);
+            }
+            else
+            {
+                int diff = name.Length - MaxFieldNameLength - 1;
+                int len = (int)Math.Floor((double)(name.Length - diff) / (double)2);
+                ret = name.Substring(0, len) + "_" + name.Substring(name.Length - len);
+            }
+            return ret;
+        }
 		
 		internal string ConnectionName
 		{
@@ -326,13 +360,31 @@ namespace Org.Reddragonit.Dbpro.Connections
 							if (!_enumTableMaps.ContainsKey(ifm.ObjectType))
 							{
 								string[] split = ifm.ObjectType.FullName.Split(".".ToCharArray());
-								string name="ENUM_";
+								string name="";
 								if (split.Length>1)
 									name+=split[split.Length-2]+"_"+split[split.Length-1];
 								else
 									name+=split[0];
-								name=CorrectName(name.ToUpper());
-								ExtractedTableMap enumMap = new ExtractedTableMap(CorrectName(name));
+                                string newName = "";
+                                foreach (char c in name.ToCharArray())
+                                {
+                                    if (c.ToString().ToUpper() == c.ToString())
+                                    {
+                                        newName += "_" + c.ToString().ToLower();
+                                    }
+                                    else
+                                    {
+                                        newName += c;
+                                    }
+                                }
+                                if (newName[0] == '_')
+                                {
+                                    newName = newName[1].ToString().ToUpper() + newName.Substring(2);
+                                }
+                                newName = "ENUM_" + newName;
+                                newName = newName.Replace("__", "_");
+								name=CorrectName(newName.ToUpper());
+								ExtractedTableMap enumMap = new ExtractedTableMap(name);
 								enumMap.Fields.Add(new ExtractedFieldMap("ID",conn.TranslateFieldType(FieldType.INTEGER,4),
 								                                         4,true,false,true));
 								enumMap.Fields.Add(new ExtractedFieldMap(CorrectName("VALUE"),conn.TranslateFieldType(FieldType.STRING,500),
