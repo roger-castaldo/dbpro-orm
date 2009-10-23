@@ -104,7 +104,11 @@ namespace Org.Reddragonit.Dbpro.Connections
 			try{
 				trans.Commit();
 			}catch (Exception e){}
-			conn.Close();
+            try
+            {
+                conn.Close();
+            }
+            catch (Exception e) { }
 			isConnected=false;
 		}
 		

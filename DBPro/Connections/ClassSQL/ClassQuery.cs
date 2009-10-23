@@ -60,7 +60,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 			List<IDbDataParameter> parameters;
 			EstablishSubQueries(ref pos,_tokenizer.Tokens);
 			Dictionary<int, string> subQueryTranlsations = TranslateSubQueries(out parameters);
-			foreach (int x in subQueryTranlsations.Keys){
+			foreach (int x in Utility.SortDictionaryKeys(subQueryTranlsations.Keys)){
                 string orig = "";
                 for (int y = x; y < _subQueryIndexes[x]; y++)
                 {
@@ -88,7 +88,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             if (_tableFields.Count > 0)
             {
                 int ret = i;
-                foreach (int index in _tableFieldCounts.Keys)
+                foreach (int index in Utility.SortDictionaryKeys(_tableFieldCounts.Keys))
                 {
                     if (index < i)
                         ret += _tableFieldCounts[index];
@@ -139,7 +139,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 		{
 			parameters = new List<IDbDataParameter>();
 			Dictionary<int, string> ret = new Dictionary<int, string>();
-			foreach (int i in _subQueryIndexes.Keys)
+			foreach (int i in Utility.SortDictionaryKeys(_subQueryIndexes.Keys))
 			{
 				ret.Add(i, TranslateSubQuery(i, ref parameters));
 			}
@@ -241,7 +241,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 				}
 			}
 			List<int> whereFieldIndexes = new List<int>();
-			foreach (int index in conditionIndexes.Keys){
+			foreach (int index in Utility.SortDictionaryKeys(conditionIndexes.Keys)){
 				whereFieldIndexes.AddRange(ExtractFieldsFromCondition(index,conditionIndexes[index]));
 			}
 			Dictionary<string, List<string>> fieldList = new Dictionary<string, List<string>>();
@@ -256,8 +256,23 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 		private string TranslateWhereConditions(int whereIndex,Dictionary<int, int> conditionIndexes,Dictionary<string, string> tableAliases,List<int> tableDeclarations,Dictionary<string, List<string>> fieldList){
 			string ret = "";
 			if (whereIndex>0){
+                string tmp = "Condition Indexes:\n";
+                foreach (int i in Utility.SortDictionaryKeys(conditionIndexes.Keys))
+                {
+                    tmp += i.ToString() + " --> " + conditionIndexes[i].ToString() + "\n";
+                }
+                Logger.LogLine(tmp);
+                tmp = "Condition Texts:\n";
+                foreach (int i in Utility.SortDictionaryKeys(conditionIndexes.Keys))
+                {
+                    int end = conditionIndexes[i];
+                    if (end >= _tokenizer.Tokens.Count)
+                        end = _tokenizer.Tokens.Count - 1;
+                    tmp += _tokenizer.Tokens[i].Value + " ... " + _tokenizer.Tokens[end].Value + "\n";
+                }
+                Logger.LogLine(tmp);
 				int lastIndex=whereIndex;
-				foreach (int index in conditionIndexes.Keys){
+				foreach (int index in Utility.SortDictionaryKeys(conditionIndexes.Keys)){
 					for (int x=lastIndex;x<index;x++){
 						ret+=_tokenizer.Tokens[x].Value+" ";
 					}
