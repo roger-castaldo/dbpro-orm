@@ -247,7 +247,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
             get
             {
                 List<string> ret = new List<string>();
-                foreach (string str in _fields.Keys)
+                foreach (string str in Utility.SortDictionaryKeys(_fields.Keys))
                 {
                     if (_fields[str].PrimaryKey && _fields[str] is ExternalFieldMap)
                         ret.Add(str);
@@ -409,7 +409,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 		public List<FieldNamePair> FieldNamePairs{
 			get{
 				List<FieldNamePair> ret = new List<FieldNamePair>();
-				foreach (string str in _fields.Keys)
+				foreach (string str in Utility.SortDictionaryKeys(_fields.Keys))
 				{
 					if (_fields[str] is InternalFieldMap)
 					{

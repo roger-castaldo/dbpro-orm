@@ -11,6 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Reflection;
+using Org.Reddragonit.Dbpro.Structure.Mapping;
 
 namespace Org.Reddragonit.Dbpro
 {
@@ -133,5 +134,32 @@ namespace Org.Reddragonit.Dbpro
 				}
 			}
 		}
+
+        internal static List<int> SortDictionaryKeys(Dictionary<int, int>.KeyCollection keys)
+        {
+            int[] tmp = new int[keys.Count];
+            keys.CopyTo(tmp, 0);
+            List<int> ret = new List<int>(tmp);
+            ret.Sort();
+            return ret;
+        }
+
+        internal static List<int> SortDictionaryKeys(Dictionary<int, string>.KeyCollection keys)
+        {
+            int[] tmp = new int[keys.Count];
+            keys.CopyTo(tmp, 0);
+            List<int> ret = new List<int>(tmp);
+            ret.Sort();
+            return ret;
+        }
+
+        internal static List<string> SortDictionaryKeys(Dictionary<string, FieldMap>.KeyCollection keys)
+        {
+            string[] tmp = new string[keys.Count];
+            keys.CopyTo(tmp, 0);
+            List<string> ret = new List<string>(tmp);
+            ret.Sort();
+            return ret;
+        }
 	}
 }
