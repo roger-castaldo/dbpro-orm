@@ -191,19 +191,22 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 					{
 						if (((_tokenizer.Tokens[i + x - 1].Value.ToUpper() == "FROM") || (_tokenizer.Tokens[i + x - 1].Value == ",")) && (_tokenizer.Tokens[i + x].Value != "("))
 						{
-							if ((_tokenizer.Tokens[i + x + 1].Value.ToUpper() != ",") && (_tokenizer.Tokens[i + x + 1].Value != "(") && (_tokenizer.Tokens[i + x + 1].Value != "WHERE"))
-							{
-								if (_tokenizer.Tokens[i + x + 1].Value.ToUpper() == "AS")
-								{
-									if (!tableAliases.ContainsKey(_tokenizer.Tokens[i + x + 2].Value))
-										tableAliases.Add(_tokenizer.Tokens[i + x + 2].Value, _tokenizer.Tokens[i + x].Value);
-								}
-								else
-								{
-									if (!tableAliases.ContainsKey(_tokenizer.Tokens[i + x + 1].Value))
-										tableAliases.Add(_tokenizer.Tokens[i + x + 1].Value, _tokenizer.Tokens[i + x].Value);
-								}
-							}
+                            if (i + x + 1 < _tokenizer.Tokens.Count)
+                            {
+                                if ((_tokenizer.Tokens[i + x + 1].Value.ToUpper() != ",") && (_tokenizer.Tokens[i + x + 1].Value != "(") && (_tokenizer.Tokens[i + x + 1].Value != "WHERE"))
+                                {
+                                    if (_tokenizer.Tokens[i + x + 1].Value.ToUpper() == "AS")
+                                    {
+                                        if (!tableAliases.ContainsKey(_tokenizer.Tokens[i + x + 2].Value))
+                                            tableAliases.Add(_tokenizer.Tokens[i + x + 2].Value, _tokenizer.Tokens[i + x].Value);
+                                    }
+                                    else
+                                    {
+                                        if (!tableAliases.ContainsKey(_tokenizer.Tokens[i + x + 1].Value))
+                                            tableAliases.Add(_tokenizer.Tokens[i + x + 1].Value, _tokenizer.Tokens[i + x].Value);
+                                    }
+                                }
+                            }
 							tableDeclarations.Add(i + x);
 						}
 						else if (_tokenizer.Tokens[i + x].Value.ToUpper() == "WHERE")
@@ -959,7 +962,16 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 
         public bool IsDBNull(int i)
         {
-            return _conn.IsDBNull(TranslateFieldIndex(i));
+        	if (!_tableFieldCounts.ContainsKey(i))
+            	return _conn.IsDBNull(TranslateFieldIndex(i));
+        	else{
+        		int start=TranslateFieldIndex(i);
+        		for(int x=0;x<_tableFieldCounts[i];x++){
+        			if(!_conn.IsDBNull(x+start))
+        				return false;
+        		}
+        		return true;
+        	}
         }
 
         public object this[string name]
