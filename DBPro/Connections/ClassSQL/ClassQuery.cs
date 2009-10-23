@@ -163,6 +163,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 				if ((_tokenizer.Tokens[i + x].Type == TokenType.KEY) &&
 				    (
 				    	(_tokenizer.Tokens[i + x - 1].Value.ToUpper() == "SELECT") ||
+				    	(_tokenizer.Tokens[i+x-1].Value.ToUpper()=="DISTINCT") ||
 				    	(_tokenizer.Tokens[i + x - 1].Value == ",") ||
 				    	(_tokenizer.Tokens[i + x - 1].Value == "(") ||
 				    	((_tokenizer.Tokens[i + x + 1].Value.ToUpper() == "AS") && (_tokenizer.Tokens[i + x + 1].Type == TokenType.KEYWORD)) ||
