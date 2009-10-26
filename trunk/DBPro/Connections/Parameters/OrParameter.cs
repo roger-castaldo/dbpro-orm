@@ -15,7 +15,8 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
 	/// </summary>
 	public class OrParameter :JoinParameter 
 	{
-		public OrParameter(SelectParameter leftPar,SelectParameter rightPar) : base(leftPar,rightPar)
+        public OrParameter(SelectParameter[] parameters)
+            : base(parameters)
 		{
 		}
 		

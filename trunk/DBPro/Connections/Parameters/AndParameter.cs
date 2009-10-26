@@ -15,7 +15,8 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
 	/// </summary>
 	public class AndParameter : JoinParameter 
 	{
-		public AndParameter(SelectParameter leftPar,SelectParameter rightPar) : base(leftPar,rightPar)
+        public AndParameter(SelectParameter[] parameters)
+            : base(parameters)
 		{
 		}
 		

@@ -31,7 +31,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
         private Dictionary<int, string> _fieldNames;
         private Dictionary<int, int> _tableFieldCounts;
 		private Connection _conn = null;
-		
+	
 		public ClassQuery(string NameSpace,string query)
 		{
 			_namespace=NameSpace;
@@ -71,15 +71,77 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
         }
 
         #region ConnectionFunctions
+        private List<IDbDataParameter> CorrectParameters(IDbDataParameter[] parameters)
+        {
+            List<IDbDataParameter> ret = new List<IDbDataParameter>();
+            foreach (IDbDataParameter par in parameters)
+            {
+                if (par.Value is Table)
+                {
+                    TableMap tm = ClassMapper.GetTableMap(par.Value.GetType());
+                    Table t = (Table)par.Value;
+                    foreach (InternalFieldMap ifm in tm.PrimaryKeys)
+                        ret.Add(_conn.CreateParameter(par.ParameterName+"_"+tm.GetClassFieldName(ifm),t.GetField(tm.GetClassFieldName(ifm))));
+                }
+                else
+                    ret.Add(par);
+            }
+            return ret;
+        }
+
+        private List<IDbDataParameter> CorrectParameters(List<IDbDataParameter> parameters)
+        {
+            return CorrectParameters(parameters.ToArray());
+        }
+
         public void Execute()
+        {
+            Execute(new IDbDataParameter[0]);
+        }
+
+        public void Execute(List<IDbDataParameter> parameters){
+            Execute(parameters.ToArray());
+        }
+
+        public void Execute(IDbDataParameter[] parameters)
         {
             try
             {
-                _conn.ExecuteQuery(_outputQuery);
+                if ((parameters != null) && (parameters.Length > 0))
+                    _conn.ExecuteQuery(_outputQuery, CorrectParameters(parameters));
+                else
+                    _conn.ExecuteQuery(_outputQuery);
             }
             catch (Exception e)
             {
                 throw new Exception("An error occured executing translated query: " + _outputQuery, e);
+            }
+        }
+
+        public void ExecutePaged(Type primaryTable,ulong? start, ulong? recordCount)
+        {
+            ExecutePaged(primaryTable,new IDbDataParameter[0], start, recordCount);
+        }
+
+        public void ExecutePaged(Type primaryTable, List<IDbDataParameter> parameters, ulong? start, ulong? recordCount)
+        {
+            ExecutePaged(primaryTable,parameters.ToArray(), start, recordCount);
+        }
+
+        public void ExecutePaged(Type primaryTable, IDbDataParameter[] parameters, ulong? start, ulong? recordCount)
+        {
+            string query = "";
+            try
+            {
+                List<IDbDataParameter> pars = new List<IDbDataParameter>();
+                if (parameters != null)
+                    pars.AddRange(parameters);
+                query = _conn.queryBuilder.SelectPaged(_outputQuery, ClassMapper.GetTableMap(primaryTable), ref pars, start, recordCount);
+                _conn.ExecuteQuery(query, CorrectParameters(pars));
+            }
+            catch (Exception e)
+            {
+                throw new Exception("An error occured executing translated query: " + query, e);
             }
         }
 
@@ -221,7 +283,10 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 				whereIndex=x;
 				while (x < _subQueryIndexes[i])
 				{
-					if ((_tokenizer.Tokens[x-1].Value=="WHERE")
+                    if ((_tokenizer.Tokens[x].Value.ToUpper()=="GROUP")||
+                        (_tokenizer.Tokens[x].Value.ToUpper()=="ORDER"))
+                        break;
+					if ((_tokenizer.Tokens[x-1].Value.ToUpper()=="WHERE")
 					    ||(_tokenizer.Tokens[x-1].Value=="(")
 					    ||(_tokenizer.Tokens[x-1].Value.ToUpper()=="OR")
 					    ||(_tokenizer.Tokens[x-1].Value.ToUpper()=="AND")
@@ -252,9 +317,114 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 			string tables = CreateTableQuery(tableDeclarations, fieldIndexes,ref fieldList,whereFieldIndexes);
 			string fields = TranslateFields(i,fieldIndexes, tableDeclarations, fieldAliases, tableAliases,fieldList);
 			string wheres = TranslateWhereConditions(whereIndex,conditionIndexes,tableAliases,tableDeclarations,fieldList);
+            string ending = "";
+            if (wheres.ToUpper().Contains(" GROUP BY ") || wheres.ToUpper().Contains(" ORDER BY "))
+            {
+                int endingStart = wheres.ToUpper().IndexOf(" GROUP BY ");
+                if ((endingStart==-1)||(wheres.ToUpper().IndexOf(" ORDER BY ")>endingStart))
+                    endingStart = wheres.ToUpper().IndexOf(" ORDER BY ");
+                ending = wheres.Substring(endingStart);
+                wheres = wheres.Substring(0, endingStart);
+                QueryTokenizer qt = new QueryTokenizer(ending);
+                for (int y = 0; x < qt.Tokens.Count; x++)
+                {
+                    if (
+                        (qt.Tokens[y - 1].Value == ",") ||
+                        (qt.Tokens[y - 1].Value == "(") ||
+                        (qt.Tokens[y - 1].Value.ToUpper() == "BY") ||
+                        (qt.Tokens[y + 1].Type == TokenType.OPERATOR) ||
+                        (qt.Tokens[y - 1].Type == TokenType.OPERATOR) ||
+                        (qt.Tokens[y - 1].Value.ToUpper() == "WHEN") ||
+                        (qt.Tokens[y - 1].Value.ToUpper() == "THEN") ||
+                        (qt.Tokens[y - 1].Value.ToUpper() == "ELSE")
+                        )
+                    {
+                        wheres+=TranslateGroupOrderByFieldName(x, tableDeclarations, fieldAliases, tableAliases, fieldList, qt)+" ";
+                    }
+                    else
+                        wheres += qt.Tokens[x].Value+ " ";
+                }
+            }
 			return fields+" FROM " + tables+wheres;
 		}
 		#endregion
+
+        #region GroupOrderByTranslating
+        private string TranslateGroupOrderByFieldName(int index, List<int> tableDeclarations, Dictionary<int, string> fieldAliases, Dictionary<string, string> tableAliases, Dictionary<string, List<string>> fieldList,QueryTokenizer tokenizer)
+        {
+            QueryToken field = _tokenizer.Tokens[index];
+            string tableName = "";
+            string fieldName = tokenizer.Tokens[index].Value;
+            if (field.Value.Contains("."))
+            {
+                tableName = field.Value.Substring(0, field.Value.IndexOf("."));
+                fieldName = fieldName.Substring(tableName.Length + 1);
+            }
+            else
+            {
+                if (tableDeclarations.Count == 1)
+                {
+                    tableName = _tokenizer.Tokens[tableDeclarations[0]].Value;
+                }
+            }
+            if (tableAliases.ContainsKey(tableName))
+                tableName = tableAliases[tableName];
+            string ret = field.Value;
+            Type t = LocateTableType(tableName);
+            if (t != null)
+            {
+                TableMap map = ClassMapper.GetTableMap(t);
+                if (fieldName.Contains("."))
+                {
+                    while (fieldName.Contains("."))
+                    {
+                        ExternalFieldMap efm = (ExternalFieldMap)map[fieldName.Substring(0, fieldName.IndexOf("."))];
+                        map = ClassMapper.GetTableMap(efm.Type);
+                        fieldName = fieldName.Substring(fieldName.IndexOf(".") + 1);
+                    }
+                    if (fieldName != "*")
+                    {
+                        if (map[fieldName] is ExternalFieldMap)
+                        {
+                            ret = "";
+                            foreach (string str in fieldList[field.Value])
+                            {
+                                ret += field.Value.Replace(".", "_") + "." + str + ", ";
+                            }
+                        }
+                        else
+                            ret = field.Value.Substring(0, field.Value.LastIndexOf(".")).Replace(".", "_") + "." + map.GetTableFieldName(fieldName);
+                    }
+                    else
+                    {
+                        ret = field.Value.Substring(0, field.Value.LastIndexOf(".")).Replace(".", "_") + ".*";
+                    }
+                }
+                else
+                {
+                    if (fieldName == "*")
+                    {
+                        ret = "*";
+                    }
+                    else
+                    {
+                        if (map[fieldName] is ExternalFieldMap)
+                        {
+                            TableMap extMap = ClassMapper.GetTableMap(((ExternalFieldMap)map[fieldName]).Type);
+                            ret = "";
+                            foreach (string str in fieldList[field.Value])
+                            {
+                                ret += field.Value.Replace(".", "_") + "." + str + ", ";
+                            }
+                        }
+                        else
+                            ret = map.GetTableFieldName(fieldName);
+                    }
+                }
+            }
+            return ret;
+        }
+        #endregion
 		
 		#region ConditionTranslating
 		private string TranslateWhereConditions(int whereIndex,Dictionary<int, int> conditionIndexes,Dictionary<string, string> tableAliases,List<int> tableDeclarations,Dictionary<string, List<string>> fieldList){
@@ -287,7 +457,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 					while (cnt<conditionIndexes[index]){
 						if (_conditionOperators.Contains(_tokenizer.Tokens[cnt].Value.ToUpper())){
 							started=true;
-							condition+=_tokenizer.Tokens[cnt].Value;
+							condition+=_tokenizer.Tokens[cnt].Value+" ";
 						}else if (started)
 							break;
 						cnt++;
@@ -297,8 +467,94 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 						isTabled=isTabled||IsFieldConditionTable(x,tableAliases,tableDeclarations);
 					}
 					if (isTabled){
-                        //TODO: Need to implement code to handle all variations of using a table value, including if an arrayed parameter of tables is passed in for IN
-						throw new Exception("Unable to handle conditions using entire tables at this time.");
+                        string conditionTemplate = "";
+                        int conCnter = 0;
+                        List<int> changedIndexes = new List<int>();
+                        for (int x = index; x < conditionIndexes[index]; x++)
+                        {
+                            if (fields.Contains(x) || (_tokenizer.Tokens[x].Type == TokenType.VARIABLE))
+                            {
+                                conditionTemplate += "{" + conCnter.ToString() + "} ";
+                                conCnter++;
+                                changedIndexes.Add(x);
+                            }
+                            else
+                                conditionTemplate += _tokenizer.Tokens[x].Value + " ";
+                        }
+                        changedIndexes.Sort();
+                        Type t1 = LocateTableTypeAtIndex(fields[0], tableAliases, tableDeclarations);
+                        Type t2=null;
+                        if (fields.Count == 2)
+                        {
+                            t2 = LocateTableTypeAtIndex(fields[1], tableAliases, tableDeclarations);
+                            if (!t1.Equals(t2) && !t1.IsSubclassOf(t2) && !t2.IsSubclassOf(t1))
+                                throw new Exception("Unable to compare two table objects that are not of the same type.");
+                        }
+                        string addition = "";
+                        TableMap tm = ClassMapper.GetTableMap(t1);
+                        List<string> tmpFields1 = TranslateConditionField(fields[0], tableDeclarations, tableAliases, fieldList);
+                        List<string> tmpFields2 = null;
+                        if (t2!=null)
+                            tmpFields2 = TranslateConditionField(fields[1], tableDeclarations, tableAliases, fieldList);
+                        string origParam = "";
+                        foreach (int y in changedIndexes)
+                        {
+                            if (_tokenizer.Tokens[y].Type == TokenType.VARIABLE)
+                            {
+                                origParam = _tokenizer.Tokens[y].Value;
+                                break;
+                            }
+                        }
+                        switch (condition.TrimEnd().ToUpper())
+                        {
+                            case "NOT IN":
+                            case "IN":
+                                //TODO: Need to implement code to handle all variations of using a table value, including if an arrayed parameter of tables is passed in for IN
+                                throw new Exception("Unable to handle IN conditions using entire tables at this time.");
+                                break;
+                            case "=":
+                            case "<":
+                            case "<=":
+                            case ">=":
+                            case ">":
+                            case "NOT LIKE":
+                            case "LIKE":
+                                string joint = " OR ";
+                                if (condition.Trim() == "=" || (condition.TrimEnd().ToUpper() == "LIKE") || (condition.TrimEnd().ToUpper()=="NOT LIKE"))
+                                    joint = " AND ";
+                                addition = "( ";
+                                foreach (InternalFieldMap ifm in tm.PrimaryKeys)
+                                {
+                                    int cntr = 0;
+                                    string field1 = tmpFields1[0];
+                                    while (!field1.EndsWith(ifm.FieldName) && (cnt < tmpFields1.Count))
+                                    {
+                                        field1 = tmpFields1[cntr];
+                                        cntr++;
+                                    }
+                                    string field2 = "";
+                                    if (fields.Count == 2)
+                                    {
+                                        cntr = 0;
+                                        field2 = tmpFields2[0];
+                                        while (!field2.EndsWith(ifm.FieldName) && (cnt < tmpFields2.Count))
+                                        {
+                                            field2 = tmpFields2[cntr];
+                                            cntr++;
+                                        }
+                                    }
+                                    else
+                                        field2 = origParam + "_" + tm.GetClassFieldName(ifm);
+                                    if (changedIndexes[0] == fields[0])
+                                        addition += "( " + string.Format(conditionTemplate, field1, field2) + " )" + joint;
+                                    else
+                                        addition += "( " + string.Format(conditionTemplate, field2, field1) + " )" + joint;
+                                }
+                                addition = addition.Substring(0, addition.Length - joint.Length);
+                                addition += " )";
+                                break;
+                        }
+                        ret += addition+" ";
 					}else{
 						for(int x=index;x<conditionIndexes[index];x++){
 							if (fields.Contains(x)){
@@ -312,6 +568,28 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 			}
 			return ret;
 		}
+
+        private Type LocateTableTypeAtIndex(int index, Dictionary<string, string> tableAliases, List<int> tableDeclarations)
+        {
+            QueryToken field = _tokenizer.Tokens[index];
+            string tableName = "";
+            string fieldName = _tokenizer.Tokens[index].Value;
+            if (field.Value.Contains("."))
+            {
+                tableName = field.Value.Substring(0, field.Value.IndexOf("."));
+                fieldName = fieldName.Substring(tableName.Length + 1);
+            }
+            else
+            {
+                if (tableDeclarations.Count == 1)
+                {
+                    tableName = _tokenizer.Tokens[tableDeclarations[0]].Value;
+                }
+            }
+            if (tableAliases.ContainsKey(tableName))
+                tableName = tableAliases[tableName];
+            return LocateTableType(tableName);
+        }
 		
 		private bool IsFieldConditionTable(int index,Dictionary<string, string> tableAliases,List<int> tableDeclarations){
 			QueryToken field = _tokenizer.Tokens[index];
@@ -360,6 +638,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 			}
 			return false;
 		}
+
 		
 		private List<string> TranslateConditionField(int index, List<int> tableDeclarations, Dictionary<string, string> tableAliases,Dictionary<string,List<string>> fieldList)
 		{
