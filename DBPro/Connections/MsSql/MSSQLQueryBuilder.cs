@@ -202,9 +202,9 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 		}
 		
 		protected override string SelectCountString {
-			get { 
-				return "SELECT * FROM (SELECT ROW_NUMBER() OVER (ORDER BY {3}) RowNum,"+
-					"* FROM ({0}) internalTbl) cntTbl WHERE RowNum BETWEEN {1} AND {1}+{2}";
+			get {
+                return "SELECT * FROM (SELECT *,ROW_NUMBER() OVER (ORDER BY {3}) RowNum" +
+					" FROM ({0}) internalTbl) cntTbl WHERE RowNum BETWEEN {1} AND {1}+{2}";
 			}
 		}
 		

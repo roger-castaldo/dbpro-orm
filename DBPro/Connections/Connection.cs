@@ -47,6 +47,13 @@ namespace Org.Reddragonit.Dbpro.Connections
 				return false;
 			}
 		}
+
+        internal virtual string ConcatenationCharacter
+        {
+            get {
+                return "||";
+            }
+        }
 		
 		public ConnectionPool Pool{
 			get{return pool;}

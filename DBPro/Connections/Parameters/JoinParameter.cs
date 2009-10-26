@@ -18,21 +18,15 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
 	/// </summary>
 	public abstract class JoinParameter : SelectParameter 
 	{
-		private SelectParameter _leftPar;
-		private SelectParameter _rightPar;
+        private SelectParameter[] _parameters;
 		
-		public JoinParameter(SelectParameter leftPar,SelectParameter rightPar)
+		public JoinParameter(SelectParameter[] parameters)
 		{
-			_rightPar=rightPar;
-			_leftPar=leftPar;
+            _parameters = parameters;
 		}
 		
-		public SelectParameter RightPar{
-			get{return _rightPar;}
-		}
-		
-		public SelectParameter LeftPar{
-			get{return _leftPar;}
+		public SelectParameter[] Parameters{
+			get{return _parameters;}
 		}
 		
 		protected abstract string JoinString{
@@ -41,7 +35,15 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
 		
 		internal sealed override string ConstructString(TableMap map, Connection conn, QueryBuilder builder, ref List<IDbDataParameter> queryParameters, ref int parCount)
 		{
-			return "( ("+LeftPar.ConstructString(map,conn,builder,ref queryParameters,ref parCount)+" ) "+JoinString+" ( "+RightPar.ConstructString(map,conn,builder,ref queryParameters,ref parCount)+" ) )";
+            string ret = "( ";
+            foreach (SelectParameter par in _parameters)
+            {
+                ret += " (" + par.ConstructString(map, conn, builder, ref queryParameters, ref parCount) + ") " + JoinString;
+            }
+            if (_parameters.Length > 0)
+                return ret.Substring(0, ret.Length - JoinString.Length) + ")";
+            else
+                return "";
 		}
 	}
 }

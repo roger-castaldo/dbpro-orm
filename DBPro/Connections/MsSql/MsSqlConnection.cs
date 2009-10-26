@@ -12,6 +12,14 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 {
 	class MsSqlConnection : Connection
 	{
+        internal override string ConcatenationCharacter
+        {
+            get
+            {
+                return "+";
+            }
+        }
+
 		private QueryBuilder _builder;
 		internal override QueryBuilder queryBuilder
 		{
