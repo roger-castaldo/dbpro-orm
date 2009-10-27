@@ -181,6 +181,16 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			if (!contains)
 				_connectionName=ConnectionPoolManager.DEFAULT_CONNECTION_NAME;
 		}
+
+        public bool IsParentClassField(string fieldName)
+        {
+            foreach (FieldNamePair fnp in ParentFieldNamePairs)
+            {
+                if ((fieldName == fnp.ClassFieldName)&&(!this[fnp].PrimaryKey))
+                    return true;
+            }
+            return false;
+        }
 		
 		public void CorrectNames(ConnectionPool pool)
 		{

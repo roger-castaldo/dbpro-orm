@@ -257,6 +257,8 @@ namespace Org.Reddragonit.Dbpro
 				{
                     if (mi.Name == "Update")
                         ((Table)owner)._changedFields = _changedFields;
+                    if ((pi != null) && (pi.Name == "IsProxied"))
+                        outVal = true;
                     if ((pi != null) && (pi.Name == "ChangedFields"))
                         outVal = _changedFields;
                     else if (mi.Name == "GetType")

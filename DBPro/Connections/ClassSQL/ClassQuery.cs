@@ -393,7 +393,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                             }
                         }
                         else
-                            ret = field.Value.Substring(0, field.Value.LastIndexOf(".")).Replace(".", "_") + "." + map.GetTableFieldName(fieldName);
+                            ret = TranslateParentFieldName(field.Value.Substring(0, field.Value.LastIndexOf(".")).Replace(".", "_"),fieldName,map);
                     }
                     else
                     {
@@ -418,7 +418,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                             }
                         }
                         else
-                            ret = map.GetTableFieldName(fieldName);
+                            ret = TranslateParentFieldName(map.Name,fieldName,map);
                     }
                 }
             }
@@ -527,7 +527,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                                 {
                                     int cntr = 0;
                                     string field1 = tmpFields1[0];
-                                    while (!field1.EndsWith(ifm.FieldName) && (cnt < tmpFields1.Count))
+                                    while (!field1.Contains(_conn.Pool.CorrectName(ifm.FieldName)) && (cntr < tmpFields1.Count))
                                     {
                                         field1 = tmpFields1[cntr];
                                         cntr++;
@@ -537,7 +537,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                                     {
                                         cntr = 0;
                                         field2 = tmpFields2[0];
-                                        while (!field2.EndsWith(ifm.FieldName) && (cnt < tmpFields2.Count))
+                                        while (!field2.EndsWith(_conn.Pool.CorrectName(ifm.FieldName)) && (cntr < tmpFields2.Count))
                                         {
                                             field2 = tmpFields2[cntr];
                                             cntr++;
@@ -588,7 +588,29 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             }
             if (tableAliases.ContainsKey(tableName))
                 tableName = tableAliases[tableName];
-            return LocateTableType(tableName);
+            Type t = LocateTableType(tableName);
+            if (t != null)
+            {
+                TableMap map = ClassMapper.GetTableMap(t);
+                if (fieldName.Contains("."))
+                {
+                    while (fieldName.Contains("."))
+                    {
+                        ExternalFieldMap efm = (ExternalFieldMap)map[fieldName.Substring(0, fieldName.IndexOf("."))];
+                        map = ClassMapper.GetTableMap(efm.Type);
+                        fieldName = fieldName.Substring(fieldName.IndexOf(".") + 1);
+                        t=efm.Type;
+                    }
+                    if (map[fieldName] is ExternalFieldMap)
+                        return ((ExternalFieldMap)map[fieldName]).Type;
+                }
+                else
+                {
+                    if (map[fieldName] is ExternalFieldMap)
+                        return ((ExternalFieldMap)map[fieldName]).Type;
+                }
+            }
+            return t;
         }
 		
 		private bool IsFieldConditionTable(int index,Dictionary<string, string> tableAliases,List<int> tableDeclarations){
@@ -687,7 +709,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 						}else
 						{
 							ret.RemoveAt(0);
-							ret.Add(field.Value.Substring(0, field.Value.LastIndexOf(".")).Replace(".", "_") + "." + map.GetTableFieldName(fieldName));
+                            ret.Add(TranslateParentFieldName(field.Value.Substring(0, field.Value.LastIndexOf(".")).Replace(".", "_"),map.GetTableFieldName(fieldName),map));
 						}
 					}
 					else
@@ -721,7 +743,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 							}
 						}else{
 							ret.RemoveAt(0);
-							ret.Add(tableAlias+"."+map.GetTableFieldName(fieldName));
+                            ret.Add(TranslateParentFieldName(tableAlias,fieldName,map));
 						}
 					}
 				}
@@ -899,8 +921,38 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 				if (!joins.Contains(innerJoin))
 					joins.Add(innerJoin);
 			}
+            if (map.IsParentClassField(field))
+            {
+                TableMap parentMap = map;
+                while (parentMap.ParentType != null)
+                {
+                    parentMap = ClassMapper.GetTableMap(map.ParentType);
+                    string innerJoin = " INNER JOIN " + _conn.Pool.CorrectName(parentMap.Name) + " " + alias + "_parent ON ";
+                    foreach (InternalFieldMap ifm in parentMap.PrimaryKeys)
+                        innerJoin += alias + "." + _conn.Pool.CorrectName(ifm.FieldName) + " = " + alias + "_parent." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
+                    innerJoin = innerJoin.Substring(0, innerJoin.Length - 4);
+                    if (!joins.Contains(innerJoin))
+                        joins.Add(innerJoin);
+                    alias += "_parent";
+                }
+            }
 			return joins;
 		}
+
+        private string TranslateParentFieldName(string alias,string field, TableMap map)
+        {
+            if (!map.IsParentClassField(field))
+                return alias+"."+map.GetTableFieldName(field);
+            TableMap parentMap = map;
+            while (parentMap.ParentType != null)
+            {
+                parentMap = ClassMapper.GetTableMap(map.ParentType);
+                alias += "_parent";
+                if (!parentMap.IsParentClassField(field))
+                    break;
+            }
+            return alias+"."+parentMap.GetTableFieldName(field);
+        }
 
 		private Type LocateTableType(string tablename)
 		{
@@ -1019,7 +1071,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 								ret += field.Value.Replace(".", "_") + "." + str+" AS "+fieldAlias+"_"+str+", ";
 							}
 						}else
-							ret = field.Value.Substring(0, field.Value.LastIndexOf(".")).Replace(".", "_") + "." + map.GetTableFieldName(fieldName);
+							ret = TranslateParentFieldName(field.Value.Substring(0, field.Value.LastIndexOf(".")).Replace(".", "_"),fieldName,map);
 					}
 					else
 					{
@@ -1050,7 +1102,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 								ret += field.Value.Replace(".", "_") + "." + str + " AS " + fieldAlias + "_" + str + ", ";
 							}
 						}else
-							ret = map.GetTableFieldName(fieldName);
+                            ret = TranslateParentFieldName(map.Name,fieldName,map);
 					}
 				}
 			}
