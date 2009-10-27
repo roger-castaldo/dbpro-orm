@@ -69,38 +69,8 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
             }
             if (!ret.HasValue)
             {
-                foreach (FieldNamePair f in map.ParentFieldNamePairs)
-                {
-                    if (f.ClassFieldName == FieldName)
-                    {
-                        TableMap m = ClassMapper.GetTableMap(map.ParentType);
-                        while (m[f] == null)
-                        {
-                            if (m.ParentType != null)
-                                m = ClassMapper.GetTableMap(m.ParentType);
-                            else
-                                throw new Exception("Unable to Locate Parent Field.");
-                        }
-                        isExternal = m[f] is ExternalFieldMap;
-                        ClassBased = true;
-                        ret = f;
-                        break;
-                    }
-                    else if (f.TableFieldName == FieldName)
-                    {
-                        TableMap m = ClassMapper.GetTableMap(map.ParentType);
-                        while (m[f] == null)
-                        {
-                            if (m.ParentType != null)
-                                m = ClassMapper.GetTableMap(m.ParentType);
-                            else
-                                throw new Exception("Unable to Locate Parent Field.");
-                        }
-                        isExternal = m[f] is ExternalFieldMap;
-                        ret = f;
-                        break;
-                    }
-                }
+                if (map.ParentType != null)
+                    ret = LocateFieldNamePair(ClassMapper.GetTableMap(map.ParentType), out ClassBased, out isExternal);
             }
             return ret;
         }
