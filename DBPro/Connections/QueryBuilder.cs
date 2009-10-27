@@ -844,7 +844,11 @@ namespace Org.Reddragonit.Dbpro.Connections
 				return map.Name;
 			TableMap parentMap = ClassMapper.GetTableMap(map.ParentType);
 			string fields = "";
-			string tables = map.Name+" table_"+count.ToString()+", "+GetSubqueryTable(parentMap,map.ParentType,ref count)+" table_"+((int)(count+1)).ToString();
+            int origCount = count;
+            string tables = map.Name + " table_" + origCount.ToString() + ", ";
+            count++;
+            tables += GetSubqueryTable(parentMap, map.ParentType, ref count);
+            tables+=" table_" + ((int)(count + 1)).ToString();
 			string where ="";
 			foreach (FieldNamePair fnp in map.FieldNamePairs)
 			{
@@ -856,18 +860,18 @@ namespace Org.Reddragonit.Dbpro.Connections
 						TableMap relatedMap = ClassMapper.GetTableMap(efm.Type);
 						foreach (InternalFieldMap ifm in relatedMap.PrimaryKeys)
 						{
-							fields+="table_"+count.ToString()+"."+pool.CorrectName(efm.AddOnName+"_"+ifm.FieldName)+",";
+							fields+="table_"+origCount.ToString()+"."+pool.CorrectName(efm.AddOnName+"_"+ifm.FieldName)+",";
 						}
 					}
 				}else{
-					fields+="table_"+count.ToString()+"."+fnp.TableFieldName+",";
+					fields+="table_"+origCount.ToString()+"."+fnp.TableFieldName+",";
 				}
 			}
 			foreach (InternalFieldMap ifm in parentMap.PrimaryKeys)
 			{
-                if (!fields.Contains("table_"+count.ToString()+"."+ifm.FieldName+","))
-                    fields+="table_"+count.ToString()+"."+ifm.FieldName+",";
-				where+=" table_"+count.ToString()+"."+ifm.FieldName+" = table_"+(count+1).ToString()+"."+ifm.FieldName+" AND";
+                if (!fields.Contains("table_"+origCount.ToString()+"."+ifm.FieldName+","))
+                    fields+="table_"+origCount.ToString()+"."+ifm.FieldName+",";
+				where+=" table_"+origCount.ToString()+"."+ifm.FieldName+" = table_"+(count+1).ToString()+"."+ifm.FieldName+" AND";
 			}
 			count++;
 			foreach (string str in map.ParentDatabaseFieldNames)
@@ -875,7 +879,6 @@ namespace Org.Reddragonit.Dbpro.Connections
 				fields+="table_"+count.ToString()+"."+str+",";
 			}
 			fields=fields.Substring(0,fields.Length-1);
-			count++;
 			if (where.EndsWith(" AND"))
 				where = where.Substring(0,where.Length-4);
 			return String.Format("("+SelectWithConditions+")",fields,tables,where);

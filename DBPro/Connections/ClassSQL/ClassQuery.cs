@@ -71,6 +71,11 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
         }
 
         #region ConnectionFunctions
+        public IDbDataParameter CreateParameter(string name, object value)
+        {
+            return _conn.CreateParameter(name, value);
+        }
+
         private List<IDbDataParameter> CorrectParameters(IDbDataParameter[] parameters)
         {
             List<IDbDataParameter> ret = new List<IDbDataParameter>();
@@ -296,9 +301,11 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 							x++;
 							while (x < _subQueryIndexes[i])
 							{
-								if ((_tokenizer.Tokens[x].Value==")")
-								    ||(_tokenizer.Tokens[x].Value.ToUpper()=="OR")
-								    ||(_tokenizer.Tokens[x].Value.ToUpper()=="AND")){
+								if ((_tokenizer.Tokens[x].Value.ToUpper()=="OR")
+								    ||(_tokenizer.Tokens[x].Value.ToUpper()=="AND")
+                                    ||(_tokenizer.Tokens[x].Value.ToUpper() == "GROUP") 
+                                    ||(_tokenizer.Tokens[x].Value.ToUpper() == "ORDER"))
+                                {
 									break;
 								}
 								x++;
@@ -306,6 +313,12 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 							conditionIndexes.Add(start,x);
 						}
 					}
+                    if ((x < _subQueryIndexes[i])&&
+                        (
+                            (_tokenizer.Tokens[x].Value.ToUpper() == "GROUP") ||
+                            (_tokenizer.Tokens[x].Value.ToUpper() == "ORDER")
+                        ))
+                        break;
 					x++;
 				}
 			}
@@ -418,7 +431,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                             }
                         }
                         else
-                            ret = TranslateParentFieldName(map.Name,fieldName,map);
+                            ret = TranslateParentFieldName(tableName,fieldName,map);
                     }
                 }
             }
@@ -1033,6 +1046,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 					tableName = _tokenizer.Tokens[tableDeclarations[0]].Value;
 				}
 			}
+            string tableAlias = tableName;
 			if (fieldAliases.ContainsKey(index))
 				fieldAlias = fieldAliases[index];
 			if (tableAliases.ContainsKey(tableName))
@@ -1102,7 +1116,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 								ret += field.Value.Replace(".", "_") + "." + str + " AS " + fieldAlias + "_" + str + ", ";
 							}
 						}else
-                            ret = TranslateParentFieldName(map.Name,fieldName,map);
+                            ret = TranslateParentFieldName(tableAlias,fieldName,map);
 					}
 				}
 			}

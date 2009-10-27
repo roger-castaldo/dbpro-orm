@@ -83,19 +83,27 @@ namespace Org.Reddragonit.Dbpro.Structure
         //called to copy values from an existing table object, this is done for table inheritance
 		internal void CopyValuesFrom(Table table)
 		{
-			foreach (PropertyInfo pi in table.GetType().GetProperties(BindingFlags.Public |      //Get public members
-			                                                          BindingFlags.NonPublic |   //Get private/protected/internal members
-			                                                          BindingFlags.Static |      //Get static members
-			                                                          BindingFlags.Instance |    //Get instance members
-			                                                          BindingFlags.DeclaredOnly))
+            TableMap mp = ClassMapper.GetTableMap(table.GetType());
+			foreach (FieldNamePair fnp in mp.FieldNamePairs)
 			{
 				try{
-					pi.SetValue(this,pi.GetValue(table,new object[0]),new object[0]);
+                    this.SetField(fnp.ClassFieldName, table.GetField(fnp.ClassFieldName));
 				}catch (Exception e)
 				{
 					
 				}
 			}
+            foreach (FieldNamePair fnp in mp.ParentFieldNamePairs)
+            {
+                try
+                {
+                    this.SetField(fnp.ClassFieldName, table.GetField(fnp.ClassFieldName));
+                }
+                catch (Exception e)
+                {
+
+                }
+            }
 			InitPrimaryKeys();
 		}
 		
@@ -520,18 +528,16 @@ namespace Org.Reddragonit.Dbpro.Structure
 				throw new Exception("Cannot convert object to type that is not a parent of the current class.");
 			object ret = conversionType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
             TableMap map = ClassMapper.GetTableMap(conversionType);
-			foreach (PropertyInfo pi in conversionType.GetProperties(BindingFlags.Public |      //Get public members
-			                                                         BindingFlags.NonPublic |   //Get private/protected/internal members
-			                                                         BindingFlags.Static |      //Get static members
-			                                                         BindingFlags.Instance |    //Get instance members
-			                                                         BindingFlags.DeclaredOnly))
-			{
-                if ((pi.CanWrite)&&(map.GetTableFieldName(pi.Name)!=null))
-                {
-                    if (!this.IsFieldNull(pi.Name))
-                        pi.SetValue(ret, pi.GetValue(this, new object[0]), new object[0]);
-                }
-			}
+            foreach (FieldNamePair fnp in map.FieldNamePairs)
+            {
+                if (!this.IsFieldNull(fnp.ClassFieldName))
+                    ((Table)ret).SetField(fnp.ClassFieldName, this.GetField(fnp.ClassFieldName));
+            }
+            foreach (FieldNamePair fnp in map.ParentFieldNamePairs)
+            {
+                if (!this.IsFieldNull(fnp.ClassFieldName))
+                    ((Table)ret).SetField(fnp.ClassFieldName, this.GetField(fnp.ClassFieldName));
+            }
 			((Table)ret).InitPrimaryKeys();
 			return ret;
 		}
