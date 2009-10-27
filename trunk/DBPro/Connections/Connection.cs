@@ -247,23 +247,27 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         public Table Save(Table table)
         {
+            Table ret = table;
             if (table.ConnectionName != ConnectionName)
             {
                 throw new Exception("Cannot insert an entry into a table into the database connection that it was not specified for.");
             }
             if (table.LoadStatus == LoadStatus.Partial)
-                return table;
+                ret= table;
             if (table.IsSaved)
             {
                 if (table.LoadStatus == LoadStatus.Complete)
-                    return Update(table);
+                    ret=Update(table);
                 else
-                    return table;
+                    ret=table;
             }
             else
             {
-                return Insert(table);
+                ret=Insert(table);
             }
+            if (!ret.IsProxied)
+                ret = (Table)LazyProxy.Instance(ret);
+            return ret;
         }
 		
 		private Table Insert(Table table)

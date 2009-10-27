@@ -555,5 +555,11 @@ namespace Org.Reddragonit.Dbpro.Structure
             conn.Save(this);
             conn.CloseConnection();
         }
+
+        internal bool IsProxied
+        {
+            get { return false; }
+        }
+
 	}
 }
