@@ -196,7 +196,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			TableMap map = ClassMapper.GetTableMap(table.GetType());
 			if (map.ParentType!=null)
 			{
-				Table ta = Update((Table)Convert.ChangeType(table,map.ParentType));
+				Table ta = Update((Table)table.ToType(map.ParentType,null));
 				table.CopyValuesFrom(ta);
 			}
 			foreach (Type t in map.ForeignTables)
@@ -275,7 +275,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			TableMap map = ClassMapper.GetTableMap(table.GetType());
 			if (map.ParentType!=null)
 			{
-				Table ta = Insert((Table)Convert.ChangeType(table,map.ParentType));
+				Table ta = Insert((Table)table.ToType(map.ParentType,null));
 				table.CopyValuesFrom(ta);
 			}
 			foreach (Type t in map.ForeignTables)

@@ -116,7 +116,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
                 c.ExecuteNonQuery(query);
             c.Commit();
             query = new StreamReader(this.GetType().Assembly.GetManifestResourceStream("Org.Reddragonit.Dbpro.Connections.Firebird.GENERATE_UNIQUE_ID.sql")).ReadToEnd();
-            c.ExecuteQuery("SELECT RDB$PROCEDURE_NAME FROM RDB$PROCEDURES WHERE RDB$PROCEDURE_NAME = 'CONVERT_BIGINT_CHARSTRING'");
+            c.ExecuteQuery("SELECT RDB$PROCEDURE_NAME FROM RDB$PROCEDURES WHERE RDB$PROCEDURE_NAME = 'GENERATE_UNIQUE_ID'");
             if (c.Read())
             {
                 if (c[0].ToString() != null)
