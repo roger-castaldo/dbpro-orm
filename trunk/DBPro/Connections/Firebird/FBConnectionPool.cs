@@ -93,6 +93,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
             if (!exists)
                 c.ExecuteNonQuery(query);
             c.Commit();
+            exists = false;
             query = new StreamReader(this.GetType().Assembly.GetManifestResourceStream("Org.Reddragonit.Dbpro.Connections.Firebird.CALCULATE_HASH.sql")).ReadToEnd();
             c.ExecuteQuery("SELECT RDB$PROCEDURE_NAME FROM RDB$PROCEDURES WHERE RDB$PROCEDURE_NAME = 'CALCULATE_HASH'");
             if (c.Read())
@@ -104,6 +105,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
             if (!exists)
                 c.ExecuteNonQuery(query);
             c.Commit();
+            exists = false;
             query = new StreamReader(this.GetType().Assembly.GetManifestResourceStream("Org.Reddragonit.Dbpro.Connections.Firebird.CONVERT_BIGINT_CHARSTRING.sql")).ReadToEnd();
             c.ExecuteQuery("SELECT RDB$PROCEDURE_NAME FROM RDB$PROCEDURES WHERE RDB$PROCEDURE_NAME = 'CONVERT_BIGINT_CHARSTRING'");
             if (c.Read())
@@ -115,6 +117,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
             if (!exists)
                 c.ExecuteNonQuery(query);
             c.Commit();
+            exists = false;
             query = new StreamReader(this.GetType().Assembly.GetManifestResourceStream("Org.Reddragonit.Dbpro.Connections.Firebird.GENERATE_UNIQUE_ID.sql")).ReadToEnd();
             c.ExecuteQuery("SELECT RDB$PROCEDURE_NAME FROM RDB$PROCEDURES WHERE RDB$PROCEDURE_NAME = 'GENERATE_UNIQUE_ID'");
             if (c.Read())
