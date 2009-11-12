@@ -59,6 +59,19 @@ namespace Org.Reddragonit.Dbpro.Connections
 			mut.ReleaseMutex();
 		}
 		
+		public static void ReloadClasses(){
+			mut.WaitOne();
+			ClassMapper.ReInit();
+			string[] tmp = new string[_connectionPools.Count];
+			_connectionPools.Keys.CopyTo(tmp,0);
+			ClassMapper.CorrectConnectionNames(tmp);
+			foreach (ConnectionPool pool in _connectionPools.Values)
+			{
+				pool.Init();
+			}
+			mut.ReleaseMutex();
+		}
+		
 		private static void ExtractConnectionFromXml(XmlNode connectionNode)
 		{
 			Type t = Type.GetType(connectionNode.Attributes["connection_type"].Value,false);

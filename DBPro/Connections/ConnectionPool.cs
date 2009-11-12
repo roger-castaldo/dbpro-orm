@@ -38,6 +38,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		private int maxPoolSize=0;
 		private long maxKeepAlive=0;
 		private bool _debugMode=false;
+		private bool _allowTableDeletions=true;
 		
 		private bool isClosed=false;
 		private bool isReady=false;
@@ -245,7 +246,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			return _enumValuesMap[enumType][enumName];
 		}
 		
-		protected ConnectionPool(string connectionString,int minPoolSize,int maxPoolSize,long maxKeepAlive,bool UpdateStructureDebugMode,string connectionName)
+		protected ConnectionPool(string connectionString,int minPoolSize,int maxPoolSize,long maxKeepAlive,bool UpdateStructureDebugMode,string connectionName,bool allowTableDeletions)
 		{
 			System.Diagnostics.Debug.WriteLine("Establishing Connection with string: "+connectionString);
 			this.connectionString=connectionString;
@@ -254,6 +255,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			this.maxKeepAlive=maxKeepAlive;
 			_debugMode=UpdateStructureDebugMode;
 			_connectionName=connectionName;
+			_allowTableDeletions=allowTableDeletions;
 			ConnectionPoolManager.AddConnection(connectionName,this);
 		}
 		
@@ -263,9 +265,12 @@ namespace Org.Reddragonit.Dbpro.Connections
 			    PreInit();
 			ClassMapper.CorrectNamesForConnection(this);
             if (!(_debugMode&&(ClassMapper.TableTypesForConnection(this.ConnectionName).Count==0)))
-			    UpdateStructure(_debugMode);
-			for (int x=0;x<minPoolSize;x++)
+			    UpdateStructure(_debugMode,_allowTableDeletions);
+            for (int x=0;x<minPoolSize;x++){
+            	if (unlocked.Count>=minPoolSize)
+            		break;
 				unlocked.Enqueue(CreateConnection());
+            }
 			isReady=true;
 		}
 
@@ -969,7 +974,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
 		}
 
-		private void UpdateStructure(bool Debug)
+		private void UpdateStructure(bool Debug,bool AllowTableDeletions)
 		{
 			Connection conn = CreateConnection();
 			List<ExtractedTableMap> curStructure =new List<ExtractedTableMap>();
@@ -1050,7 +1055,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 						break;
 					}
 				}
-				if (!found)
+				if (!found && AllowTableDeletions)
 				{
                     foreach (Trigger t in curTriggers)
                     {
