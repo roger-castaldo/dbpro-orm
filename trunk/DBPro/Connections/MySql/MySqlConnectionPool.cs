@@ -22,25 +22,40 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 			get{return _dbName;}
 		}
 		
-		public MySqlConnectionPool(string username, string password, string database, string databaseServer, int minPoolSize, int maxPoolSize, long maxKeepAlive,bool UpdateStructureDebugMode,string connectionName) : this(username,password,database,databaseServer,3306,minPoolSize,maxPoolSize,maxKeepAlive,UpdateStructureDebugMode,connectionName)
+		public MySqlConnectionPool(string username, string password, string database, string databaseServer, int minPoolSize, int maxPoolSize, long maxKeepAlive,bool UpdateStructureDebugMode,string connectionName) 
+			: this(username,password,database,databaseServer,3306,minPoolSize,maxPoolSize,maxKeepAlive,UpdateStructureDebugMode,connectionName,true)
+		{ }
+		
+		public MySqlConnectionPool(string username, string password, string database, string databaseServer, int minPoolSize, int maxPoolSize, long maxKeepAlive,bool UpdateStructureDebugMode,string connectionName,bool allowTableDeletions) 
+			: this(username,password,database,databaseServer,3306,minPoolSize,maxPoolSize,maxKeepAlive,UpdateStructureDebugMode,connectionName,allowTableDeletions)
 		{ }
 
-		public MySqlConnectionPool(string username, string password, string database, string databaseServer, int port, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode,string connectionName)
+		public MySqlConnectionPool(string username, string password, string database, string databaseServer, int port, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode,string connectionName,bool allowTableDeletions)
 			: base("Uid="+username+";" +
 			       "Pwd="+password+";" +
 			       "Database="+database+";" +
 			       "Server="+databaseServer+";" +
-			       "Port="+port.ToString()+";",minPoolSize,maxPoolSize,maxKeepAlive,UpdateStructureDebugMode,connectionName)
+			       "Port="+port.ToString()+";",minPoolSize,maxPoolSize,maxKeepAlive,UpdateStructureDebugMode,connectionName,allowTableDeletions)
 		{
 			_dbName=database;
 		}
 
 		public MySqlConnectionPool(string username, string password, string database, string databaseServer, bool UpdateStructureDebugMode,string connectionName)
-			: this(username, password, database, databaseServer, 3306,UpdateStructureDebugMode,connectionName)
+			: this(username, password, database, databaseServer, 3306,UpdateStructureDebugMode,connectionName,true)
 		{}
 
 		public MySqlConnectionPool(string username, string password, string database, string databaseServer, int port, bool UpdateStructureDebugMode,string connectionName)
-			: this(username,password,database,databaseServer,port,5,10,600,UpdateStructureDebugMode,connectionName)
+			: this(username,password,database,databaseServer,port,5,10,600,UpdateStructureDebugMode,connectionName,true)
+		{
+			
+		}
+		
+		public MySqlConnectionPool(string username, string password, string database, string databaseServer, bool UpdateStructureDebugMode,string connectionName,bool allowTableDeletions)
+			: this(username, password, database, databaseServer, 3306,UpdateStructureDebugMode,connectionName,allowTableDeletions)
+		{}
+
+		public MySqlConnectionPool(string username, string password, string database, string databaseServer, int port, bool UpdateStructureDebugMode,string connectionName,bool allowTableDeletions)
+			: this(username,password,database,databaseServer,port,5,10,600,UpdateStructureDebugMode,connectionName,allowTableDeletions)
 		{
 			
 		}

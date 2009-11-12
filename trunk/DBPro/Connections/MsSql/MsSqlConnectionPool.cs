@@ -8,14 +8,18 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 	class MsSqlConnectionPool : ConnectionPool
 	{
 		public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode,string connectionName)
-			: this(username, password, database, databaseServer, 1433, minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode,connectionName)
+			: this(username, password, database, databaseServer, 1433, minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode,connectionName,true)
+		{ }
+		
+		public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode,string connectionName,bool allowTableDeletions)
+			: this(username, password, database, databaseServer, 1433, minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode,connectionName,allowTableDeletions)
 		{ }
 
-		public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int port, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode,string connectionName)
+		public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int port, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode,string connectionName,bool allowTableDeletions)
 			: base("Data Source="+databaseServer+", "+port.ToString()+
 			       ";Initial Catalog="+database+";"+
 			       "User ID="+username+";"+
-			       "Password="+password+";", minPoolSize, maxPoolSize, maxKeepAlive,UpdateStructureDebugMode,connectionName)
+			       "Password="+password+";", minPoolSize, maxPoolSize, maxKeepAlive,UpdateStructureDebugMode,connectionName,allowTableDeletions)
 		{}
 
 		public MsSqlConnectionPool(string username, string password, string database, string databaseServer, bool UpdateStructureDebugMode,string connectionName)
@@ -23,7 +27,17 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 		{}
 
 		public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int port, bool UpdateStructureDebugMode,string connectionName)
-			: this(username, password, database, databaseServer, port, 5, 10, 600, UpdateStructureDebugMode,connectionName)
+			: this(username, password, database, databaseServer, port, 5, 10, 600, UpdateStructureDebugMode,connectionName,true)
+		{
+			
+		}
+		
+		public MsSqlConnectionPool(string username, string password, string database, string databaseServer, bool UpdateStructureDebugMode,string connectionName,bool allowTableDeletions)
+			: this(username, password, database, databaseServer, 1433, UpdateStructureDebugMode,connectionName,allowTableDeletions)
+		{}
+
+		public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int port, bool UpdateStructureDebugMode,string connectionName,bool allowTableDeletions)
+			: this(username, password, database, databaseServer, port, 5, 10, 600, UpdateStructureDebugMode,connectionName,allowTableDeletions)
 		{
 			
 		}

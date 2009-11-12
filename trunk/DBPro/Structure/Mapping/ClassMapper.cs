@@ -185,6 +185,12 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			}
 		}
 		
+		internal static void ReInit(){
+			mut.WaitOne();
+			InitMaps();
+			mut.ReleaseMutex();
+		}
+		
 		static ClassMapper()
 		{
 			mut.WaitOne();
