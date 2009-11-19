@@ -106,7 +106,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                     TableMap relatedMap = ClassMapper.GetTableMap(efm.Type);
                     foreach (InternalFieldMap ifm in relatedMap.PrimaryKeys)
                     {
-                        ret += " AND " + efm.AddOnName + "_" + ifm.FieldName + " " + ComparatorString + " ";
+                        ret += " AND " + conn.Pool.CorrectName(efm.AddOnName + "_" + ifm.FieldName) + " " + ComparatorString + " ";
                         type = ifm.FieldType;
                         _objType = ifm.ObjectType;
                         fieldLength = ifm.FieldLength;
@@ -156,7 +156,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                         }
                         ifm = (InternalFieldMap)m[fnp.Value];
                     }
-                    ret = fnp.Value.TableFieldName + " ";
+                    ret = conn.Pool.CorrectName(fnp.Value.TableFieldName) + " ";
                     type = ifm.FieldType;
                     _objType = ifm.ObjectType;
                     fieldLength = ifm.FieldLength;

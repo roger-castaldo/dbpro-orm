@@ -54,6 +54,11 @@ namespace Org.Reddragonit.Dbpro.Connections
                 return "||";
             }
         }
+
+        internal virtual string WrapAlias(string alias)
+        {
+            return "\"" + alias + "\"";
+        }
 		
 		public ConnectionPool Pool{
 			get{return pool;}

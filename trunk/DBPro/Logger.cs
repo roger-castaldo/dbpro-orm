@@ -25,15 +25,21 @@ namespace Org.Reddragonit.Dbpro
         public static void LogLine(object o)
         {
             System.Diagnostics.Debug.WriteLine(o);
-            foreach (Logger l in _loggers)
-                l.WriteLine(o);
+            if (_loggers != null)
+            {
+                foreach (Logger l in _loggers)
+                    l.WriteLine(o);
+            }
         }
 
         public static void Log(object o)
         {
             System.Diagnostics.Debug.Write(o);
-            foreach (Logger l in _loggers)
-                l.Write(o);
+            if (_loggers != null)
+            {
+                foreach (Logger l in _loggers)
+                    l.Write(o);
+            }
         }
 
         delegate void ContentWriteDelegate(object content);

@@ -722,7 +722,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 						}else
 						{
 							ret.RemoveAt(0);
-                            ret.Add(TranslateParentFieldName(field.Value.Substring(0, field.Value.LastIndexOf(".")).Replace(".", "_"),map.GetTableFieldName(fieldName),map));
+                            ret.Add(TranslateParentFieldName(field.Value.Substring(0, field.Value.LastIndexOf(".")).Replace(".", "_"),fieldName,map));
 						}
 					}
 					else
@@ -955,7 +955,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
         private string TranslateParentFieldName(string alias,string field, TableMap map)
         {
             if (!map.IsParentClassField(field))
-                return alias+"."+map.GetTableFieldName(field);
+                return alias+"."+_conn.Pool.CorrectName(map.GetTableFieldName(field));
             TableMap parentMap = map;
             while (parentMap.ParentType != null)
             {
@@ -1012,7 +1012,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 				else
 				{
                     if ((fieldAlias != "") && ((_tokenizer.Tokens[x + 1].Value == ",") || (_tokenizer.Tokens[x + 1].Value == "FROM")))
-                        ret += " AS " + fieldAlias;
+                        ret += " AS " + _conn.WrapAlias(fieldAlias);
 					previousIndex = x + 1;
 				}
                 if (ret.TrimEnd(' ').EndsWith(","))
@@ -1082,7 +1082,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 							ret = "";
 							foreach (string str in fieldList[field.Value])
 							{
-								ret += field.Value.Replace(".", "_") + "." + str+" AS "+fieldAlias+"_"+str+", ";
+								ret += field.Value.Replace(".", "_") + "." + str+" AS "+_conn.WrapAlias(fieldAlias+"_"+str)+", ";
 							}
 						}else
 							ret = TranslateParentFieldName(field.Value.Substring(0, field.Value.LastIndexOf(".")).Replace(".", "_"),fieldName,map);
@@ -1113,7 +1113,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                             }
 							foreach (string str in fieldList[field.Value])
 							{
-								ret += field.Value.Replace(".", "_") + "." + str + " AS " + fieldAlias + "_" + str + ", ";
+								ret += field.Value.Replace(".", "_") + "." + str + " AS " + _conn.WrapAlias(fieldAlias + "_" + str) + ", ";
 							}
 						}else
                             ret = TranslateParentFieldName(tableAlias,fieldName,map);
