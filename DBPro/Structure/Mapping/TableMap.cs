@@ -84,7 +84,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 					}else if  (obj is IForeignField)
 					{
 						System.Diagnostics.Debug.WriteLine("Adding Foreign Field ("+mi.Name+")");
-						System.Type ty = asm.GetType(mi.ToString().Substring(0,mi.ToString().IndexOf(" ")).Replace("[]",""),false);
+						System.Type ty = Utility.LocateType(mi.ToString().Substring(0,mi.ToString().IndexOf(" ")).Replace("[]",""));
 						TableMap t;
 						if (ty.Equals(type))
 							t=this;
