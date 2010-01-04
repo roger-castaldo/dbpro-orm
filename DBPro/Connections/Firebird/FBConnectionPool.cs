@@ -18,6 +18,9 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 	/// </summary>
 	public class FBConnectionPool : ConnectionPool
 	{
+
+        private const int DEFAULT_TIMEOUT = 300;
+
 		public FBConnectionPool(string username, string password, string databasePath, string databaseServer, int minPoolSize, int maxPoolSize, long maxKeepAlive,bool UpdateStructureDebugMode,string connectionName) 
 			: this(username,password,databasePath,databaseServer,3050,minPoolSize,maxPoolSize,maxKeepAlive,UpdateStructureDebugMode,connectionName,true)
 		{ }
@@ -25,6 +28,10 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		public FBConnectionPool(string username, string password, string databasePath, string databaseServer, int minPoolSize, int maxPoolSize, long maxKeepAlive,bool UpdateStructureDebugMode,string connectionName,bool allowTableDeletions) 
 			: this(username,password,databasePath,databaseServer,3050,minPoolSize,maxPoolSize,maxKeepAlive,UpdateStructureDebugMode,connectionName,allowTableDeletions)
 		{ }
+
+        public FBConnectionPool(string username, string password, string databasePath, string databaseServer, int port, int minPoolSize, int maxPoolSize, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions)
+            : this(username,password,databasePath,databaseServer,port,minPoolSize,maxPoolSize,DEFAULT_TIMEOUT,UpdateStructureDebugMode,connectionName,allowTableDeletions)
+        { }
 
 		public FBConnectionPool(string username, string password, string databasePath, string databaseServer, int port, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode,string connectionName,bool allowTableDeletions)
 			: base("User="+username+";" +
@@ -39,7 +46,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		{}
 
 		public FBConnectionPool(string username, string password, string databasePath, string databaseServer, int port, bool UpdateStructureDebugMode,string connectionName)
-			: this(username,password,databasePath,databaseServer,port,5,10,600,UpdateStructureDebugMode,connectionName,true)
+			: this(username,password,databasePath,databaseServer,port,5,10,DEFAULT_TIMEOUT,UpdateStructureDebugMode,connectionName,true)
 		{
 			
 		}
@@ -49,7 +56,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		{}
 
 		public FBConnectionPool(string username, string password, string databasePath, string databaseServer, int port, bool UpdateStructureDebugMode,string connectionName,bool allowTableDeletions)
-			: this(username,password,databasePath,databaseServer,port,5,10,600,UpdateStructureDebugMode,connectionName,allowTableDeletions)
+			: this(username,password,databasePath,databaseServer,port,5,10,DEFAULT_TIMEOUT,UpdateStructureDebugMode,connectionName,allowTableDeletions)
 		{
 			
 		}

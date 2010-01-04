@@ -21,7 +21,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		protected IDbConnection conn;
 		protected IDbCommand comm;
 		protected IDataReader reader;
-		protected IDbTransaction trans;
+		protected IDbTransaction trans=null;
 		private bool isConnected=false;
 		private DateTime creationTime;
 		protected string connectionString;
@@ -99,9 +99,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			this.connectionString=connectionString;
 			conn = EstablishConnection();
 			conn.Open();
-			trans=conn.BeginTransaction();
-			comm = EstablishCommand();
-			comm.Transaction = trans;
+            comm = EstablishCommand();
 			this.pool=pool;
 			isConnected=true;
 		}
@@ -114,7 +112,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 		internal void Disconnect()
 		{
 			try{
-				trans.Commit();
+                if (trans!=null)
+				    trans.Commit();
 			}catch (Exception e){}
             try
             {
@@ -126,28 +125,38 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		internal bool isPastKeepAlive(long secondsToLive)
 		{
-			return !(secondsToLive<0)||((System.DateTime.Now.Ticks-creationTime.Ticks)>secondsToLive);
+			return !(secondsToLive<0)||((System.DateTime.Now.Ticks-creationTime.Ticks)>secondsToLive)||(conn.State!=ConnectionState.Open);
 		}
 		
 		internal void Reset()
 		{
-			trans.Rollback();
-			trans = conn.BeginTransaction();
-			comm.Transaction=trans;
+            if (trans != null)
+            {
+                trans.Rollback();
+                trans = null;
+                comm.Transaction = null;
+            }
 		}
 		
 		public void Commit()
 		{
-            Logger.LogLine("COMMIT");
-			trans.Commit();
-			trans=conn.BeginTransaction();
-			comm.Transaction=trans;
+            if (trans != null)
+            {
+                Logger.LogLine("COMMIT");
+                trans.Commit();
+                trans = null;
+                comm.Transaction = null;
+            }
 		}
 		
 		public void RollBack()
 		{
-			trans.Rollback();
-			trans=conn.BeginTransaction();
+            if (trans != null)
+            {
+                trans.Rollback();
+                trans = null;
+                comm.Transaction = null;
+            }
 		}
 		
 		public void CloseConnection()
@@ -156,12 +165,13 @@ namespace Org.Reddragonit.Dbpro.Connections
 			{
 				if ((reader!=null)&&!reader.IsClosed)
 					reader.Close();
-				trans.Commit();
-				trans=null;
-				trans=conn.BeginTransaction();
+                if (trans != null)
+                {
+                    trans.Commit();
+                    trans = null;
+                }
 				comm.CommandText="";
 				comm.Parameters.Clear();
-				comm.Transaction=trans;
 			}
             pool.returnConnection(this);
 		}
@@ -191,7 +201,7 @@ namespace Org.Reddragonit.Dbpro.Connections
         }
 		
 		private Table Update(Table table)
-		{
+        {
 			if (table.ConnectionName!=ConnectionName)
 			{
 				throw new Exception("Cannot update an entry into a table into the database connection that it was not specified for.");
@@ -657,6 +667,11 @@ namespace Org.Reddragonit.Dbpro.Connections
 
 		public int ExecuteNonQuery(string queryString, IDbDataParameter[] parameters)
 		{
+            if (trans == null)
+            {
+                trans = conn.BeginTransaction();
+                comm.Transaction = trans;
+            }
 			comm.CommandText = FormatParameters(queryString + " ", ref parameters);
 			comm.Parameters.Clear();
             comm.CommandType = CommandType.Text;
@@ -711,6 +726,11 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         public int ExecuteStoredProcedureNoReturn(string procedureName,IDbDataParameter[] parameters)
         {
+            if (trans == null)
+            {
+                trans = conn.BeginTransaction();
+                comm.Transaction = trans;
+            }
             comm.CommandText = procedureName;
             comm.Parameters.Clear();
             comm.CommandType = CommandType.StoredProcedure;
@@ -765,6 +785,11 @@ namespace Org.Reddragonit.Dbpro.Connections
 
 		public void ExecuteQuery(string queryString, IDbDataParameter[] parameters)
 		{
+            if (trans == null)
+            {
+                trans = conn.BeginTransaction();
+                comm.Transaction = trans;
+            }
 			if ((queryString!=null)&&(queryString.Length>0)){
 				reader = null;
 				comm.CommandText = FormatParameters(queryString + " ", ref parameters);
@@ -822,6 +847,11 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         public void ExecuteStoredProcedureReturn(string procedureName, IDbDataParameter[] parameters)
         {
+            if (trans == null)
+            {
+                trans = conn.BeginTransaction();
+                comm.Transaction = trans;
+            }
             reader = null;
             comm.CommandText = procedureName;
             comm.Parameters.Clear();
