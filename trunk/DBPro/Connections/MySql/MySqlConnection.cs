@@ -46,6 +46,18 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 		
 		public override IDbDataParameter CreateParameter(string parameterName, object parameterValue)
 		{
+            if ((parameterValue is uint) || (parameterValue is UInt32))
+            {
+                parameterValue = System.Text.ASCIIEncoding.ASCII.GetString(System.BitConverter.GetBytes((uint)parameterValue)).ToCharArray();
+            }
+            else if ((parameterValue is UInt16) || (parameterValue is ushort))
+            {
+                parameterValue = System.Text.ASCIIEncoding.ASCII.GetString(System.BitConverter.GetBytes((ushort)parameterValue)).ToCharArray();
+            }
+            else if ((parameterValue is ulong) || (parameterValue is Int64))
+            {
+                parameterValue = System.Text.ASCIIEncoding.ASCII.GetString(System.BitConverter.GetBytes((ulong)parameterValue)).ToCharArray();
+            }
 			return (IDbDataParameter)new MySqlParameter(parameterName,parameterValue);
 		}
 		
@@ -224,15 +236,24 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 				case FieldType.ENUM:
 					ret="INTEGER";
 					break;
+                case FieldType.UNSIGNED_INTEGER:
+                    ret = "CHAR(4)";
+                    break;
 				case FieldType.LONG:
 					ret="BIGINT";
 					break;
+                case FieldType.UNSIGNED_LONG:
+                    ret = "CHAR(8)";
+                    break;
 				case FieldType.MONEY:
 					ret="DECIMAL(18,4)";
 					break;
 				case FieldType.SHORT:
 					ret = "SMALLINT";
 					break;
+                case FieldType.UNSIGNED_SHORT:
+                    ret = "CHAR(2)";
+                    break;
 				case FieldType.STRING:
 					if ((fieldLength==-1)||(fieldLength>65535))
 						ret="TEXT";

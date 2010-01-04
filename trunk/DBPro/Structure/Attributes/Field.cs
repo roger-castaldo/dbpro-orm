@@ -21,7 +21,10 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 		IMAGE,
 		FLOAT,
 		DOUBLE,
-		ENUM
+		ENUM,
+        UNSIGNED_INTEGER,
+        UNSIGNED_SHORT,
+        UNSIGNED_LONG
 	};
 	
 	[AttributeUsage(AttributeTargets.Property)]
@@ -167,8 +170,17 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 				case "INT64":
 				case "LONG":
 					return FieldType.LONG;
+                case "UINT64":
+                case "ULONG":
+                    _fieldLength = 8;
+                    return FieldType.UNSIGNED_LONG;
 				case "INT16":
+                case "SHORT":
 					return FieldType.SHORT;
+                case "UINT16":
+                case "USHORT":
+                    _fieldLength = 2;
+                    return FieldType.UNSIGNED_SHORT;
 				case "DATETIME":
 					return FieldType.DATETIME;
 				case "BOOLEAN":
@@ -186,6 +198,10 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 				case "INT":
 				case "INT32":
 					return FieldType.INTEGER;
+                case "UINT":
+                case "UINT32":
+                    _fieldLength = 4;
+                    return FieldType.UNSIGNED_INTEGER;
 				default:
 					if (propertyType.IsEnum)
 						return FieldType.ENUM;
