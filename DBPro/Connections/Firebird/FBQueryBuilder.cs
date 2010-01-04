@@ -219,7 +219,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 
         internal override string  AlterFieldType(string table, ExtractedFieldMap field, ExtractedFieldMap oldFieldInfo)
         {
-            if ((field.FullFieldType.ToUpper() == "BLOB")||(oldFieldInfo.FullFieldType.ToUpper()=="BLOB"))
+            if ((field.FullFieldType.ToUpper().Contains("BLOB"))||(oldFieldInfo.FullFieldType.ToUpper().Contains("BLOB")))
                 return DropColumn(table, field.FieldName) + ";" + CreateColumn(table, field)+";";
             else
                 return base.AlterFieldType(table, field,oldFieldInfo);
