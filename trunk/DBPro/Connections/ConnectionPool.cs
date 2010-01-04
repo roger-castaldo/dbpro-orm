@@ -1359,6 +1359,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 try
                 {
                     mut.WaitOne(MaxMutexTimeout);
+                    Logger.LogLine("Obtaining Connection: " + this.ConnectionName + " from pool with " + unlocked.Count.ToString() + " unlocked and " + locked.Count.ToString() + " locked connections");
                     if (unlocked.Count > 0)
                     {
                         ret = unlocked.Dequeue();
@@ -1370,9 +1371,14 @@ namespace Org.Reddragonit.Dbpro.Connections
                         else
                             break;
                     }
+                    else if (!checkMin()&&!isClosed)
+                    {
+                        ret = CreateConnection();
+                        break;
+                    }
                     if (isClosed)
                         break;
-                    if (!checkMax())
+                    if (checkMax())
                     {
                         ret = CreateConnection();
                         break;
@@ -1413,13 +1419,16 @@ namespace Org.Reddragonit.Dbpro.Connections
 			mut.WaitOne();
 			locked.Remove(conn);
 			mut.ReleaseMutex();
-			if (checkMax()&&!isClosed&&!conn.isPastKeepAlive(maxKeepAlive))
+            Logger.LogLine("Checking max queue size against " + locked.Count.ToString() + "+" + unlocked.Count.ToString() + " < " + maxPoolSize.ToString());
+			if (checkMax(1)&&!isClosed&&!conn.isPastKeepAlive(maxKeepAlive))
 			{
+                Logger.LogLine("Returning connection to queue");
 				mut.WaitOne();
 				unlocked.Enqueue(conn);
 				mut.ReleaseMutex();
 			}else
 			{
+                Logger.LogLine("Closing returned connection since it exceeds the maximum queue");
 				conn.Disconnect();
 			}
             while (!checkMin())
@@ -1429,11 +1438,17 @@ namespace Org.Reddragonit.Dbpro.Connections
                 mut.ReleaseMutex();
             }
 		}
+
+        private bool checkMax(int addition)
+        {
+            if (maxPoolSize <= 0) return true;
+            else return maxPoolSize > (locked.Count + unlocked.Count+addition);
+        }
 		
 		private bool checkMax()
 		{
-			if (maxPoolSize<=0) return false;
-			else return maxPoolSize<(locked.Count+unlocked.Count);
+			if (maxPoolSize<=0) return true;
+			else return maxPoolSize>(locked.Count+unlocked.Count);
 		}
 		
 		private bool checkMin()
