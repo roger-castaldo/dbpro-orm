@@ -59,7 +59,7 @@ namespace Org.Reddragonit.Dbpro.Validation
             if (WriteToConsole)
                 Console.WriteLine(msg);
             if (WriteToDebug)
-                System.Diagnostics.Debug.WriteLine(msg);
+                Logger.LogLine(msg);
             if (ThrowExceptionOnError)
             {
                 if (ErrorMessage == null)

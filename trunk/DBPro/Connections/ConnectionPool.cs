@@ -28,6 +28,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 	{
 
         private const int MaxGetConnectionTrials = 20;
+        private const int MaxMutexTimeout = 1000;
 		
 		private List<Connection> locked=new List<Connection>();
 		private Queue<Connection> unlocked=new Queue<Connection>();
@@ -248,7 +249,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		protected ConnectionPool(string connectionString,int minPoolSize,int maxPoolSize,long maxKeepAlive,bool UpdateStructureDebugMode,string connectionName,bool allowTableDeletions)
 		{
-			System.Diagnostics.Debug.WriteLine("Establishing Connection with string: "+connectionString);
+			Logger.LogLine("Establishing Connection with string: "+connectionString);
 			this.connectionString=connectionString;
 			this.minPoolSize=minPoolSize;
 			this.maxPoolSize=maxPoolSize;
@@ -508,9 +509,9 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
 			foreach(ExtractedTableMap etm in tables)
 			{
-				System.Diagnostics.Debug.WriteLine(etm.TableName+":");
+				Logger.LogLine(etm.TableName+":");
 				foreach (ExtractedFieldMap efm in etm.Fields)
-					System.Diagnostics.Debug.WriteLine("\t"+efm.FieldName+" - "+efm.PrimaryKey.ToString());
+					Logger.LogLine("\t"+efm.FieldName+" - "+efm.PrimaryKey.ToString());
 				foreach (ExtractedFieldMap efm in etm.PrimaryKeys)
 				{
 					if (efm.AutoGen)
@@ -1286,9 +1287,9 @@ namespace Org.Reddragonit.Dbpro.Connections
 						foreach (string str in alterations)
 						{
 							if (!str.EndsWith(";"))
-								System.Diagnostics.Debug.WriteLine(str + ";");
+								Logger.LogLine(str + ";");
 							else
-								System.Diagnostics.Debug.WriteLine(str);
+								Logger.LogLine(str);
 						}
 					}
 					else
@@ -1311,8 +1312,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 					}
 				}catch (Exception e)
 				{
-					System.Diagnostics.Debug.WriteLine(e.Message);
-					System.Diagnostics.Debug.WriteLine(e.StackTrace);
+					Logger.LogLine(e.Message);
+					Logger.LogLine(e.StackTrace);
 					throw e;
 				}
 			}
@@ -1355,26 +1356,32 @@ namespace Org.Reddragonit.Dbpro.Connections
             int count = 0;
 			while(true)
 			{
-				mut.WaitOne();
-				if (unlocked.Count>0)
-				{
-					ret=unlocked.Dequeue();
-					if (ret.isPastKeepAlive(maxKeepAlive))
-					{
-						ret.Disconnect();
-						ret=null;
-					}
-					else
-						break;
-				}
-				if (isClosed)
-					break;
-				if (!checkMax())
-				{
-					ret=CreateConnection();
-					break;
-				}
-				mut.ReleaseMutex();
+                try
+                {
+                    mut.WaitOne(MaxMutexTimeout);
+                    if (unlocked.Count > 0)
+                    {
+                        ret = unlocked.Dequeue();
+                        if (ret.isPastKeepAlive(maxKeepAlive))
+                        {
+                            ret.Disconnect();
+                            ret = null;
+                        }
+                        else
+                            break;
+                    }
+                    if (isClosed)
+                        break;
+                    if (!checkMax())
+                    {
+                        ret = CreateConnection();
+                        break;
+                    }
+                    mut.ReleaseMutex();
+                }
+                catch (Exception e)
+                {
+                }
 				try{
 					Thread.Sleep(100);
 				}catch (Exception e){}

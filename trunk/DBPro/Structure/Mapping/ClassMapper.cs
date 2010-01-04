@@ -126,7 +126,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 		{
 			get
 			{
-				System.Diagnostics.Debug.WriteLine("MAPS: "+map.Count.ToString());
+				Logger.LogLine("MAPS: "+map.Count.ToString());
 				mut.WaitOne();
 				if ((map==null)||(map.Count==0))
 					InitMaps();
@@ -157,30 +157,30 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 							{
 								if (!types.Contains(ty))
 									types.Add(ty);
-								System.Diagnostics.Debug.WriteLine("Adding Table Map ("+ty.FullName+")");
+								Logger.LogLine("Adding Table Map ("+ty.FullName+")");
 								map.Add(ty,new TableMap(ty,asm,ty.GetProperties(BindingFlags.Public |      //Get public members
 								                                             BindingFlags.NonPublic |   //Get private/protected/internal members
 								                                             BindingFlags.Static |      //Get static members
 								                                             BindingFlags.Instance |    //Get instance members
 								                                             BindingFlags.DeclaredOnly  ),ref map));
-								System.Diagnostics.Debug.WriteLine("Table Map Added");
+								Logger.LogLine("Table Map Added");
 							}
 						}
 					}
 				}
 			}catch (Exception e)
 			{
-				System.Diagnostics.Debug.WriteLine("ERROR ESTABLISHING STRUCTURE!!!!");
-				System.Diagnostics.Debug.WriteLine(e.Message);
-				System.Diagnostics.Debug.WriteLine(e.Source);
-				System.Diagnostics.Debug.WriteLine(e.StackTrace);
+				Logger.LogLine("ERROR ESTABLISHING STRUCTURE!!!!");
+				Logger.LogLine(e.Message);
+				Logger.LogLine(e.Source);
+				Logger.LogLine(e.StackTrace);
 			}
 			foreach (TableMap tm in map.Values)
 			{
-				System.Diagnostics.Debug.WriteLine(tm.Name);
+				Logger.LogLine(tm.Name);
 				foreach (InternalFieldMap ifm in tm.Fields)
 				{
-					System.Diagnostics.Debug.WriteLine("\t"+ifm.FieldName+"("+ifm.GetType().ToString()+")");
+					Logger.LogLine("\t"+ifm.FieldName+"("+ifm.GetType().ToString()+")");
 				}
 			}
 		}

@@ -138,7 +138,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		public void Commit()
 		{
-            System.Diagnostics.Debug.WriteLine("COMMIT");
+            Logger.LogLine("COMMIT");
 			trans.Commit();
 			trans=conn.BeginTransaction();
 			comm.Transaction=trans;
@@ -667,15 +667,15 @@ namespace Org.Reddragonit.Dbpro.Connections
 					comm.Parameters.Add(param);
 				}
 			}
-			System.Diagnostics.Debug.WriteLine(comm.CommandText);
+			Logger.LogLine(comm.CommandText);
             if (parameters != null)
             {
                 foreach (IDbDataParameter param in parameters)
                 {
                     if (param.Value!=null)
-                        System.Diagnostics.Debug.WriteLine(param.ParameterName+": "+param.Value.ToString());
+                        Logger.LogLine(param.ParameterName+": "+param.Value.ToString());
                     else
-                        System.Diagnostics.Debug.WriteLine(param.ParameterName +": NULL");
+                        Logger.LogLine(param.ParameterName +": NULL");
                 }
             }
             try
@@ -721,15 +721,15 @@ namespace Org.Reddragonit.Dbpro.Connections
                     comm.Parameters.Add(param);
                 }
             }
-            System.Diagnostics.Debug.WriteLine(comm.CommandText);
+            Logger.LogLine(comm.CommandText);
             if (parameters != null)
             {
                 foreach (IDbDataParameter param in parameters)
                 {
                     if (param.Value != null)
-                        System.Diagnostics.Debug.WriteLine(param.ParameterName + ": " + param.Value.ToString());
+                        Logger.LogLine(param.ParameterName + ": " + param.Value.ToString());
                     else
-                        System.Diagnostics.Debug.WriteLine(param.ParameterName + ": NULL");
+                        Logger.LogLine(param.ParameterName + ": NULL");
                 }
             }
             try
@@ -777,15 +777,15 @@ namespace Org.Reddragonit.Dbpro.Connections
 						comm.Parameters.Add(param);
 					}
 				}
-				System.Diagnostics.Debug.WriteLine(comm.CommandText);
+				Logger.LogLine(comm.CommandText);
                 if (parameters != null)
                 {
                     foreach (IDbDataParameter param in parameters)
                     {
                         if (param.Value != null)
-                            System.Diagnostics.Debug.WriteLine(param.ParameterName + ": " + param.Value.ToString());
+                            Logger.LogLine(param.ParameterName + ": " + param.Value.ToString());
                         else
-                            System.Diagnostics.Debug.WriteLine(param.ParameterName + ": NULL");
+                            Logger.LogLine(param.ParameterName + ": NULL");
                     }
                 }
                 try
@@ -833,15 +833,15 @@ namespace Org.Reddragonit.Dbpro.Connections
                     comm.Parameters.Add(param);
                 }
             }
-            System.Diagnostics.Debug.WriteLine(comm.CommandText);
+            Logger.LogLine(comm.CommandText);
             if (parameters != null)
             {
                 foreach (IDbDataParameter param in parameters)
                 {
                     if (param.Value != null)
-                        System.Diagnostics.Debug.WriteLine(param.ParameterName + ": " + param.Value.ToString());
+                        Logger.LogLine(param.ParameterName + ": " + param.Value.ToString());
                     else
-                        System.Diagnostics.Debug.WriteLine(param.ParameterName + ": NULL");
+                        Logger.LogLine(param.ParameterName + ": NULL");
                 }
             }
             try
