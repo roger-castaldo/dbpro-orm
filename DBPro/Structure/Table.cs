@@ -388,7 +388,13 @@ namespace Org.Reddragonit.Dbpro.Structure
 					else
 						pi.SetValue(this,true,new object[0]);
 				}
-			}else 
+			}else if (pi.PropertyType.Equals(typeof(uint))||pi.PropertyType.Equals(typeof(UInt32))){
+                pi.SetValue(this, System.BitConverter.ToUInt32(System.Text.ASCIIEncoding.ASCII.GetBytes(value.ToString()), 0), new object[0]);
+            }else if (pi.PropertyType.Equals(typeof(ushort)) || pi.PropertyType.Equals(typeof(UInt16))){
+                pi.SetValue(this, System.BitConverter.ToUInt16(System.Text.ASCIIEncoding.ASCII.GetBytes(value.ToString()), 0), new object[0]);
+            }else if (pi.PropertyType.Equals(typeof(ulong)) || pi.PropertyType.Equals(typeof(UInt64))){
+                pi.SetValue(this, System.BitConverter.ToUInt64(System.Text.ASCIIEncoding.ASCII.GetBytes(value.ToString()), 0), new object[0]);
+            }else 
 				pi.SetValue(this,value,new object[0]);
 		}
 		
