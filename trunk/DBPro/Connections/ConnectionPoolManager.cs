@@ -36,8 +36,8 @@ namespace Org.Reddragonit.Dbpro.Connections
                     }
                     else if (node.Name == "LogDiagnosticsOutput")
                     {
-                        if (node["NLogName"] != null)
-                            Logger.SetLogger(node["NLogName"].Value);
+                        if (node.Attributes["NLogName"] != null)
+                            Logger.SetLogger(node.Attributes["NLogName"].Value);
                         else
                             Logger.SetLogger("*");
                     }
