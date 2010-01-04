@@ -157,7 +157,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
                         _fieldLength = 38;
                     }
                 }
-				System.Diagnostics.Debug.WriteLine("Located Field Name: "+_fieldName);
+				Logger.LogLine("Located Field Name: "+_fieldName);
 			}
 		}
 

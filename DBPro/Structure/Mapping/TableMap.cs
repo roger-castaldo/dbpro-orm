@@ -69,7 +69,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 				}
 			}catch (Exception ex)
 			{
-				System.Diagnostics.Debug.WriteLine(ex.Message);
+				Logger.LogLine(ex.Message);
 			}			
 			_tableName=TableName;
 			_fields = new Dictionary<string,FieldMap>();
@@ -79,11 +79,11 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 				{
 					if (obj is IField)
 					{
-						System.Diagnostics.Debug.WriteLine("Adding Field ("+mi.Name+")");
+						Logger.LogLine("Adding Field ("+mi.Name+")");
 						_fields.Add(mi.Name,new InternalFieldMap(mi));
 					}else if  (obj is IForeignField)
 					{
-						System.Diagnostics.Debug.WriteLine("Adding Foreign Field ("+mi.Name+")");
+						Logger.LogLine("Adding Foreign Field ("+mi.Name+")");
 						System.Type ty = Utility.LocateType(mi.ToString().Substring(0,mi.ToString().IndexOf(" ")).Replace("[]",""));
 						TableMap t;
 						if (ty.Equals(type))
@@ -97,7 +97,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 								                                     BindingFlags.Static |      //Get static members
 								                                     BindingFlags.Instance |    //Get instance members
 								                                     BindingFlags.DeclaredOnly ),ref map);
-								System.Diagnostics.Debug.WriteLine("Adding Sub Table Map ("+ty.FullName+")");
+								Logger.LogLine("Adding Sub Table Map ("+ty.FullName+")");
 								map.Add(ty,t);
 							}else
 								t=map[ty];
@@ -125,7 +125,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 					                                                           BindingFlags.Static |      //Get static members
 					                                                           BindingFlags.Instance |    //Get instance members
 					                                                           BindingFlags.DeclaredOnly ),ref map);
-					System.Diagnostics.Debug.WriteLine("Adding Table Map ("+type.BaseType.FullName+")");
+					Logger.LogLine("Adding Table Map ("+type.BaseType.FullName+")");
 					map.Add(type.BaseType,t);
 				}else
 				{
@@ -137,20 +137,20 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 						_fields.Add(t.GetClassFieldName(ifm.FieldName),new InternalFieldMap(ifm,true));
 				}
 			}
-            System.Diagnostics.Debug.WriteLine("Checking Primary Key Fields...");
+            Logger.LogLine("Checking Primary Key Fields...");
             foreach (FieldMap fm in _fields.Values)
             {
                 if (fm.PrimaryKey)
                 {
-                    System.Diagnostics.Debug.Write("Located Primary Key Field (");
+                    Logger.Log("Located Primary Key Field (");
                     if (fm is InternalFieldMap)
-                        System.Diagnostics.Debug.WriteLine(((InternalFieldMap)fm).FieldName + ")");
+                        Logger.LogLine(((InternalFieldMap)fm).FieldName + ")");
                     else
-                        System.Diagnostics.Debug.WriteLine(((ExternalFieldMap)fm).AddOnName + " to " + ((ExternalFieldMap)fm).Type.ToString() + ")");
+                        Logger.LogLine(((ExternalFieldMap)fm).AddOnName + " to " + ((ExternalFieldMap)fm).Type.ToString() + ")");
                 }
             }
 			int autoGenCount=0;
-			System.Diagnostics.Debug.WriteLine("Checking Autogen Conditions");
+			Logger.LogLine("Checking Autogen Conditions");
 			foreach (InternalFieldMap  pkf in PrimaryKeys)
 			{
 				if (pkf.AutoGen)
@@ -158,7 +158,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 					autoGenCount++;
 				}
 			}
-			System.Diagnostics.Debug.WriteLine("Located "+autoGenCount.ToString()+" Autogen Fields");
+			Logger.LogLine("Located "+autoGenCount.ToString()+" Autogen Fields");
 			if (autoGenCount > 1)
 			{
 				throw new Exception("Unable to produce database map due to invalid content.  You cannot have more than one autogen primary key field in a table. Class=" + type.Name);
@@ -575,7 +575,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 		public List<InternalFieldMap> Fields{
 			get{
 				List<InternalFieldMap> ret = new List<InternalFieldMap>();
-				//System.Diagnostics.Debug.WriteLine("Field Count ("+Name+"): "+_fields.Count.ToString());
+				//Logger.LogLine("Field Count ("+Name+"): "+_fields.Count.ToString());
 				foreach (FieldMap f in _fields.Values)
 				{
 					if (f is ExternalFieldMap)

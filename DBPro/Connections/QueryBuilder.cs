@@ -557,7 +557,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 				return string.Format(InsertString,map.Name,values,parameters);
 			}catch (Exception e)
 			{
-				System.Diagnostics.Debug.WriteLine(e.Message);
+				Logger.LogLine(e.Message);
 				return null;
 			}
 		}
@@ -590,7 +590,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 				return string.Format(DeleteWithConditions,map.Name,conditions);
 			}catch(Exception e)
 			{
-				System.Diagnostics.Debug.WriteLine(e.Message);
+				Logger.LogLine(e.Message);
 				return null;
 			}
 		}
@@ -663,7 +663,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 				}
 			}catch (Exception e)
 			{
-				System.Diagnostics.Debug.WriteLine(e.Message);
+				Logger.LogLine(e.Message);
 				return null;
 			}
 			return ret;
@@ -831,7 +831,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 					return String.Format(UpdateWithoutConditions,map.Name,fields);
 			}catch (Exception e)
 			{
-				System.Diagnostics.Debug.WriteLine(e.Message);
+				Logger.LogLine(e.Message);
 			}
 			return null;
 		}

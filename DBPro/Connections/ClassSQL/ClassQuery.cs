@@ -43,7 +43,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             _fieldNames = new Dictionary<int, string>();
             _tableFields = new Dictionary<string, Type>();
             Translate();
-            System.Diagnostics.Debug.WriteLine("Class Query: " + query + "\nTranslated To:" + _outputQuery);
+            Logger.LogLine("Class Query: " + query + "\nTranslated To:" + _outputQuery);
 		}
 		
 		private void Translate()

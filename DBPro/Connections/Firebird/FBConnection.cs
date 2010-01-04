@@ -216,7 +216,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
             }else if ((parameterValue is UInt16)||(parameterValue is ushort)){
                 parameterValue = System.Text.ASCIIEncoding.ASCII.GetString(System.BitConverter.GetBytes(ushort.Parse(parameterValue.ToString()))).ToCharArray();
             }
-            else if ((parameterValue is ulong) || (parameterValue is Int64)){
+            else if ((parameterValue is ulong) || (parameterValue is UInt64)){
                 parameterValue = System.Text.ASCIIEncoding.ASCII.GetString(System.BitConverter.GetBytes(ulong.Parse(parameterValue.ToString()))).ToCharArray();
             }
 			return new FbParameter(parameterName,parameterValue);

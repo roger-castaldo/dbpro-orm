@@ -275,16 +275,16 @@ namespace Org.Reddragonit.Dbpro
                         }
                         catch (Exception ex)
                         {
-                            System.Diagnostics.Debug.WriteLine("Method Call: " + mc.MethodName);
-                            System.Diagnostics.Debug.WriteLine(ex.Message);
-                            System.Diagnostics.Debug.WriteLine(ex.Source);
-                            System.Diagnostics.Debug.WriteLine(ex.StackTrace);
+                            Logger.LogLine("Method Call: " + mc.MethodName);
+                            Logger.LogLine(ex.Message);
+                            Logger.LogLine(ex.Source);
+                            Logger.LogLine(ex.StackTrace);
                             Exception e = ex.InnerException;
                             while (e != null)
                             {
-                                System.Diagnostics.Debug.WriteLine(e.Message);
-                                System.Diagnostics.Debug.WriteLine(e.Source);
-                                System.Diagnostics.Debug.WriteLine(e.StackTrace);
+                                Logger.LogLine(e.Message);
+                                Logger.LogLine(e.Source);
+                                Logger.LogLine(e.StackTrace);
                                 e = e.InnerException;
                             }
                         }

@@ -25,7 +25,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			FileInfo fi = RecurLocateConfigFile(new DirectoryInfo(basePath));
 			if (fi!=null)
 			{
-				System.Diagnostics.Debug.WriteLine("Loaded config file: "+fi.FullName);
+				Logger.LogLine("Loaded config file: "+fi.FullName);
 				XmlDocument doc = new XmlDocument();
 				doc.Load(fi.OpenRead());
 				foreach (XmlNode node in doc.DocumentElement.ChildNodes)
@@ -36,16 +36,10 @@ namespace Org.Reddragonit.Dbpro.Connections
                     }
                     else if (node.Name == "LogDiagnosticsOutput")
                     {
-                        if (Path.DirectorySeparatorChar.ToString() == "\\")
-                        {
-                            if (node.Attributes["WindowsPath"] != null)
-                                Logger.AddLogger(node.Attributes["WindowsPath"].Value);
-                        }
+                        if (node["NLogName"] != null)
+                            Logger.SetLogger(node["NLogName"].Value);
                         else
-                        {
-                            if (node.Attributes["LinuxPath"] != null)
-                                Logger.AddLogger(node.Attributes["LinuxPath"].Value);
-                        }
+                            Logger.SetLogger("*");
                     }
 				}
 			}
