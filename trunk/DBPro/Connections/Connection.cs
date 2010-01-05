@@ -10,6 +10,7 @@ using FieldNamePair = Org.Reddragonit.Dbpro.Structure.Mapping.TableMap.FieldName
 using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.FieldType;
 using VersionTypes = Org.Reddragonit.Dbpro.Structure.Attributes.VersionField.VersionTypes;
 using System.Reflection;
+using System.Threading;
 
 namespace Org.Reddragonit.Dbpro.Connections
 {
@@ -18,16 +19,19 @@ namespace Org.Reddragonit.Dbpro.Connections
 	public abstract class Connection : IDataReader
 	{
 		private const int MAX_COMM_QUERIES = 5;
+        private const int MAX_READCHECK_TRIES = 5;
 		
 		private ConnectionPool pool;
-		protected IDbConnection conn;
-		protected IDbCommand comm;
-		protected IDataReader reader;
+		protected IDbConnection conn=null;
+		protected IDbCommand comm=null;
+		protected IDataReader reader=null;
 		protected IDbTransaction trans=null;
 		private bool isConnected=false;
 		private DateTime creationTime;
 		protected string connectionString;
 		private int commCntr;
+        private bool firstRead = false;
+        private bool firstReadResult;
 		
 		private QueryBuilder _qb;
 		internal virtual QueryBuilder queryBuilder
@@ -98,15 +102,55 @@ namespace Org.Reddragonit.Dbpro.Connections
         }
 		
 		public Connection(ConnectionPool pool,string connectionString){
-			creationTime=System.DateTime.Now;
 			this.connectionString=connectionString;
-			conn = EstablishConnection();
-			conn.Open();
-            comm = EstablishCommand();
 			this.pool=pool;
-			isConnected=true;
-			commCntr = 0;
+            ResetConnection();
 		}
+
+        private void ResetConnection()
+        {
+            Logger.LogLine("Resetting connection in pool " + pool.ConnectionName + " using connection string: " + connectionString);
+            if (reader != null)
+            {
+                Logger.LogLine("Attempting to close the currently open reader for resetting.");
+                try { reader.Close(); }
+                catch (Exception e) { }
+            }
+            bool createTrans = false;
+            if (conn != null)
+            {
+                
+                if (trans != null)
+                {
+                    createTrans = true;
+                    Logger.LogLine("Attempting to close the currently open transaction for resetting.");
+                    try{trans.Commit();}
+                    catch (Exception e) { }
+                }
+                Logger.LogLine("Attempting to close the currently open connection for resetting.");
+                try { conn.Close(); }
+                catch (Exception e) { }
+            }
+            creationTime = System.DateTime.Now;
+            Logger.LogLine("Establishing new connection in pool " + pool.ConnectionName + " through connection reset");
+            conn = EstablishConnection();
+            conn.Open();
+            if (createTrans)
+            {
+                Logger.LogLine("Creating new transaction for connection in reset to replace existing");
+                trans = conn.BeginTransaction();
+            }
+            if (comm == null)
+                comm = EstablishCommand();
+            else
+            {
+                Logger.LogLine("Moving comman in connection to newly created connection and transaction in reset");
+                comm.Connection = conn;
+                comm.Transaction = trans;
+            }
+            isConnected = true;
+            commCntr = 0;
+        }
 		
 		internal string ConnectionName
 		{
@@ -129,7 +173,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		internal bool isPastKeepAlive(long secondsToLive)
 		{
-			return !(secondsToLive<0)||((System.DateTime.Now.Ticks-creationTime.Ticks)>secondsToLive)||(conn.State!=ConnectionState.Open);
+			return !(secondsToLive<0)&&(System.DateTime.Now.Subtract(creationTime).TotalSeconds>secondsToLive);
 		}
 		
 		internal void Reset()
@@ -560,10 +604,14 @@ namespace Org.Reddragonit.Dbpro.Connections
 			List<IDbDataParameter> pars = new List<IDbDataParameter>();
 			string query = queryBuilder.Select(type,parameters,out pars);
 			ExecuteQuery(query,pars);
+            Logger.LogLine("Query executed, beginning to read results");
 			while (Read())
 			{
+                Logger.LogLine("Creating a lazy proxy instance for the table type " + type.FullName);
 				Table t = (Table)LazyProxy.Instance(type.GetConstructor(System.Type.EmptyTypes).Invoke(new object[0]));
+                Logger.LogLine("Reading result and loading table object " + type.FullName + " from query");
 				t.SetValues(this);
+                Logger.LogLine("Setting load status for " + type.FullName + " as completed and adding to results");
 				t.LoadStatus=LoadStatus.Complete;
 				ret.Add(t);
 			}
@@ -680,9 +728,12 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
 			if ((trans == null)&&!queryString.ToUpper().StartsWith("SELECT"))
             {
+                Logger.LogLine("Opening transaction for query since it is not performing a select");
                 trans = conn.BeginTransaction();
                 comm.Transaction = trans;
             }
+            else if (trans != null)
+                Logger.LogLine("Connection already has an open transaction");
 			comm.CommandText = FormatParameters(queryString + " ", ref parameters);
 			comm.Parameters.Clear();
             comm.CommandType = CommandType.Text;
@@ -748,9 +799,12 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
         	if (trans == null)
             {
+                Logger.LogLine("Opening transaction for query since it is not performing a select");
                 trans = conn.BeginTransaction();
                 comm.Transaction = trans;
             }
+            else if (trans != null)
+                Logger.LogLine("Connection already has an open transaction");
             comm.CommandText = procedureName;
             comm.Parameters.Clear();
             comm.CommandType = CommandType.StoredProcedure;
@@ -816,9 +870,12 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
             if ((trans == null)&&!queryString.ToUpper().StartsWith("SELECT"))
             {
+                Logger.LogLine("Opening transaction for query since it is not performing a select");
                 trans = conn.BeginTransaction();
                 comm.Transaction = trans;
             }
+            else if (trans!=null)
+                Logger.LogLine("Connection already has an open transaction");
 			if ((queryString!=null)&&(queryString.Length>0)){
 				reader = null;
 				comm.CommandText = FormatParameters(queryString + " ", ref parameters);
@@ -846,6 +903,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 {
                     reader = comm.ExecuteReader();
                     Logger.LogLine("Successfully executed: "+comm.CommandText);
+                    CheckReadLock();
                 }
                 catch (Exception e)
                 {
@@ -886,9 +944,12 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
             if (trans == null)
             {
+                Logger.LogLine("Opening transaction for query since it is not performing a select");
                 trans = conn.BeginTransaction();
                 comm.Transaction = trans;
             }
+            else if (trans != null)
+                Logger.LogLine("Connection already has an open transaction");
             reader = null;
             comm.CommandText = procedureName;
             comm.Parameters.Clear();
@@ -915,6 +976,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             {
                 reader = comm.ExecuteReader();
                 Logger.LogLine("Successfully executed: "+comm.CommandText);
+                CheckReadLock();
             }
             catch (Exception e)
             {
@@ -932,9 +994,44 @@ namespace Org.Reddragonit.Dbpro.Connections
                 throw new Exception("An error occured in executing the procedure: " + procedureName+ "\nwith the parameters: " + pars, e);
             }
         }
-		
-		#region Reader
-		public int Depth {
+
+        #region CheckReadLock
+        private void CheckReadLock()
+        {
+            Thread runner = new Thread(new ThreadStart(RunReadCheck));
+            for (int x = 0; x < MAX_READCHECK_TRIES; x++)
+            {
+                try
+                {
+                    Logger.LogLine("Checking data reader lock attempt "+x.ToString());
+                    runner.Start();
+                    runner.Join(new TimeSpan(0, 0, 0, pool.readTimeout));
+                    if (firstRead)
+                        break;
+                }
+                catch (Exception e)
+                {
+                }
+                if (!firstRead)
+                {
+                    Logger.LogLine("Reading of first result failed with timeout of " + pool.readTimeout.ToString() + " seconds, resetting connection and reattempting query.");
+                    ResetConnection();
+                    reader = comm.ExecuteReader();
+                }
+            }
+            if (!firstRead)
+                throw new Exception("Unable to get around locked database connection after 5 attempted resets, query["+comm.CommandText+"] aborted.");
+        }
+
+        private void RunReadCheck()
+        {
+            firstReadResult = reader.Read();
+            firstRead = true;
+        }
+        #endregion
+
+        #region Reader
+        public int Depth {
 			get {
 				return reader.Depth;
 			}
@@ -975,9 +1072,18 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		public bool Read()
 		{
-			if ((reader==null)||reader.IsClosed)
-				return false;
-			return reader.Read();
+            if ((reader == null) || reader.IsClosed)
+                return false;
+            else
+            {
+                if (!firstRead)
+                    return reader.Read();
+                else
+                {
+                    firstRead = false;
+                    return firstReadResult;
+                }
+            }
 		}
 		
 		public void Dispose()

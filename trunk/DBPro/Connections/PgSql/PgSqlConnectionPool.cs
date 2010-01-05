@@ -57,6 +57,44 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 		{
 			
 		}
+
+        public PgSqlConnectionPool(string username, string password, string database, string databaseServer, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode, string connectionName,int readTimeout)
+            : this(username, password, database, databaseServer, 5432, minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode, connectionName, true,readTimeout)
+        { }
+
+        public PgSqlConnectionPool(string username, string password, string database, string databaseServer, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions, int readTimeout)
+            : this(username, password, database, databaseServer, 5432, minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode, connectionName, allowTableDeletions,readTimeout)
+        { }
+
+        public PgSqlConnectionPool(string username, string password, string database, string databaseServer, int port, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions, int readTimeout)
+            : base("User Id=" + username + ";" +
+                   "Password=" + password + ";" +
+                   "Database=" + database + ";" +
+                   "Server=" + databaseServer + ";" +
+                   "Port=" + port.ToString() + ";", minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode, connectionName, allowTableDeletions,readTimeout)
+        {
+            _dbName = database;
+        }
+
+        public PgSqlConnectionPool(string username, string password, string database, string databaseServer, bool UpdateStructureDebugMode, string connectionName, int readTimeout)
+            : this(username, password, database, databaseServer, 5432, UpdateStructureDebugMode, connectionName,readTimeout)
+        { }
+
+        public PgSqlConnectionPool(string username, string password, string database, string databaseServer, int port, bool UpdateStructureDebugMode, string connectionName, int readTimeout)
+            : this(username, password, database, databaseServer, port, 5, 10, 600, UpdateStructureDebugMode, connectionName, true,readTimeout)
+        {
+
+        }
+
+        public PgSqlConnectionPool(string username, string password, string database, string databaseServer, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions, int readTimeout)
+            : this(username, password, database, databaseServer, 5432, UpdateStructureDebugMode, connectionName, allowTableDeletions,readTimeout)
+        { }
+
+        public PgSqlConnectionPool(string username, string password, string database, string databaseServer, int port, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions, int readTimeout)
+            : this(username, password, database, databaseServer, port, 5, 10, 600, UpdateStructureDebugMode, connectionName, allowTableDeletions,readTimeout)
+        {
+
+        }
 		
 		protected override Connection CreateConnection()
 		{

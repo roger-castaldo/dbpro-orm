@@ -144,7 +144,9 @@ namespace Org.Reddragonit.Dbpro.Structure
 		internal void SetValues(Connection conn,string addOnName)
 		{
 			_initialPrimaryKeys.Clear();
+            Logger.LogLine("Obtaining table map for " + this.GetType().FullName + " to allow setting of values from query");
 			TableMap map = ClassMapper.GetTableMap(this.GetType());
+            Logger.LogLine("Recursively setting values from query for " + this.GetType().FullName);
 			RecurSetValues(map,conn,addOnName);
 			_isSaved = true;
 		}
