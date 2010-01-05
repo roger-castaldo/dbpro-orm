@@ -17,6 +17,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 	
 	public abstract class Connection : IDataReader
 	{
+		private const int MAX_COMM_QUERIES = 5;
+		
 		private ConnectionPool pool;
 		protected IDbConnection conn;
 		protected IDbCommand comm;
@@ -25,6 +27,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		private bool isConnected=false;
 		private DateTime creationTime;
 		protected string connectionString;
+		private int commCntr;
 		
 		private QueryBuilder _qb;
 		internal virtual QueryBuilder queryBuilder
@@ -102,6 +105,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             comm = EstablishCommand();
 			this.pool=pool;
 			isConnected=true;
+			commCntr = 0;
 		}
 		
 		internal string ConnectionName
@@ -667,7 +671,14 @@ namespace Org.Reddragonit.Dbpro.Connections
 
 		public int ExecuteNonQuery(string queryString, IDbDataParameter[] parameters)
 		{
-            if (trans == null)
+			commCntr++;
+			if (commCntr>=MAX_COMM_QUERIES){
+				commCntr=0;
+				comm = EstablishCommand();
+				if (trans!=null)
+					comm.Transaction=trans;
+			}
+			if ((trans == null)&&!queryString.ToUpper().StartsWith("SELECT"))
             {
                 trans = conn.BeginTransaction();
                 comm.Transaction = trans;
@@ -695,7 +706,9 @@ namespace Org.Reddragonit.Dbpro.Connections
             }
             try
             {
-                return comm.ExecuteNonQuery();
+                int ret = comm.ExecuteNonQuery();
+                Logger.LogLine("Successfully executed: "+comm.CommandText);
+                return ret;
             }
             catch (Exception e)
             {
@@ -726,7 +739,14 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         public int ExecuteStoredProcedureNoReturn(string procedureName,IDbDataParameter[] parameters)
         {
-            if (trans == null)
+        	commCntr++;
+			if (commCntr>=MAX_COMM_QUERIES){
+				commCntr=0;
+				comm = EstablishCommand();
+				if (trans!=null)
+					comm.Transaction=trans;
+			}
+        	if (trans == null)
             {
                 trans = conn.BeginTransaction();
                 comm.Transaction = trans;
@@ -754,7 +774,9 @@ namespace Org.Reddragonit.Dbpro.Connections
             }
             try
             {
-                return comm.ExecuteNonQuery();
+                int ret =  comm.ExecuteNonQuery();
+                Logger.LogLine("Successfully executed: "+comm.CommandText);
+                return ret;
             }
             catch (Exception e)
             {
@@ -785,7 +807,14 @@ namespace Org.Reddragonit.Dbpro.Connections
 
 		public void ExecuteQuery(string queryString, IDbDataParameter[] parameters)
 		{
-            if (trans == null)
+			commCntr++;
+			if (commCntr>=MAX_COMM_QUERIES){
+				commCntr=0;
+				comm = EstablishCommand();
+				if (trans!=null)
+					comm.Transaction=trans;
+			}
+            if ((trans == null)&&!queryString.ToUpper().StartsWith("SELECT"))
             {
                 trans = conn.BeginTransaction();
                 comm.Transaction = trans;
@@ -816,6 +845,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 try
                 {
                     reader = comm.ExecuteReader();
+                    Logger.LogLine("Successfully executed: "+comm.CommandText);
                 }
                 catch (Exception e)
                 {
@@ -847,6 +877,13 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         public void ExecuteStoredProcedureReturn(string procedureName, IDbDataParameter[] parameters)
         {
+        	commCntr++;
+			if (commCntr>=MAX_COMM_QUERIES){
+				commCntr=0;
+				comm = EstablishCommand();
+				if (trans!=null)
+					comm.Transaction=trans;
+			}
             if (trans == null)
             {
                 trans = conn.BeginTransaction();
@@ -877,6 +914,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             try
             {
                 reader = comm.ExecuteReader();
+                Logger.LogLine("Successfully executed: "+comm.CommandText);
             }
             catch (Exception e)
             {

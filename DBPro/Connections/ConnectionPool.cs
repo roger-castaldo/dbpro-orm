@@ -1428,7 +1428,12 @@ namespace Org.Reddragonit.Dbpro.Connections
 				mut.ReleaseMutex();
 			}else
 			{
-                Logger.LogLine("Closing returned connection since it exceeds the maximum queue");
+				if (isClosed)
+					Logger.LogLine("Closing returned connection since pool is closed.");
+				else if (conn.isPastKeepAlive(maxKeepAlive))
+				    Logger.LogLine("Closing returned connection since it is passed keep alive");
+				else
+ 	               	Logger.LogLine("Closing returned connection since it exceeds the maximum queue");
 				conn.Disconnect();
 			}
             while (!checkMin())
