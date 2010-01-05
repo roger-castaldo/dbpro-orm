@@ -59,6 +59,44 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 		{
 			
 		}
+
+        public MySqlConnectionPool(string username, string password, string database, string databaseServer, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode, string connectionName,int readTimeout)
+            : this(username, password, database, databaseServer, 3306, minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode, connectionName, true,readTimeout)
+        { }
+
+        public MySqlConnectionPool(string username, string password, string database, string databaseServer, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions, int readTimeout)
+            : this(username, password, database, databaseServer, 3306, minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode, connectionName, allowTableDeletions,readTimeout)
+        { }
+
+        public MySqlConnectionPool(string username, string password, string database, string databaseServer, int port, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions, int readTimeout)
+            : base("Uid=" + username + ";" +
+                   "Pwd=" + password + ";" +
+                   "Database=" + database + ";" +
+                   "Server=" + databaseServer + ";" +
+                   "Port=" + port.ToString() + ";", minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode, connectionName, allowTableDeletions,readTimeout)
+        {
+            _dbName = database;
+        }
+
+        public MySqlConnectionPool(string username, string password, string database, string databaseServer, bool UpdateStructureDebugMode, string connectionName, int readTimeout)
+            : this(username, password, database, databaseServer, 3306, UpdateStructureDebugMode, connectionName, true,readTimeout)
+        { }
+
+        public MySqlConnectionPool(string username, string password, string database, string databaseServer, int port, bool UpdateStructureDebugMode, string connectionName, int readTimeout)
+            : this(username, password, database, databaseServer, port, 5, 10, 600, UpdateStructureDebugMode, connectionName, true,readTimeout)
+        {
+
+        }
+
+        public MySqlConnectionPool(string username, string password, string database, string databaseServer, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions, int readTimeout)
+            : this(username, password, database, databaseServer, 3306, UpdateStructureDebugMode, connectionName, allowTableDeletions,readTimeout)
+        { }
+
+        public MySqlConnectionPool(string username, string password, string database, string databaseServer, int port, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions,int readTimeout)
+            : this(username, password, database, databaseServer, port, 5, 10, 600, UpdateStructureDebugMode, connectionName, allowTableDeletions,readTimeout)
+        {
+
+        }
 		
 		protected override Connection CreateConnection()
 		{

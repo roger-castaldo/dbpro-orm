@@ -29,6 +29,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         private const int MaxGetConnectionTrials = 20;
         private const int MaxMutexTimeout = 1000;
+        internal const int DEFAULT_READ_TIMEOUT = 60;
 		
 		private List<Connection> locked=new List<Connection>();
 		private Queue<Connection> unlocked=new Queue<Connection>();
@@ -38,6 +39,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		private int minPoolSize=0;
 		private int maxPoolSize=0;
 		private long maxKeepAlive=0;
+        internal int readTimeout;
 		private bool _debugMode=false;
 		private bool _allowTableDeletions=true;
 		
@@ -246,8 +248,12 @@ namespace Org.Reddragonit.Dbpro.Connections
 		{
 			return _enumValuesMap[enumType][enumName];
 		}
+
+        protected ConnectionPool(string connectionString, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions)
+            :this(connectionName,minPoolSize,maxPoolSize,maxKeepAlive,UpdateStructureDebugMode,connectionName,allowTableDeletions,DEFAULT_READ_TIMEOUT)
+        { }
 		
-		protected ConnectionPool(string connectionString,int minPoolSize,int maxPoolSize,long maxKeepAlive,bool UpdateStructureDebugMode,string connectionName,bool allowTableDeletions)
+		protected ConnectionPool(string connectionString,int minPoolSize,int maxPoolSize,long maxKeepAlive,bool UpdateStructureDebugMode,string connectionName,bool allowTableDeletions,int readTimeout)
 		{
 			Logger.LogLine("Establishing Connection with string: "+connectionString);
 			this.connectionString=connectionString;
@@ -257,6 +263,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			_debugMode=UpdateStructureDebugMode;
 			_connectionName=connectionName;
 			_allowTableDeletions=allowTableDeletions;
+            this.readTimeout = readTimeout;
 			ConnectionPoolManager.AddConnection(connectionName,this);
 		}
 		
