@@ -899,6 +899,14 @@ namespace Org.Reddragonit.Dbpro.Connections
                             Logger.LogLine(param.ParameterName + ": NULL");
                     }
                 }
+                if ((reader != null) && (!reader.IsClosed))
+                {
+                    try
+                    {
+                        reader.Close();
+                    }
+                    catch (Exception e) { }
+                }
                 try
                 {
                     reader = comm.ExecuteReader();
@@ -971,6 +979,14 @@ namespace Org.Reddragonit.Dbpro.Connections
                     else
                         Logger.LogLine(param.ParameterName + ": NULL");
                 }
+            }
+            if ((reader!=null)&&(!reader.IsClosed))
+            {
+                try
+                {
+                    reader.Close();
+                }
+                catch (Exception e) { }
             }
             try
             {
