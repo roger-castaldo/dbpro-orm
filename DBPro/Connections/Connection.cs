@@ -516,27 +516,37 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		public List<Table> SelectAll(System.Type type)
 		{
-			if (!type.IsSubclassOf(typeof(Table)))
-			{
-				throw new Exception("Unable to perform select on Type object without object inheriting Org.Reddragonit.DbPro.Structure.Table");
-			}
-			if (((Table)type.GetConstructor(System.Type.EmptyTypes).Invoke(new object[0])).ConnectionName!=ConnectionName)
-			{
-				throw new Exception("Cannot select from a table from the database connection that it was not specified for.");
-			}
-			List<Table> ret = new List<Table>();
-			ExecuteQuery(queryBuilder.SelectAll(type));
-			while (Read())
-			{
-				Table t = (Table)LazyProxy.Instance(type.GetConstructor(System.Type.EmptyTypes).Invoke(new object[0]));
-				t.SetValues(this);
-				t.LoadStatus=LoadStatus.Complete;
-				ret.Add(t);
-			}
-			Close();
-			ret = AddArrayedTablesToSelect(ret, type);
-			return ret;
+            return SelectAll(type, new string[0]);
 		}
+
+        public List<Table> SelectAll(System.Type type, List<string> OrderByFields)
+        {
+            return SelectAll(type, OrderByFields.ToArray());
+        }
+
+        public List<Table> SelectAll(System.Type type, string[] OrderByFields)
+        {
+            if (!type.IsSubclassOf(typeof(Table)))
+            {
+                throw new Exception("Unable to perform select on Type object without object inheriting Org.Reddragonit.DbPro.Structure.Table");
+            }
+            if (((Table)type.GetConstructor(System.Type.EmptyTypes).Invoke(new object[0])).ConnectionName != ConnectionName)
+            {
+                throw new Exception("Cannot select from a table from the database connection that it was not specified for.");
+            }
+            List<Table> ret = new List<Table>();
+            ExecuteQuery(queryBuilder.SelectAll(type,OrderByFields));
+            while (Read())
+            {
+                Table t = (Table)LazyProxy.Instance(type.GetConstructor(System.Type.EmptyTypes).Invoke(new object[0]));
+                t.SetValues(this);
+                t.LoadStatus = LoadStatus.Complete;
+                ret.Add(t);
+            }
+            Close();
+            ret = AddArrayedTablesToSelect(ret, type);
+            return ret;
+        }
 		
 		public List<Table> Select(System.Type type,List<SelectParameter> parameters)
 		{
@@ -589,8 +599,13 @@ namespace Org.Reddragonit.Dbpro.Connections
                 ret = null;
             return ret;
         }
+
+        public List<Table> Select(System.Type type, SelectParameter[] parameters)
+        {
+            return Select(type, parameters, null);
+        }
 		
-		public List<Table> Select(System.Type type,SelectParameter[] parameters)
+		public List<Table> Select(System.Type type,SelectParameter[] parameters,string[] OrderByFields)
 		{
 			if (!type.IsSubclassOf(typeof(Table)))
 			{
@@ -602,7 +617,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
 			List<Table> ret = new List<Table>();
 			List<IDbDataParameter> pars = new List<IDbDataParameter>();
-			string query = queryBuilder.Select(type,parameters,out pars);
+			string query = queryBuilder.Select(type,parameters,out pars,OrderByFields);
 			ExecuteQuery(query,pars);
             Logger.LogLine("Query executed, beginning to read results");
 			while (Read())

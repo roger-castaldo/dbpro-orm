@@ -143,7 +143,7 @@ namespace Org.Reddragonit.Dbpro.Virtual
             conn = ConnectionPoolManager.GetConnection(mainTable).getConnection();
             mainMap = ClassMapper.GetTableMap(mainTable);
             parameters=new List<IDbDataParameter>();
-            string originalQuery = conn.queryBuilder.SelectAll(mainTable);
+            string originalQuery = conn.queryBuilder.SelectAll(mainTable,null);
             string fieldString = "";
             fields = ExtractFieldFromType(type);
             List<ExtractedVirtualField> fieldsUsed = new List<ExtractedVirtualField>();

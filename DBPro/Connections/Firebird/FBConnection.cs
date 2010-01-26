@@ -212,12 +212,12 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 					parameterValue='F';
             }
             else if ((parameterValue is uint) || (parameterValue is UInt32)){
-                parameterValue = System.Text.ASCIIEncoding.ASCII.GetString(System.BitConverter.GetBytes(uint.Parse(parameterValue.ToString()))).ToCharArray();
+				parameterValue = BitConverter.ToInt32(BitConverter.GetBytes(uint.Parse(parameterValue.ToString())),0);
             }else if ((parameterValue is UInt16)||(parameterValue is ushort)){
-                parameterValue = System.Text.ASCIIEncoding.ASCII.GetString(System.BitConverter.GetBytes(ushort.Parse(parameterValue.ToString()))).ToCharArray();
+				parameterValue = BitConverter.ToInt16(BitConverter.GetBytes(ushort.Parse(parameterValue.ToString())),0);
             }
             else if ((parameterValue is ulong) || (parameterValue is UInt64)){
-                parameterValue = System.Text.ASCIIEncoding.ASCII.GetString(System.BitConverter.GetBytes(ulong.Parse(parameterValue.ToString()))).ToCharArray();
+				parameterValue = BitConverter.ToInt64(BitConverter.GetBytes(ulong.Parse(parameterValue.ToString())),0);
             }
 			return new FbParameter(parameterName,parameterValue);
 		}
@@ -271,26 +271,20 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 					break;
 				case FieldType.INTEGER:
 				case FieldType.ENUM:
+				case FieldType.UNSIGNED_INTEGER:
 					ret="INTEGER";
 					break;
-                case FieldType.UNSIGNED_INTEGER:
-                    ret = "CHAR(4)";
-                    break;
 				case FieldType.LONG:
+				case FieldType.UNSIGNED_LONG:
 					ret="BIGINT";
 					break;
-                case FieldType.UNSIGNED_LONG:
-                    ret = "CHAR(8)";
-                    break;
 				case FieldType.MONEY:
 					ret="DECIMAL(18,4)";
 					break;
 				case FieldType.SHORT:
+				case FieldType.UNSIGNED_SHORT:
 					ret = "SMALLINT";
 					break;
-                case FieldType.UNSIGNED_SHORT:
-                    ret = "CHAR(2)";
-                    break;
 				case FieldType.STRING:
 					if ((fieldLength==-1)||(fieldLength>32767))
 						ret="BLOB SUB_TYPE TEXT";

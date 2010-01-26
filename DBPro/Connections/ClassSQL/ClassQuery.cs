@@ -863,7 +863,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 					string innerJoin = " INNER JOIN ";
 					if (efm.Nullable)
 						innerJoin = " LEFT JOIN ";
-                    string tbl = _conn.queryBuilder.SelectAll(efm.Type);
+                    string tbl = _conn.queryBuilder.SelectAll(efm.Type,null);
 					if (efm.IsArray)
 					{
 						innerJoin += _conn.Pool.CorrectName(map.Name + "_" + eMap.Name) + " " + alias + "_intermediate_" + className + " ON ";
@@ -900,7 +900,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 				string innerJoin = " INNER JOIN ";
 				if (efm.Nullable)
 					innerJoin = " LEFT JOIN ";
-				string tbl = _conn.queryBuilder.SelectAll(efm.Type);
+				string tbl = _conn.queryBuilder.SelectAll(efm.Type,null);
 				List<string> fields = new List<string>();
 				string fieldString = tbl.Substring(tbl.IndexOf("SELECT") + "SELECT".Length);
 				fieldString = fieldString.Substring(0, fieldString.IndexOf("FROM"));

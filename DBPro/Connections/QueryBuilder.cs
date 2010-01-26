@@ -213,7 +213,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		protected virtual string OrderBy
 		{
-			get{return " ORDER BY {0}";}
+			get{return "{0} ORDER BY {1}";}
 		}
 
 		protected virtual string SelectWithPagingIncludeOffset
@@ -723,15 +723,15 @@ namespace Org.Reddragonit.Dbpro.Connections
                     return "";
 				foreach (FieldNamePair fnp in map.FieldNamePairs)
 				{
-					if (changedFields.Contains(fnp.ClassFieldName))
-					{
-                        if (map[fnp].PrimaryKey && !map[fnp].AutoGen && !addedAutogenCorrection&&map.HasComplexNumberAutogen)
+                    if (changedFields.Contains(fnp.ClassFieldName))
+                    {
+                        if (map[fnp].PrimaryKey && !map[fnp].AutoGen && !addedAutogenCorrection && map.HasComplexNumberAutogen)
                         {
                             foreach (InternalFieldMap ifm in map.PrimaryKeys)
                             {
                                 if (ifm.AutoGen)
                                 {
-                                    fields += pool.CorrectName(ifm.FieldName) + " = (SELECT (CASE WHEN MAX("+pool.CorrectName(ifm.FieldName)+") IS NULL THEN 0 ELSE MAX("+pool.CorrectName(ifm.FieldName)+") END)+1 FROM "+pool.CorrectName(map.Name)+" WHERE ";
+                                    fields += pool.CorrectName(ifm.FieldName) + " = (SELECT (CASE WHEN MAX(" + pool.CorrectName(ifm.FieldName) + ") IS NULL THEN 0 ELSE MAX(" + pool.CorrectName(ifm.FieldName) + ") END)+1 FROM " + pool.CorrectName(map.Name) + " WHERE ";
                                     int cnt = 0;
                                     foreach (InternalFieldMap i in map.PrimaryKeys)
                                     {
@@ -741,86 +741,94 @@ namespace Org.Reddragonit.Dbpro.Connections
                                         else
                                         {
                                             fields += pool.CorrectName(ifm.FieldName) + " = " + CreateParameterName(ifm.FieldName + "_" + cnt.ToString());
-                                            queryParameters.Add(conn.CreateParameter(CreateParameterName(ifm.FieldName + "_" + cnt.ToString()),val));
+                                            queryParameters.Add(conn.CreateParameter(CreateParameterName(ifm.FieldName + "_" + cnt.ToString()), val));
                                         }
                                     }
                                     fields = fields.Substring(0, fields.Length - 4);
-                                    fields+="), ";
+                                    fields += "), ";
                                     break;
                                 }
                             }
                             addedAutogenCorrection = true;
                         }
-						if (map[fnp] is ExternalFieldMap)
-						{
-							if (!((ExternalFieldMap)map[fnp]).IsArray)
-							{
-								ExternalFieldMap efm = (ExternalFieldMap)map[fnp];
-								TableMap relatedTableMap = ClassMapper.GetTableMap(efm.Type);
-								if (table.GetField(fnp.ClassFieldName) == null)
-								{
-									foreach (FieldMap fm in relatedTableMap.PrimaryKeys)
-									{
-										fields += conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm)) + " = " + CreateParameterName(conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm))) + ", ";
-										queryParameters.Add(conn.CreateParameter(CreateParameterName(conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm))), null));
-									}
-								}
-								else
-								{
-									Table relatedTable = (Table)table.GetField(fnp.ClassFieldName);
-									foreach (FieldMap fm in relatedTableMap.PrimaryKeys)
-									{
-										fields += conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm)) + " = " + CreateParameterName(conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm))) + ", ";
-										queryParameters.Add(conn.CreateParameter(CreateParameterName(conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm))), relatedTable.GetField(relatedTableMap.GetClassFieldName(fm)),((InternalFieldMap)fm).FieldType,((InternalFieldMap)fm).FieldLength));
-									}
-								}
-								if (map[fnp].PrimaryKey || !map.HasPrimaryKeys)
-								{
-									Table relatedTable = (Table)table.GetInitialPrimaryValue(fnp.ClassFieldName);
-									if (relatedTable == null)
-									{
-										foreach (FieldMap fm in relatedTableMap.PrimaryKeys)
-										{
-											conditions += conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm)) + " is null AND ";
-										}
-									}
-									else
-									{
-										foreach (FieldMap fm in relatedTableMap.PrimaryKeys)
-										{
-											conditions += conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm)) + " = "+CreateParameterName("init_" + conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm))) + " AND ";
-											queryParameters.Add(conn.CreateParameter(CreateParameterName("init_" + conn.Pool.CorrectName(efm.AddOnName+"_"+relatedTableMap.GetTableFieldName(fm))), relatedTable.GetField(relatedTableMap.GetClassFieldName(fm)),((InternalFieldMap)fm).FieldType,((InternalFieldMap)fm).FieldLength));
-										}
-									}
-								}
-							}
-						}
-						else if (!map[fnp].IsArray)
-						{
-							fields += fnp.TableFieldName+" = "+CreateParameterName(fnp.TableFieldName) +", ";
-							if (table.GetField(fnp.ClassFieldName) == null)
-							{
-								queryParameters.Add(conn.CreateParameter(CreateParameterName(fnp.TableFieldName), null));
-							}
-							else
-							{
-								queryParameters.Add(conn.CreateParameter(CreateParameterName(fnp.TableFieldName), table.GetField(fnp.ClassFieldName),((InternalFieldMap)map[fnp]).FieldType,((InternalFieldMap)map[fnp]).FieldLength));
-							}
-							if (map[fnp].PrimaryKey || !map.HasPrimaryKeys)
-							{
-								if (table.GetInitialPrimaryValue(fnp.ClassFieldName) == null)
-								{
-									conditions += fnp.TableFieldName + " IS NULL AND ";
-								}
-								else
-								{
-									conditions += fnp.TableFieldName + " = "+CreateParameterName("init_"+fnp.TableFieldName) +" AND ";
-									queryParameters.Add(conn.CreateParameter(CreateParameterName("init_" + fnp.TableFieldName), table.GetInitialPrimaryValue(fnp.ClassFieldName),((InternalFieldMap)map[fnp]).FieldType,((InternalFieldMap)map[fnp]).FieldLength));
-								}
-							}
-						}
-					}
+                        if (map[fnp] is ExternalFieldMap)
+                        {
+                            if (!((ExternalFieldMap)map[fnp]).IsArray)
+                            {
+                                ExternalFieldMap efm = (ExternalFieldMap)map[fnp];
+                                TableMap relatedTableMap = ClassMapper.GetTableMap(efm.Type);
+                                if (table.GetField(fnp.ClassFieldName) == null)
+                                {
+                                    foreach (FieldMap fm in relatedTableMap.PrimaryKeys)
+                                    {
+                                        fields += conn.Pool.CorrectName(efm.AddOnName + "_" + relatedTableMap.GetTableFieldName(fm)) + " = " + CreateParameterName(conn.Pool.CorrectName(efm.AddOnName + "_" + relatedTableMap.GetTableFieldName(fm))) + ", ";
+                                        queryParameters.Add(conn.CreateParameter(CreateParameterName(conn.Pool.CorrectName(efm.AddOnName + "_" + relatedTableMap.GetTableFieldName(fm))), null));
+                                    }
+                                }
+                                else
+                                {
+                                    Table relatedTable = (Table)table.GetField(fnp.ClassFieldName);
+                                    foreach (FieldMap fm in relatedTableMap.PrimaryKeys)
+                                    {
+                                        fields += conn.Pool.CorrectName(efm.AddOnName + "_" + relatedTableMap.GetTableFieldName(fm)) + " = " + CreateParameterName(conn.Pool.CorrectName(efm.AddOnName + "_" + relatedTableMap.GetTableFieldName(fm))) + ", ";
+                                        queryParameters.Add(conn.CreateParameter(CreateParameterName(conn.Pool.CorrectName(efm.AddOnName + "_" + relatedTableMap.GetTableFieldName(fm))), relatedTable.GetField(relatedTableMap.GetClassFieldName(fm)), ((InternalFieldMap)fm).FieldType, ((InternalFieldMap)fm).FieldLength));
+                                    }
+                                }
+                            }
+                        }
+                        else if (!map[fnp].IsArray)
+                        {
+                            fields += fnp.TableFieldName + " = " + CreateParameterName(fnp.TableFieldName) + ", ";
+                            if (table.GetField(fnp.ClassFieldName) == null)
+                            {
+                                queryParameters.Add(conn.CreateParameter(CreateParameterName(fnp.TableFieldName), null));
+                            }
+                            else
+                            {
+                                queryParameters.Add(conn.CreateParameter(CreateParameterName(fnp.TableFieldName), table.GetField(fnp.ClassFieldName), ((InternalFieldMap)map[fnp]).FieldType, ((InternalFieldMap)map[fnp]).FieldLength));
+                            }
+                        }
+                    }
 				}
+                foreach (FieldNamePair fnp in map.FieldNamePairs)
+                {
+                    if (map[fnp].PrimaryKey || !map.HasPrimaryKeys)
+                    {
+                        if (map[fnp] is ExternalFieldMap)
+                        {
+                            Table obj = (Table)table.GetInitialPrimaryValue(fnp.ClassFieldName);
+                            ExternalFieldMap efm = (ExternalFieldMap)map[fnp];
+                            TableMap emap = ClassMapper.GetTableMap(efm.ObjectType);
+                            if (obj == null)
+                            {
+                                foreach (FieldMap fm in emap.PrimaryKeys)
+                                {
+                                    conditions += conn.Pool.CorrectName(efm.AddOnName + "_" + emap.GetTableFieldName(fm)) + " IS NULL AND ";
+                                }
+                            }
+                            else
+                            {
+                                foreach (FieldMap fm in emap.PrimaryKeys)
+                                {
+                                    conditions += conn.Pool.CorrectName(efm.AddOnName + "_" + emap.GetTableFieldName(fm)) + " = " + CreateParameterName(conn.Pool.CorrectName("init_" + efm.AddOnName + "_" + emap.GetTableFieldName(fm)))+" AND ";
+                                    queryParameters.Add(conn.CreateParameter(CreateParameterName(conn.Pool.CorrectName("init_"+efm.AddOnName + "_" + emap.GetTableFieldName(fm))), obj.GetField(emap.GetClassFieldName(fm)), ((InternalFieldMap)fm).FieldType, ((InternalFieldMap)fm).FieldLength));
+                                }
+                            }
+                        }
+                        else
+                        {
+                            if (table.GetInitialPrimaryValue(fnp.ClassFieldName) == null)
+                            {
+                                conditions += fnp.TableFieldName + " IS NULL AND ";
+                            }
+                            else
+                            {
+                                conditions += fnp.TableFieldName + " = " + CreateParameterName("init_" + fnp.TableFieldName) + " AND ";
+                                queryParameters.Add(conn.CreateParameter(CreateParameterName("init_" + fnp.TableFieldName), table.GetInitialPrimaryValue(fnp.ClassFieldName), ((InternalFieldMap)map[fnp]).FieldType, ((InternalFieldMap)map[fnp]).FieldLength));
+                            }
+                        }
+                    }
+                }
                 if (fields.Length == 0)
                     return "";
 				fields = fields.Substring(0,fields.Length-2);
@@ -928,10 +936,10 @@ namespace Org.Reddragonit.Dbpro.Connections
 			return true;
 		}
 		
-		internal string SelectAll(System.Type type)
+		internal string SelectAll(System.Type type,string[] OrderByFields)
 		{
 			List<IDbDataParameter> pars = new List<IDbDataParameter>();
-			return Select(type,new SelectParameter[0],out pars);
+			return Select(type,new SelectParameter[0],out pars,OrderByFields);
 		}
 		
 		internal string SelectMax(System.Type type,string maxField,List<SelectParameter> parameters,out List<IDbDataParameter> queryParameters)
@@ -1027,15 +1035,15 @@ namespace Org.Reddragonit.Dbpro.Connections
                 return null;
         }
 		
-		internal string Select(System.Type type,List<SelectParameter> parameters,out List<IDbDataParameter> queryParameters)
+		internal string Select(System.Type type,List<SelectParameter> parameters,out List<IDbDataParameter> queryParameters,string[] OrderByFields)
 		{
 			if (parameters==null)
-				return Select(type,new SelectParameter[0],out queryParameters);
+				return Select(type,new SelectParameter[0],out queryParameters,OrderByFields);
 			else
-				return Select(type,parameters.ToArray(),out queryParameters);
+				return Select(type,parameters.ToArray(),out queryParameters,OrderByFields);
 		}
-		
-		internal string Select(System.Type type,SelectParameter[] parameters,out List<IDbDataParameter> queryParameters)
+
+        internal string Select(System.Type type, SelectParameter[] parameters, out List<IDbDataParameter> queryParameters, string[] OrderByFields)
 		{
 			TableMap map = ClassMapper.GetTableMap(type);
 			string fields="";
@@ -1044,6 +1052,18 @@ namespace Org.Reddragonit.Dbpro.Connections
 			string where="";
 			bool startAnd=false;
 			queryParameters=new List<IDbDataParameter>();
+            string order = "";
+            if ((OrderByFields != null) && (OrderByFields.Length > 0))
+            {
+                foreach (string str in OrderByFields)
+                {
+                    if (map[str] == null)
+                        order += str + ",";
+                    else
+                        order += ((InternalFieldMap)map[str]).FieldName + ",";
+                }
+                order = order.Substring(0, order.Length - 1);
+            }
 			if (ObtainFieldTableWhereList(out fields,out tables, out joins,out where,type))
 			{
 				if ((parameters!=null)&&(parameters.Length>0))
@@ -1061,10 +1081,20 @@ namespace Org.Reddragonit.Dbpro.Connections
 					else
 						where+=" AND ("+appended+")";
 				}
-				if (where.Length>0)
-					return String.Format(SelectWithConditions,fields,joins+tables,where);
-				else
-					return String.Format(SelectWithoutConditions,fields,joins+tables);
+                if (order.Length > 0)
+                {
+                    if (where.Length > 0)
+                        return String.Format(OrderBy,String.Format(SelectWithConditions, fields, joins + tables, where),order);
+                    else
+                        return String.Format(OrderBy,String.Format(SelectWithoutConditions, fields, joins + tables),order);
+                }
+                else
+                {
+                    if (where.Length > 0)
+                        return String.Format(SelectWithConditions, fields, joins + tables, where);
+                    else
+                        return String.Format(SelectWithoutConditions, fields, joins + tables);
+                }
 			}else
 				return null;
 		}
@@ -1079,21 +1109,31 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		internal string SelectCount(System.Type type,SelectParameter[] parameters,out List<IDbDataParameter> queryParameters)
 		{
-			string query=Select(type,parameters,out queryParameters);
+			string query=Select(type,parameters,out queryParameters,null);
 			return String.Format(SelectCountString,query);
 		}
+
+        internal string SelectPaged(System.Type type, List<SelectParameter> parameters, out List<IDbDataParameter> queryParameters, ulong? start, ulong? recordCount)
+        {
+            return SelectPaged(type, parameters, out queryParameters, start, recordCount, null);
+        }
 		
-		internal string SelectPaged(System.Type type,List<SelectParameter> parameters,out List<IDbDataParameter> queryParameters,ulong? start,ulong? recordCount)
+		internal string SelectPaged(System.Type type,List<SelectParameter> parameters,out List<IDbDataParameter> queryParameters,ulong? start,ulong? recordCount,string[] OrderByFields)
 		{
 			if (parameters==null)
-				return SelectPaged(type,new SelectParameter[0],out queryParameters,start,recordCount);
+				return SelectPaged(type,new SelectParameter[0],out queryParameters,start,recordCount,OrderByFields);
 			else
-				return SelectPaged(type,parameters.ToArray(),out queryParameters,start,recordCount);
+				return SelectPaged(type,parameters.ToArray(),out queryParameters,start,recordCount,OrderByFields);
 		}
+
+        internal string SelectPaged(System.Type type, SelectParameter[] parameters, out List<IDbDataParameter> queryParameters, ulong? start, ulong? recordCount)
+        {
+            return SelectPaged(type, parameters, out queryParameters, start, recordCount, null);
+        }
 		
-		internal virtual string SelectPaged(System.Type type,SelectParameter[] parameters,out List<IDbDataParameter> queryParameters,ulong? start,ulong? recordCount)
+		internal virtual string SelectPaged(System.Type type,SelectParameter[] parameters,out List<IDbDataParameter> queryParameters,ulong? start,ulong? recordCount,string[] OrderByFields)
 		{
-			string query = Select(type,parameters,out queryParameters);
+			string query = Select(type,parameters,out queryParameters,OrderByFields);
 			if (queryParameters==null)
 				queryParameters = new List<IDbDataParameter>();
 			if (!start.HasValue)
@@ -1105,7 +1145,12 @@ namespace Org.Reddragonit.Dbpro.Connections
 			return String.Format(SelectWithPagingIncludeOffset,query,CreateParameterName("startIndex"),CreateParameterName("rowCount"));
 		}
 
-        internal virtual string SelectPaged(string baseQuery,TableMap mainMap, ref List<IDbDataParameter> queryParameters, ulong? start, ulong? recordCount)
+        internal string SelectPaged(string baseQuery, TableMap mainMap, ref List<IDbDataParameter> queryParameters, ulong? start, ulong? recordCount)
+        {
+            return SelectPaged(baseQuery, mainMap, ref queryParameters, start, recordCount, null);
+        }
+
+        internal virtual string SelectPaged(string baseQuery,TableMap mainMap, ref List<IDbDataParameter> queryParameters, ulong? start, ulong? recordCount,string[] OrderByFields)
         {
             if (!start.HasValue)
                 start = 0;
