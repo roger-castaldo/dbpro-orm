@@ -65,7 +65,7 @@ namespace Org.Reddragonit.Dbpro.Structure
 			TableMap map = ClassMapper.GetTableMap(this.GetType());
 			foreach (FieldNamePair fnp in map.FieldNamePairs)
 			{
-				if (map[fnp].PrimaryKey)
+				if (map[fnp].PrimaryKey || !map.HasPrimaryKeys)
 				{
 					_initialPrimaryKeys.Add(fnp.ClassFieldName,this.GetType().GetProperty(fnp.ClassFieldName).GetValue(this,new object[0]));
 				}
@@ -233,7 +233,7 @@ namespace Org.Reddragonit.Dbpro.Structure
 						}
 					}
 				}
-				if ((map[fnp].PrimaryKey)&&!_initialPrimaryKeys.ContainsKey(fnp.ClassFieldName))
+				if (((map[fnp].PrimaryKey)||!map.HasPrimaryKeys)&&!_initialPrimaryKeys.ContainsKey(fnp.ClassFieldName))
 				{
 					_initialPrimaryKeys.Add(fnp.ClassFieldName,this.GetField(fnp.ClassFieldName));
 				}
@@ -391,11 +391,11 @@ namespace Org.Reddragonit.Dbpro.Structure
 						pi.SetValue(this,true,new object[0]);
 				}
 			}else if (pi.PropertyType.Equals(typeof(uint))||pi.PropertyType.Equals(typeof(UInt32))){
-                pi.SetValue(this, System.BitConverter.ToUInt32(System.Text.ASCIIEncoding.ASCII.GetBytes(value.ToString()), 0), new object[0]);
+                pi.SetValue(this, BitConverter.ToUInt32(BitConverter.GetBytes(int.Parse(value.ToString())), 0),new object[0]);
             }else if (pi.PropertyType.Equals(typeof(ushort)) || pi.PropertyType.Equals(typeof(UInt16))){
-                pi.SetValue(this, System.BitConverter.ToUInt16(System.Text.ASCIIEncoding.ASCII.GetBytes(value.ToString()), 0), new object[0]);
+                pi.SetValue(this, BitConverter.ToUInt16(BitConverter.GetBytes(short.Parse(value.ToString())), 0), new object[0]);
             }else if (pi.PropertyType.Equals(typeof(ulong)) || pi.PropertyType.Equals(typeof(UInt64))){
-                pi.SetValue(this, System.BitConverter.ToUInt64(System.Text.ASCIIEncoding.ASCII.GetBytes(value.ToString()), 0), new object[0]);
+                pi.SetValue(this, BitConverter.ToUInt64(BitConverter.GetBytes(long.Parse(value.ToString())), 0), new object[0]);
             }else 
 				pi.SetValue(this,value,new object[0]);
 		}

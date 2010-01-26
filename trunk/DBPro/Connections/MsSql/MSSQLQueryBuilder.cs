@@ -208,9 +208,9 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 			}
 		}
 		
-		internal override string SelectPaged(Type type, SelectParameter[] parameters, out List<IDbDataParameter> queryParameters, Nullable<ulong> start, Nullable<ulong> recordCount)
+		internal override string SelectPaged(Type type, SelectParameter[] parameters, out List<IDbDataParameter> queryParameters, Nullable<ulong> start, Nullable<ulong> recordCount,string[] OrderByFields)
 		{
-			string query = Select(type,parameters,out queryParameters);
+			string query = Select(type,parameters,out queryParameters,null);
 			if (queryParameters==null)
 				queryParameters = new List<IDbDataParameter>();
 			if (!start.HasValue)
@@ -220,16 +220,26 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 			queryParameters.Add(conn.CreateParameter(CreateParameterName("startIndex"),start.Value));
 			queryParameters.Add(conn.CreateParameter(CreateParameterName("rowCount"),recordCount.Value));
 			string primarys = "";
-			TableMap map = ClassMapper.GetTableMap(type);
-			foreach (InternalFieldMap ifm in map.PrimaryKeys)
-			{
-				primarys+=","+ifm.FieldName;
-			}
+            TableMap map = ClassMapper.GetTableMap(type);
+            if ((OrderByFields == null) || (OrderByFields.Length == 0))
+            {
+                foreach (InternalFieldMap ifm in map.PrimaryKeys)
+                {
+                    primarys += "," + ifm.FieldName;
+                }
+            }
+            else
+            {
+                foreach (string str in OrderByFields)
+                {
+                    primarys += "," + ((InternalFieldMap)map[str]).FieldName;
+                }
+            }
 			primarys=primarys.Substring(1);
 			return String.Format(SelectWithPagingIncludeOffset,query,CreateParameterName("startIndex"),CreateParameterName("rowCount"),primarys);
 		}
 
-        internal override string SelectPaged(string baseQuery, TableMap mainMap, ref List<IDbDataParameter> queryParameters, ulong? start, ulong? recordCount)
+        internal override string SelectPaged(string baseQuery, TableMap mainMap, ref List<IDbDataParameter> queryParameters, ulong? start, ulong? recordCount,string[] OrderByFields)
         {
             if (!start.HasValue)
                 start = 0;
@@ -238,11 +248,25 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
             queryParameters.Add(conn.CreateParameter(CreateParameterName("startIndex"), start.Value));
             queryParameters.Add(conn.CreateParameter(CreateParameterName("rowCount"), recordCount.Value));
             string primarys = "";
-            foreach (InternalFieldMap ifm in mainMap.PrimaryKeys)
+            if ((OrderByFields == null) || (OrderByFields.Length == 0))
             {
-                primarys += "," + ifm.FieldName;
+                foreach (InternalFieldMap ifm in mainMap.PrimaryKeys)
+                {
+                    primarys += "," + ifm.FieldName;
+                }
+                primarys = primarys.Substring(1);
             }
-            primarys = primarys.Substring(1);
+            else if (baseQuery.Contains("ORDER BY"))
+            {
+                primarys = baseQuery.Substring(baseQuery.IndexOf("ORDER BY") + "ORDER BY".Length);
+            }
+            else
+            {
+                foreach (string str in OrderByFields)
+                {
+                    primarys += "," + ((InternalFieldMap)mainMap[str]).FieldName;
+                }
+            }
             return String.Format(SelectWithPagingIncludeOffset, baseQuery, CreateParameterName("startIndex"), CreateParameterName("rowCount"), primarys);
         }
 	}
