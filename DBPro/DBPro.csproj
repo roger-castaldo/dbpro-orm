@@ -125,6 +125,7 @@
     <Compile Include="Connections\MsSql\MsSqlConnectionPool.cs" />
     <Compile Include="Connections\QueryBuilder.cs" />
     <Compile Include="Exceptions\Exceptions.cs" />
+    <Compile Include="PropertySetChangesField.cs" />
     <Compile Include="LazyProxy.cs" />
     <Compile Include="Logger.cs" />
     <Compile Include="Structure\Attributes\INullable.cs" />
