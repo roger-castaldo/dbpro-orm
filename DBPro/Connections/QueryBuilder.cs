@@ -740,7 +740,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                                             fields += pool.CorrectName(ifm.FieldName) + " IS NULL AND ";
                                         else
                                         {
-                                            fields += pool.CorrectName(ifm.FieldName) + " = " + CreateParameterName(ifm.FieldName + "_" + cnt.ToString());
+                                            fields += pool.CorrectName(ifm.FieldName) + " = " + CreateParameterName(ifm.FieldName + "_" + cnt.ToString())+" AND ";
                                             queryParameters.Add(conn.CreateParameter(CreateParameterName(ifm.FieldName + "_" + cnt.ToString()), val));
                                         }
                                     }
@@ -790,11 +790,13 @@ namespace Org.Reddragonit.Dbpro.Connections
                         }
                     }
 				}
+                List<EqualParameter> tmpPars = new List<EqualParameter>();
                 foreach (FieldNamePair fnp in map.FieldNamePairs)
                 {
                     if (map[fnp].PrimaryKey || !map.HasPrimaryKeys)
                     {
-                        if (map[fnp] is ExternalFieldMap)
+                        tmpPars.Add(new EqualParameter(fnp.ClassFieldName,table.GetInitialPrimaryValue(fnp.ClassFieldName)));
+                        /*if (map[fnp] is ExternalFieldMap)
                         {
                             Table obj = (Table)table.GetInitialPrimaryValue(fnp.ClassFieldName);
                             ExternalFieldMap efm = (ExternalFieldMap)map[fnp];
@@ -826,8 +828,12 @@ namespace Org.Reddragonit.Dbpro.Connections
                                 conditions += fnp.TableFieldName + " = " + CreateParameterName("init_" + fnp.TableFieldName) + " AND ";
                                 queryParameters.Add(conn.CreateParameter(CreateParameterName("init_" + fnp.TableFieldName), table.GetInitialPrimaryValue(fnp.ClassFieldName), ((InternalFieldMap)map[fnp]).FieldType, ((InternalFieldMap)map[fnp]).FieldLength));
                             }
-                        }
+                        }*/
                     }
+                }
+                int parCount=0;
+                foreach (EqualParameter eq in tmpPars){
+                    conditions+=eq.ConstructString(map,_conn,this,ref queryParameters,ref parCount)+" AND ";
                 }
                 if (fields.Length == 0)
                     return "";
