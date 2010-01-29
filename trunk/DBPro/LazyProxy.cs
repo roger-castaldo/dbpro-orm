@@ -125,6 +125,7 @@ namespace Org.Reddragonit.Dbpro
 			MethodInfo mi = (MethodInfo)mc.MethodBase;
 			
 			object outVal=null;
+            List<string> fieldsAffected = null;
 
             foreach (object obj in mi.GetCustomAttributes(true))
             {
@@ -151,6 +152,12 @@ namespace Org.Reddragonit.Dbpro
                         ((Table)owner).LoadStatus = LoadStatus.Complete;
                     }
                     break;
+                }
+                else if (obj is PropertySetChangesField)
+                {
+                    if (fieldsAffected == null)
+                        fieldsAffected = new List<string>();
+                    fieldsAffected.Add(((PropertySetChangesField)obj).FieldAffected);
                 }
             }
 			
@@ -267,6 +274,21 @@ namespace Org.Reddragonit.Dbpro
                     	((Table)owner)._isSaved=(bool)mc.Args[2];
                     else if ((mi.Name=="FieldGetter")&&(mc.Args.Length==2)&&(mc.Args[1].ToString().Trim()=="_isSaved"))
                     	outVal = ((Table)owner)._isSaved;
+                    else if ((pi != null) && (!isGet) && (fieldsAffected != null) && ((Table)owner)._isSaved)
+                    {
+                        object curVal = pi.GetValue(owner, new object[0]);
+                        if (((curVal == null) && (mc.Args[0] != null)) ||
+                            ((curVal != null) && (mc.Args[0] == null)) ||
+                            ((curVal != null) && (mc.Args[0] != null) && (!curVal.Equals(mc.Args[0]))))
+                        {
+                            foreach (string str in fieldsAffected)
+                            {
+                                if (!_changedFields.Contains(str))
+                                    _changedFields.Add(str);
+                            }
+                        }
+                        outVal = mi.Invoke(owner, mc.Args);
+                    }
                     else
                     {
                         try
