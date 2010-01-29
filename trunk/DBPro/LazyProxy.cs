@@ -165,7 +165,27 @@ namespace Org.Reddragonit.Dbpro
 			{
 				bool isGet=false;
 				PropertyInfo pi = GetMethodProperty(mi,owner, out isGet);
-				
+                if (pi != null)
+                {
+                    foreach (object obj in pi.GetCustomAttributes(true))
+                    {
+                        if (obj is CompleteLazyLoadPriorToCall)
+                        {
+                            if ((((Table)owner).LoadStatus == LoadStatus.Partial) && !((mi.Name == "SetField") || (mi.Name == "SetValues")))
+                            {
+                                CompleteLazyLoad(owner);
+                            }
+                            break;
+                        }
+                        else if (obj is PropertySetChangesField)
+                        {
+                            if (fieldsAffected == null)
+                                fieldsAffected = new List<string>();
+                            fieldsAffected.Add(((PropertySetChangesField)obj).FieldAffected);
+                        }
+                    }
+                }
+
 				if ((pi!=null)&&(_map[pi.Name]!=null))
 				{
                     FieldMap fm = _map[pi.Name];
@@ -173,18 +193,7 @@ namespace Org.Reddragonit.Dbpro
 					{
 						if ((((Table)owner).LoadStatus== LoadStatus.Partial)&&(!fm.PrimaryKey))
 						{
-							List<SelectParameter> pars = new List<SelectParameter>();
-							foreach (InternalFieldMap ifm in _map.PrimaryKeys)
-								pars.Add(new EqualParameter(_map.GetClassFieldName(ifm.FieldName),((Table)owner).GetField(_map.GetClassFieldName(ifm.FieldName))));
-							Connection conn = ConnectionPoolManager.GetConnection(_map.ConnectionName).getConnection();
-							Table tmp = conn.Select(owner.GetType(),pars)[0];
-							foreach (FieldNamePair fnp in _map.FieldNamePairs)
-							{
-								if ((!_map[fnp].PrimaryKey)&&(!tmp.IsFieldNull(fnp.ClassFieldName)))
-								    ((Table)owner).SetField(fnp.ClassFieldName,tmp.GetField(fnp.ClassFieldName));
-							}
-                            conn.CloseConnection();
-                            ((Table)owner).LoadStatus = LoadStatus.Complete;
+                            CompleteLazyLoad(owner);
 						}
 					}
 					if (isGet)
@@ -322,6 +331,27 @@ namespace Org.Reddragonit.Dbpro
 
 			return new ReturnMessage(outVal,mc.Args,mc.Args.Length, mc.LogicalCallContext, mc);
 		}
+
+        private void CompleteLazyLoad(object owner)
+        {
+            List<SelectParameter> pars = new List<SelectParameter>();
+            foreach (InternalFieldMap ifm in _map.PrimaryKeys)
+            {
+                if (_map.GetClassFieldName(ifm.FieldName) == null)
+                    pars.Add(new EqualParameter(_map.GetExternalClassFieldName(ifm.FieldName), ((Table)owner).GetField(_map.GetExternalClassFieldName(ifm.FieldName))));
+                else
+                    pars.Add(new EqualParameter(_map.GetClassFieldName(ifm.FieldName), ((Table)owner).GetField(_map.GetClassFieldName(ifm.FieldName))));
+            }
+            Connection conn = ConnectionPoolManager.GetConnection(_map.ConnectionName).getConnection();
+            Table tmp = conn.Select(owner.GetType(), pars)[0];
+            foreach (FieldNamePair fnp in _map.FieldNamePairs)
+            {
+                if ((!_map[fnp].PrimaryKey) && (!tmp.IsFieldNull(fnp.ClassFieldName)))
+                    ((Table)owner).SetField(fnp.ClassFieldName, tmp.GetField(fnp.ClassFieldName));
+            }
+            conn.CloseConnection();
+            ((Table)owner).LoadStatus = LoadStatus.Complete;
+        }
 	}
 }
 
