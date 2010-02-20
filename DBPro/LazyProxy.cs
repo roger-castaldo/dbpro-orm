@@ -151,7 +151,6 @@ namespace Org.Reddragonit.Dbpro
                         conn.CloseConnection();
                         ((Table)owner).LoadStatus = LoadStatus.Complete;
                     }
-                    break;
                 }
                 else if (obj is PropertySetChangesField)
                 {
@@ -175,7 +174,6 @@ namespace Org.Reddragonit.Dbpro
                             {
                                 CompleteLazyLoad(owner);
                             }
-                            break;
                         }
                         else if (obj is PropertySetChangesField)
                         {
