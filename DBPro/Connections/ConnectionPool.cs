@@ -372,7 +372,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 						{
 							if (!_enumTableMaps.ContainsKey(ifm.ObjectType))
 							{
-								string[] split = ifm.ObjectType.FullName.Split(".".ToCharArray());
+								string[] split = ifm.ObjectType.FullName.Replace("+",".").Split(".".ToCharArray());
 								string name="";
 								if (split.Length>1)
 									name+=split[split.Length-2]+"_"+split[split.Length-1];
@@ -395,7 +395,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                                     newName = newName[1].ToString().ToUpper() + newName.Substring(2);
                                 }
                                 newName = "ENUM_" + newName;
-                                newName = newName.Replace("__", "_");
+                                newName = newName.Replace("__", "_").Replace("__","_");
 								name=CorrectName(newName.ToUpper());
 								ExtractedTableMap enumMap = new ExtractedTableMap(name);
 								enumMap.Fields.Add(new ExtractedFieldMap("ID",conn.TranslateFieldType(FieldType.INTEGER,4),
