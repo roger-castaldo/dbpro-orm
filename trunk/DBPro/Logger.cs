@@ -41,19 +41,22 @@ namespace Org.Reddragonit.Dbpro
         public static void Log(object o)
         {
             System.Diagnostics.Debug.Write(o);
-            if (o is Exception)
+            if (lg != null)
             {
-                Exception e = (Exception)o;
-                while (e != null)
+                if (o is Exception)
                 {
-                    lg.Error(e.Message);
-                    lg.Error(e.Source);
-                    lg.Error(e.StackTrace);
-                    e = e.InnerException;
+                    Exception e = (Exception)o;
+                    while (e != null)
+                    {
+                        lg.Error(e.Message);
+                        lg.Error(e.Source);
+                        lg.Error(e.StackTrace);
+                        e = e.InnerException;
+                    }
                 }
+                else
+                    lg.Trace(o);
             }
-            else
-                lg.Trace(o);
         }
     }
 }
