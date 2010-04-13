@@ -1468,5 +1468,25 @@ namespace Org.Reddragonit.Dbpro.Connections
 			if (minPoolSize<=0) return true;
 			else return minPoolSize<(locked.Count+unlocked.Count);
 		}
+
+        internal Connection LockDownForBackupRestore()
+        {
+            ClosePool();
+            mut.WaitOne();
+            return CreateConnection();
+        }
+
+        internal void UnlockPoolPostBackupRestore()
+        {
+            for (int x = 0; x < minPoolSize; x++)
+            {
+                if (unlocked.Count >= minPoolSize)
+                    break;
+                unlocked.Enqueue(CreateConnection());
+            }
+            isReady = true;
+            isClosed = true;
+            mut.ReleaseMutex();
+        }
 	}
 }

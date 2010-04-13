@@ -53,6 +53,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="App.ico" />
+    <EmbeddedResource Include="CompressionTester.xml" />
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="Class1.cs" />
     <Compile Include="MT19937.cs" />
