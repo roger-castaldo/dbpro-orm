@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using System.Data;
 using Npgsql;
 using Org.Reddragonit.Dbpro.Structure.Attributes;
+using Org.Reddragonit.Dbpro.Structure.Mapping;
 
 namespace Org.Reddragonit.Dbpro.Connections.PgSql
 {
@@ -255,5 +256,67 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 				return _builder;
 			}
 		}
+
+        internal override void DisableAutogens()
+        {
+            string query = "";
+            this.ExecuteQuery(queryBuilder.SelectTriggers());
+            while (this.Read())
+            {
+                string tbl = this[1].ToString().Substring(this[1].ToString().IndexOf(" ON ") + 4);
+                tbl = tbl.Substring(0,tbl.IndexOf(" FOR EACH ROW"));
+                query += "ALTER TABLE " + tbl + " DISABLE TRIGGER " + this[0].ToString() + ";\n";
+            }
+            this.Close();
+            Logger.LogLine("Disabling all autogens in postgresql database with query: " + query);
+            foreach (string str in query.Split('\n'))
+            {
+                if (str.Trim().Length > 0)
+                    this.ExecuteNonQuery(str);
+            }
+        }
+
+        internal override void EnableAndResetAutogens()
+        {
+            string query = "";
+            this.ExecuteQuery(queryBuilder.SelectTriggers());
+            while (this.Read())
+            {
+                string tbl = this[1].ToString().Substring(this[1].ToString().IndexOf(" ON ") + 4);
+                tbl = tbl.Substring(0, tbl.IndexOf(" FOR EACH ROW"));
+                query += "ALTER TABLE " + tbl + " ENABLE TRIGGER " + this[0].ToString() + ";\n";
+            }
+            this.Close();
+            foreach (Type t in ClassMapper.TableTypesForConnection(Pool.ConnectionName))
+            {
+                TableMap tm = ClassMapper.GetTableMap(t);
+                if (tm.ContainsAutogenField)
+                {
+                    if ((tm.PrimaryKeys.Count == 1) && (tm.PrimaryKeys[0].FieldType == FieldType.INTEGER || tm.PrimaryKeys[0].FieldType == FieldType.LONG || tm.PrimaryKeys[0].FieldType == FieldType.SHORT))
+                    {
+                        this.ExecuteQuery("SELECT (CASE WHEN MAX(" + Pool.CorrectName(tm.PrimaryKeys[0].FieldName) + ") IS NULL THEN 0 ELSE MAX(" + Pool.CorrectName(tm.PrimaryKeys[0].FieldName) + ") END)+1 FROM " + Pool.CorrectName(tm.Name));
+                        this.Read();
+                        query += queryBuilder.SetGeneratorValue(Pool.CorrectName("GEN_" + tm.Name + "_" + tm.PrimaryKeys[0].FieldName), long.Parse(this[0].ToString())) + "\n";
+                        this.Close();
+                    }
+                }
+                foreach (InternalFieldMap ifm in tm.Fields)
+                {
+                    if (ifm.FieldType == FieldType.ENUM)
+                    {
+                        this.ExecuteQuery("SELECT (CASE WHEN MAX(ID) IS NULL THEN 0 ELSE MAX(ID) END)+1 FROM " + Pool._enumTableMaps[ifm.ObjectType]);
+                        this.Read();
+                        query += queryBuilder.SetGeneratorValue(Pool.CorrectName("GEN_" + Pool._enumTableMaps[ifm.ObjectType] + "_ID"), long.Parse(this[0].ToString())) + "\n";
+                        this.Close();
+                    }
+                }
+            }
+            Logger.LogLine("Resetting and enabling all autogens in postgresql database with query: " + query);
+            foreach (string str in query.Split('\n'))
+            {
+                if (str.Trim().Length > 0)
+                    this.ExecuteNonQuery(str);
+            }
+        }
 	}
 }

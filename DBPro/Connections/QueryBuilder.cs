@@ -468,6 +468,83 @@ namespace Org.Reddragonit.Dbpro.Connections
 		#endregion
 		
 		#region Inserts
+        internal string InsertWithIdentity(Table table, out List<IDbDataParameter> insertParameters)
+        {
+            TableMap map = ClassMapper.GetTableMap(table.GetType());
+            insertParameters = new List<IDbDataParameter>();
+            try
+            {
+                string values = "";
+                string parameters = "";
+                foreach (FieldNamePair fnp in map.FieldNamePairs)
+                {
+                    if (map[fnp] is ExternalFieldMap)
+                    {
+                        if (!((ExternalFieldMap)map[fnp]).IsArray)
+                        {
+                            ExternalFieldMap efm = (ExternalFieldMap)map[fnp];
+                            TableMap relatedTableMap = ClassMapper.GetTableMap(efm.Type);
+                            if (table.GetField(fnp.ClassFieldName) == null)
+                            {
+                                foreach (InternalFieldMap fm in relatedTableMap.PrimaryKeys)
+                                {
+                                    values += conn.Pool.CorrectName(efm.AddOnName + "_" + fm.FieldName) + ",";
+                                    insertParameters.Add(conn.CreateParameter(conn.Pool.CorrectName(CreateParameterName(efm.AddOnName + "_" + fm.FieldName)), null, fm.FieldType, fm.FieldLength));
+                                    parameters += "," + conn.Pool.CorrectName(CreateParameterName(efm.AddOnName + "_" + fm.FieldName));
+                                }
+                            }
+                            else
+                            {
+                                Table relatedTable = (Table)table.GetField(fnp.ClassFieldName);
+                                foreach (InternalFieldMap ifm in relatedTableMap.PrimaryKeys)
+                                {
+                                    object val = null;
+                                    if (relatedTableMap.GetClassFieldName(ifm) == null)
+                                        val = LocateFieldValue(relatedTable, relatedTableMap, ifm.FieldName, _pool);
+                                    else
+                                        val = relatedTable.GetField(relatedTableMap.GetClassFieldName(ifm));
+                                    string fieldName = relatedTableMap.GetTableFieldName(ifm);
+                                    if (fieldName == null)
+                                        fieldName = ifm.FieldName;
+                                    values += conn.Pool.CorrectName(efm.AddOnName + "_" + fieldName) + ",";
+                                    insertParameters.Add(conn.CreateParameter(conn.Pool.CorrectName(CreateParameterName(efm.AddOnName + "_" + fieldName)), val, ifm.FieldType, ifm.FieldLength));
+                                    parameters += "," + conn.Pool.CorrectName(CreateParameterName(efm.AddOnName + "_" + fieldName));
+                                }
+                            }
+                        }
+                    }
+                    else if (!map[fnp].IsArray)
+                    {
+                        values += fnp.TableFieldName + ",";
+                        parameters += "," + CreateParameterName(fnp.TableFieldName);
+                        if (table.IsFieldNull(fnp.ClassFieldName))
+                        {
+                            insertParameters.Add(conn.CreateParameter(CreateParameterName(fnp.TableFieldName), null, ((InternalFieldMap)map[fnp]).FieldType, ((InternalFieldMap)map[fnp]).FieldLength));
+                        }
+                        else
+                        {
+                            if (((InternalFieldMap)map[fnp]).FieldType == FieldType.ENUM)
+                            {
+                                insertParameters.Add(conn.CreateParameter(CreateParameterName(fnp.TableFieldName), conn.Pool.GetEnumID(map[fnp].ObjectType, table.GetField(fnp.ClassFieldName).ToString())));
+                            }
+                            else
+                            {
+                                insertParameters.Add(conn.CreateParameter(CreateParameterName(fnp.TableFieldName), table.GetField(fnp.ClassFieldName), ((InternalFieldMap)map[fnp]).FieldType, ((InternalFieldMap)map[fnp]).FieldLength));
+                            }
+                        }
+                    }
+                }
+                values = values.Substring(0, values.Length - 1);
+                parameters = parameters.Substring(1);
+                return string.Format(InsertString, map.Name, values, parameters);
+            }
+            catch (Exception e)
+            {
+                Logger.LogLine(e.Message);
+                return null;
+            }
+        }
+
 		internal string Insert(Table table,out List<IDbDataParameter> insertParameters,out string select,out List<IDbDataParameter> selectParameters)
 		{
 			TableMap map = ClassMapper.GetTableMap(table.GetType());
@@ -599,6 +676,11 @@ namespace Org.Reddragonit.Dbpro.Connections
 		{
 			return string.Format(DeleteWithConditions,tableName,conditions);
 		}
+
+        internal string DeleteAll(Type tableType){
+            TableMap map = ClassMapper.GetTableMap(tableType);
+            return string.Format(DeleteWithoutConditions, map.Name);
+        }
 		#endregion
 		
 		#region Updates

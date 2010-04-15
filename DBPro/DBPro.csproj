@@ -66,9 +66,9 @@
       <HintPath>..\..\..\FirebirdSql.Data.FirebirdClient.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Ionic.Zip.Reduced, Version=1.9.1.5, Culture=neutral, PublicKeyToken=edbe51ad942a3f5c, processorArchitecture=MSIL">
+    <Reference Include="ICSharpCode.SharpZipLib, Version=0.85.5.452, Culture=neutral, PublicKeyToken=1b03e6acf1164f73, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\Ionic.Zip.Reduced.dll</HintPath>
+      <HintPath>C:\Documents and Settings\Roger_Castaldo.LAKEHEADSCHOOLS\My Documents\Visual Studio 2008\Projects\FreeSwitchConfig\FreeSwitchConfigSite\Bin\ICSharpCode.SharpZipLib.dll</HintPath>
     </Reference>
     <Reference Include="Mono.Posix, Version=2.0.0.0, Culture=neutral, PublicKeyToken=0738eb9f132ed756, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -191,6 +191,6 @@
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.Targets" />
   <PropertyGroup>
-    <PostBuildEvent>"C:\Program Files\Microsoft\ILMerge\ILMerge.exe" /out:mergedDBPro.dll DBPro.dll FirebirdSql.Data.FirebirdClient.dll Mono.Security.dll MySql.Data.dll Npgsql.dll .\de\Npgsql.resources.dll .\es\Npgsql.resources.dll .\fi\Npgsql.resources.dll .\fr\Npgsql.resources.dll .\ja\Npgsql.resources.dll .\zh-CN\Npgsql.resources.dll NLog.dll Mono.Posix.dll Ionic.Zip.Reduced.dll</PostBuildEvent>
+    <PostBuildEvent>"C:\Program Files\Microsoft\ILMerge\ILMerge.exe" /out:mergedDBPro.dll DBPro.dll FirebirdSql.Data.FirebirdClient.dll Mono.Security.dll MySql.Data.dll Npgsql.dll .\de\Npgsql.resources.dll .\es\Npgsql.resources.dll .\fi\Npgsql.resources.dll .\fr\Npgsql.resources.dll .\ja\Npgsql.resources.dll .\zh-CN\Npgsql.resources.dll NLog.dll Mono.Posix.dll ICSharpCode.SharpZipLib.dll</PostBuildEvent>
   </PropertyGroup>
 </Project>

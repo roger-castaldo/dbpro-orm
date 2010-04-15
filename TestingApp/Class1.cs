@@ -49,7 +49,8 @@ namespace TestingApp
             while (cq.Read()){
                 grp = (Group)cq[1];
                 Console.WriteLine("Person: " + cq[0].ToString() + " in Group: " + grp.Name);
-            }
+            }*/
+            
             //XmlDocument doc = new XmlDocument();
             //string xml = ReadEmbeddedResource("TestingApp.CompressionTester.xml");
             //System.Diagnostics.Debug.WriteLine("Uncompressed Size=" + xml.Length.ToString());
@@ -62,12 +63,16 @@ namespace TestingApp
             //doc.WriteContentTo(xtw);
             //xtw.Flush();
             //xtw.Close();
-             */
-            Console.WriteLine("Attempting to backup database...");
+            
+            
             ConnectionPool pool = ConnectionPoolManager.GetConnection("Security");
+            /*Console.WriteLine("Attempting to backup database...");
             Stream fs = new FileStream(".\\backuptesting.zip", FileMode.Create, FileAccess.Write, FileShare.None);
             BackupManager.BackupDataToStream(pool, ref fs);
-            Console.WriteLine("Backup attempt completed successfully...");
+            Console.WriteLine("Backup attempt completed successfully...");*/
+            Stream fs = new FileStream(".\\backuptesting.zip", FileMode.Open, FileAccess.Read, FileShare.None);
+            Console.WriteLine("Attempting to restore database...");
+            BackupManager.RestoreDataFromStream(pool, ref fs);
 			Console.WriteLine("Examine Diagnostics messages.");
 			Console.ReadLine();
 		}

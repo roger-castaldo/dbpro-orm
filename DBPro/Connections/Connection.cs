@@ -82,6 +82,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 		internal abstract void GetDropAutogenStrings(ExtractedTableMap map,ConnectionPool pool,out List<IdentityField> identities,out List<Generator> generators,out List<Trigger> triggers);
 		internal abstract void GetAddAutogen(ExtractedTableMap map,ConnectionPool pool, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers);
 		internal abstract List<Trigger> GetVersionTableTriggers(ExtractedTableMap table,VersionTypes versionType,ConnectionPool pool);
+        internal abstract void DisableAutogens();
+        internal abstract void EnableAndResetAutogens();
 		
 		internal virtual List<string> GetDropTableString(string table,bool isVersioned)
 		{
@@ -247,6 +249,11 @@ namespace Org.Reddragonit.Dbpro.Connections
             string del = queryBuilder.Delete(table, out pars);
             ExecuteNonQuery(del, pars);
         }
+
+        internal void DeleteAll(Type tableType)
+        {
+            this.ExecuteNonQuery(queryBuilder.DeleteAll(tableType));
+        }
 		
 		private Table Update(Table table)
         {
@@ -326,51 +333,71 @@ namespace Org.Reddragonit.Dbpro.Connections
             }
             else
             {
-                ret=Insert(table);
+                ret=Insert(table,false);
             }
             if (!ret.IsProxied)
                 ret = (Table)LazyProxy.Instance(ret);
             return ret;
         }
+
+        internal Table SaveWithAutogen(Table table)
+        {
+            Table ret = table;
+            if (table.ConnectionName != ConnectionName)
+            {
+                throw new Exception("Cannot insert an entry into a table into the database connection that it was not specified for.");
+            }
+            if (table.LoadStatus == LoadStatus.Partial)
+                ret = table;
+            if (!table.IsSaved)
+                ret = Insert(table,true);
+            return ret;
+        }
 		
-		private Table Insert(Table table)
+		private Table Insert(Table table,bool ignoreAutogen)
 		{
 			TableMap map = ClassMapper.GetTableMap(table.GetType());
-			if (map.ParentType!=null)
-			{
-				Table ta = Insert((Table)table.ToType(map.ParentType,null));
-				table.CopyValuesFrom(ta);
-			}
-			foreach (Type t in map.ForeignTables)
-			{
-				foreach(ExternalFieldMap efm in map.GetFieldInfoForForeignTable(t))
-				{
-					Table ext = (Table)table.GetField(map.GetClassPropertyName(efm));
-					if (ext != null)
-					{
-						ext=Save(ext);
-						table.SetField(map.GetClassPropertyName(efm),ext);
-					}
-				}
-			}
-			foreach (ExternalFieldMap efm in map.ExternalFieldMapArrays)
-			{
-				Table[] vals = (Table[])table.GetField(map.GetClassFieldName(efm));
-				if (vals!=null)
-				{
-					foreach (Table t in vals)
-					{
-						this.Save(t);
-					}
-				}
-			}
+            if (!ignoreAutogen)
+            {
+                if (map.ParentType != null)
+                {
+                    Table ta = Insert((Table)table.ToType(map.ParentType, null), ignoreAutogen);
+                    table.CopyValuesFrom(ta);
+                }
+                foreach (Type t in map.ForeignTables)
+                {
+                    foreach (ExternalFieldMap efm in map.GetFieldInfoForForeignTable(t))
+                    {
+                        Table ext = (Table)table.GetField(map.GetClassPropertyName(efm));
+                        if (ext != null)
+                        {
+                            ext = Save(ext);
+                            table.SetField(map.GetClassPropertyName(efm), ext);
+                        }
+                    }
+                }
+                foreach (ExternalFieldMap efm in map.ExternalFieldMapArrays)
+                {
+                    Table[] vals = (Table[])table.GetField(map.GetClassFieldName(efm));
+                    if (vals != null)
+                    {
+                        foreach (Table t in vals)
+                        {
+                            this.Save(t);
+                        }
+                    }
+                }
+            }
 			string query = "";
 			string select="";
 			List<IDbDataParameter> pars = new List<IDbDataParameter>();
 			List<IDbDataParameter> selectPars = new List<IDbDataParameter>();
-			query=queryBuilder.Insert(table,out pars,out select,out selectPars);
+            if (ignoreAutogen)
+                query = queryBuilder.InsertWithIdentity(table, out pars);
+            else
+                query = queryBuilder.Insert(table, out pars, out select, out selectPars);
 			ExecuteNonQuery(query,pars);
-			if (select!=null)
+			if ((select!=null)&&(!ignoreAutogen))
 			{
 				ExecuteQuery(select,selectPars);
 				Read();

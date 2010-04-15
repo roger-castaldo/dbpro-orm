@@ -191,7 +191,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
             }
             return false;
         }
-		
+
 		public void CorrectNames(ConnectionPool pool)
 		{
 			_pool=pool;

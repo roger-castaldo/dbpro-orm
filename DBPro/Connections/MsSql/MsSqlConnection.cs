@@ -275,5 +275,65 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 			}
 			return ret;
 		}
+
+        internal override void DisableAutogens()
+        {
+            string query = "";
+            this.ExecuteQuery(queryBuilder.SelectIdentities());
+            while (this.Read())
+            {
+                query += "SET IDENTITY_INSERT "+this[0].ToString()+" ON;\n";
+            }
+            this.Close();
+            this.ExecuteQuery(queryBuilder.SelectTableNames());
+            while (this.Read())
+            {
+                query += "ALTER TABLE " + this[0].ToString() + " DISABLE TRIGGER all;\n";
+            }
+            this.Close();
+            Logger.LogLine("Disabling of autogens for MSSQL resulting query: " + query);
+            foreach (string str in query.Split('\n'))
+            {
+                if (str.Trim().Length > 0)
+                    this.ExecuteNonQuery(str);
+            }
+        }
+
+        internal override void EnableAndResetAutogens()
+        {
+            string query = "";
+            this.ExecuteQuery(queryBuilder.SelectIdentities());
+            while (this.Read())
+            {
+                query += "SET IDENTITY_INSERT " + this[0].ToString() + " OFF;\n";
+            }
+            this.ExecuteQuery(queryBuilder.SelectTableNames());
+            while (this.Read())
+            {
+                query += "ALTER TABLE " + this[0].ToString() + " ENABLE TRIGGER all;\n";
+            }
+            this.Close();
+            List<IdentityField> identities = new List<IdentityField>();
+            this.ExecuteQuery(this.queryBuilder.SelectIdentities());
+            while (this.Read())
+            {
+                identities.Add(new IdentityField((string)this[0], (string)this[1], (string)this[2], (string)this[3]));
+            }
+            this.Close();
+            foreach (IdentityField id in identities)
+            {
+                this.ExecuteQuery("SELECT ISNULL(MAX(" + id.FieldName + "),0)+1 FROM " + id.TableName);
+                this.Read();
+                query += queryBuilder.SetIdentityFieldValue(new IdentityField(id.TableName,id.FieldName,id.FieldType,this[0].ToString()))+"\n";
+                this.Close();
+            }
+            Logger.LogLine("Enabling and resetting of autogens for MSSQL resulting query: " + query);
+            foreach (string str in query.Split('\n'))
+            {
+                if (str.Trim().Length > 0)
+                    this.ExecuteNonQuery(str);
+            }
+        }
+
 	}
 }

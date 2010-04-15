@@ -133,9 +133,9 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		private string[] _reservedWords=null;
 		private Dictionary<string, string> _nameTranslations = new Dictionary<string, string>();
-		private Dictionary<Type, string> _enumTableMaps = new Dictionary<Type, string>();
-		private Dictionary<Type,Dictionary<string, int>> _enumValuesMap = new Dictionary<Type, Dictionary<string, int>>();
-		private Dictionary<Type, Dictionary<int,string>> _enumReverseValuesMap = new Dictionary<Type, Dictionary<int, string>>();
+		internal Dictionary<Type, string> _enumTableMaps = new Dictionary<Type, string>();
+		internal Dictionary<Type,Dictionary<string, int>> _enumValuesMap = new Dictionary<Type, Dictionary<string, int>>();
+		internal Dictionary<Type, Dictionary<int,string>> _enumReverseValuesMap = new Dictionary<Type, Dictionary<int, string>>();
 		
 		internal string[] ReservedWords{
 			get{
@@ -1487,6 +1487,44 @@ namespace Org.Reddragonit.Dbpro.Connections
             isReady = true;
             isClosed = true;
             mut.ReleaseMutex();
+        }
+
+        private List<ForeignKey> ExtractExpectedForeignKeys(Connection conn)
+        {
+            List<ExtractedTableMap> maps;
+            List<Trigger> triggers;
+            List<Generator> gens;
+            List<IdentityField> identities;
+            List<ForeignKey> keys = new List<ForeignKey>();
+            ExtractExpectedStructure(out maps, out triggers, out gens, out identities, conn);
+            foreach (ExtractedTableMap map in maps)
+            {
+                List<string> extTables = new List<string>();
+                foreach (ForeignRelationMap frm in map.ForeignFields)
+                {
+                    if (!extTables.Contains(frm.ExternalTable))
+                        extTables.Add(frm.ExternalTable);
+                }
+                foreach (string str in extTables)
+                    keys.Add(new ForeignKey(map, str));
+            }
+            return keys;
+        }
+
+        internal void DisableRelationships(Connection conn)
+        {
+            foreach (ForeignKey fk in ExtractExpectedForeignKeys(conn))
+            {
+                conn.ExecuteNonQuery(conn.queryBuilder.DropForeignKey(fk.InternalTable, fk.ExternalTable));
+            }
+        }
+
+        internal void EnableRelationships(Connection conn)
+        {
+            foreach (ForeignKey fk in ExtractExpectedForeignKeys(conn))
+            {
+                conn.ExecuteNonQuery(conn.queryBuilder.CreateForeignKey(fk));
+            }
         }
 	}
 }
