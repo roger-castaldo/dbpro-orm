@@ -4,10 +4,11 @@ using System.Text;
 using Org.Reddragonit.Dbpro.Connections;
 using System.IO;
 using Org.Reddragonit.Dbpro.Structure.Mapping;
-using Ionic.Zip;
 using System.Xml;
 using System.Xml.Serialization;
 using Org.Reddragonit.Dbpro.Structure;
+using ICSharpCode.SharpZipLib.Zip;
+using System.Collections;
 
 namespace Org.Reddragonit.Dbpro.Backup
 {
@@ -55,6 +56,7 @@ namespace Org.Reddragonit.Dbpro.Backup
             MemoryStream ms;
             int len;
             object obj;
+            int cnt = 0;
 
             //output all enumerations
             foreach (Type t in enums)
@@ -67,8 +69,9 @@ namespace Org.Reddragonit.Dbpro.Backup
                     elem = doc.CreateElement("enum");
                     elem.Attributes.Append(CreateAttributeWithValue(doc, "Name", str));
                     elem.Attributes.Append(CreateAttributeWithValue(doc,"Value",pool.GetEnumID(t,str).ToString()));
+                    doc.DocumentElement.AppendChild(elem);
                 }
-                zs.PutNextEntry(t.FullName + ".xml");
+                zs.PutNextEntry(new ZipEntry(cnt.ToString()+"_"+t.FullName + ".xml"));
                 ms = new MemoryStream(XMLCompressor.CompressXMLDocument(doc));
                 for (long x = 0; x < ms.Length; x += 1024)
                 {
@@ -95,7 +98,7 @@ namespace Org.Reddragonit.Dbpro.Backup
                     }
                     doc.DocumentElement.AppendChild(elem);
                 }
-                zs.PutNextEntry(t.FullName + ".xml");
+                zs.PutNextEntry(new ZipEntry(cnt.ToString() + "_" + t.FullName + ".xml"));
                 ms = new MemoryStream(XMLCompressor.CompressXMLDocument(doc));
                 for (long x = 0; x < ms.Length; x += 1024)
                 {
@@ -136,7 +139,7 @@ namespace Org.Reddragonit.Dbpro.Backup
                     }
                     doc.DocumentElement.AppendChild(elem);
                 }
-                zs.PutNextEntry(t.FullName + ".xml");
+                zs.PutNextEntry(new ZipEntry(cnt.ToString() + "_" + t.FullName + ".xml"));
                 ms = new MemoryStream(XMLCompressor.CompressXMLDocument(doc));
                 for (long x = 0; x < ms.Length; x += 1024)
                 {
@@ -149,6 +152,7 @@ namespace Org.Reddragonit.Dbpro.Backup
             zs.Flush();
             zs.Close();
             pool.UnlockPoolPostBackupRestore();
+            c.CloseConnection();
             return true;
         }
 
@@ -215,5 +219,137 @@ namespace Org.Reddragonit.Dbpro.Backup
             }
         }
 
+        public static bool RestoreDataFromStream(ConnectionPool pool, ref Stream inputStream)
+        {
+            Connection c = pool.LockDownForBackupRestore();
+            //disable autogen fields as well as all relationship constraints
+            c.DisableAutogens();
+            foreach (Type ty in ClassMapper.TableTypesForConnection(pool.ConnectionName))
+                c.DeleteAll(ty);
+            pool.DisableRelationships(c);
+            c.Commit();
+
+            ZipInputStream zis = new ZipInputStream(inputStream);
+            ZipEntry ze = null;
+            MemoryStream ms;
+            XmlDocument doc;
+            string type;
+            BinaryWriter bw;
+            byte[] buff = new byte[1024];
+            Type t;
+            Dictionary<string, int> enumMap;
+            Dictionary<int, string> reverseMap;
+            int len;
+            Table tbl;
+
+            while ((ze=zis.GetNextEntry())!=null)
+            {
+                type = ze.Name.Substring(ze.Name.IndexOf("_") + 1);
+                type=type.Substring(0,type.Length-4);
+                ms = new MemoryStream();
+                bw = new BinaryWriter(ms);
+                while (bw.BaseStream.Length<ze.Size)
+                {
+                    len = zis.Read(buff, 0, 1024);
+                    bw.Write(buff,0,len);
+                }
+                ms.Position = 0;
+                doc = XMLCompressor.DecompressXMLDocument(ms);
+                Logger.LogLine("Extracted xml data for type " + type);
+                t = Utility.LocateType(type);
+                if (t.IsEnum)
+                {
+                    Logger.LogLine("Processing enum data into database...");
+                    c.ExecuteNonQuery("DELETE FROM " + pool._enumTableMaps[t]);
+                    enumMap = new Dictionary<string, int>();
+                    reverseMap = new Dictionary<int, string>();
+                    foreach (XmlNode node in doc.DocumentElement.ChildNodes)
+                    {
+                        c.ExecuteNonQuery("INSERT INTO " + pool._enumTableMaps[t] + " VALUES(" + c.CreateParameterName("id") + "," + c.CreateParameterName("value") + ");",
+                            new System.Data.IDbDataParameter[]{
+                                c.CreateParameter(c.CreateParameterName("id"),int.Parse(node.Attributes["Value"].Value)),
+                                c.CreateParameter(c.CreateParameterName("value"),node.Attributes["Name"].Value)
+                            });
+                        enumMap.Add(node.Attributes["Name"].Value, int.Parse(node.Attributes["Value"].Value));
+                        reverseMap.Add(int.Parse(node.Attributes["Value"].Value), node.Attributes["Name"].Value);
+                    }
+                    pool._enumReverseValuesMap.Remove(t);
+                    pool._enumValuesMap.Remove(t);
+                    pool._enumReverseValuesMap.Add(t, reverseMap);
+                    pool._enumValuesMap.Add(t, enumMap);
+                    Logger.LogLine("Enum data has been imported.");
+                }
+                else
+                {
+                    Logger.LogLine("Processing object data into database...");
+                    TableMap map = ClassMapper.GetTableMap(t);
+                    foreach (XmlNode node in doc.DocumentElement.ChildNodes)
+                    {
+                        tbl = (Table)t.GetConstructor(Type.EmptyTypes).Invoke(new object[] { });
+                        foreach (XmlNode n in node.ChildNodes)
+                        {
+                            Logger.LogLine((map[n.Name] is ExternalFieldMap).ToString());
+                            if (map[n.Name] is ExternalFieldMap){
+                                Logger.LogLine("Processing external field...");
+                                tbl.SetField(n.Name, ExtractTableValue(n,map[n.Name].ObjectType,map[n.Name].IsArray));
+                            }else{
+                                Logger.LogLine("Processing internal field...");
+                                tbl.SetField(n.Name, XmlSerializer.FromTypes(new Type[] { map[n.Name].ObjectType })[0].Deserialize(new MemoryStream(System.Text.ASCIIEncoding.ASCII.GetBytes(n.InnerXml))));
+                            }
+                        }
+                        c.SaveWithAutogen(tbl);
+                    }
+                    Logger.LogLine("Object data has been imported.");
+                }
+            }
+
+            zis.Close();
+            c.Commit();
+
+            //reset all relationships and autogen fields
+            pool.EnableRelationships(c);
+            c.EnableAndResetAutogens();
+            c.Commit();
+            pool.UnlockPoolPostBackupRestore();
+            return true;
+        }
+
+        private static object ExtractTableValue(XmlNode node, Type t,bool isArray)
+        {
+            if (isArray)
+            {
+                if (node.ChildNodes.Count == 0)
+                    return null;
+                Type ty = Utility.LocateType(t.FullName.Replace("[]", ""));
+                ArrayList tmp = new ArrayList();
+                foreach (XmlNode n in node.ChildNodes)
+                {
+                    tmp.Add(ExtractTableValue(n, ty, false));
+                }
+                Array ret = Array.CreateInstance(ty, node.ChildNodes.Count);
+                tmp.CopyTo(ret);
+                return ret;
+            }
+            else
+            {
+                Table ret = (Table)t.GetConstructor(Type.EmptyTypes).Invoke(new object[] { });
+                TableMap map = ClassMapper.GetTableMap(t);
+                foreach (XmlNode n in node.ChildNodes)
+                {
+                    Logger.LogLine((map[n.Name] is ExternalFieldMap).ToString());
+                    if (map[n.Name] is ExternalFieldMap)
+                    {
+                        Logger.LogLine("Processing external field...");
+                        ret.SetField(n.Name, ExtractTableValue(n, map[n.Name].ObjectType, map[n.Name].IsArray));
+                    }
+                    else
+                    {
+                        Logger.LogLine("Processing internal field...");
+                        ret.SetField(n.Name, XmlSerializer.FromTypes(new Type[] { map[n.Name].ObjectType })[0].Deserialize(new MemoryStream(System.Text.ASCIIEncoding.ASCII.GetBytes(n.InnerXml))));
+                    }
+                }
+                return ret;
+            }
+        }
     }
 }

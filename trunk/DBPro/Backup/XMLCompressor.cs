@@ -39,14 +39,18 @@ namespace Org.Reddragonit.Dbpro.Backup
             br.ReadChar();
             bool elem_use_short = br.ReadByte() == (byte)2;
             Dictionary<int, string> elementTrans = new Dictionary<int, string>();
+            int id;
+            int len;
             while (true)
             {
-                if (br.ReadByte() == (byte)BYTE_TAGS.DEFINE_ELEMENTS_END)
+                if (br.ReadByte() == (int)BYTE_TAGS.DEFINE_ELEMENTS_END)
                     break;
                 if (elem_use_short)
-                    elementTrans.Add((int)br.ReadInt16(), System.Text.ASCIIEncoding.ASCII.GetString(br.ReadBytes(br.ReadInt32())));
+                    id = (int)br.ReadInt16();
                 else
-                    elementTrans.Add((int)br.ReadByte(),System.Text.ASCIIEncoding.ASCII.GetString(br.ReadBytes(br.ReadInt32())));
+                    id = (int)br.ReadByte();
+                len = br.ReadInt32();
+                elementTrans.Add(id, System.Text.ASCIIEncoding.ASCII.GetString(br.ReadBytes(len)));
             }
             
             //Load attribute translations
@@ -58,9 +62,11 @@ namespace Org.Reddragonit.Dbpro.Backup
                 if (br.ReadByte() == (byte)BYTE_TAGS.DEFINE_ATTRIBUTES_END)
                     break;
                 if (att_use_short)
-                    attTrans.Add((int)br.ReadInt16(), System.Text.ASCIIEncoding.ASCII.GetString(br.ReadBytes(br.ReadInt32())));
+                    id = (int)br.ReadInt16();
                 else
-                    attTrans.Add((int)br.ReadByte(), System.Text.ASCIIEncoding.ASCII.GetString(br.ReadBytes(br.ReadInt32())));
+                    id = (int)br.ReadByte();
+                len = br.ReadInt32();
+                attTrans.Add(id, System.Text.ASCIIEncoding.ASCII.GetString(br.ReadBytes(len)));
             }
 
             //begin loading and translation of the document back to xml

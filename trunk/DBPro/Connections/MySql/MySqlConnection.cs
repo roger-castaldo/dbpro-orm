@@ -263,5 +263,53 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 			}
 			return ret;
 		}
+
+        internal override void DisableAutogens()
+        {
+            string query = "";
+            this.ExecuteQuery(queryBuilder.SelectTriggers());
+            while (this.Read())
+            {
+                query += "DISABLE TRIGGER "+this[0].ToString()+this[1].ToString().Substring(this[1].ToString().IndexOf(" ON "))+";\n";
+            }
+            this.Close();
+            Logger.LogLine("Disabling all autogens in mysql database with query: " + query);
+            foreach (string str in query.Split('\n'))
+            {
+                if (str.Trim().Length > 0)
+                    this.ExecuteNonQuery(str);
+            }
+        }
+
+        internal override void EnableAndResetAutogens()
+        {
+            string query = "";
+            this.ExecuteQuery(queryBuilder.SelectTriggers());
+            while (this.Read())
+            {
+                query += "ENABLE TRIGGER " + this[0].ToString() + this[1].ToString().Substring(this[1].ToString().IndexOf(" ON ")) + ";\n";
+            }
+            this.Close();
+            List<IdentityField> identities = new List<IdentityField>();
+            this.ExecuteQuery(this.queryBuilder.SelectIdentities());
+            while (this.Read())
+            {
+                identities.Add(new IdentityField((string)this[0], (string)this[1], (string)this[2], (string)this[3]));
+            }
+            this.Close();
+            foreach (IdentityField id in identities)
+            {
+                this.ExecuteQuery("SELECT ISNULL(MAX(" + id.FieldName + "),0)+1 FROM " + id.TableName);
+                this.Read();
+                query += queryBuilder.SetIdentityFieldValue(new IdentityField(id.TableName, id.FieldName, id.FieldType, this[0].ToString())) + "\n";
+                this.Close();
+            }
+            Logger.LogLine("Resetting and enabling all autogens in mysql database with query: " + query);
+            foreach (string str in query.Split('\n'))
+            {
+                if (str.Trim().Length > 0)
+                    this.ExecuteNonQuery(str);
+            }
+        }
 	}
 }
