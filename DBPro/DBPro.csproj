@@ -68,7 +68,7 @@
     </Reference>
     <Reference Include="ICSharpCode.SharpZipLib, Version=0.85.5.452, Culture=neutral, PublicKeyToken=1b03e6acf1164f73, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>C:\Documents and Settings\Roger_Castaldo.LAKEHEADSCHOOLS\My Documents\Visual Studio 2008\Projects\FreeSwitchConfig\FreeSwitchConfigSite\Bin\ICSharpCode.SharpZipLib.dll</HintPath>
+      <HintPath>..\..\..\ICSharpCode.SharpZipLib.dll</HintPath>
     </Reference>
     <Reference Include="Mono.Posix, Version=2.0.0.0, Culture=neutral, PublicKeyToken=0738eb9f132ed756, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
