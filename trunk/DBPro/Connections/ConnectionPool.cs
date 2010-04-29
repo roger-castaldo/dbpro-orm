@@ -1475,6 +1475,14 @@ namespace Org.Reddragonit.Dbpro.Connections
             mut.WaitOne();
             return CreateConnection();
         }
+        
+        internal void ReinstateConnection(Connection conn){
+        	mut.WaitOne();
+        	if (isClosed)
+        		throw new Exception("Unable to restore the connection for pool: "+ConnectionName+" as the pool is closed.");
+        	locked.Add(conn);
+        	mut.ReleaseMutex();
+        }
 
         internal void UnlockPoolPostBackupRestore()
         {
@@ -1485,7 +1493,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 unlocked.Enqueue(CreateConnection());
             }
             isReady = true;
-            isClosed = true;
+            isClosed = false;
             mut.ReleaseMutex();
         }
 

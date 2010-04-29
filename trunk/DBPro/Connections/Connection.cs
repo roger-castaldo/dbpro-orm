@@ -749,6 +749,17 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
 		}
 		
+		private void CheckConnectionState(){
+			if (this.conn.State== ConnectionState.Closed){
+				pool.ReinstateConnection(this);
+				this.conn.Open();
+				commCntr=0;
+				comm = EstablishCommand();
+				trans=null;
+				creationTime=DateTime.Now;
+			}
+		}
+		
 		public int ExecuteNonQuery(string queryString)
 		{
             return ExecuteNonQuery(queryString, new IDbDataParameter[0]);
@@ -761,6 +772,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 
 		public int ExecuteNonQuery(string queryString, IDbDataParameter[] parameters)
 		{
+			CheckConnectionState();
 			commCntr++;
 			if (commCntr>=MAX_COMM_QUERIES){
 				commCntr=0;
@@ -832,6 +844,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         public int ExecuteStoredProcedureNoReturn(string procedureName,IDbDataParameter[] parameters)
         {
+        	CheckConnectionState();
         	commCntr++;
 			if (commCntr>=MAX_COMM_QUERIES){
 				commCntr=0;
@@ -903,6 +916,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 
 		public void ExecuteQuery(string queryString, IDbDataParameter[] parameters)
 		{
+			CheckConnectionState();
 			commCntr++;
 			if (commCntr>=MAX_COMM_QUERIES){
 				commCntr=0;
@@ -985,6 +999,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         public void ExecuteStoredProcedureReturn(string procedureName, IDbDataParameter[] parameters)
         {
+        	CheckConnectionState();
         	commCntr++;
 			if (commCntr>=MAX_COMM_QUERIES){
 				commCntr=0;
