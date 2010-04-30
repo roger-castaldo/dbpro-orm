@@ -17,12 +17,15 @@ namespace Org.Reddragonit.Dbpro.Backup
 
         public static bool BackupDataToStream(ConnectionPool pool, ref Stream outputStream)
         {
+            Logger.LogLine("Locking down "+pool.ConnectionName+" database for backing up...");
             Connection c = pool.LockDownForBackupRestore();
+            Logger.LogLine("Database locked down for backing up");
             List<Type> types = ClassMapper.TableTypesForConnection(pool.ConnectionName);
             List<Type> enums = new List<Type>();
             List<Type> basicTypes = new List<Type>();
             List<Type> complexTypes = new List<Type>();
             TableMap map;
+            Logger.LogLine("Loading all required types...");
             foreach (Type t in types)
             {
                 map = ClassMapper.GetTableMap(t);
@@ -59,6 +62,7 @@ namespace Org.Reddragonit.Dbpro.Backup
             int cnt = 0;
 
             //output all enumerations
+            Logger.LogLine("Extracting enumerations for backup...");
             foreach (Type t in enums)
             {
                 doc = new XmlDocument();
@@ -81,6 +85,7 @@ namespace Org.Reddragonit.Dbpro.Backup
             }
 
             //output all basic types
+            Logger.LogLine("Backing up the basic types for database...");
             foreach (Type t in basicTypes)
             {
                 doc = new XmlDocument();
@@ -108,6 +113,7 @@ namespace Org.Reddragonit.Dbpro.Backup
             }
 
             //output all complex types
+            Logger.LogLine("Backing up complex types for database...");
             foreach (Type t in complexTypes)
             {
                 doc = new XmlDocument();
@@ -151,6 +157,7 @@ namespace Org.Reddragonit.Dbpro.Backup
 
             zs.Flush();
             zs.Close();
+            Logger.LogLine("Backup of database complete, re-enabling pool.");
             pool.UnlockPoolPostBackupRestore();
             c.CloseConnection();
             return true;

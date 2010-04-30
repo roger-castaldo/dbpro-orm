@@ -32,6 +32,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 		private int commCntr;
         private bool firstRead = false;
         private bool firstReadResult;
+        private bool lockedForBackup;
+        private Mutex mut;
 		
 		private QueryBuilder _qb;
 		internal virtual QueryBuilder queryBuilder
@@ -121,7 +123,6 @@ namespace Org.Reddragonit.Dbpro.Connections
             bool createTrans = false;
             if (conn != null)
             {
-                
                 if (trans != null)
                 {
                     createTrans = true;
@@ -748,16 +749,28 @@ namespace Org.Reddragonit.Dbpro.Connections
 				return ret;
 			}
 		}
+
+        internal void LockForBackup()
+        {
+            mut.WaitOne();
+            lockedForBackup = true;
+        }
+
+        internal void UnlockForBackup()
+        {
+            lockedForBackup = false;
+            mut.ReleaseMutex();
+        }
 		
 		private void CheckConnectionState(){
-			if (this.conn.State== ConnectionState.Closed){
-				pool.ReinstateConnection(this);
-				this.conn.Open();
-				commCntr=0;
-				comm = EstablishCommand();
-				trans=null;
-				creationTime=DateTime.Now;
-			}
+            mut.WaitOne();
+            if (lockedForBackup)
+            {
+                Logger.LogLine("Attempting to reinstate connection for pool " + pool.ConnectionName + " to reopen it.");
+                pool.ReinstateConnection(this);
+                ResetConnection();
+            }
+            mut.ReleaseMutex();
 		}
 		
 		public int ExecuteNonQuery(string queryString)

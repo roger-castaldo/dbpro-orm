@@ -1471,13 +1471,23 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         internal Connection LockDownForBackupRestore()
         {
-            ClosePool();
+            Logger.LogLine("Attempting to Lock down connection pool: " + ConnectionName + " for BackupRestore...");
             mut.WaitOne();
+            Logger.LogLine("Closing down all connections in pool: " + ConnectionName + " for BackupRestore...");
+            while (unlocked.Count > 0)
+                unlocked.Dequeue().Disconnect();
+            foreach (Connection conn in locked)
+                conn.LockForBackup();
+            isClosed = true;
+            isReady = false;
+            Logger.LogLine("Returning new connection from pool: " + ConnectionName + " for BackupRestore process");
             return CreateConnection();
         }
         
         internal void ReinstateConnection(Connection conn){
+            Logger.LogLine("Attempting to reinstate connection for pool: " + ConnectionName);
         	mut.WaitOne();
+            Logger.LogLine("Checking to see if the pool("+ConnectionName+") is closed while trying to reinstate connection");
         	if (isClosed)
         		throw new Exception("Unable to restore the connection for pool: "+ConnectionName+" as the pool is closed.");
         	locked.Add(conn);
@@ -1486,12 +1496,16 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         internal void UnlockPoolPostBackupRestore()
         {
-            for (int x = 0; x < minPoolSize; x++)
+            Logger.LogLine("Reopening connection pool: " + ConnectionName + " to indicate that the BackupRestore has been completed.");
+            for (int x = 0; x < minPoolSize+locked.Count; x++)
             {
                 if (unlocked.Count >= minPoolSize)
                     break;
                 unlocked.Enqueue(CreateConnection());
             }
+            foreach (Connection conn in locked)
+                conn.UnlockForBackup();
+            Logger.LogLine("Marking the pool(" + ConnectionName + ") as open and ready and releasing the lock after completing a BackupRestore.");
             isReady = true;
             isClosed = false;
             mut.ReleaseMutex();
