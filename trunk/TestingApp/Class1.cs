@@ -12,6 +12,7 @@ using System.Xml;
 using Org.Reddragonit.Dbpro;
 using System.IO;
 using System.Reflection;
+using System.Threading;
 
 namespace TestingApp
 {
@@ -63,19 +64,32 @@ namespace TestingApp
             //doc.WriteContentTo(xtw);
             //xtw.Flush();
             //xtw.Close();
-            
-            
+
+            Thread t = new Thread(new ThreadStart(SecondaryThreadStart));
+            t.Start();
             ConnectionPool pool = ConnectionPoolManager.GetConnection("Security");
-            /*Console.WriteLine("Attempting to backup database...");
+            Console.WriteLine("Attempting to backup database...");
             Stream fs = new FileStream(".\\backuptesting.zip", FileMode.Create, FileAccess.Write, FileShare.None);
             BackupManager.BackupDataToStream(pool, ref fs);
-            Console.WriteLine("Backup attempt completed successfully...");*/
-            Stream fs = new FileStream(".\\backuptesting.zip", FileMode.Open, FileAccess.Read, FileShare.None);
+            Console.WriteLine("Backup attempt completed successfully...");
+            /*fs = new FileStream(".\\backuptesting.zip", FileMode.Open, FileAccess.Read, FileShare.None);
             Console.WriteLine("Attempting to restore database...");
-            BackupManager.RestoreDataFromStream(pool, ref fs);
+            BackupManager.RestoreDataFromStream(pool, ref fs);*/
+            Console.WriteLine("Waiting on secondary thread to complete...");
+            t.Join();
 			Console.WriteLine("Examine Diagnostics messages.");
 			Console.ReadLine();
 		}
+
+        private static void SecondaryThreadStart()
+        {
+            Connection conn = ConnectionPoolManager.GetConnection("Security").getConnection();
+            for (int x = 0; x < 50; x++)
+            {
+                conn.SelectAll(typeof(User));
+            }
+            conn.CloseConnection();
+        }
 
         public static Stream LocateEmbededResource(string name)
         {
