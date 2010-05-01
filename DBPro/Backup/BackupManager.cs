@@ -76,6 +76,7 @@ namespace Org.Reddragonit.Dbpro.Backup
                     doc.DocumentElement.AppendChild(elem);
                 }
                 zs.PutNextEntry(new ZipEntry(cnt.ToString()+"_"+t.FullName + ".xml"));
+                cnt++;
                 ms = new MemoryStream(XMLCompressor.CompressXMLDocument(doc));
                 for (long x = 0; x < ms.Length; x += 1024)
                 {
@@ -88,10 +89,12 @@ namespace Org.Reddragonit.Dbpro.Backup
             Logger.LogLine("Backing up the basic types for database...");
             foreach (Type t in basicTypes)
             {
+                Logger.LogLine("Backing up basic type: " + t.FullName);
                 doc = new XmlDocument();
                 elem = doc.CreateElement("entries");
                 doc.AppendChild(elem);
                 map = ClassMapper.GetTableMap(t);
+                Logger.LogLine("Extracting basic type: " + t.FullName + " from the database and writing it to the xml document.");
                 foreach (Table table in c.SelectAll(t))
                 {
                     elem = doc.CreateElement("entry");
@@ -103,7 +106,9 @@ namespace Org.Reddragonit.Dbpro.Backup
                     }
                     doc.DocumentElement.AppendChild(elem);
                 }
+                Logger.LogLine("Compressing basic type: " + t.FullName + " data and appending it into the zip file.");
                 zs.PutNextEntry(new ZipEntry(cnt.ToString() + "_" + t.FullName + ".xml"));
+                cnt++;
                 ms = new MemoryStream(XMLCompressor.CompressXMLDocument(doc));
                 for (long x = 0; x < ms.Length; x += 1024)
                 {
@@ -116,10 +121,12 @@ namespace Org.Reddragonit.Dbpro.Backup
             Logger.LogLine("Backing up complex types for database...");
             foreach (Type t in complexTypes)
             {
+                Logger.LogLine("Backing up complex type: " + t.FullName);
                 doc = new XmlDocument();
                 elem = doc.CreateElement("entries");
                 doc.AppendChild(elem);
                 map = ClassMapper.GetTableMap(t);
+                Logger.LogLine("Extracting complex type: " + t.FullName + " from the database and writing it to the xml document.");
                 foreach (Table table in c.SelectAll(t))
                 {
                     elem = doc.CreateElement("entry");
@@ -145,7 +152,9 @@ namespace Org.Reddragonit.Dbpro.Backup
                     }
                     doc.DocumentElement.AppendChild(elem);
                 }
+                Logger.LogLine("Compressing complex type: " + t.FullName + " data and appending it into the zip file.");
                 zs.PutNextEntry(new ZipEntry(cnt.ToString() + "_" + t.FullName + ".xml"));
+                cnt++;
                 ms = new MemoryStream(XMLCompressor.CompressXMLDocument(doc));
                 for (long x = 0; x < ms.Length; x += 1024)
                 {
@@ -153,7 +162,6 @@ namespace Org.Reddragonit.Dbpro.Backup
                     zs.Write(buff, 0, len);
                 }
             }
-
 
             zs.Flush();
             zs.Close();
