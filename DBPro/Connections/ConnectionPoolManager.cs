@@ -16,11 +16,10 @@ namespace Org.Reddragonit.Dbpro.Connections
 		private readonly static string CONNECTION_CONFIG_FILENAME="DbPro.xml";
 
 		private static Dictionary<string, ConnectionPool> _connectionPools = new Dictionary<string, ConnectionPool>();
-		private static Mutex mut = new Mutex(false);
 		
 		static ConnectionPoolManager()
 		{
-			mut.WaitOne();
+			Utility.WaitOne(_connectionPools);
 			string basePath=AppDomain.CurrentDomain.SetupInformation.ConfigurationFile.Substring(0,AppDomain.CurrentDomain.SetupInformation.ConfigurationFile.LastIndexOf(Path.DirectorySeparatorChar));
 			FileInfo fi = RecurLocateConfigFile(new DirectoryInfo(basePath));
 			if (fi!=null)
@@ -50,11 +49,11 @@ namespace Org.Reddragonit.Dbpro.Connections
 			{
 				pool.Init();
 			}
-			mut.ReleaseMutex();
+			Utility.Release(_connectionPools);
 		}
 		
 		public static void ReloadClasses(){
-			mut.WaitOne();
+			Utility.WaitOne(_connectionPools);
 			ClassMapper.ReInit();
 			string[] tmp = new string[_connectionPools.Count];
 			_connectionPools.Keys.CopyTo(tmp,0);
@@ -63,7 +62,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			{
 				pool.Init();
 			}
-			mut.ReleaseMutex();
+			Utility.Release(_connectionPools);
 		}
 		
 		private static void ExtractConnectionFromXml(XmlNode connectionNode)
@@ -156,7 +155,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		public static ConnectionPool GetConnection(string name)
 		{
 			ConnectionPool ret = null;
-			mut.WaitOne();
+			Utility.WaitOne(_connectionPools);
 			if (name==null)
 			{
 				name=DEFAULT_CONNECTION_NAME;
@@ -166,7 +165,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 				ret =_connectionPools[name];
 			}else 
 				ret= _connectionPools[DEFAULT_CONNECTION_NAME];
-			mut.ReleaseMutex();
+			Utility.Release(_connectionPools);
 			return ret;
 		}
 
@@ -198,9 +197,9 @@ namespace Org.Reddragonit.Dbpro.Connections
 			bool ret=false;
 			if (name==null)
 				name=DEFAULT_CONNECTION_NAME;
-			mut.WaitOne();
+			Utility.WaitOne(_connectionPools);
 			ret=_connectionPools.ContainsKey(name);
-			mut.ReleaseMutex();
+			Utility.Release(_connectionPools);
 			return ret;
 		}
 
