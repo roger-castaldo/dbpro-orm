@@ -1352,10 +1352,10 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		public Connection getConnection()
 		{
-            Utility.WaitOne(isReady);
+            Utility.WaitOne(this);
 			if (!isReady)
 				Init();
-            Utility.Release(isReady);
+            Utility.Release(this);
 			if (isClosed)
 				return null;
 			Connection ret=null;
@@ -1364,20 +1364,24 @@ namespace Org.Reddragonit.Dbpro.Connections
 			{
                 try
                 {
-                    Utility.WaitOne(unlocked, MaxMutexTimeout);
+                    Utility.WaitOne(this, MaxMutexTimeout);
                     Logger.LogLine("Obtaining Connection: " + this.ConnectionName + " from pool with " + unlocked.Count.ToString() + " unlocked and " + locked.Count.ToString() + " locked connections");
-                    if (unlocked.Count > 0)
+                    while (unlocked.Count > 0)
                     {
+                        Logger.LogLine("Obtaining connection from unlocked queue.");
                         ret = unlocked.Dequeue();
                         if (ret.isPastKeepAlive(maxKeepAlive))
                         {
+                            Logger.LogLine("Closing obtained connection that is past keep alive to clean up unlocked queue.");
                             ret.Disconnect();
                             ret = null;
                         }
                         else
                             break;
                     }
-                    else if (!checkMin()&&!isClosed)
+                    if (ret != null)
+                        break;
+                    if (!checkMin()&&!isClosed)
                     {
                         ret = CreateConnection();
                         break;

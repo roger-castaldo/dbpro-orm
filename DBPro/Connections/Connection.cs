@@ -763,6 +763,12 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		private void CheckConnectionState(string query){
             Utility.WaitOne(this);
+            while (lockedForBackup)
+            {
+                Utility.Release(this);
+                Thread.Sleep(100);
+                Utility.WaitOne(this);
+            }
             if (lockedForBackup)
             {
                 Logger.LogLine("Attempting to reinstate connection for pool " + pool.ConnectionName + " to reopen it.");
