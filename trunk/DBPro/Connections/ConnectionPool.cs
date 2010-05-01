@@ -33,7 +33,6 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		private List<Connection> locked=new List<Connection>();
 		private Queue<Connection> unlocked=new Queue<Connection>();
-		private Mutex mut = new Mutex(false);
 		protected string connectionString;
 		
 		private int minPoolSize=0;
@@ -1353,10 +1352,10 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		public Connection getConnection()
 		{
-			mut.WaitOne();
+            Utility.WaitOne(isReady);
 			if (!isReady)
 				Init();
-			mut.ReleaseMutex();
+            Utility.Release(isReady);
 			if (isClosed)
 				return null;
 			Connection ret=null;
@@ -1365,7 +1364,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			{
                 try
                 {
-                    mut.WaitOne(MaxMutexTimeout);
+                    Utility.WaitOne(unlocked, MaxMutexTimeout);
                     Logger.LogLine("Obtaining Connection: " + this.ConnectionName + " from pool with " + unlocked.Count.ToString() + " unlocked and " + locked.Count.ToString() + " locked connections");
                     if (unlocked.Count > 0)
                     {
@@ -1390,7 +1389,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                         ret = CreateConnection();
                         break;
                     }
-                    mut.ReleaseMutex();
+                    Utility.Release(this);
                 }
                 catch (Exception e)
                 {
@@ -1404,7 +1403,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
 			if (ret!=null)
 				locked.Add(ret);
-			mut.ReleaseMutex();
+            Utility.Release(this);
 			if (ret!=null)
 				ret.Reset();
 			return ret;
@@ -1412,27 +1411,27 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		public void ClosePool()
 		{
-			mut.WaitOne();
+            Utility.WaitOne(this);
 			while (unlocked.Count>0)
 				unlocked.Dequeue().Disconnect();
 			foreach (Connection conn in locked)
 				conn.Disconnect();
 			isClosed=true;
-			mut.ReleaseMutex();
+            Utility.WaitOne(this);
 		}
 		
 		internal void returnConnection(Connection conn)
 		{
-			mut.WaitOne();
+            Utility.WaitOne(this);
 			locked.Remove(conn);
-			mut.ReleaseMutex();
+            Utility.Release(this);
             Logger.LogLine("Checking max queue size against " + locked.Count.ToString() + "+" + unlocked.Count.ToString() + " < " + maxPoolSize.ToString());
 			if (checkMax(1)&&!isClosed&&!conn.isPastKeepAlive(maxKeepAlive))
 			{
                 Logger.LogLine("Returning connection to queue");
-				mut.WaitOne();
+                Utility.WaitOne(this);
 				unlocked.Enqueue(conn);
-				mut.ReleaseMutex();
+                Utility.Release(this);
 			}else
 			{
 				if (isClosed)
@@ -1445,9 +1444,9 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
             while (!checkMin())
             {
-                mut.WaitOne();
+                Utility.WaitOne(this);
                 unlocked.Enqueue(CreateConnection());
-                mut.ReleaseMutex();
+                Utility.Release(this);
             }
 		}
 
@@ -1472,7 +1471,7 @@ namespace Org.Reddragonit.Dbpro.Connections
         internal Connection LockDownForBackupRestore()
         {
             Logger.LogLine("Attempting to Lock down connection pool: " + ConnectionName + " for BackupRestore...");
-            mut.WaitOne();
+            Utility.WaitOne(this);
             Logger.LogLine("Closing down all connections in pool: " + ConnectionName + " for BackupRestore...");
             while (unlocked.Count > 0)
                 unlocked.Dequeue().Disconnect();
@@ -1484,14 +1483,14 @@ namespace Org.Reddragonit.Dbpro.Connections
             return CreateConnection();
         }
         
-        internal void ReinstateConnection(Connection conn){
+        internal void ReinstateConnection(Connection conn,string query){
             Logger.LogLine("Attempting to reinstate connection for pool: " + ConnectionName);
-        	mut.WaitOne();
+            Utility.WaitOne(this);
             Logger.LogLine("Checking to see if the pool("+ConnectionName+") is closed while trying to reinstate connection");
         	if (isClosed)
-        		throw new Exception("Unable to restore the connection for pool: "+ConnectionName+" as the pool is closed.");
+        		throw new Exception("Unable to restore the connection for pool: "+ConnectionName+" as the pool is closed.  Trying to execute query: "+query);
         	locked.Add(conn);
-        	mut.ReleaseMutex();
+            Utility.Release(this);
         }
 
         internal void UnlockPoolPostBackupRestore()
@@ -1508,7 +1507,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             Logger.LogLine("Marking the pool(" + ConnectionName + ") as open and ready and releasing the lock after completing a BackupRestore.");
             isReady = true;
             isClosed = false;
-            mut.ReleaseMutex();
+            Utility.Release(this);
         }
 
         private List<ForeignKey> ExtractExpectedForeignKeys(Connection conn)

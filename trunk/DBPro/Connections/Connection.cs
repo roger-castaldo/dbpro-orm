@@ -32,8 +32,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		private int commCntr;
         private bool firstRead = false;
         private bool firstReadResult;
-        private bool lockedForBackup;
-        private Mutex mut;
+        private bool lockedForBackup=false;
 		
 		private QueryBuilder _qb;
 		internal virtual QueryBuilder queryBuilder
@@ -752,25 +751,25 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         internal void LockForBackup()
         {
-            mut.WaitOne();
+            Utility.WaitOne(this);
             lockedForBackup = true;
         }
 
         internal void UnlockForBackup()
         {
             lockedForBackup = false;
-            mut.ReleaseMutex();
+            Utility.Release(this);
         }
 		
-		private void CheckConnectionState(){
-            mut.WaitOne();
+		private void CheckConnectionState(string query){
+            Utility.WaitOne(this);
             if (lockedForBackup)
             {
                 Logger.LogLine("Attempting to reinstate connection for pool " + pool.ConnectionName + " to reopen it.");
-                pool.ReinstateConnection(this);
+                pool.ReinstateConnection(this,query);
                 ResetConnection();
             }
-            mut.ReleaseMutex();
+            Utility.Release(this);
 		}
 		
 		public int ExecuteNonQuery(string queryString)
@@ -785,7 +784,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 
 		public int ExecuteNonQuery(string queryString, IDbDataParameter[] parameters)
 		{
-			CheckConnectionState();
+			CheckConnectionState(queryString);
 			commCntr++;
 			if (commCntr>=MAX_COMM_QUERIES){
 				commCntr=0;
@@ -857,7 +856,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         public int ExecuteStoredProcedureNoReturn(string procedureName,IDbDataParameter[] parameters)
         {
-        	CheckConnectionState();
+        	CheckConnectionState("EXECUTE STORED PROCEDURE: "+procedureName);
         	commCntr++;
 			if (commCntr>=MAX_COMM_QUERIES){
 				commCntr=0;
@@ -929,7 +928,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 
 		public void ExecuteQuery(string queryString, IDbDataParameter[] parameters)
 		{
-			CheckConnectionState();
+			CheckConnectionState(queryString);
 			commCntr++;
 			if (commCntr>=MAX_COMM_QUERIES){
 				commCntr=0;
@@ -1012,7 +1011,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         public void ExecuteStoredProcedureReturn(string procedureName, IDbDataParameter[] parameters)
         {
-        	CheckConnectionState();
+        	CheckConnectionState("EXECUTE STORED PROCEDURE: "+procedureName);
         	commCntr++;
 			if (commCntr>=MAX_COMM_QUERIES){
 				commCntr=0;

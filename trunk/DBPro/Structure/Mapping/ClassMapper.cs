@@ -22,12 +22,11 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 		private static Dictionary<System.Type,TableMap> map=null;
         private static Dictionary<System.Type, Dictionary<string, List<ValidationAttribute>>> _validations = null;
 		private static Dictionary<Type, object> constructed = new Dictionary<Type, object>();
-		private static Mutex mut = new Mutex(false);
 		private static List<Type> types;
 		
 		internal static void CorrectConnectionNames(string[] connectionNames)
 		{
-			mut.WaitOne();
+			Utility.WaitOne(constructed);
 			if ((map==null)||(map.Count==0))
 				InitMaps();
 			Type[] types = new Type[map.Count];
@@ -39,12 +38,12 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 				tm.CorrectConnectionName(connectionNames);
 				map.Add(t,tm);
 			}
-			mut.ReleaseMutex();
+			Utility.Release(constructed);
 		}
 		
 		public static TableMap GetTableMap(System.Type type)
 		{
-			mut.WaitOne();
+			Utility.WaitOne(constructed);
 			if ((map==null)||(map.Count==0))
 				InitMaps();
 			TableMap ret = null;
@@ -52,13 +51,13 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			{
 				ret=map[type];
 			}
-			mut.ReleaseMutex();
+			Utility.Release(constructed);
 			return ret;
 		}
 		
 		public static object InitialValueForClassField(Type type, string ClassFieldName)
 		{
-			mut.WaitOne();
+			Utility.WaitOne(constructed);
 			object ret=null;
 			if ((map==null)||(map.Count==0))
 				InitMaps();
@@ -69,13 +68,13 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
                 PropertyInfo pi = ((Table)constructed[type]).LocatePropertyInfo(ClassFieldName);
                 ret = pi.GetValue(constructed[type], new object[0]);
 			}
-			mut.ReleaseMutex();
+			Utility.Release(constructed);
 			return ret;
 		}
 		
 		public static TableMap GetTableMapByTableName(string TableName)
 		{
-			mut.WaitOne();
+			Utility.WaitOne(constructed);
 			if ((map==null)||(map.Count==0))
 				InitMaps();
 			TableMap ret = null;
@@ -87,14 +86,14 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 					break;
 				}
 			}
-			mut.ReleaseMutex();
+			Utility.Release(constructed);
 			return ret;
 		}
 		
 		public static List<System.Type> TableTypesForConnection(string name)
 		{
 			List<System.Type> ret = new List<Type>();
-			mut.WaitOne();
+			Utility.WaitOne(constructed);
 			if ((map==null)||(map.Count==0))
 				InitMaps();
 			foreach (Type t in map.Keys)
@@ -102,14 +101,14 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 				if (map[t].ConnectionName==name)
 					ret.Add(t);
 			}
-			mut.ReleaseMutex();
+			Utility.Release(constructed);
 			return ret;
 		}
 		
 		public static void CorrectNamesForConnection(ConnectionPool pool)
 		{
 			List<Type> types = TableTypesForConnection(pool.ConnectionName);
-			mut.WaitOne();
+			Utility.WaitOne(constructed);
 			if ((map==null)||(map.Count==0))
 				InitMaps();
 			foreach (Type t in types)
@@ -119,7 +118,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 				map.Remove(t);
 				map.Add(t,tm);
 			}
-			mut.ReleaseMutex();
+			Utility.Release(constructed);
 		}
 
 		public static System.Type[] TableTypes
@@ -127,12 +126,12 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			get
 			{
 				Logger.LogLine("MAPS: "+map.Count.ToString());
-				mut.WaitOne();
+				Utility.WaitOne(constructed);
 				if ((map==null)||(map.Count==0))
 					InitMaps();
 				System.Type[] ret = new Type[map.Count];
 				map.Keys.CopyTo(ret, 0);
-				mut.ReleaseMutex();
+				Utility.Release(constructed);
 				return ret;
 			}
 		}
@@ -186,16 +185,16 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 		}
 		
 		internal static void ReInit(){
-			mut.WaitOne();
+			Utility.WaitOne(constructed);
 			InitMaps();
-			mut.ReleaseMutex();
+			Utility.Release(constructed);
 		}
 		
 		static ClassMapper()
 		{
-			mut.WaitOne();
+			Utility.WaitOne(constructed);
 			InitMaps();
-			mut.ReleaseMutex();
+			Utility.Release(constructed);
 		}
 	}
 }

@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Reflection;
 using Org.Reddragonit.Dbpro.Structure.Mapping;
+using System.Threading;
 
 namespace Org.Reddragonit.Dbpro
 {
@@ -161,5 +162,22 @@ namespace Org.Reddragonit.Dbpro
             ret.Sort();
             return ret;
         }
+
+        internal static void WaitOne(object obj)
+        {
+            Monitor.Enter(obj);
+        }
+
+        internal static void WaitOne(object obj, int timeout)
+        {
+            if (!Monitor.TryEnter(obj, timeout))
+                throw new Exception("Timeout expired while waiting for lock to be released.");
+        }
+
+        internal static void Release(object obj)
+        {
+            Monitor.Exit(obj);
+        }
+
 	}
 }
