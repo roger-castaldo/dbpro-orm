@@ -1432,7 +1432,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             Logger.LogLine("Checking max queue size against " + locked.Count.ToString() + "+" + unlocked.Count.ToString() + " < " + maxPoolSize.ToString());
 			if (checkMax(1)&&!isClosed&&!conn.isPastKeepAlive(maxKeepAlive))
 			{
-                Logger.LogLine("Returning connection to queue");
+                Logger.LogLine("Returning connection "+conn.ID+" to queue");
                 Utility.WaitOne(this);
 				unlocked.Enqueue(conn);
                 Utility.Release(this);
@@ -1478,21 +1478,27 @@ namespace Org.Reddragonit.Dbpro.Connections
             Utility.WaitOne(this);
             Logger.LogLine("Closing down all connections in pool: " + ConnectionName + " for BackupRestore...");
             while (unlocked.Count > 0)
+            {
+                Logger.LogLine("Disconnecting and closing connection " + unlocked.Peek().ID + " from unlocked queue in pool " + ConnectionName);
                 unlocked.Dequeue().Disconnect();
+            }
             foreach (Connection conn in locked)
+            {
+                Logger.LogLine("Locking connection " + conn.ID + " for backup in pool " + ConnectionName);
                 conn.LockForBackup();
+            }
             isClosed = true;
             isReady = false;
             Logger.LogLine("Returning new connection from pool: " + ConnectionName + " for BackupRestore process");
             return CreateConnection();
         }
         
-        internal void ReinstateConnection(Connection conn,string query){
-            Logger.LogLine("Attempting to reinstate connection for pool: " + ConnectionName);
+        internal void ReinstateConnection(Connection conn){
+            Logger.LogLine("Attempting to reinstate connection "+conn.ID+" for pool: " + ConnectionName);
             Utility.WaitOne(this);
             Logger.LogLine("Checking to see if the pool("+ConnectionName+") is closed while trying to reinstate connection");
         	if (isClosed)
-        		throw new Exception("Unable to restore the connection for pool: "+ConnectionName+" as the pool is closed.  Trying to execute query: "+query);
+        		throw new Exception("Unable to restore the connection for pool: "+ConnectionName+" as the pool is closed.  Trying to commit the transaction.");
         	locked.Add(conn);
             Utility.Release(this);
         }
@@ -1502,12 +1508,15 @@ namespace Org.Reddragonit.Dbpro.Connections
             Logger.LogLine("Reopening connection pool: " + ConnectionName + " to indicate that the BackupRestore has been completed.");
             for (int x = 0; x < minPoolSize+locked.Count; x++)
             {
-                if (unlocked.Count >= minPoolSize)
+                if (!checkMin())
                     break;
                 unlocked.Enqueue(CreateConnection());
             }
             foreach (Connection conn in locked)
+            {
+                Logger.LogLine("Unlocking connection " + conn.ID + " in pool: " + ConnectionName + " to release the pool from backup.");
                 conn.UnlockForBackup();
+            }
             Logger.LogLine("Marking the pool(" + ConnectionName + ") as open and ready and releasing the lock after completing a BackupRestore.");
             isReady = true;
             isClosed = false;

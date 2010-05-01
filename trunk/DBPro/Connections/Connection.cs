@@ -33,6 +33,7 @@ namespace Org.Reddragonit.Dbpro.Connections
         private bool firstRead = false;
         private bool firstReadResult;
         private bool lockedForBackup=false;
+        private string _uniqueID;
 		
 		private QueryBuilder _qb;
 		internal virtual QueryBuilder queryBuilder
@@ -66,6 +67,11 @@ namespace Org.Reddragonit.Dbpro.Connections
         internal virtual string WrapAlias(string alias)
         {
             return "\"" + alias + "\"";
+        }
+
+        internal string ID
+        {
+            get { return _uniqueID; }
         }
 		
 		public ConnectionPool Pool{
@@ -107,12 +113,13 @@ namespace Org.Reddragonit.Dbpro.Connections
 		public Connection(ConnectionPool pool,string connectionString){
 			this.connectionString=connectionString;
 			this.pool=pool;
+            this._uniqueID = System.Convert.ToBase64String(Guid.NewGuid().ToByteArray());
             ResetConnection();
 		}
 
         private void ResetConnection()
         {
-            Logger.LogLine("Resetting connection in pool " + pool.ConnectionName + " using connection string: " + connectionString);
+            Logger.LogLine("Resetting connection "+_uniqueID+" in pool " + pool.ConnectionName + " using connection string: " + connectionString);
             if (reader != null)
             {
                 Logger.LogLine("Attempting to close the currently open reader for resetting.");
@@ -126,7 +133,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 {
                     createTrans = true;
                     Logger.LogLine("Attempting to close the currently open transaction for resetting.");
-                    try{trans.Commit();}
+                    try { this.Commit(); }
                     catch (Exception e) { }
                 }
                 Logger.LogLine("Attempting to close the currently open connection for resetting.");
@@ -163,7 +170,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		{
 			try{
                 if (trans!=null)
-				    trans.Commit();
+				    this.Commit();
 			}catch (Exception e){}
             try
             {
@@ -192,10 +199,23 @@ namespace Org.Reddragonit.Dbpro.Connections
 		{
             if (trans != null)
             {
-                Logger.LogLine("COMMIT");
+                Utility.WaitOne(this);
+                while (lockedForBackup)
+                {
+                    Logger.LogLine("Waiting for backup lock on connection " + _uniqueID + " in pool " + pool.ConnectionName + " to release to commit transaction.");
+                    Utility.Release(this);
+                    Thread.Sleep(1000);
+                    Utility.WaitOne(this);
+                }
+                if (lockedForBackup)
+                {
+                    Logger.LogLine("Attempting to reinstate connection " + _uniqueID + " for pool " + pool.ConnectionName + " to reopen it and commit transaction.");
+                    pool.ReinstateConnection(this);
+                }
                 trans.Commit();
                 trans = null;
                 comm.Transaction = null;
+                Utility.Release(this);
             }
 		}
 		
@@ -217,7 +237,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 					reader.Close();
                 if (trans != null)
                 {
-                    trans.Commit();
+                    this.Commit();
                     trans = null;
                 }
 				comm.CommandText="";
@@ -761,23 +781,6 @@ namespace Org.Reddragonit.Dbpro.Connections
             Utility.Release(this);
         }
 		
-		private void CheckConnectionState(string query){
-            Utility.WaitOne(this);
-            while (lockedForBackup)
-            {
-                Utility.Release(this);
-                Thread.Sleep(100);
-                Utility.WaitOne(this);
-            }
-            if (lockedForBackup)
-            {
-                Logger.LogLine("Attempting to reinstate connection for pool " + pool.ConnectionName + " to reopen it.");
-                pool.ReinstateConnection(this,query);
-                ResetConnection();
-            }
-            Utility.Release(this);
-		}
-		
 		public int ExecuteNonQuery(string queryString)
 		{
             return ExecuteNonQuery(queryString, new IDbDataParameter[0]);
@@ -790,7 +793,6 @@ namespace Org.Reddragonit.Dbpro.Connections
 
 		public int ExecuteNonQuery(string queryString, IDbDataParameter[] parameters)
 		{
-			CheckConnectionState(queryString);
 			commCntr++;
 			if (commCntr>=MAX_COMM_QUERIES){
 				commCntr=0;
@@ -862,7 +864,6 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         public int ExecuteStoredProcedureNoReturn(string procedureName,IDbDataParameter[] parameters)
         {
-        	CheckConnectionState("EXECUTE STORED PROCEDURE: "+procedureName);
         	commCntr++;
 			if (commCntr>=MAX_COMM_QUERIES){
 				commCntr=0;
@@ -934,7 +935,6 @@ namespace Org.Reddragonit.Dbpro.Connections
 
 		public void ExecuteQuery(string queryString, IDbDataParameter[] parameters)
 		{
-			CheckConnectionState(queryString);
 			commCntr++;
 			if (commCntr>=MAX_COMM_QUERIES){
 				commCntr=0;
@@ -1017,7 +1017,6 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         public void ExecuteStoredProcedureReturn(string procedureName, IDbDataParameter[] parameters)
         {
-        	CheckConnectionState("EXECUTE STORED PROCEDURE: "+procedureName);
         	commCntr++;
 			if (commCntr>=MAX_COMM_QUERIES){
 				commCntr=0;
