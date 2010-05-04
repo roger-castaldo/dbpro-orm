@@ -76,7 +76,7 @@ namespace Org.Reddragonit.Dbpro.Backup
                     elem.Attributes.Append(CreateAttributeWithValue(doc,"Value",pool.GetEnumID(t,str).ToString()));
                     doc.DocumentElement.AppendChild(elem);
                 }
-                zs.PutNextEntry(new ZipEntry(cnt.ToString()+"_"+t.FullName + ".xml"));
+                zs.PutNextEntry(new ZipEntry(cnt.ToString("0000000")+"_"+t.FullName + ".xml"));
                 cnt++;
                 ms = new MemoryStream(XMLCompressor.CompressXMLDocument(doc));
                 for (long x = 0; x < ms.Length; x += 1024)
@@ -108,7 +108,7 @@ namespace Org.Reddragonit.Dbpro.Backup
                     doc.DocumentElement.AppendChild(elem);
                 }
                 Logger.LogLine("Compressing basic type: " + t.FullName + " data and appending it into the zip file.");
-                zs.PutNextEntry(new ZipEntry(cnt.ToString() + "_" + t.FullName + ".xml"));
+                zs.PutNextEntry(new ZipEntry(cnt.ToString("0000000") + "_" + t.FullName + ".xml"));
                 cnt++;
                 ms = new MemoryStream(XMLCompressor.CompressXMLDocument(doc));
                 for (long x = 0; x < ms.Length; x += 1024)
@@ -155,7 +155,7 @@ namespace Org.Reddragonit.Dbpro.Backup
                     doc.DocumentElement.AppendChild(elem);
                 }
                 Logger.LogLine("Compressing complex type: " + t.FullName + " data and appending it into the zip file.");
-                zs.PutNextEntry(new ZipEntry(cnt.ToString() + "_" + t.FullName + ".xml"));
+                zs.PutNextEntry(new ZipEntry(cnt.ToString("0000000") + "_" + t.FullName + ".xml"));
                 cnt++;
                 ms = new MemoryStream(XMLCompressor.CompressXMLDocument(doc));
                 for (long x = 0; x < ms.Length; x += 1024)
