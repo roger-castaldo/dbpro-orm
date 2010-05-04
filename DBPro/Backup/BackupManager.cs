@@ -19,6 +19,7 @@ namespace Org.Reddragonit.Dbpro.Backup
         {
             Logger.LogLine("Locking down "+pool.ConnectionName+" database for backing up...");
             Connection c = pool.LockDownForBackupRestore();
+            c.StartTransaction();
             Logger.LogLine("Database locked down for backing up");
             List<Type> types = ClassMapper.TableTypesForConnection(pool.ConnectionName);
             List<Type> enums = new List<Type>();
@@ -115,6 +116,7 @@ namespace Org.Reddragonit.Dbpro.Backup
                     len = ms.Read(buff, 0, 1024);
                     zs.Write(buff, 0, len);
                 }
+                c.ResetConnection(false);
             }
 
             //output all complex types
@@ -161,10 +163,12 @@ namespace Org.Reddragonit.Dbpro.Backup
                     len = ms.Read(buff, 0, 1024);
                     zs.Write(buff, 0, len);
                 }
+                c.ResetConnection(false);
             }
 
             zs.Flush();
             zs.Close();
+            c.Reset();
             Logger.LogLine("Backup of database complete, re-enabling pool.");
             pool.UnlockPoolPostBackupRestore();
             c.CloseConnection();
