@@ -114,17 +114,47 @@ namespace Org.Reddragonit.Dbpro.Connections
 			this.connectionString=connectionString;
 			this.pool=pool;
             this._uniqueID = System.Convert.ToBase64String(Guid.NewGuid().ToByteArray());
-            ResetConnection();
+            ResetConnection(false);
 		}
 
-        private void ResetConnection()
+        private void ThreadedReaderClose()
+        {
+            Thread.Sleep(200);
+            try { reader.Close(); }
+            catch (Exception e) { }
+        }
+
+        private void ThreadedConnectionClose()
+        {
+            Thread.Sleep(200);
+            try { conn.Close(); }
+            catch (Exception e) { }
+        }
+
+        private void ThreadedTransactionCommit()
+        {
+            Thread.Sleep(200);
+            try { this.Commit(); }
+            catch (Exception e) { }
+        }
+
+        internal void ResetConnection(bool ignoreReader)
         {
             Logger.LogLine("Resetting connection "+_uniqueID+" in pool " + pool.ConnectionName + " using connection string: " + connectionString);
-            if (reader != null)
+            Thread t;
+            if ((reader != null)&&(!ignoreReader))
             {
                 Logger.LogLine("Attempting to close the currently open reader for resetting.");
-                try { reader.Close(); }
-                catch (Exception e) { }
+                t = new Thread(new ThreadStart(ThreadedReaderClose));
+                t.Start();
+                try
+                {
+                    t.Start();
+                    t.Join(new TimeSpan(0, 0, 0, pool.readTimeout));
+                }
+                catch (Exception e) {
+                }
+                Logger.LogLine("Currently open reader closed, continuing to reset the connection.");
             }
             bool createTrans = false;
             if (conn != null)
@@ -133,12 +163,24 @@ namespace Org.Reddragonit.Dbpro.Connections
                 {
                     createTrans = true;
                     Logger.LogLine("Attempting to close the currently open transaction for resetting.");
-                    try { this.Commit(); }
-                    catch (Exception e) { }
+                    t = new Thread(new ThreadStart(ThreadedTransactionCommit));
+                    try
+                    {
+                        t.Start();
+                        t.Join(new TimeSpan(0, 0, 0, pool.readTimeout));
+                    }
+                    catch (Exception e)
+                    { }
+                    Logger.LogLine("Currently open transaction closed, continuing to reset the connection.");
                 }
                 Logger.LogLine("Attempting to close the currently open connection for resetting.");
-                try { conn.Close(); }
-                catch (Exception e) { }
+                t = new Thread(new ThreadStart(ThreadedConnectionClose));
+                try {
+                    t.Start();
+                    t.Join(new TimeSpan(0, 0, 0, pool.readTimeout)); }
+                catch (Exception e)
+                {}
+                Logger.LogLine("Currently open connection closed, reopning things to finalize connection reset.");
             }
             creationTime = System.DateTime.Now;
             Logger.LogLine("Establishing new connection in pool " + pool.ConnectionName + " through connection reset");
@@ -153,7 +195,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 comm = EstablishCommand();
             else
             {
-                Logger.LogLine("Moving comman in connection to newly created connection and transaction in reset");
+                Logger.LogLine("Moving command in connection to newly created connection and transaction in reset");
                 comm.Connection = conn;
                 comm.Transaction = trans;
             }
@@ -194,6 +236,12 @@ namespace Org.Reddragonit.Dbpro.Connections
                 comm.Transaction = null;
             }
 		}
+
+        internal void StartTransaction()
+        {
+            trans = conn.BeginTransaction();
+            comm.Transaction = trans;
+        }
 		
 		public void Commit()
 		{
@@ -1105,7 +1153,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 if (!firstRead)
                 {
                     Logger.LogLine("Reading of first result failed with timeout of " + pool.readTimeout.ToString() + " seconds, resetting connection and reattempting query.");
-                    ResetConnection();
+                    ResetConnection(true);
                     reader = comm.ExecuteReader();
                 }
             }
