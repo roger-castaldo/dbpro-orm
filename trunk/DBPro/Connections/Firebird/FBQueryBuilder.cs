@@ -74,13 +74,15 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 					" inner join rdb$index_segments pseg ON (pidx.rdb$index_name = pseg.rdb$index_name AND pseg.rdb$field_position=fseg.rdb$field_position)   "+
 					" inner join RDB$REF_CONSTRAINTS actions ON rc.rdb$constraint_name = actions.RDB$constraint_name   "+
 					" WHERE TRIM(rc.rdb$relation_name) = '{0}' "+
-					" AND TRIM(pidx.rdb$relation_name) = '{1}'"; }
+					" AND TRIM(pidx.rdb$relation_name) = '{1}'"+
+                    " AND TRIM(pseg.rdb$field_name) = '{2}'"+
+                    " AND TRIM(fseg.rdb$field_name) = '{3}"; }
 		}
 		
-		internal override string DropForeignKey(string table, string tableName)
+		internal override string DropForeignKey(string table, string tableName,string primaryField,string relatedField)
 		{
 			string ret = "";
-			conn.ExecuteQuery(String.Format(DropForeignKeyString,table,tableName));
+			conn.ExecuteQuery(String.Format(DropForeignKeyString,new object[]{table,tableName,primaryField,relatedField}));
 			while (conn.Read())
 				ret+=conn[0].ToString()+";\n";
 			conn.Close();
