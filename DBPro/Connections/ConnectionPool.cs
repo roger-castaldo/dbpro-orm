@@ -1185,7 +1185,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			alterations.Add(" COMMIT;");
 			
 			foreach (ForeignKey fk in foreignKeyDrops)
-				alterations.Add(conn.queryBuilder.DropForeignKey(fk.InternalTable,fk.ExternalTable));
+				alterations.Add(conn.queryBuilder.DropForeignKey(fk.InternalTable,fk.ExternalTable,fk.ExternalFields[0],fk.InternalFields[0]));
 			alterations.Add(" COMMIT;");
 			
 			foreach (PrimaryKey pk in primaryKeyDrops)
@@ -1549,7 +1549,7 @@ namespace Org.Reddragonit.Dbpro.Connections
         {
             foreach (ForeignKey fk in ExtractExpectedForeignKeys(conn))
             {
-                conn.ExecuteNonQuery(conn.queryBuilder.DropForeignKey(fk.InternalTable, fk.ExternalTable));
+                conn.ExecuteNonQuery(conn.queryBuilder.DropForeignKey(fk.InternalTable, fk.ExternalTable,fk.ExternalFields[0],fk.InternalFields[0]));
             }
         }
 

@@ -433,7 +433,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			return String.Format(DropNotNullString,table,field.FieldName,field.FullFieldType);
 		}
 		
-		internal virtual string DropForeignKey(string table,string externalTable)
+		internal virtual string DropForeignKey(string table,string externalTable,string primaryField,string relatedField)
 		{
 			return string.Format(DropForeignKeyString,table,externalTable);
 		}

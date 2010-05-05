@@ -188,13 +188,15 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 					" left join  syscolumns rc2 on r.rkeyid = rc2.id and r.rkey2 = rc.colid "+
 					" left join  syscolumns fc2 on r.fkeyid = fc2.id and r.fkey2 = fc.colid "+
 					" where f.type =  'F' AND cast(c.name as  varchar(255))='{0}'"+
-					" AND cast(p.name as varchar(255)) = '{1}'"; }
+					" AND cast(p.name as varchar(255)) = '{1}'"+
+                    " AND cast(rc.name as varchar(255)) = '{2}'"+
+					" AND cast(fc.name as varchar(255)) = '{3}'"; }
 		}
-		
-		internal override string DropForeignKey(string table, string externalTable)
+
+        internal override string DropForeignKey(string table, string externalTable, string primaryField, string relatedField)
 		{
 			string ret="";
-			conn.ExecuteQuery(string.Format(DropForeignKeyString,table,externalTable));
+			conn.ExecuteQuery(string.Format(DropForeignKeyString,new object[]{table,externalTable,primaryField,relatedField}));
 			while (conn.Read())
 				ret+=conn[0].ToString()+"\n";
             conn.CloseConnection();

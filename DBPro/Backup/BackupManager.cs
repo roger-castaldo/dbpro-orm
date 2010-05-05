@@ -301,6 +301,7 @@ namespace Org.Reddragonit.Dbpro.Backup
                 else
                 {
                     Logger.LogLine("Processing object data into database...");
+                    c.DeleteAll(t);
                     TableMap map = ClassMapper.GetTableMap(t);
                     foreach (XmlNode node in doc.DocumentElement.ChildNodes)
                     {

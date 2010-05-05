@@ -140,22 +140,32 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 		}
 		
 		protected override string DropForeignKeyString {
-			get { return "SELECT "+
-					" CONCAT('ALTER TABLE ',ref.TABLE_NAME, "+
-					" ' DROP FOREIGN KEY ',tb.CONSTRAINT_NAME) qry "+
-					" from information_schema.TABLE_CONSTRAINTS tb, "+
-					" information_schema.REFERENTIAL_CONSTRAINTS ref "+
-					" WHERE tb.TABLE_SCHEMA=ref.CONSTRAINT_SCHEMA "+
-					" AND tb.CONSTRAINT_TYPE='FOREIGN KEY' "+
-					" AND ref.CONSTRAINT_NAME=tb.CONSTRAINT_NAME "+
-					" AND ref.TABLE_NAME='{0}' "+
-					" AND ref.REFERENCED_TABLE_NAME='{1}'" +
-					" AND ref.CONSTRAINT_SCHEMA='"+((MySqlConnectionPool)pool).DbName+"'"; }
+            get
+            {
+                return "SELECT DISTINCT " +
+                    " CONCAT('ALTER TABLE ',ref.TABLE_NAME, " +
+                    " ' DROP FOREIGN KEY ',tb.CONSTRAINT_NAME) qry " +
+                    " from information_schema.TABLE_CONSTRAINTS tb, " +
+                    " information_schema.REFERENTIAL_CONSTRAINTS ref, " +
+                    " information_schema.KEY_COLUMN_USAGE cols " +
+                    " WHERE tb.TABLE_SCHEMA=ref.CONSTRAINT_SCHEMA " +
+                    " AND tb.CONSTRAINT_TYPE='FOREIGN KEY' " +
+                    " AND ref.CONSTRAINT_NAME=tb.CONSTRAINT_NAME " +
+                    " AND ref.TABLE_NAME='{0}' " +
+                    " AND ref.REFERENCED_TABLE_NAME='{1}' " +
+                    " AND ref.CONSTRAINT_SCHEMA='" + ((MySqlConnectionPool)pool).DbName + "'" +
+                    " AND cols.CONSTRAINT_NAME<>'PRIMARY' " +
+                    " AND cols.CONSTRAINT_SCHEMA=ref.CONSTRAINT_SCHEMA " +
+                    " AND cols.CONSTRAINT_NAME=ref.CONSTRAINT_NAME " +
+                    " AND cols.TABLE_NAME=ref.TABLE_NAME " +
+                    " AND cols.COLUMN_NAME = '{3}' " +
+                    " AND cols.REFERENCED_COLUMN_NAME = '{2}' ";
+            }
 		}
 		
-		internal override string DropForeignKey(string table, string externalTable)
+		internal override string DropForeignKey(string table, string externalTable,string primaryField,string relatedField)
 		{
-			conn.ExecuteQuery(string.Format(DropForeignKeyString,table,externalTable));
+			conn.ExecuteQuery(string.Format(DropForeignKeyString,table,externalTable,primaryField,relatedField));
 			string ret = "";
 			if (conn.Read())
 				ret=conn[0].ToString();

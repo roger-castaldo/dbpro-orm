@@ -200,7 +200,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 					" AND UPPER(ccu.table_name) = '{1}'"; }
 		}
 		
-		internal override string DropForeignKey(string table, string externalTable)
+		internal override string DropForeignKey(string table, string externalTable,string primaryField,string relatedField)
 		{
 			string ret="";
 			conn.ExecuteQuery(String.Format(DropForeignKeyString, table, externalTable));
