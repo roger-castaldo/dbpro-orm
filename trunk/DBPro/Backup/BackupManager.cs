@@ -308,15 +308,34 @@ namespace Org.Reddragonit.Dbpro.Backup
                         tbl = (Table)t.GetConstructor(Type.EmptyTypes).Invoke(new object[] { });
                         foreach (XmlNode n in node.ChildNodes)
                         {
-                            Logger.LogLine((map[n.Name] is ExternalFieldMap).ToString());
+                            Logger.LogLine("Inner Field Value ("+n.Name+"): " + n.InnerXml);
                             if (map[n.Name] is ExternalFieldMap){
                                 Logger.LogLine("Processing external field...");
                                 tbl.SetField(n.Name, ExtractTableValue(n,map[n.Name].ObjectType,map[n.Name].IsArray));
                             }else{
-                                Logger.LogLine("Processing internal field...");
-                                tbl.SetField(n.Name, XmlSerializer.FromTypes(new Type[] { map[n.Name].ObjectType })[0].Deserialize(new MemoryStream(System.Text.ASCIIEncoding.ASCII.GetBytes(n.InnerXml))));
+                                try
+                                {
+                                    if (map[n.Name].ObjectType == null)
+                                        Logger.LogLine("Object type for field " + n.Name + " is null");
+                                    if (map[n.Name] == null)
+                                        Logger.LogLine("The field: " + n.Name + " was not locating in the table map.");
+                                    Logger.LogLine("Processing internal field of the type "+map[n.Name].ObjectType.FullName+" ...");
+                                    if (XmlSerializer.FromTypes(new Type[] { map[n.Name].ObjectType }).Length == 0)
+                                        Logger.LogLine("The field: " + n.Name + " has no xml seriliazer available.");
+                                    object obj = XmlSerializer.FromTypes(new Type[] { map[n.Name].ObjectType })[0].Deserialize(new MemoryStream(System.Text.ASCIIEncoding.ASCII.GetBytes(n.InnerXml)));
+                                    if (obj == null)
+                                        Logger.LogLine("The field: " + n.Name + " is being delivered a null value.");
+                                    Logger.LogLine("Setting the field value for the field: " + n.Name);
+                                    tbl.SetField(n.Name, obj);
+                                }
+                                catch (Exception e)
+                                {
+                                    Logger.LogLine(e);
+                                    throw e;
+                                }
                             }
                         }
+                        Logger.LogLine("Table data loaded from xml, saving to database...");
                         c.SaveWithAutogen(tbl);
                     }
                     Logger.LogLine("Object data has been imported.");

@@ -57,6 +57,8 @@
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="Class1.cs" />
     <Compile Include="MT19937.cs" />
+    <Compile Include="Structure\Extension.cs" />
+    <Compile Include="Structure\ExtensionNumber.cs" />
     <Compile Include="Structure\Group.cs" />
     <Compile Include="Structure\SecurityRight.cs" />
     <Compile Include="Structure\User.cs" />

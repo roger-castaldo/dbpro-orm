@@ -117,7 +117,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			_delete=OnDelete.Replace("_"," ");
 		}
 		
-		public ForeignKey(ExtractedTableMap table,string externalTable)
+		public ForeignKey(ExtractedTableMap table,string externalTable,string id)
 		{
 			_internalTableName=table.TableName;
 			_externalTableName=externalTable;
@@ -125,12 +125,19 @@ namespace Org.Reddragonit.Dbpro.Connections
 			_delete="";
 			_internalFields=new List<string>();
 			_externalFields=new List<string>();
-			foreach(ForeignRelationMap frm in table.RelatedFieldsForTable(externalTable))
+			foreach(List<ForeignRelationMap> frms in table.RelatedFieldsForTable(externalTable))
 			{
-				_internalFields.Add(frm.InternalField);
-				_externalFields.Add(frm.ExternalField);
-				_update=frm.OnUpdate.Replace("_"," ");
-				_delete=frm.OnDelete.Replace("_"," ");
+                if (frms[0].ID == id)
+                {
+                    foreach (ForeignRelationMap frm in frms)
+                    {
+                        _internalFields.Add(frm.InternalField);
+                        _externalFields.Add(frm.ExternalField);
+                        _update = frm.OnUpdate.Replace("_", " ");
+                        _delete = frm.OnDelete.Replace("_", " ");
+                    }
+                    break;
+                }
 			}
 		}
 	}
@@ -189,9 +196,11 @@ namespace Org.Reddragonit.Dbpro.Connections
 		private string _externalField;
 		private string _onUpdate;
 		private string _onDelete;
+        private string _id;
 		
-		public ForeignRelationMap(string internalField,string externalTable,string externalField,string OnUpdate,string OnDelete)
+		public ForeignRelationMap(string id,string internalField,string externalTable,string externalField,string OnUpdate,string OnDelete)
 		{
+            _id = id;
 			_internalField=internalField;
 			_externalTable=externalTable;
 			_externalField=externalField;
@@ -223,6 +232,11 @@ namespace Org.Reddragonit.Dbpro.Connections
 			get{return _onDelete;}
 			set{_onDelete=value;}
 		}
+
+        public string ID
+        {
+            get { return _id; }
+        }
 	}
 
 	internal struct ExtractedTableMap
@@ -265,15 +279,24 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
 		}
 		
-		public List<ForeignRelationMap> RelatedFieldsForTable(string tableName){
-			List<ForeignRelationMap> ret = new List<ForeignRelationMap>();
-			foreach (ForeignRelationMap frm in ForeignFields)
-			{
-				if (frm.ExternalTable==tableName)
-				{
-					ret.Add(frm);
-				}
-			}
+		public List<List<ForeignRelationMap>> RelatedFieldsForTable(string tableName){
+            List<List<ForeignRelationMap>> ret = new List<List<ForeignRelationMap>>();
+            List<string> ids = new List<string>();
+            foreach (ForeignRelationMap frm in ForeignFields)
+            {
+                if (!ids.Contains(frm.ID)&&(frm.ExternalTable==tableName))
+                    ids.Add(frm.ID);
+            }
+            foreach (string str in ids)
+            {
+                List<ForeignRelationMap> tmp = new List<ForeignRelationMap>();
+                foreach (ForeignRelationMap frm in ForeignFields)
+                {
+                    if (frm.ID == str)
+                        tmp.Add(frm);
+                }
+                ret.Add(tmp);
+            }
 			return ret;
 		}
 		
@@ -290,13 +313,23 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		public bool RelatesToField(string TableName,string FieldName)
 		{
-			foreach (ForeignRelationMap frm in RelatedFieldsForTable(TableName))
+			foreach (ForeignRelationMap frm in ForeignFields)
 			{
-				if (frm.ExternalField==FieldName)
+				if ((frm.ExternalField==FieldName)&&(frm.ExternalTable==TableName))
 					return true;
 			}
 			return false;
 		}
+
+        public ExtractedFieldMap GetField(string fieldName)
+        {
+            foreach (ExtractedFieldMap efm in Fields)
+            {
+                if (efm.FieldName == fieldName)
+                    return efm;
+            }
+            return new ExtractedFieldMap();
+        }
 	}
 
 	internal struct ExtractedFieldMap

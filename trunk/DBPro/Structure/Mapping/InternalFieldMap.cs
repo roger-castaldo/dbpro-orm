@@ -49,7 +49,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
                 _fieldLength = 38;
 		}
 		
-		internal InternalFieldMap(InternalFieldMap map,bool primary) : base(primary,map.Nullable,false)
+		internal InternalFieldMap(InternalFieldMap map,bool primary) : base(primary,map.Nullable,false,map.IsArray,map.ObjectType)
 		{
 			_fieldLength=map.FieldLength;
 			_fieldName=map.FieldName;

@@ -55,32 +55,27 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 
 		protected override string SelectForeignKeysString
 		{
-			get
-			{
-				return "SELECT    ccu.column_name 'references_field', " +
-					" ccu.table_name 'references_table', " +
-					" k.column_name field_name, " +
-					" rc.update_rule 'on_update', " +
-					" rc.delete_rule 'on_delete' " +
-					" FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE k " +
-					" LEFT JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS c " +
-					" ON k.table_name = c.table_name " +
-					" AND k.table_schema = c.table_schema " +
-					" AND k.table_catalog = c.table_catalog " +
-					" AND k.constraint_catalog = c.constraint_catalog " +
-					" AND k.constraint_name = c.constraint_name " +
-					" LEFT JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc " +
-					" ON rc.constraint_schema = c.constraint_schema " +
-					" AND rc.constraint_catalog = c.constraint_catalog " +
-					" AND rc.constraint_name = c.constraint_name " +
-					" LEFT JOIN INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE ccu " +
-					" ON rc.unique_constraint_schema = ccu.constraint_schema " +
-					" AND rc.unique_constraint_catalog = ccu.constraint_catalog " +
-					" AND rc.unique_constraint_name = ccu.constraint_name " +
-					" WHERE k.constraint_catalog = DB_NAME() " +
-					" AND k.table_name = '{0}' " +
-					" AND c.constraint_type = 'FOREIGN KEY';";
-			}
+            get
+            {
+                return "select DISTINCT " +
+                " convert(sysname,COL2.name) as field_name, " +
+                " OBJECT_NAME(FKEYS.referenced_object_id) as references_table, " +
+                " convert(sysname,col1.name) as references_field, " +
+                " FKEYS.update_referential_action_desc as on_update, " +
+                " FKEYS.delete_referential_action_desc as on_delete, " +
+                " CAST(FKEYS.object_id as VARCHAR(MAX)) as unique_id " +
+                " from " +
+                " sys.columns COL1, " +
+                " sys.columns COL2, " +
+                " sys.foreign_keys FKEYS " +
+                " inner join sys.foreign_key_columns KEY_COLUMN on (KEY_COLUMN.constraint_object_id = FKEYS.object_id) " +
+                " where " +
+                " COL1.object_id = FKEYS.referenced_object_id " +
+                " AND COL2.object_id = FKEYS.parent_object_id " +
+                " AND COL1.column_id = KEY_COLUMN.referenced_column_id " +
+                " AND COL2.column_id = KEY_COLUMN.parent_column_id " +
+                " AND OBJECT_NAME(FKEYS.PARENT_OBJECT_ID)='{0}'";
+            }
 		}
 		
 		protected override string SelectTriggersString {

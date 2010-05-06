@@ -313,7 +313,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 				conn.ExecuteQuery(conn.queryBuilder.SelectForeignKeys(etm.TableName));
 				while (conn.Read())
 				{
-					etm.ForeignFields.Add(new ForeignRelationMap(conn[0].ToString(),conn[1].ToString(),
+					etm.ForeignFields.Add(new ForeignRelationMap(conn[5].ToString(),conn[0].ToString(),conn[1].ToString(),
 					                                             conn[2].ToString(),conn[3].ToString(),conn[4].ToString()));
 				}
 				conn.Close();
@@ -421,7 +421,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 								_enumTableMaps.Add(ifm.ObjectType,name);
 							}
 							etm.Fields.Add(new ExtractedFieldMap(ifm.FieldName,conn.TranslateFieldType(FieldType.INTEGER,4),4,ifm.PrimaryKey,ifm.Nullable,false));
-							etm.ForeignFields.Add(new ForeignRelationMap(ifm.FieldName,CorrectName(_enumTableMaps[ifm.ObjectType]),
+							etm.ForeignFields.Add(new ForeignRelationMap(ifm.FieldName+"_ENUM",ifm.FieldName,CorrectName(_enumTableMaps[ifm.ObjectType]),
 							                                             "ID",UpdateDeleteAction.SET_NULL.ToString(),UpdateDeleteAction.SET_NULL.ToString()));
 						}
 						else
@@ -435,7 +435,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 						{
 							etmField.Fields.Add(new ExtractedFieldMap(CorrectName(tm.Name+"_"+ifmField.FieldName),conn.TranslateFieldType(ifmField.FieldType,ifmField.FieldLength),
 							                                          ifmField.FieldLength,true,false,false));
-							etmField.ForeignFields.Add(new ForeignRelationMap(CorrectName(tm.Name+"_"+ifmField.FieldName),tm.Name,
+							etmField.ForeignFields.Add(new ForeignRelationMap(ifm.FieldName,CorrectName(tm.Name+"_"+ifmField.FieldName),tm.Name,
 							                                                  ifmField.FieldName,UpdateDeleteAction.CASCADE.ToString(),UpdateDeleteAction.CASCADE.ToString()));
 						}
 						etmField.Fields.Add(new ExtractedFieldMap(CorrectName(tm.Name+"_"+ifm.FieldName+"_ID"),conn.TranslateFieldType(FieldType.LONG,0),8,
@@ -458,7 +458,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 					foreach (ExternalFieldMap efm in tm.GetFieldInfoForForeignTable(t)){
 						foreach (InternalFieldMap ifm in ftm.PrimaryKeys)
 						{
-							etm.ForeignFields.Add(new ForeignRelationMap(CorrectName(efm.AddOnName+"_"+ifm.FieldName),ftm.Name,
+							etm.ForeignFields.Add(new ForeignRelationMap(efm.AddOnName,CorrectName(efm.AddOnName+"_"+ifm.FieldName),ftm.Name,
 							                                             ifm.FieldName,efm.OnUpdate.ToString(),efm.OnDelete.ToString()));
 						}
 					}
@@ -468,7 +468,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                     TableMap parentMap = ClassMapper.GetTableMap(tm.ParentType);
                     foreach (InternalFieldMap ifm in parentMap.PrimaryKeys)
                     {
-                        etm.ForeignFields.Add(new ForeignRelationMap(CorrectName(ifm.FieldName), CorrectName(parentMap.Name), CorrectName(ifm.FieldName), UpdateDeleteAction.CASCADE.ToString(), UpdateDeleteAction.CASCADE.ToString()));
+                        etm.ForeignFields.Add(new ForeignRelationMap(parentMap.Name,CorrectName(ifm.FieldName), CorrectName(parentMap.Name), CorrectName(ifm.FieldName), UpdateDeleteAction.CASCADE.ToString(), UpdateDeleteAction.CASCADE.ToString()));
                     }
                 }
 				tables.Add(etm);
@@ -480,13 +480,13 @@ namespace Org.Reddragonit.Dbpro.Connections
 					{
 						aetm.Fields.Add(new ExtractedFieldMap(CorrectName("parent_"+ifm.FieldName),conn.TranslateFieldType(ifm.FieldType,ifm.FieldLength),
 						                                      ifm.FieldLength,true,false,false));
-						aetm.ForeignFields.Add(new ForeignRelationMap("parent_"+ifm.FieldName,tm.Name,ifm.FieldName,efm.OnUpdate.ToString(),efm.OnDelete.ToString()));
+						aetm.ForeignFields.Add(new ForeignRelationMap(efm.AddOnName+"_parent","parent_"+ifm.FieldName,tm.Name,ifm.FieldName,efm.OnUpdate.ToString(),efm.OnDelete.ToString()));
 					}
 					foreach (InternalFieldMap ifm in ftm.PrimaryKeys)
 					{
 						aetm.Fields.Add(new ExtractedFieldMap(CorrectName("child_"+ifm.FieldName),conn.TranslateFieldType(ifm.FieldType,ifm.FieldLength),
 						                                      ifm.FieldLength,true,false,false));
-						aetm.ForeignFields.Add(new ForeignRelationMap(CorrectName("child_"+ifm.FieldName),ftm.Name,ifm.FieldName,efm.OnUpdate.ToString(),efm.OnDelete.ToString()));
+						aetm.ForeignFields.Add(new ForeignRelationMap(efm.AddOnName+"_child",CorrectName("child_"+ifm.FieldName),ftm.Name,ifm.FieldName,efm.OnUpdate.ToString(),efm.OnDelete.ToString()));
 					}
 					tables.Add(aetm);
 				}
@@ -506,7 +506,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 							vetm.Fields.Add(new ExtractedFieldMap(ifm.FieldName,conn.TranslateFieldType(ifm.FieldType,ifm.FieldLength),
 							                                      ifm.FieldLength,ifm.PrimaryKey,ifm.Nullable,false));
 							if (ifm.PrimaryKey)
-								vetm.ForeignFields.Add(new ForeignRelationMap(ifm.FieldName,etm.TableName,ifm.FieldName,"CASCADE","CASCADE"));
+								vetm.ForeignFields.Add(new ForeignRelationMap(vetm.TableName,ifm.FieldName,etm.TableName,ifm.FieldName,"CASCADE","CASCADE"));
 						}
 					}
 					triggers.AddRange(conn.GetVersionTableTriggers(vetm,tm.VersionType.Value,this));
@@ -843,64 +843,43 @@ namespace Org.Reddragonit.Dbpro.Connections
 				bool found=false;
 				foreach (ExtractedTableMap e in curStructure)
 				{
-					if (etm.TableName==e.TableName)
+                    if (etm.TableName == e.TableName)
 					{
 						found=true;
 						foreach (string tableName in etm.RelatedTables)
 						{
-							bool foundtable=false;
-							foreach (string etableName in e.RelatedTables)
-							{
-								if (etableName==tableName)
-								{
-									foundtable=true;
-									bool diffRelation=false;
-									foreach (ForeignRelationMap frm in etm.RelatedFieldsForTable(tableName))
-									{
-										bool foundRelation=false;
-										foreach (ForeignRelationMap efrm in e.RelatedFieldsForTable(etableName))
-										{
-											if ((frm.InternalField==efrm.InternalField)&&(frm.ExternalField==efrm.ExternalField)&&(frm.ExternalTable==efrm.ExternalTable)&&(frm.OnDelete==efrm.OnDelete)&&(frm.OnUpdate==efrm.OnUpdate))
-											{
-												foundRelation=true;
-												foreach (ExtractedFieldMap efm in etm.Fields)
-												{
-													if (efm.FieldName==frm.InternalField)
-													{
-														foreach (ExtractedFieldMap ee in e.Fields)
-														{
-															if (ee.FieldName==frm.InternalField)
-															{
-																if ((ee.Type!=efm.Type)||(ee.Size!=efm.Size)||(ee.Nullable!=efm.Nullable)||(ee.PrimaryKey!=efm.PrimaryKey))
-																{
-																	diffRelation=true;
-																}
-																break;
-															}
-														}
-														break;
-													}
-												}
-												break;
-											}
-										}
-										if (!foundRelation)
-											foundRelation=true;
-										if (diffRelation)
-											break;
-									}
-									if (diffRelation)
-									{
-										foreignKeyDrops.Add(new ForeignKey(e,etableName));
-										foreignKeyCreations.Add(new ForeignKey(etm,tableName));
-									}
-									break;
-								}
-							}
-							if (!foundtable)
-							{
-								foreignKeyCreations.Add(new ForeignKey(etm,tableName));
-							}
+                            foreach (List<ForeignRelationMap> exfrms in etm.RelatedFieldsForTable(tableName))
+                            {
+                                bool foundRelation = false;
+                                foreach (List<ForeignRelationMap> curfrms in e.RelatedFieldsForTable(tableName))
+                                {
+                                    if (exfrms.Count == curfrms.Count)
+                                    {
+                                        bool foundField = true;
+                                        foreach (ForeignRelationMap exfrm in exfrms)
+                                        {
+                                            foundField = false;
+                                            foreach (ForeignRelationMap curfrm in curfrms)
+                                            {
+                                                if ((CorrectName(exfrm.InternalField) == CorrectName(curfrm.InternalField)) && (CorrectName(exfrm.ExternalField) == CorrectName(curfrm.ExternalField)))
+                                                {
+                                                    foundField = ((etm.GetField(exfrm.InternalField).Type == e.GetField(curfrm.InternalField).Type) && (etm.GetField(exfrm.InternalField).Size == e.GetField(curfrm.InternalField).Size) && (etm.GetField(exfrm.InternalField).Nullable == e.GetField(curfrm.InternalField).Nullable) && (etm.GetField(exfrm.InternalField).PrimaryKey == e.GetField(curfrm.InternalField).PrimaryKey));
+                                                    break;
+                                                }
+                                            }
+                                            if (!foundField)
+                                                break;
+                                        }
+                                        if (foundField)
+                                        {
+                                            foundRelation = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                if (!foundRelation)
+                                    foreignKeyCreations.Add(new ForeignKey(etm, tableName, exfrms[0].ID));
+                            }
 						}
 						break;
 					}
@@ -909,42 +888,71 @@ namespace Org.Reddragonit.Dbpro.Connections
 				{
 					foreach (string tableName in etm.RelatedTables)
 					{
-						foreignKeyCreations.Add(new ForeignKey(etm,tableName));
+                        foreach (List<ForeignRelationMap> frms in etm.RelatedFieldsForTable(tableName))
+                        {
+                            foreignKeyCreations.Add(new ForeignKey(etm, tableName,frms[0].ID));
+                        }
 					}
 				}
 			}
-			
-			foreach (ExtractedTableMap etm in curStructure)
-			{
-				bool found=false;
-				foreach (ExtractedTableMap e in expectedStructure)
-				{
-					if (etm.TableName==e.TableName)
-					{
-						found=true;
-						foreach (string tableName in etm.RelatedTables)
-						{
-							bool foundTable=false;
-							foreach (string etableName in e.RelatedTables)
-							{
-								if (tableName==etableName)
-								{
-									foundTable=true;
-									break;
-								}
-							}
-							if (!foundTable)
-								foreignKeyDrops.Add(new ForeignKey(etm,tableName));
-						}
-						break;
-					}
-				}
-				if (!found)
-				{
-					foreach (string tableName in etm.RelatedTables)
-						foreignKeyDrops.Add(new ForeignKey(etm,tableName));
-				}
-			}
+
+            foreach (ExtractedTableMap etm in curStructure)
+            {
+                bool found = false;
+                foreach (ExtractedTableMap e in expectedStructure)
+                {
+                    if (etm.TableName == e.TableName)
+                    {
+                        found = true;
+                        foreach (string tableName in etm.RelatedTables)
+                        {
+                            foreach (List<ForeignRelationMap> exfrms in etm.RelatedFieldsForTable(tableName))
+                            {
+                                bool foundRelation = false;
+                                foreach (List<ForeignRelationMap> curfrms in e.RelatedFieldsForTable(tableName))
+                                {
+                                    if (exfrms.Count == curfrms.Count)
+                                    {
+                                        bool foundField = true;
+                                        foreach (ForeignRelationMap exfrm in exfrms)
+                                        {
+                                            foundField = false;
+                                            foreach (ForeignRelationMap curfrm in curfrms)
+                                            {
+                                                if ((CorrectName(exfrm.InternalField) == CorrectName(curfrm.InternalField)) && (CorrectName(exfrm.ExternalField) == CorrectName(curfrm.ExternalField)))
+                                                {
+                                                    foundField = ((etm.GetField(exfrm.InternalField).Type == e.GetField(curfrm.InternalField).Type) && (etm.GetField(exfrm.InternalField).Size == e.GetField(curfrm.InternalField).Size) && (etm.GetField(exfrm.InternalField).Nullable == e.GetField(curfrm.InternalField).Nullable) && (etm.GetField(exfrm.InternalField).PrimaryKey == e.GetField(curfrm.InternalField).PrimaryKey));
+                                                    break;
+                                                }
+                                            }
+                                            if (!foundField)
+                                                break;
+                                        }
+                                        if (foundField)
+                                        {
+                                            foundRelation = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                if (!foundRelation)
+                                    foreignKeyDrops.Add(new ForeignKey(etm, tableName, exfrms[0].ID));
+                            }
+                        }
+                        break;
+                    }
+                }
+                if (!found)
+                {
+                    foreach (string tableName in etm.RelatedTables)
+                    {
+                        foreach (List<ForeignRelationMap> frms in etm.RelatedFieldsForTable(tableName))
+                        {
+                            foreignKeyDrops.Add(new ForeignKey(etm, tableName, frms[0].ID));
+                        }
+                    }
+                }
+            }
 		}
 		
 		private void CleanUpForeignKeys(ref List<ForeignKey> foreignKeys)
@@ -1103,15 +1111,21 @@ namespace Org.Reddragonit.Dbpro.Connections
 											{
 												if (expectedStructure[x].RelatesToField(etm.TableName,efm.FieldName))
 												{
-													foreignKeyDrops.Add(new ForeignKey(expectedStructure[x],etm.TableName));
-													foreignKeyCreations.Add(new ForeignKey(expectedStructure[x],etm.TableName));
+                                                    foreach (List<ForeignRelationMap> frms in expectedStructure[x].RelatedFieldsForTable(etm.TableName))
+                                                    {
+                                                        foreignKeyDrops.Add(new ForeignKey(expectedStructure[x], etm.TableName,frms[0].ID));
+                                                        foreignKeyCreations.Add(new ForeignKey(expectedStructure[x], etm.TableName,frms[0].ID));
+                                                    }
 												}
 											}
 										}
 										foreach (string tbl in etm.ExternalTablesForField(efm.FieldName))
 										{
-											foreignKeyDrops.Add(new ForeignKey(etm,tbl));
-											foreignKeyCreations.Add(new ForeignKey(etm,tbl));
+                                            foreach (List<ForeignRelationMap> frms in etm.RelatedFieldsForTable(tbl))
+                                            {
+                                                foreignKeyDrops.Add(new ForeignKey(etm, tbl,frms[0].ID));
+                                                foreignKeyCreations.Add(new ForeignKey(etm, tbl,frms[0].ID));
+                                            }
 										}
 										tableAlterations.Add(conn.queryBuilder.AlterFieldType(etm.TableName,efm,ee));
 									}
@@ -1124,15 +1138,21 @@ namespace Org.Reddragonit.Dbpro.Connections
                                             {
                                                 if (expectedStructure[x].RelatesToField(etm.TableName, efm.FieldName))
                                                 {
-                                                    foreignKeyDrops.Add(new ForeignKey(expectedStructure[x], etm.TableName));
-                                                    foreignKeyCreations.Add(new ForeignKey(expectedStructure[x], etm.TableName));
+                                                    foreach (List<ForeignRelationMap> frms in expectedStructure[x].RelatedFieldsForTable(etm.TableName))
+                                                    {
+                                                        foreignKeyDrops.Add(new ForeignKey(expectedStructure[x], etm.TableName, frms[0].ID));
+                                                        foreignKeyCreations.Add(new ForeignKey(expectedStructure[x], etm.TableName, frms[0].ID));
+                                                    }
                                                 }
                                             }
                                         }
                                         foreach (string tbl in etm.ExternalTablesForField(efm.FieldName))
                                         {
-                                            foreignKeyDrops.Add(new ForeignKey(etm, tbl));
-                                            foreignKeyCreations.Add(new ForeignKey(etm, tbl));
+                                            foreach (List<ForeignRelationMap> frms in etm.RelatedFieldsForTable(tbl))
+                                            {
+                                                foreignKeyDrops.Add(new ForeignKey(etm, tbl, frms[0].ID));
+                                                foreignKeyCreations.Add(new ForeignKey(etm, tbl, frms[0].ID));
+                                            }
                                         }
                                         if (!efm.Nullable)
                                             constraintCreations.Add(conn.queryBuilder.CreateNullConstraint(etm.TableName, efm));
@@ -1540,7 +1560,10 @@ namespace Org.Reddragonit.Dbpro.Connections
                         extTables.Add(frm.ExternalTable);
                 }
                 foreach (string str in extTables)
-                    keys.Add(new ForeignKey(map, str));
+                {
+                    foreach (List<ForeignRelationMap> frms in map.RelatedFieldsForTable(str))
+                        keys.Add(new ForeignKey(map, str,frms[0].ID));
+                }
             }
             return keys;
         }
@@ -1549,7 +1572,7 @@ namespace Org.Reddragonit.Dbpro.Connections
         {
             foreach (ForeignKey fk in ExtractExpectedForeignKeys(conn))
             {
-                conn.ExecuteNonQuery(conn.queryBuilder.DropForeignKey(fk.InternalTable, fk.ExternalTable,fk.ExternalFields[0],fk.InternalFields[0]));
+                conn.ExecuteNonQuery(conn.queryBuilder.DropForeignKey(this.CorrectName(fk.InternalTable), this.CorrectName(fk.ExternalTable),this.CorrectName(fk.ExternalFields[0]),this.CorrectName(fk.InternalFields[0])));
             }
         }
 
