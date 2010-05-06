@@ -61,11 +61,12 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 			get
 			{
 				return "SELECT "+
+                    " UPPER(cols.COLUMN_NAME) field_name, " +
+                    " UPPER(cols.REFERENCED_TABLE_NAME) references_table, " +
 					" UPPER(cols.REFERENCED_COLUMN_NAME) references_field, "+
-					" UPPER(cols.REFERENCED_TABLE_NAME) references_table, "+
-					" UPPER(cols.COLUMN_NAME) field_name, "+
 					" UPPER(ref.UPDATE_RULE) 'on Update', "+
 					" UPPER(ref.DELETE_RULE) 'on Delete' "+
+                    " ref.CONSTRAINT_NAME "+
 					" FROM information_schema.KEY_COLUMN_USAGE cols, information_schema.REFERENTIAL_CONSTRAINTS ref "+
 					" WHERE ref.CONSTRAINT_SCHEMA = '"+((MySqlConnectionPool)pool).DbName+"' "+
 					" AND cols.CONSTRAINT_NAME<>'PRIMARY' "+

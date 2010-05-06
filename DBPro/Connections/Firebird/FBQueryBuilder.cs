@@ -76,7 +76,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 					" WHERE TRIM(rc.rdb$relation_name) = '{0}' "+
 					" AND TRIM(pidx.rdb$relation_name) = '{1}'"+
                     " AND TRIM(pseg.rdb$field_name) = '{2}'"+
-                    " AND TRIM(fseg.rdb$field_name) = '{3}"; }
+                    " AND TRIM(fseg.rdb$field_name) = '{3}'"; }
 		}
 		
 		internal override string DropForeignKey(string table, string tableName,string primaryField,string relatedField)
@@ -167,11 +167,12 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		protected override string SelectForeignKeysString {
 			get {
 				return "SELECT   "+
+                    "TRIM(fseg.rdb$field_name) AS FKColumnName,  " +
+                    "TRIM(pidx.rdb$relation_name) as PKTableName, " +
 					"TRIM(pseg.rdb$field_name) AS PKColumnName,   "+
-					"TRIM(pidx.rdb$relation_name) as PKTableName, "+
-					"TRIM(fseg.rdb$field_name) AS FKColumnName,  "+
 					"TRIM(actions.rdb$update_rule) as on_update, "+
-					"TRIM(actions.rdb$delete_rule) as on_delete  "+
+					"TRIM(actions.rdb$delete_rule) as on_delete,  "+
+                    "TRIM(rc.rdb$constraint_name) as conName "+
 					"FROM  "+
 					"rdb$relation_constraints rc  "+
 					"inner join rdb$indices fidx ON (rc.rdb$index_name = fidx.rdb$index_name AND rc.rdb$constraint_type = 'FOREIGN KEY')  "+

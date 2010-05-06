@@ -56,11 +56,13 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 				throw new Exception("Unable to use an Array value as a Primary Key");
 		}
 		
-		internal FieldMap(bool PrimaryKey,bool AutoGen,bool Nullable)
+		internal FieldMap(bool PrimaryKey,bool AutoGen,bool Nullable,bool isArray,Type objType)
 		{
 			_primaryKey=PrimaryKey;
 			_autogen=AutoGen;
 			_nullable=Nullable;
+            _isArray = isArray;
+            _objectType = objType;
 		}
 		
 		public override bool Equals(object obj)
