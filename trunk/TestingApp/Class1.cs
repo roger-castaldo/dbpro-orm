@@ -69,12 +69,12 @@ namespace TestingApp
             //t.Start();
             ConnectionPool pool = ConnectionPoolManager.GetConnection("Security");
             Console.WriteLine("Attempting to backup database...");
-            Stream fs; /*= new FileStream(".\\backuptesting.zip", FileMode.Create, FileAccess.Write, FileShare.None);
+            Stream fs= new FileStream(".\\backuptesting.zip", FileMode.Create, FileAccess.Write, FileShare.None);
             BackupManager.BackupDataToStream(pool, ref fs);
-            Console.WriteLine("Backup attempt completed successfully...");*/
-            fs = new FileStream(".\\backuptesting.zip", FileMode.Open, FileAccess.Read, FileShare.None);
+            Console.WriteLine("Backup attempt completed successfully...");
+            /*fs = new FileStream(".\\backuptesting.zip", FileMode.Open, FileAccess.Read, FileShare.None);
             Console.WriteLine("Attempting to restore database...");
-            BackupManager.RestoreDataFromStream(pool, ref fs);
+            BackupManager.RestoreDataFromStream(pool, ref fs);*/
             //Console.WriteLine("Waiting on secondary thread to complete...");
             //t.Join();
 			Console.WriteLine("Examine Diagnostics messages.");
