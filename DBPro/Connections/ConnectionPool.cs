@@ -1565,6 +1565,17 @@ namespace Org.Reddragonit.Dbpro.Connections
                         keys.Add(new ForeignKey(map, str,frms[0].ID));
                 }
             }
+            for (int x = 0; x < keys.Count; x++)
+            {
+                for (int y = x + 1; y < keys.Count; y++)
+                {
+                    if (keys[x].Equals(keys[y]))
+                    {
+                        keys.RemoveAt(y);
+                        y--;
+                    }
+                }
+            }
             return keys;
         }
 

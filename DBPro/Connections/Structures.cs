@@ -140,6 +140,26 @@ namespace Org.Reddragonit.Dbpro.Connections
                 }
 			}
 		}
+
+        public bool Equals(ForeignKey fk)
+        {
+            if ((_internalTableName != fk._internalTableName) ||
+                (_externalTableName != fk._externalTableName) ||
+                (_internalFields.Count!=fk._internalFields.Count) ||
+                (_externalFields.Count!=fk._externalFields.Count))
+                return false;
+            foreach(string str in _internalFields)
+            {
+                if (!fk._internalFields.Contains(str))
+                    return false;
+            }
+            foreach (string str in _externalFields)
+            {
+                if (!fk._externalFields.Contains(str))
+                    return false;
+            }
+            return true;
+        }
 	}
 	
 	internal struct Generator{
