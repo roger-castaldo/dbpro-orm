@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using Org.Reddragonit.Dbpro.Structure.Mapping;
 using System.Data;
 using Org.Reddragonit.Dbpro.Structure;
+using System.Collections;
 
 namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 {
@@ -76,27 +77,55 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             return _conn.CreateParameter(name, value);
         }
 
-        private List<IDbDataParameter> CorrectParameters(IDbDataParameter[] parameters)
+        private List<IDbDataParameter> CorrectParameters(IDbDataParameter[] parameters,ref string outputQuery)
         {
             List<IDbDataParameter> ret = new List<IDbDataParameter>();
             foreach (IDbDataParameter par in parameters)
             {
-                if (par.Value is Table)
+                System.Diagnostics.Debug.WriteLine(par.Value.GetType().ToString());
+                System.Diagnostics.Debug.WriteLine(par.Value.GetType().IsArray);
+                if (par.Value is IEnumerable)
                 {
-                    TableMap tm = ClassMapper.GetTableMap(par.Value.GetType());
-                    Table t = (Table)par.Value;
-                    foreach (InternalFieldMap ifm in tm.PrimaryKeys)
-                        ret.Add(_conn.CreateParameter(par.ParameterName+"_"+tm.GetClassFieldName(ifm),t.GetField(tm.GetClassFieldName(ifm))));
+                    string newPar = "";
+                    int cnt = 0;
+                    foreach (object obj in (IEnumerable)par.Value)
+                    {
+                        newPar += par.ParameterName + "_" + cnt.ToString()+", ";
+                        if (obj == null)
+                            newPar = newPar.Replace(par.ParameterName + "_" + cnt.ToString() + ", ", "NULL, ");
+                        else if (obj is Table)
+                        {
+                            TableMap tm = ClassMapper.GetTableMap(obj.GetType());
+                            if (tm.PrimaryKeys.Count == 1)
+                            {
+                                ret.Add(_conn.CreateParameter(par.ParameterName + "_" + cnt.ToString(), ((Table)obj).GetField(tm.PrimaryKeys[0].FieldName)));
+                            }
+                            else
+                                throw new Exception("Unable to handle arrayed parameter with complex primary key.");
+                        }
+                        else
+                            ret.Add(_conn.CreateParameter(par.ParameterName + "_" + cnt.ToString(), obj));
+                        cnt++;
+                    }
+                    outputQuery = outputQuery.Replace("****" + par.ParameterName + "****", newPar.Substring(0,newPar.Length-2));
+                }else{
+                    if (par.Value is Table)
+                    {
+                        TableMap tm = ClassMapper.GetTableMap(par.Value.GetType());
+                        Table t = (Table)par.Value;
+                        foreach (InternalFieldMap ifm in tm.PrimaryKeys)
+                            ret.Add(_conn.CreateParameter(par.ParameterName+"_"+tm.GetClassFieldName(ifm),t.GetField(tm.GetClassFieldName(ifm))));
+                    }
+                    else
+                        ret.Add(par);
                 }
-                else
-                    ret.Add(par);
             }
             return ret;
         }
 
-        private List<IDbDataParameter> CorrectParameters(List<IDbDataParameter> parameters)
+        private List<IDbDataParameter> CorrectParameters(List<IDbDataParameter> parameters,ref string outputQuery)
         {
-            return CorrectParameters(parameters.ToArray());
+            return CorrectParameters(parameters.ToArray(),ref outputQuery);
         }
 
         public void Execute()
@@ -113,7 +142,10 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             try
             {
                 if ((parameters != null) && (parameters.Length > 0))
-                    _conn.ExecuteQuery(_outputQuery, CorrectParameters(parameters));
+                {
+                    List<IDbDataParameter> pars = CorrectParameters(parameters, ref _outputQuery);
+                    _conn.ExecuteQuery(_outputQuery, pars);
+                }
                 else
                     _conn.ExecuteQuery(_outputQuery);
             }
@@ -142,7 +174,9 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 if (parameters != null)
                     pars.AddRange(parameters);
                 query = _conn.queryBuilder.SelectPaged(_outputQuery, ClassMapper.GetTableMap(primaryTable), ref pars, start, recordCount);
-                _conn.ExecuteQuery(query, CorrectParameters(pars));
+                List<IDbDataParameter> p = CorrectParameters(parameters, ref query);
+                _conn.ExecuteQuery(query, pars);
+                _conn.ExecuteQuery(query, p);
             }
             catch (Exception e)
             {
@@ -522,8 +556,42 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         {
                             case "NOT IN":
                             case "IN":
-                                //TODO: Need to implement code to handle all variations of using a table value, including if an arrayed parameter of tables is passed in for IN
-                                throw new Exception("Unable to handle IN conditions using entire tables at this time.");
+                                if (tm.PrimaryKeys.Count == 1)
+                                {
+                                    string list = "";
+                                    for (int x = fields[0] + condition.Split(' ').Length; x < conditionIndexes[index]; x++)
+                                    {
+                                        if (_tokenizer.Tokens[x].Type == TokenType.VARIABLE)
+                                        {
+                                            list += "****" + _tokenizer.Tokens[x].Value + "**** ";
+                                        }
+                                        else
+                                        {
+                                            list += _tokenizer.Tokens[x].Value + " ";
+                                        }
+                                    }
+                                    if (!list.StartsWith("("))
+                                    {
+                                        list = "(" + list + ")";
+                                    }
+                                    int cntr = 0;
+                                    string field1 = tmpFields1[0];
+                                    foreach (InternalFieldMap ifm in tm.PrimaryKeys)
+                                    {
+                                        while (!field1.Contains(_conn.Pool.CorrectName(ifm.FieldName)) && (cntr < tmpFields1.Count))
+                                        {
+                                            field1 = tmpFields1[cntr];
+                                            cntr++;
+                                        }
+                                    }
+                                    addition+=string.Format(conditionTemplate,field1,list);
+                                }
+                                else
+                                {
+                                    //TODO: Need to implement code to handle all variations of using a table value, including if an arrayed parameter of tables is passed in for IN
+                                    System.Diagnostics.Debug.WriteLine("Current query: " + ret);
+                                    throw new Exception("Unable to handle IN conditions using entire tables with complex primary keys at this time.");
+                                }
                                 break;
                             case "=":
                             case "<":

@@ -57,7 +57,8 @@ namespace TestingApp.Structure
 		{
 			List<SecurityRight> ret = new List<SecurityRight>();
 			Connection c = conn;
-			ret.AddRange((SecurityRight[])c.SelectAll(typeof(SecurityRight)).ToArray());
+            foreach (SecurityRight sr in c.SelectAll(typeof(SecurityRight)))
+                ret.Add(sr);
 			c.CloseConnection();
 			return ret;
 		}

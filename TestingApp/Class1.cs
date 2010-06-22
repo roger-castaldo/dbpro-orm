@@ -27,8 +27,8 @@ namespace TestingApp
 		[STAThread]
 		static void Main(string[] args)
 		{
-			/*Console.WriteLine("Selecting from a Virtual Table...");
             Group grp = new Group();
+			/*Console.WriteLine("Selecting from a Virtual Table...");
             grp.Name = "test";
             Group.Save(grp);
 			User u = User.Instance();
@@ -44,13 +44,13 @@ namespace TestingApp
 			List<object> tmp =vtb.SelectVirtualTable(typeof(UserGroupList));
 			foreach (UserGroupList ugl in tmp){
 				Console.WriteLine("FirstName: "+ugl.FirstName+"\tLastName: "+ugl.LastName+"\tGroup: "+ugl.GroupName);
-			}
-			ClassQuery cq =new ClassQuery("TestingApp.Structure","SELECT u.FirstName||' '||u.LastName AS PersonName,u.UserGroup FROM User u WHERE u.UserGroup.Rights.Name='Roger'");
-            cq.Execute();
+			}*/
+			ClassQuery cq =new ClassQuery("TestingApp.Structure","SELECT u.FirstName||' '||u.LastName AS PersonName,u.UserGroup FROM User u WHERE u.UserGroup IN @Groups");
+            cq.Execute(new IDbDataParameter[]{cq.CreateParameter("@Groups",Group.LoadAllGroups())});
             while (cq.Read()){
                 grp = (Group)cq[1];
                 Console.WriteLine("Person: " + cq[0].ToString() + " in Group: " + grp.Name);
-            }*/
+            }
             
             //XmlDocument doc = new XmlDocument();
             //string xml = ReadEmbeddedResource("TestingApp.CompressionTester.xml");
@@ -67,7 +67,7 @@ namespace TestingApp
 
             //Thread t = new Thread(new ThreadStart(SecondaryThreadStart));
             //t.Start();
-            ConnectionPool pool = ConnectionPoolManager.GetConnection("Security");
+            /*ConnectionPool pool = ConnectionPoolManager.GetConnection("Security");
             Console.WriteLine("Attempting to backup database...");
             Stream fs= new FileStream(".\\backuptesting.zip", FileMode.Create, FileAccess.Write, FileShare.None);
             BackupManager.BackupDataToStream(pool, ref fs);
@@ -76,7 +76,7 @@ namespace TestingApp
             Console.WriteLine("Attempting to restore database...");
             BackupManager.RestoreDataFromStream(pool, ref fs);*/
             //Console.WriteLine("Waiting on secondary thread to complete...");
-            //t.Join();
+            //t.Join();*/
 			Console.WriteLine("Examine Diagnostics messages.");
 			Console.ReadLine();
 		}
