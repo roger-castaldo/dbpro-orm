@@ -64,7 +64,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			return base.Equals(obj)&&(ifm.FieldName==FieldName)&&(ifm.FieldLength==FieldLength)&&(ifm.FieldType==FieldType);
 		}
 		
-		public InternalFieldMap(int fieldLength, string fieldName, FieldType fieldType,bool primaryKey, bool autogen, bool nullable,bool versionable) : base(primaryKey,autogen,nullable,versionable)
+		public InternalFieldMap(int fieldLength, string fieldName, FieldType fieldType,bool primaryKey, bool autogen, bool nullable,bool versionable,Type objectType) : base(primaryKey,autogen,nullable,versionable,objectType)
 		{
 			this._fieldLength = fieldLength;
 			this._fieldName = fieldName;

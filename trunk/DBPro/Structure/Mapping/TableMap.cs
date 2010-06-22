@@ -589,7 +589,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 									if (fm.PrimaryKey&&(fm is InternalFieldMap))
 									{
 										InternalFieldMap ifm = (InternalFieldMap)fm;
-										ret.Add(new InternalFieldMap(ifm.FieldLength,Utility.CorrectName(_pool,efm.AddOnName+"_"+ifm.FieldName),ifm.FieldType,false,false,true,efm.Versionable));
+										ret.Add(new InternalFieldMap(ifm.FieldLength,Utility.CorrectName(_pool,efm.AddOnName+"_"+ifm.FieldName),ifm.FieldType,false,false,true,efm.Versionable,ifm.ObjectType));
                                     }
                                     else if (fm.PrimaryKey && (fm is ExternalFieldMap))
                                     {
@@ -597,7 +597,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
                                         TableMap tm = ClassMapper.GetTableMap(subEFM.Type);
                                         foreach (InternalFieldMap subFM in tm.PrimaryKeys)
                                         {
-                                            ret.Add(new InternalFieldMap(subFM.FieldLength, Utility.CorrectName(_pool, efm.AddOnName + "_" + subEFM.AddOnName + "_" + subFM.FieldName), subFM.FieldType, false, false, true, subFM.Versionable));
+                                            ret.Add(new InternalFieldMap(subFM.FieldLength, Utility.CorrectName(_pool, efm.AddOnName + "_" + subEFM.AddOnName + "_" + subFM.FieldName), subFM.FieldType, false, false, true, subFM.Versionable,subFM.ObjectType));
                                         }
                                     }
 								}
@@ -605,7 +605,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 								TableMap tm = ClassMapper.GetTableMap(((ExternalFieldMap)f).Type);
 								foreach (InternalFieldMap fm in tm.PrimaryKeys)
 								{
-									ret.Add(new InternalFieldMap(fm.FieldLength, Utility.CorrectName(_pool,efm.AddOnName+"_"+fm.FieldName), fm.FieldType, efm.PrimaryKey, false, efm.Nullable,efm.Versionable));
+									ret.Add(new InternalFieldMap(fm.FieldLength, Utility.CorrectName(_pool,efm.AddOnName+"_"+fm.FieldName), fm.FieldType, efm.PrimaryKey, false, efm.Nullable,efm.Versionable,fm.ObjectType));
 								}
 							}
 						}
