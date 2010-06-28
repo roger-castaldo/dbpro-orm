@@ -13,6 +13,7 @@ using System.Text.RegularExpressions;
 using System.Reflection;
 using Org.Reddragonit.Dbpro.Structure.Mapping;
 using System.Threading;
+using System.Data;
 
 namespace Org.Reddragonit.Dbpro
 {
@@ -177,6 +178,28 @@ namespace Org.Reddragonit.Dbpro
         internal static void Release(object obj)
         {
             Monitor.Exit(obj);
+        }
+
+        internal static bool IsParameterNull(IDbDataParameter par)
+        {
+            return (par.Value == null ||
+                        ((par is Npgsql.NpgsqlParameter) && (par.Value.ToString().Length == 0))
+                        || ((par is FirebirdSql.Data.FirebirdClient.FbParameter) && (par.Value.ToString() == "{}"))
+                        ||(DBNull.Value.Equals(par.Value))
+                       );
+        }
+
+        internal static string StripNullParameter(string outputQuery, string ParameterName)
+        {
+            outputQuery = outputQuery.Replace(">= " + ParameterName + " ", "IS NULL ");
+            outputQuery = outputQuery.Replace("<= " + ParameterName + " ", "IS NULL ");
+            outputQuery = outputQuery.Replace("= " + ParameterName + " ", "IS NULL ");
+            outputQuery = outputQuery.Replace("<> " + ParameterName + " ", "IS NOT NULL ");
+            outputQuery = outputQuery.Replace(ParameterName + ",", "NULL,");
+            outputQuery = outputQuery.Replace(ParameterName + ")", "NULL)");
+            outputQuery = outputQuery.Replace(" " + ParameterName + " IS NULL", " NULL IS NULL");
+            outputQuery = outputQuery.Replace("(" + ParameterName + " IS NULL", "(NULL IS NULL");
+            return outputQuery;
         }
 
 	}

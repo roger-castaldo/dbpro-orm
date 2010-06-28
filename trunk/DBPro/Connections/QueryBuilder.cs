@@ -507,7 +507,10 @@ namespace Org.Reddragonit.Dbpro.Connections
                                     if (fieldName == null)
                                         fieldName = ifm.FieldName;
                                     values += conn.Pool.CorrectName(efm.AddOnName + "_" + fieldName) + ",";
-                                    insertParameters.Add(conn.CreateParameter(conn.Pool.CorrectName(CreateParameterName(efm.AddOnName + "_" + fieldName)), val, ifm.FieldType, ifm.FieldLength));
+                                    if (ifm.FieldType==FieldType.ENUM)
+                                        insertParameters.Add(conn.CreateParameter(conn.Pool.CorrectName(CreateParameterName(efm.AddOnName + "_" + fieldName)), conn.Pool.GetEnumID(ifm.ObjectType,val.ToString())));
+                                    else
+                                        insertParameters.Add(conn.CreateParameter(conn.Pool.CorrectName(CreateParameterName(efm.AddOnName + "_" + fieldName)), val, ifm.FieldType, ifm.FieldLength));
                                     parameters += "," + conn.Pool.CorrectName(CreateParameterName(efm.AddOnName + "_" + fieldName));
                                 }
                             }
@@ -587,7 +590,10 @@ namespace Org.Reddragonit.Dbpro.Connections
                                     if (fieldName == null)
                                         fieldName = ifm.FieldName;
 									values += conn.Pool.CorrectName(efm.AddOnName+"_"+fieldName) + ",";
-									insertParameters.Add(conn.CreateParameter(conn.Pool.CorrectName(CreateParameterName(efm.AddOnName+"_"+fieldName)), val,ifm.FieldType,ifm.FieldLength));
+                                    if (ifm.FieldType == FieldType.ENUM)
+                                        insertParameters.Add(conn.CreateParameter(conn.Pool.CorrectName(CreateParameterName(efm.AddOnName + "_" + fieldName)), conn.Pool.GetEnumID(ifm.ObjectType, val.ToString())));
+                                    else
+                                        insertParameters.Add(conn.CreateParameter(conn.Pool.CorrectName(CreateParameterName(efm.AddOnName + "_" + fieldName)), val, ifm.FieldType, ifm.FieldLength));
 									parameters+=","+conn.Pool.CorrectName(CreateParameterName(efm.AddOnName+"_"+fieldName));
 									whereConditions+=" AND "+conn.Pool.CorrectName(efm.AddOnName+"_"+fieldName)+" =  "+conn.Pool.CorrectName(CreateParameterName(efm.AddOnName+"_"+fieldName));
 								}
@@ -1023,6 +1029,51 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
 			return true;
 		}
+
+        internal void AppendJoinsForParameter(string field,ref string joins,TableMap baseMap)
+        {
+            TableMap map = baseMap;
+            string alias = "main_table";
+            if (field.Contains("."))
+            {
+                while (field.Contains("."))
+                {
+                    ExternalFieldMap efm = (ExternalFieldMap)map[field.Substring(0, field.IndexOf("."))];
+                    TableMap eMap = ClassMapper.GetTableMap(efm.Type);
+                    string className = field.Substring(0, field.IndexOf("."));
+                    string innerJoin = " INNER JOIN ";
+                    if (efm.Nullable)
+                        innerJoin = " LEFT JOIN ";
+                    string tbl = _conn.queryBuilder.SelectAll(efm.Type, null);
+                    if (efm.IsArray)
+                    {
+                        innerJoin += _conn.Pool.CorrectName(map.Name + "_" + eMap.Name) + " " + alias + "_intermediate_" + className + " ON ";
+                        foreach (InternalFieldMap ifm in map.PrimaryKeys)
+                            innerJoin += " " + alias + "." + _conn.Pool.CorrectName(ifm.FieldName) + " = " + alias + "_intermediate_" + className + "." + _conn.Pool.CorrectName("PARENT_" + ifm.FieldName) + " AND ";
+                        innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
+                        if (!joins.Contains(innerJoin))
+                            joins+=innerJoin;
+                        innerJoin = " INNER JOIN (" + tbl + ") " + alias + "_" + className + " ON ";
+                        foreach (InternalFieldMap ifm in eMap.PrimaryKeys)
+                            innerJoin += " " + alias + "_intermediate_" + className + "." + _conn.Pool.CorrectName("CHILD_" + ifm.FieldName) + " = " + alias + "_" + className + "." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
+                        innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
+                    }
+                    else
+                    {
+                        innerJoin += "(" + tbl + ") " + alias + "_" + className + " ON ";
+                        foreach (InternalFieldMap ifm in eMap.PrimaryKeys)
+                            innerJoin += " " + alias + "." + _conn.Pool.CorrectName(efm.AddOnName + "_" + ifm.FieldName) + " = " + alias + "_" + className + "." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
+                        innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
+                    }
+                    alias += "_" + field.Substring(0, field.IndexOf("."));
+                    field = field.Substring(field.IndexOf(".") + 1);
+                    if (!joins.Contains(innerJoin))
+                        joins+=innerJoin;
+                    map = eMap;
+                }
+
+            }
+        }
 		
 		internal string SelectAll(System.Type type,string[] OrderByFields)
 		{
@@ -1161,7 +1212,11 @@ namespace Org.Reddragonit.Dbpro.Connections
 					int parCount=0;
 					foreach (SelectParameter par in parameters)
 					{
-						appended+="("+par.ConstructString(map,conn,this,ref queryParameters,ref parCount)+") AND ";
+                        if (par is CompareParameter)
+                        {
+                            AppendJoinsForParameter(((CompareParameter)par).FieldName, ref joins, map);
+                        }
+                        appended+="("+par.ConstructString(map,conn,this,ref queryParameters,ref parCount)+") AND ";
 					}
 					appended=appended.Substring(0,appended.Length-4);
 					if (!startAnd)

@@ -802,13 +802,9 @@ namespace Org.Reddragonit.Dbpro.Connections
 				List<IDbDataParameter> pars = new List<IDbDataParameter>();
 				foreach (IDbDataParameter par in parameters)
 				{
-					if (par.Value==null||
-					    ((par is Npgsql.NpgsqlParameter)&&(par.Value.ToString().Length==0))
-					   )
+					if (Utility.IsParameterNull(par))
 					{
-						ret=ret.Replace("= "+par.ParameterName+" ","IS NULL ");
-						ret=ret.Replace(par.ParameterName+",","NULL,");
-						ret=ret.Replace(par.ParameterName+")","NULL)");
+						ret = Utility.StripNullParameter(ret,par.ParameterName);
 					}else
 						pars.Add(par);
 				}

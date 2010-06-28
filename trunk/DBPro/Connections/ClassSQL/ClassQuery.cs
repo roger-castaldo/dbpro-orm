@@ -74,7 +74,23 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
         #region ConnectionFunctions
         public IDbDataParameter CreateParameter(string name, object value)
         {
-            return _conn.CreateParameter(name, value);
+            if ((value != null) && (value.GetType().IsEnum))
+            {
+                if ((value.GetType().IsArray) || (value is IEnumerable))
+                {
+                    ArrayList tmp = new ArrayList();
+                    foreach (Enum en in (IEnumerable)value)
+                    {
+                        tmp.Add(_conn.Pool.GetEnumID(value.GetType(), value.ToString()));
+                    }
+                    return _conn.CreateParameter(name, tmp);
+                }
+                else
+                    return _conn.CreateParameter(name, _conn.Pool.GetEnumID(value.GetType(), value.ToString()));
+            }else if (value==null)
+                return _conn.CreateParameter(name, DBNull.Value);
+            else
+                return _conn.CreateParameter(name, value);
         }
 
         private List<IDbDataParameter> CorrectParameters(IDbDataParameter[] parameters,ref string outputQuery)
@@ -84,7 +100,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             {
                 System.Diagnostics.Debug.WriteLine(par.Value.GetType().ToString());
                 System.Diagnostics.Debug.WriteLine(par.Value.GetType().IsArray);
-                if (par.Value is IEnumerable)
+                if ((par.Value is IEnumerable) && !(par.Value is string))
                 {
                     string newPar = "";
                     int cnt = 0;
@@ -113,10 +129,23 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     {
                         TableMap tm = ClassMapper.GetTableMap(par.Value.GetType());
                         Table t = (Table)par.Value;
-                        foreach (InternalFieldMap ifm in tm.PrimaryKeys)
-                            ret.Add(_conn.CreateParameter(par.ParameterName+"_"+tm.GetClassFieldName(ifm),t.GetField(tm.GetClassFieldName(ifm))));
+                        if (t == null)
+                        {
+                            foreach (InternalFieldMap ifm in tm.PrimaryKeys)
+                            {
+                                outputQuery = Utility.StripNullParameter(outputQuery, par.ParameterName + "_" + tm.GetClassFieldName(ifm));
+                            }
+                        }
+                        else
+                        {
+                            foreach (InternalFieldMap ifm in tm.PrimaryKeys)
+                                ret.Add(_conn.CreateParameter(par.ParameterName + "_" + tm.GetClassFieldName(ifm), t.GetField(tm.GetClassFieldName(ifm))));
+                        }
                     }
-                    else
+                    else if (Utility.IsParameterNull(par))
+                    {
+                        outputQuery = Utility.StripNullParameter(outputQuery, par.ParameterName);
+                    }else
                         ret.Add(par);
                 }
             }
@@ -960,61 +989,118 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 				}
 				
 			}
-			if (map[field] is ExternalFieldMap)
-			{
-				ExternalFieldMap efm = (ExternalFieldMap)baseMap[field];
-				TableMap eMap = ClassMapper.GetTableMap(efm.Type);
-				string className = field;
-				string innerJoin = " INNER JOIN ";
-				if (efm.Nullable)
-					innerJoin = " LEFT JOIN ";
-				string tbl = _conn.queryBuilder.SelectAll(efm.Type,null);
-				List<string> fields = new List<string>();
-				string fieldString = tbl.Substring(tbl.IndexOf("SELECT") + "SELECT".Length);
-				fieldString = fieldString.Substring(0, fieldString.IndexOf("FROM"));
-				foreach (string str in fieldString.Split(','))
-				{
-					if (str.Length > 0)
-						fields.Add(str.Substring(str.LastIndexOf(".") + 1));
-				}
-				if (!fieldLists.ContainsKey(origAlias+"."+origField))
-					fieldLists.Add(origAlias + "." + origField, fields);
-				if (efm.IsArray)
-				{
-					innerJoin += _conn.Pool.CorrectName(map.Name + "_" + eMap.Name) + " " + alias + "_intermediate_" + className + " ON ";
-					foreach (InternalFieldMap ifm in baseMap.PrimaryKeys)
-						innerJoin += " " + alias + "." + _conn.Pool.CorrectName(ifm.FieldName) + " = " + alias + "_intermediate_" + className + "." + _conn.Pool.CorrectName("PARENT_" + ifm.FieldName) + " AND ";
-					innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
-                    if (!joins.Contains(innerJoin))
-                        joins.Add(innerJoin);
-                    innerJoin = " INNER JOIN (" + tbl + ") " + alias + "_" + className + " ON ";
-					foreach (InternalFieldMap ifm in eMap.PrimaryKeys)
-						innerJoin += " " + alias + "_intermediate_" + className + "." + _conn.Pool.CorrectName("CHILD_" + ifm.FieldName) + " = " + alias + "_" + className + "." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
-					innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
-				}
-				else
-				{
-					innerJoin += "(" + tbl + ") " + alias + "_" + className + " ON ";
-					foreach (InternalFieldMap ifm in eMap.PrimaryKeys)
-						innerJoin += " " + alias + "." + _conn.Pool.CorrectName(efm.AddOnName + "_" + ifm.FieldName) + " = " + alias + "_" + className + "." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
-					innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
-				}
-				if (!joins.Contains(innerJoin))
-					joins.Add(innerJoin);
-			}
-            if (map.IsParentClassField(field))
+            if (field == "*")
             {
-                TableMap parentMap = map;
-                while (parentMap.ParentType != null)
+                foreach (Org.Reddragonit.Dbpro.Structure.Mapping.TableMap.FieldNamePair fnp in map.FieldNamePairs)
                 {
-                    parentMap = ClassMapper.GetTableMap(map.ParentType);
-                    string innerJoin = " INNER JOIN " + _conn.Pool.CorrectName(parentMap.Name) + " " + alias + "_parent ON ";
-                    foreach (InternalFieldMap ifm in parentMap.PrimaryKeys)
-                        innerJoin += alias + "." + _conn.Pool.CorrectName(ifm.FieldName) + " = " + alias + "_parent." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
-                    innerJoin = innerJoin.Substring(0, innerJoin.Length - 4);
+                    if (map[fnp] is ExternalFieldMap)
+                    {
+                        ExternalFieldMap efm = (ExternalFieldMap)baseMap[field];
+                        TableMap eMap = ClassMapper.GetTableMap(efm.Type);
+                        string className = field;
+                        string innerJoin = " INNER JOIN ";
+                        if (efm.Nullable)
+                            innerJoin = " LEFT JOIN ";
+                        string tbl = _conn.queryBuilder.SelectAll(efm.Type, null);
+                        string fieldString = tbl.Substring(tbl.IndexOf("SELECT") + "SELECT".Length);
+                        if (efm.IsArray)
+                        {
+                            innerJoin += _conn.Pool.CorrectName(map.Name + "_" + eMap.Name) + " " + alias + "_intermediate_" + className + " ON ";
+                            foreach (InternalFieldMap ifm in baseMap.PrimaryKeys)
+                                innerJoin += " " + alias + "." + _conn.Pool.CorrectName(ifm.FieldName) + " = " + alias + "_intermediate_" + className + "." + _conn.Pool.CorrectName("PARENT_" + ifm.FieldName) + " AND ";
+                            innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
+                            if (!joins.Contains(innerJoin))
+                                joins.Add(innerJoin);
+                            innerJoin = " INNER JOIN (" + tbl + ") " + alias + "_" + className + " ON ";
+                            foreach (InternalFieldMap ifm in eMap.PrimaryKeys)
+                                innerJoin += " " + alias + "_intermediate_" + className + "." + _conn.Pool.CorrectName("CHILD_" + ifm.FieldName) + " = " + alias + "_" + className + "." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
+                            innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
+                        }
+                        else
+                        {
+                            innerJoin += "(" + tbl + ") " + alias + "_" + className + " ON ";
+                            foreach (InternalFieldMap ifm in eMap.PrimaryKeys)
+                                innerJoin += " " + alias + "." + _conn.Pool.CorrectName(efm.AddOnName + "_" + ifm.FieldName) + " = " + alias + "_" + className + "." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
+                            innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
+                        }
+                        if (!joins.Contains(innerJoin))
+                            joins.Add(innerJoin);
+                    }
+                    else if (map.IsParentClassField(fnp.ClassFieldName))
+                    {
+                        TableMap parentMap = map;
+                        while (parentMap.ParentType != null)
+                        {
+                            parentMap = ClassMapper.GetTableMap(map.ParentType);
+                            string innerJoin = " INNER JOIN " + _conn.Pool.CorrectName(parentMap.Name) + " " + alias + "_parent ON ";
+                            foreach (InternalFieldMap ifm in parentMap.PrimaryKeys)
+                                innerJoin += alias + "." + _conn.Pool.CorrectName(ifm.FieldName) + " = " + alias + "_parent." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
+                            innerJoin = innerJoin.Substring(0, innerJoin.Length - 4);
+                            if (!joins.Contains(innerJoin))
+                                joins.Add(innerJoin);
+                            alias += "_parent";
+                        }
+                    }
+                }
+            }
+            else
+            {
+                if (map[field] is ExternalFieldMap)
+                {
+                    ExternalFieldMap efm = (ExternalFieldMap)baseMap[field];
+                    TableMap eMap = ClassMapper.GetTableMap(efm.Type);
+                    string className = field;
+                    string innerJoin = " INNER JOIN ";
+                    if (efm.Nullable)
+                        innerJoin = " LEFT JOIN ";
+                    string tbl = _conn.queryBuilder.SelectAll(efm.Type, null);
+                    List<string> fields = new List<string>();
+                    string fieldString = tbl.Substring(tbl.IndexOf("SELECT") + "SELECT".Length);
+                    fieldString = fieldString.Substring(0, fieldString.IndexOf("FROM"));
+                    foreach (string str in fieldString.Split(','))
+                    {
+                        if (str.Length > 0)
+                            fields.Add(str.Substring(str.LastIndexOf(".") + 1));
+                    }
+                    if (!fieldLists.ContainsKey(origAlias + "." + origField))
+                        fieldLists.Add(origAlias + "." + origField, fields);
+                    if (efm.IsArray)
+                    {
+                        innerJoin += _conn.Pool.CorrectName(map.Name + "_" + eMap.Name) + " " + alias + "_intermediate_" + className + " ON ";
+                        foreach (InternalFieldMap ifm in baseMap.PrimaryKeys)
+                            innerJoin += " " + alias + "." + _conn.Pool.CorrectName(ifm.FieldName) + " = " + alias + "_intermediate_" + className + "." + _conn.Pool.CorrectName("PARENT_" + ifm.FieldName) + " AND ";
+                        innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
+                        if (!joins.Contains(innerJoin))
+                            joins.Add(innerJoin);
+                        innerJoin = " INNER JOIN (" + tbl + ") " + alias + "_" + className + " ON ";
+                        foreach (InternalFieldMap ifm in eMap.PrimaryKeys)
+                            innerJoin += " " + alias + "_intermediate_" + className + "." + _conn.Pool.CorrectName("CHILD_" + ifm.FieldName) + " = " + alias + "_" + className + "." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
+                        innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
+                    }
+                    else
+                    {
+                        innerJoin += "(" + tbl + ") " + alias + "_" + className + " ON ";
+                        foreach (InternalFieldMap ifm in eMap.PrimaryKeys)
+                            innerJoin += " " + alias + "." + _conn.Pool.CorrectName(efm.AddOnName + "_" + ifm.FieldName) + " = " + alias + "_" + className + "." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
+                        innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
+                    }
                     if (!joins.Contains(innerJoin))
                         joins.Add(innerJoin);
-                    alias += "_parent";
+                }
+                if (map.IsParentClassField(field))
+                {
+                    TableMap parentMap = map;
+                    while (parentMap.ParentType != null)
+                    {
+                        parentMap = ClassMapper.GetTableMap(map.ParentType);
+                        string innerJoin = " INNER JOIN " + _conn.Pool.CorrectName(parentMap.Name) + " " + alias + "_parent ON ";
+                        foreach (InternalFieldMap ifm in parentMap.PrimaryKeys)
+                            innerJoin += alias + "." + _conn.Pool.CorrectName(ifm.FieldName) + " = " + alias + "_parent." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
+                        innerJoin = innerJoin.Substring(0, innerJoin.Length - 4);
+                        if (!joins.Contains(innerJoin))
+                            joins.Add(innerJoin);
+                        alias += "_parent";
+                    }
                 }
             }
 			return joins;
