@@ -167,7 +167,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 			while ( !_exit ) {
 				if (
 					isWhiteSpace( currentCode() )
-					|| isOperatorChar( currentCode() )
+					|| isOperatorChar( currentCode())
 					|| currentCode() == 44 // ,
 					|| currentCode() == 40 // (
 					|| currentCode() == 41 // )
@@ -175,6 +175,11 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 					break;
 				}
 				name += ch;
+                if ((ch == ".") && (preview() == '*'))
+                {
+                    next();
+                    name += ch;
+                }
 				next();
 			}
 			// check if it is a keyword:

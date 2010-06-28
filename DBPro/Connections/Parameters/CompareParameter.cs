@@ -46,31 +46,52 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
 			get{return false;}
 		}
 
-        private FieldNamePair? LocateFieldNamePair(TableMap map,out bool ClassBased,out bool isExternal)
+        private FieldNamePair? LocateFieldNamePair(string fieldName,TableMap map,out bool ClassBased,out bool isExternal,out TableMap newMap,out string alias)
         {
+            FieldNamePair? ret = null;
             ClassBased = false;
             isExternal = false;
-            FieldNamePair? ret = null;
-            foreach (FieldNamePair f in map.FieldNamePairs)
+            newMap = null;
+            alias = null;
+            if (fieldName.Contains("."))
             {
-                if (f.ClassFieldName == FieldName)
+                string newField = fieldName.Substring(0, fieldName.IndexOf("."));
+                foreach (FieldNamePair f in map.FieldNamePairs)
                 {
-                    isExternal = map[f] is ExternalFieldMap;
-                    ClassBased = true;
-                    ret = f;
-                    break;
+                    if (f.ClassFieldName == newField)
+                    {
+                        ret = LocateFieldNamePair(fieldName.Substring(fieldName.IndexOf(".") + 1), ClassMapper.GetTableMap(((ExternalFieldMap)map[f]).ObjectType), out ClassBased, out isExternal, out newMap, out alias);
+                        break;
+                    }
                 }
-                else if (f.TableFieldName == FieldName)
-                {
-                    isExternal = map[f] is ExternalFieldMap;
-                    ret = f;
-                    break;
-                }
+                alias = fieldName.Substring(0, fieldName.IndexOf("."))+((alias==null) ? "" : "_"+alias);
             }
-            if (!ret.HasValue)
+            else
             {
-                if (map.ParentType != null)
-                    ret = LocateFieldNamePair(ClassMapper.GetTableMap(map.ParentType), out ClassBased, out isExternal);
+                newMap = map;
+                ClassBased = false;
+                isExternal = false;
+                foreach (FieldNamePair f in map.FieldNamePairs)
+                {
+                    if (f.ClassFieldName == fieldName)
+                    {
+                        isExternal = map[f] is ExternalFieldMap;
+                        ClassBased = true;
+                        ret = f;
+                        break;
+                    }
+                    else if (f.TableFieldName == fieldName)
+                    {
+                        isExternal = map[f] is ExternalFieldMap;
+                        ret = f;
+                        break;
+                    }
+                }
+                if (!ret.HasValue)
+                {
+                    if (map.ParentType != null)
+                        ret = LocateFieldNamePair(fieldName,ClassMapper.GetTableMap(map.ParentType), out ClassBased, out isExternal,out newMap,out alias);
+                }
             }
             return ret;
         }
@@ -84,13 +105,17 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
             int fieldLength = 0;
             bool isExternal = false;
             bool isClassBased=false;
-            FieldNamePair? fnp = LocateFieldNamePair(map, out isClassBased, out isExternal);
+            TableMap newMap;
+            string alias = "";
+            FieldNamePair? fnp = LocateFieldNamePair(FieldName,map, out isClassBased, out isExternal,out newMap,out alias);
             found = fnp.HasValue;
+            if ((alias != null) && (alias.Length > 0))
+                alias = "main_table_" + alias+".";
             if (isExternal)
             {
                 if (found)
                 {
-                    ExternalFieldMap efm = (ExternalFieldMap)map[fnp.Value];
+                    ExternalFieldMap efm = (ExternalFieldMap)newMap[fnp.Value];
                     if (efm == null)
                     {
                         TableMap m = ClassMapper.GetTableMap(map.ParentType);
@@ -106,7 +131,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                     TableMap relatedMap = ClassMapper.GetTableMap(efm.Type);
                     foreach (InternalFieldMap ifm in relatedMap.PrimaryKeys)
                     {
-                        ret += " AND " + conn.Pool.CorrectName(efm.AddOnName + "_" + ifm.FieldName) + " " + ComparatorString + " ";
+                        ret += " AND " + alias + conn.Pool.CorrectName(efm.AddOnName + "_" + ifm.FieldName) + " " + ComparatorString + " ";
                         type = ifm.FieldType;
                         _objType = ifm.ObjectType;
                         fieldLength = ifm.FieldLength;
@@ -142,11 +167,10 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
             {
                 if (fnp.HasValue)
                 {
-                    InternalFieldMap ifm = (InternalFieldMap)map[fnp.Value];
+                    InternalFieldMap ifm = (InternalFieldMap)newMap[fnp.Value];
                     if (ifm == null)
                     {
-
-                        TableMap m = ClassMapper.GetTableMap(map.ParentType);
+                        TableMap m = ClassMapper.GetTableMap(newMap.ParentType);
                         while (m[fnp.Value] == null)
                         {
                             if (m.ParentType != null)
@@ -156,7 +180,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                         }
                         ifm = (InternalFieldMap)m[fnp.Value];
                     }
-                    ret = conn.Pool.CorrectName(fnp.Value.TableFieldName) + " ";
+                    ret = alias+conn.Pool.CorrectName(fnp.Value.TableFieldName) + " ";
                     type = ifm.FieldType;
                     _objType = ifm.ObjectType;
                     fieldLength = ifm.FieldLength;
