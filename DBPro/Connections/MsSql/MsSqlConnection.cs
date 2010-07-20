@@ -106,7 +106,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 				                         "ON "+map.TableName+" INSTEAD OF INSERT\n",
 				                         "AS "+
 				                         "BEGIN SET NOCOUNT ON;\n"+
-				                         "INSERT INTO "+map.TableName+" SELECT GETDATE()"+fields.Replace(",",",tbl.")+" from INSERTED ins,"+map.TableName+" tbl WHERE "+primarys+";\n"+
+                                         "INSERT INTO " + map.TableName + "(" + pool.CorrectName(field.FieldName) + fields + ") SELECT GETDATE()" + fields.Replace(",", ",tbl.") + " from INSERTED ins;\n" +
 				                         "END"));
 			}else if (field.Type.ToUpper().Contains("INT")){
 				if (map.PrimaryKeys.Count==1)
@@ -133,12 +133,33 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 					code+=queryFields.Substring(4)+");\n";
 					code+="IF ("+pool.CorrectName(queryBuilder.CreateParameterName(field.FieldName))+" is NULL)\n";
 					code+="\tSET "+pool.CorrectName(queryBuilder.CreateParameterName(field.FieldName))+" = -1;\n";
-					code+="INSERT INTO "+map.TableName+" SELECT "+pool.CorrectName(queryBuilder.CreateParameterName(field.FieldName))+"+1"+fields.Replace(",",",tbl.")+" from INSERTED ins,"+map.TableName+" tbl WHERE "+primarys+";\n";
+					code+="INSERT INTO "+map.TableName+"("+pool.CorrectName(field.FieldName)+fields+") SELECT "+pool.CorrectName(queryBuilder.CreateParameterName(field.FieldName))+"+1"+fields.Replace(",",",tbl.")+" from INSERTED ins,"+map.TableName+" tbl WHERE "+primarys+";\n";
 					code+="END";
 					triggers.Add(new Trigger(pool.CorrectName("TRIG_INSERT_"+map.TableName),"ON "+map.TableName+" INSTEAD OF INSERT\n",code));
 				}
-			}else
-				throw new Exception("Unable to create autogenerator for non date or digit type.");
+            }
+            else if (field.Type.ToUpper().Contains("VARCHAR")){
+                string code = "AS \n";
+                code += "DECLARE @IDVAL VARCHAR(38),\n" +
+                "@cnt BIGINT;\n" +
+                "SET @cnt = 1;\n" +
+                "WHILE (@cnt>0)\n" +
+                "BEGIN\n" +
+                "	SET @IDVAL = (SELECT [dbo].[Org_Reddragonit_Dbpro_Connections_MsSql_GeneateUniqueID] (\n" +
+                "		   CEILING(RAND( (DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()) )*((DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()))*(Year(GetDate())*Month(GetDate())*Day(GetDate())*RAND()))\n" +
+                "		  ,CEILING(RAND( (DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()) )*((DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()))*(Year(GetDate())*Month(GetDate())*Day(GetDate())*RAND()))\n" +
+                "		  ,CEILING(RAND( (DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()) )*((DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()))*(Year(GetDate())*Month(GetDate())*Day(GetDate())*RAND()))\n" +
+                "		  ,CEILING(RAND( (DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()) )*((DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()))*(Year(GetDate())*Month(GetDate())*Day(GetDate())*RAND()))\n" +
+                "		  ,CEILING(RAND( (DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()) )*((DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()))*(Year(GetDate())*Month(GetDate())*Day(GetDate())*RAND()))));\n" +
+                "	SET @cnt = (SELECT COUNT(*) FROM " + map.TableName + " WHERE " + pool.CorrectName(field.FieldName) + " = @IDVAL);\n" +
+                "END\n" +
+                "INSERT INTO " + map.TableName + "(" + pool.CorrectName(field.FieldName) + fields + ") SELECT @IDVAL" + fields.Replace(",", ",tbl.") + " from INSERTED ins;\n" +
+                "END";
+                triggers.Add(new Trigger(pool.CorrectName("TRIG_INSERT_" + map.TableName),
+                                         "ON " + map.TableName + " INSTEAD OF INSERT\n",
+                                         code));
+            }else
+                throw new Exception("Unable to create autogenerator for non date or digit type.");
 		}
 		
 		internal override void GetDropAutogenStrings(ExtractedTableMap map,ConnectionPool pool, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers)
@@ -158,7 +179,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 					}
 				}
 			}
-			if (field.Type.ToUpper().Contains("DATE") || field.Type.ToUpper().Contains("TIME")||(map.PrimaryKeys.Count>0))
+            if (field.Type.ToUpper().Contains("DATE") || field.Type.ToUpper().Contains("TIME") || (map.PrimaryKeys.Count > 0) || (field.Type.ToUpper().Contains("VARCHAR")))
 			{
 				triggers.Add(new Trigger(pool.CorrectName("TRIG_INSERT_"+map.TableName),"",""));
 			}

@@ -148,6 +148,37 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 			if (create)
 				c.ExecuteNonQuery(query);
 			c.Commit();
+            
+            create = false;
+            c.ExecuteQuery("SELECT name FROM sys.objects WHERE type IN ('FN', 'IF', 'TF') AND name='Org_Reddragonit_Dbpro_Connections_MsSql_ConvertBigintToCharstring'");
+            if (c.Read())
+            {
+                if (c[0].ToString() != null)
+                    create = true;
+            }
+            c.Close();
+            if (create)
+            {
+                query = new StreamReader(this.GetType().Assembly.GetManifestResourceStream("Org.Reddragonit.Dbpro.Connections.MsSql.CONVERT_BIGINT_CHAR.sql")).ReadToEnd();
+                c.ExecuteNonQuery(query);
+                c.Commit();
+            }
+
+            create = false;
+            c.ExecuteQuery("SELECT name FROM sys.objects WHERE type IN ('FN', 'IF', 'TF') AND name='Org_Reddragonit_Dbpro_Connections_MsSql_GeneateUniqueID'");
+            if (c.Read())
+            {
+                if (c[0].ToString() != null)
+                    create = true;
+            }
+            c.Close();
+            if (create)
+            {
+                query = new StreamReader(this.GetType().Assembly.GetManifestResourceStream("Org.Reddragonit.Dbpro.Connections.MsSql.GENERATE_UNIQUE_ID.sql")).ReadToEnd();
+                c.ExecuteNonQuery(query);
+                c.Commit();
+            }
+
 			c.CloseConnection();
 		}
 	}

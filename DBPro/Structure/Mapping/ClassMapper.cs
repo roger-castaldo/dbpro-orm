@@ -40,20 +40,24 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			}
 			Utility.Release(constructed);
 		}
-		
-		public static TableMap GetTableMap(System.Type type)
-		{
-			Utility.WaitOne(constructed);
-			if ((map==null)||(map.Count==0))
-				InitMaps();
-			TableMap ret = null;
-			if ((type!=null)&&map.ContainsKey(type))
-			{
-				ret=map[type];
-			}
-			Utility.Release(constructed);
-			return ret;
-		}
+
+        public static TableMap GetTableMap(System.Type type)
+        {
+            Utility.WaitOne(constructed);
+            if ((map == null) || (map.Count == 0))
+                InitMaps();
+            TableMap ret = null;
+            if ((type != null) && map.ContainsKey(type))
+            {
+                ret = map[type];
+            }
+            else if ((type != null) && (type.IsArray) && (map.ContainsKey(type.GetElementType())))
+            {
+                ret = map[type.GetElementType()];
+            }
+            Utility.Release(constructed);
+            return ret;
+        }
 		
 		public static object InitialValueForClassField(Type type, string ClassFieldName)
 		{

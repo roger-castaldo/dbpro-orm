@@ -145,7 +145,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 					}
 				}
 			}
-			if (field.Type.ToUpper().Contains("DATE") || field.Type.ToUpper().Contains("TIME"))
+            if (field.Type.ToUpper().Contains("DATE") || field.Type.ToUpper().Contains("TIME") || field.Type.ToUpper().Contains("VARCHAR"))
 			{
 				triggers.Add(new Trigger(pool.CorrectName(map.TableName+"_"+field.FieldName+"_GEN"),"",""));
 			}
