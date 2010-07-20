@@ -166,6 +166,7 @@
     <EmbeddedResource Include="Connections\Firebird\CONVERT_BIGINT_CHARSTRING.sql" />
     <EmbeddedResource Include="Connections\Firebird\GENERATE_UNIQUE_ID.sql" />
     <EmbeddedResource Include="Connections\Firebird\RAND.sql" />
+    <EmbeddedResource Include="Connections\MsSql\GENERATE_UNIQUE_ID.sql" />
     <None Include="DbPro.xml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -188,6 +189,9 @@
       <ProductName>.NET Framework 3.5</ProductName>
       <Install>false</Install>
     </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Connections\MsSql\CONVERT_BIGINT_CHAR.sql" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.Targets" />
   <PropertyGroup>
