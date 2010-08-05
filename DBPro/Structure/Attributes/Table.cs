@@ -10,18 +10,35 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 
 		private string _tableName=null;
 		private string _connectionName=null;
+        private bool _alwaysInsert;
 
-		public Table() : this(null,null)
+		public Table() : this(null,null,false)
 		{ }
 
-		public Table(string TableName) : this(TableName,null)
+        public Table(bool alwaysInsert)
+            : this(null, null, alwaysInsert)
+        {
+        }
+
+		public Table(string TableName) : this(TableName,null,false)
 		{
 		}
+
+        public Table(string TableName,bool alwaysInsert)
+            : this(TableName, null, alwaysInsert)
+        {
+        }
+
+        public Table(string TableName,string ConnectionName)
+            : this(TableName, ConnectionName,false)
+        {
+        }
 		
-		public Table(string TableName,string ConnectionName)
+		public Table(string TableName,string ConnectionName,bool alwaysInsert)
 		{
 			_tableName=TableName;
 			_connectionName=ConnectionName;
+            _alwaysInsert = alwaysInsert;
 		}
 		
 		public string ConnectionName
@@ -32,6 +49,14 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 				return _connectionName;
 			}
 		}
+
+        public bool AlwaysInsert
+        {
+            get
+            {
+                return _alwaysInsert;
+            }
+        }
 
 		public string TableName
 		{

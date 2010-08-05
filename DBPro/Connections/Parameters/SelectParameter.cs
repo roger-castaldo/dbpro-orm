@@ -15,6 +15,10 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
 {
 	public abstract class SelectParameter
 	{
+        internal abstract List<string> Fields
+        {
+            get;
+        }
 		internal abstract string ConstructString(TableMap map,Connection conn,QueryBuilder builder,ref List<IDbDataParameter> queryParameters,ref int parCount);
 	}
 }

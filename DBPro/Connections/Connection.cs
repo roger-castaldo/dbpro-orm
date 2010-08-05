@@ -360,10 +360,34 @@ namespace Org.Reddragonit.Dbpro.Connections
 					}
 				}
 			}
-			List<IDbDataParameter> pars = new List<IDbDataParameter>();
-			string query = queryBuilder.Update(table,out pars);
-            if (query.Length>0)
-			    this.ExecuteNonQuery(query, pars);
+            string query = "";
+            string select = "";
+            List<IDbDataParameter> pars = new List<IDbDataParameter>();
+            List<IDbDataParameter> selectPars = new List<IDbDataParameter>();
+            if (map.AlwaysInsert)
+                query = queryBuilder.Insert(table, out pars, out select, out selectPars);
+            else
+                query = queryBuilder.Update(table, out pars);
+            if (query.Length > 0)
+            {
+                ExecuteNonQuery(query, pars);
+                if ((select != null) && (map.AlwaysInsert))
+                {
+                    ExecuteQuery(select, selectPars);
+                    Read();
+                    foreach (InternalFieldMap ifm in map.InternalPrimaryKeys)
+                    {
+                        if (ifm.AutoGen)
+                        {
+                            table.SetField(map.GetClassFieldName(ifm.FieldName), this[0]);
+                            break;
+                        }
+                    }
+                    Close();
+                    table._isSaved = true;
+                    table.LoadStatus = LoadStatus.Complete;
+                }
+            }
 			foreach (ExternalFieldMap efm in map.ExternalFieldMapArrays)
 			{
 				Dictionary<string, List<List<IDbDataParameter>>> queries = queryBuilder.UpdateMapArray(table,efm);
