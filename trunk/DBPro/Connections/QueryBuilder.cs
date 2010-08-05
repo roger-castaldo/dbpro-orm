@@ -884,39 +884,6 @@ namespace Org.Reddragonit.Dbpro.Connections
                     if (map[fnp].PrimaryKey || !map.HasPrimaryKeys)
                     {
                         tmpPars.Add(new EqualParameter(fnp.ClassFieldName,table.GetInitialPrimaryValue(fnp.ClassFieldName)));
-                        /*if (map[fnp] is ExternalFieldMap)
-                        {
-                            Table obj = (Table)table.GetInitialPrimaryValue(fnp.ClassFieldName);
-                            ExternalFieldMap efm = (ExternalFieldMap)map[fnp];
-                            TableMap emap = ClassMapper.GetTableMap(efm.ObjectType);
-                            if (obj == null)
-                            {
-                                foreach (FieldMap fm in emap.PrimaryKeys)
-                                {
-                                    conditions += conn.Pool.CorrectName(efm.AddOnName + "_" + emap.GetTableFieldName(fm)) + " IS NULL AND ";
-                                }
-                            }
-                            else
-                            {
-                                foreach (FieldMap fm in emap.PrimaryKeys)
-                                {
-                                    conditions += conn.Pool.CorrectName(efm.AddOnName + "_" + emap.GetTableFieldName(fm)) + " = " + CreateParameterName(conn.Pool.CorrectName("init_" + efm.AddOnName + "_" + emap.GetTableFieldName(fm)))+" AND ";
-                                    queryParameters.Add(conn.CreateParameter(CreateParameterName(conn.Pool.CorrectName("init_"+efm.AddOnName + "_" + emap.GetTableFieldName(fm))), obj.GetField(emap.GetClassFieldName(fm)), ((InternalFieldMap)fm).FieldType, ((InternalFieldMap)fm).FieldLength));
-                                }
-                            }
-                        }
-                        else
-                        {
-                            if (table.GetInitialPrimaryValue(fnp.ClassFieldName) == null)
-                            {
-                                conditions += fnp.TableFieldName + " IS NULL AND ";
-                            }
-                            else
-                            {
-                                conditions += fnp.TableFieldName + " = " + CreateParameterName("init_" + fnp.TableFieldName) + " AND ";
-                                queryParameters.Add(conn.CreateParameter(CreateParameterName("init_" + fnp.TableFieldName), table.GetInitialPrimaryValue(fnp.ClassFieldName), ((InternalFieldMap)map[fnp]).FieldType, ((InternalFieldMap)map[fnp]).FieldLength));
-                            }
-                        }*/
                     }
                 }
                 int parCount=0;
@@ -928,9 +895,9 @@ namespace Org.Reddragonit.Dbpro.Connections
 				fields = fields.Substring(0,fields.Length-2);
 				if (conditions.Length>0)
 				{
-					return String.Format(UpdateWithConditions,map.Name,fields,conditions.Substring(0,conditions.Length-4));
+					return String.Format(UpdateWithConditions,map.Name,fields,conditions.Substring(0,conditions.Length-4).Replace("main_table.",""));
 				}else
-					return String.Format(UpdateWithoutConditions,map.Name,fields);
+                    return String.Format(UpdateWithoutConditions, map.Name, fields);
 			}catch (Exception e)
 			{
 				Logger.LogLine(e.Message);
@@ -1030,48 +997,52 @@ namespace Org.Reddragonit.Dbpro.Connections
 			return true;
 		}
 
-        internal void AppendJoinsForParameter(string field,ref string joins,TableMap baseMap)
+        internal void AppendJoinsForParameter(List<string> fields,ref string joins,TableMap baseMap)
         {
-            TableMap map = baseMap;
-            string alias = "main_table";
-            if (field.Contains("."))
+            for(int x=0;x<fields.Count;x++)
             {
-                while (field.Contains("."))
+                string field = fields[x];
+                TableMap map = baseMap;
+                string alias = "main_table";
+                if (field.Contains("."))
                 {
-                    ExternalFieldMap efm = (ExternalFieldMap)map[field.Substring(0, field.IndexOf("."))];
-                    TableMap eMap = ClassMapper.GetTableMap(efm.Type);
-                    string className = field.Substring(0, field.IndexOf("."));
-                    string innerJoin = " INNER JOIN ";
-                    if (efm.Nullable)
-                        innerJoin = " LEFT JOIN ";
-                    string tbl = _conn.queryBuilder.SelectAll(efm.Type, null);
-                    if (efm.IsArray)
+                    while (field.Contains("."))
                     {
-                        innerJoin += _conn.Pool.CorrectName(map.Name + "_" + eMap.Name) + " " + alias + "_intermediate_" + className + " ON ";
-                        foreach (InternalFieldMap ifm in map.PrimaryKeys)
-                            innerJoin += " " + alias + "." + _conn.Pool.CorrectName(ifm.FieldName) + " = " + alias + "_intermediate_" + className + "." + _conn.Pool.CorrectName("PARENT_" + ifm.FieldName) + " AND ";
-                        innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
+                        ExternalFieldMap efm = (ExternalFieldMap)map[field.Substring(0, field.IndexOf("."))];
+                        TableMap eMap = ClassMapper.GetTableMap(efm.Type);
+                        string className = field.Substring(0, field.IndexOf("."));
+                        string innerJoin = " INNER JOIN ";
+                        if (efm.Nullable)
+                            innerJoin = " LEFT JOIN ";
+                        string tbl = _conn.queryBuilder.SelectAll(efm.Type, null);
+                        if (efm.IsArray)
+                        {
+                            innerJoin += _conn.Pool.CorrectName(map.Name + "_" + eMap.Name) + " " + alias + "_intermediate_" + className + " ON ";
+                            foreach (InternalFieldMap ifm in map.PrimaryKeys)
+                                innerJoin += " " + alias + "." + _conn.Pool.CorrectName(ifm.FieldName) + " = " + alias + "_intermediate_" + className + "." + _conn.Pool.CorrectName("PARENT_" + ifm.FieldName) + " AND ";
+                            innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
+                            if (!joins.Contains(innerJoin))
+                                joins += innerJoin;
+                            innerJoin = " INNER JOIN (" + tbl + ") " + alias + "_" + className + " ON ";
+                            foreach (InternalFieldMap ifm in eMap.PrimaryKeys)
+                                innerJoin += " " + alias + "_intermediate_" + className + "." + _conn.Pool.CorrectName("CHILD_" + ifm.FieldName) + " = " + alias + "_" + className + "." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
+                            innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
+                        }
+                        else
+                        {
+                            innerJoin += "(" + tbl + ") " + alias + "_" + className + " ON ";
+                            foreach (InternalFieldMap ifm in eMap.PrimaryKeys)
+                                innerJoin += " " + alias + "." + _conn.Pool.CorrectName(efm.AddOnName + "_" + ifm.FieldName) + " = " + alias + "_" + className + "." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
+                            innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
+                        }
+                        alias += "_" + field.Substring(0, field.IndexOf("."));
+                        field = field.Substring(field.IndexOf(".") + 1);
                         if (!joins.Contains(innerJoin))
-                            joins+=innerJoin;
-                        innerJoin = " INNER JOIN (" + tbl + ") " + alias + "_" + className + " ON ";
-                        foreach (InternalFieldMap ifm in eMap.PrimaryKeys)
-                            innerJoin += " " + alias + "_intermediate_" + className + "." + _conn.Pool.CorrectName("CHILD_" + ifm.FieldName) + " = " + alias + "_" + className + "." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
-                        innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
+                            joins += innerJoin;
+                        map = eMap;
                     }
-                    else
-                    {
-                        innerJoin += "(" + tbl + ") " + alias + "_" + className + " ON ";
-                        foreach (InternalFieldMap ifm in eMap.PrimaryKeys)
-                            innerJoin += " " + alias + "." + _conn.Pool.CorrectName(efm.AddOnName + "_" + ifm.FieldName) + " = " + alias + "_" + className + "." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
-                        innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
-                    }
-                    alias += "_" + field.Substring(0, field.IndexOf("."));
-                    field = field.Substring(field.IndexOf(".") + 1);
-                    if (!joins.Contains(innerJoin))
-                        joins+=innerJoin;
-                    map = eMap;
-                }
 
+                }
             }
         }
 		
@@ -1100,10 +1071,27 @@ namespace Org.Reddragonit.Dbpro.Connections
 			queryParameters = new List<IDbDataParameter>();
 			if (ObtainFieldTableWhereList(out fields,out tables, out joins,out where, type))
 			{
-				if (map.GetTableFieldName(maxField)!=null)
-					fields=map.GetTableFieldName(maxField);
-				else
-					fields = maxField;
+                AppendJoinsForParameter(new List<string>(new string[] { maxField }), ref joins, map);
+                string alias = "main_table";
+                if (maxField.Contains("."))
+                {
+                    TableMap curMap = map;
+                    while (maxField.Contains("."))
+                    {
+                        ExternalFieldMap efm = (ExternalFieldMap)curMap[maxField.Substring(0, maxField.IndexOf("."))];
+                        alias += "_" + maxField.Substring(0, maxField.IndexOf("."));
+                        curMap = ClassMapper.GetTableMap(efm.ObjectType);
+                        maxField = maxField.Substring(maxField.IndexOf(".") + 1);
+                    }
+                    fields = alias + "." + pool.CorrectName(curMap.GetTableFieldName(maxField));
+                }
+                else
+                {
+                    if (map.GetTableFieldName(maxField) != null)
+                        fields = alias + "." + map.GetTableFieldName(maxField);
+                    else
+                        fields = maxField;
+                }
 				if ((parameters!=null)&&(parameters.Length>0))
 				{
 					startAnd=(where.Length>0);
@@ -1111,6 +1099,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 					int parCount=0;
 					foreach (SelectParameter par in parameters)
 					{
+                        AppendJoinsForParameter(par.Fields, ref joins, map);
 						appended+="("+par.ConstructString(map,conn,this,ref queryParameters,ref parCount)+") AND ";
 					}
 					appended=appended.Substring(0,appended.Length-4);
@@ -1146,10 +1135,27 @@ namespace Org.Reddragonit.Dbpro.Connections
             queryParameters = new List<IDbDataParameter>();
             if (ObtainFieldTableWhereList(out fields, out tables, out joins, out where, type))
             {
-                if (map.GetTableFieldName(maxField) != null)
-                    fields = map.GetTableFieldName(maxField);
+                AppendJoinsForParameter(new List<string>(new string[] { maxField }), ref joins, map);
+                string alias = "main_table";
+                if (maxField.Contains("."))
+                {
+                    TableMap curMap = map;
+                    while (maxField.Contains("."))
+                    {
+                        ExternalFieldMap efm = (ExternalFieldMap)curMap[maxField.Substring(0, maxField.IndexOf("."))];
+                        alias += "_" + maxField.Substring(0,maxField.IndexOf("."));
+                        curMap = ClassMapper.GetTableMap(efm.ObjectType);
+                        maxField = maxField.Substring(maxField.IndexOf(".") + 1);
+                    }
+                    fields = alias+"."+pool.CorrectName(curMap.GetTableFieldName(maxField));
+                }
                 else
-                    fields = maxField;
+                {
+                    if (map.GetTableFieldName(maxField) != null)
+                        fields = alias + "." + map.GetTableFieldName(maxField);
+                    else
+                        fields = maxField;
+                }
                 if ((parameters != null) && (parameters.Length > 0))
                 {
                     startAnd = (where.Length > 0);
@@ -1157,6 +1163,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                     int parCount = 0;
                     foreach (SelectParameter par in parameters)
                     {
+                        AppendJoinsForParameter(par.Fields, ref joins, map);
                         appended += "(" + par.ConstructString(map, conn, this, ref queryParameters, ref parCount) + ") AND ";
                     }
                     appended = appended.Substring(0, appended.Length - 4);
@@ -1212,10 +1219,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 					int parCount=0;
 					foreach (SelectParameter par in parameters)
 					{
-                        if (par is CompareParameter)
-                        {
-                            AppendJoinsForParameter(((CompareParameter)par).FieldName, ref joins, map);
-                        }
+                        AppendJoinsForParameter(par.Fields, ref joins, map);
                         appended+="("+par.ConstructString(map,conn,this,ref queryParameters,ref parCount)+") AND ";
 					}
 					appended=appended.Substring(0,appended.Length-4);

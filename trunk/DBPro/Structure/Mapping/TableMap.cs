@@ -41,6 +41,12 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 				return _versionType;
 			}
 		}
+
+        private bool _alwaysInsert;
+        public bool AlwaysInsert
+        {
+            get { return _alwaysInsert; }
+        }
 		
 		private Type _parentType=null;
 		public Type ParentType
@@ -64,6 +70,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 							TableName=t.TableName;
 						}
 						_connectionName=t.ConnectionName;
+                        _alwaysInsert = t.AlwaysInsert;
 						break;
 					}
 				}

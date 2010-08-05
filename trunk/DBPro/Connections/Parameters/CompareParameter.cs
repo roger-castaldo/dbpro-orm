@@ -96,6 +96,11 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
             return ret;
         }
 
+        internal sealed override List<string> Fields
+        {
+            get { return new List<string>(new string[]{FieldName}); }
+        }
+
         internal sealed override string ConstructString(TableMap map, Connection conn, QueryBuilder builder, ref List<IDbDataParameter> queryParameters, ref int parCount)
         {
             bool found = false;
@@ -110,11 +115,13 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
             FieldNamePair? fnp = LocateFieldNamePair(FieldName,map, out isClassBased, out isExternal,out newMap,out alias);
             found = fnp.HasValue;
             if ((alias != null) && (alias.Length > 0))
-                alias = "main_table_" + alias+".";
+                alias = "main_table_" + alias + ".";
             if (isExternal)
             {
                 if (found)
                 {
+                    if ((alias == "")||(alias==null))
+                        alias = "main_table.";
                     ExternalFieldMap efm = (ExternalFieldMap)newMap[fnp.Value];
                     if (efm == null)
                     {
@@ -147,11 +154,18 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                         {
                             queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), conn.Pool.GetEnumID(_objType, ((Org.Reddragonit.Dbpro.Structure.Table)FieldValue).GetField(className,true).ToString())));
                         }
+                        else if (FieldValue == null)
+                        {
+                            if (type.HasValue)
+                                queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_"+parCount.ToString()),null,type.Value,fieldLength));
+                            else
+                                queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_"+parCount.ToString()),null));
+                        }
                         else
                         {
-                            object val = ((Org.Reddragonit.Dbpro.Structure.Table)FieldValue).GetField(className,true);
-                            if (val==null)
-                                val = QueryBuilder.LocateFieldValue((Org.Reddragonit.Dbpro.Structure.Table)FieldValue,relatedMap,ifm.FieldName,conn.Pool);
+                            object val = ((Org.Reddragonit.Dbpro.Structure.Table)FieldValue).GetField(className, true);
+                            if (val == null)
+                                val = QueryBuilder.LocateFieldValue((Org.Reddragonit.Dbpro.Structure.Table)FieldValue, relatedMap, ifm.FieldName, conn.Pool);
                             if (type.HasValue)
                                 queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), val, type.Value, fieldLength));
                             else
@@ -165,6 +179,8 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
             }
             else
             {
+                if ((alias == "") || (alias == null))
+                    alias = "main_table.";
                 if (fnp.HasValue)
                 {
                     InternalFieldMap ifm = (InternalFieldMap)newMap[fnp.Value];
