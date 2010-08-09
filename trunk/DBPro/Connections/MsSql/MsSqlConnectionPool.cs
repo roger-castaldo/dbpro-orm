@@ -8,26 +8,19 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 	class MsSqlConnectionPool : ConnectionPool
 	{
 		public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode,string connectionName)
-			: this(username, password, database, databaseServer, 1433, minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode,connectionName,true)
+			: this(username, password, database, databaseServer, 1433, minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode,connectionName,true,false)
 		{ }
 		
 		public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode,string connectionName,bool allowTableDeletions)
-			: this(username, password, database, databaseServer, 1433, minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode,connectionName,allowTableDeletions)
+			: this(username, password, database, databaseServer, 1433, minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode,connectionName,allowTableDeletions,false)
 		{ }
-
-		public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int port, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode,string connectionName,bool allowTableDeletions)
-			: base("Data Source="+databaseServer+", "+port.ToString()+
-			       ";Initial Catalog="+database+";"+
-			       "User ID="+username+";"+
-			       "Password="+password+";", minPoolSize, maxPoolSize, maxKeepAlive,UpdateStructureDebugMode,connectionName,allowTableDeletions)
-		{}
 
 		public MsSqlConnectionPool(string username, string password, string database, string databaseServer, bool UpdateStructureDebugMode,string connectionName)
 			: this(username, password, database, databaseServer, 1433, UpdateStructureDebugMode,connectionName)
 		{}
 
 		public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int port, bool UpdateStructureDebugMode,string connectionName)
-			: this(username, password, database, databaseServer, port, 5, 10, 600, UpdateStructureDebugMode,connectionName,true)
+			: this(username, password, database, databaseServer, port, 5, 10, 600, UpdateStructureDebugMode,connectionName,true,false)
 		{
 			
 		}
@@ -37,7 +30,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 		{}
 
 		public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int port, bool UpdateStructureDebugMode,string connectionName,bool allowTableDeletions)
-			: this(username, password, database, databaseServer, port, 5, 10, 600, UpdateStructureDebugMode,connectionName,allowTableDeletions)
+			: this(username, password, database, databaseServer, port, 5, 10, 600, UpdateStructureDebugMode,connectionName,allowTableDeletions,false)
 		{}
 
         public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode, string connectionName,int readTimeout)
@@ -49,10 +42,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
         { }
 
         public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int port, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions,int readTimeout)
-            : base("Data Source=" + databaseServer + ", " + port.ToString() +
-                   ";Initial Catalog=" + database + ";" +
-                   "User ID=" + username + ";" +
-                   "Password=" + password + ";", minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode, connectionName, allowTableDeletions,readTimeout)
+            :this (username,password,database,databaseServer,port,minPoolSize,maxPoolSize,maxKeepAlive,UpdateStructureDebugMode,connectionName,allowTableDeletions,readTimeout,false)
         { }
 
         public MsSqlConnectionPool(string username, string password, string database, string databaseServer, bool UpdateStructureDebugMode, string connectionName,int readTimeout)
@@ -66,11 +56,59 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
         }
 
         public MsSqlConnectionPool(string username, string password, string database, string databaseServer, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions,int readTimeout)
-            : this(username, password, database, databaseServer, 1433, UpdateStructureDebugMode, connectionName, allowTableDeletions,readTimeout)
+            : this(username, password, database, databaseServer, 1433, UpdateStructureDebugMode, connectionName, allowTableDeletions, readTimeout,false)
         { }
 
-        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int port, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions,int readTimeout)
-            : this(username, password, database, databaseServer, port, 5, 10, 600, UpdateStructureDebugMode, connectionName, allowTableDeletions,readTimeout)
+        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int port, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions,int readTimeout,bool Readonly)
+            : this(username, password, database, databaseServer, port, 5, 10, 600, UpdateStructureDebugMode, connectionName, allowTableDeletions,readTimeout,Readonly)
+        { }
+
+        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions, bool Readonly)
+            : this(username, password, database, databaseServer, 1433, minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode, connectionName, allowTableDeletions,Readonly)
+        { }
+
+        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions, bool Readonly)
+            : this(username, password, database, databaseServer, 1433, UpdateStructureDebugMode, connectionName, allowTableDeletions, Readonly)
+        { }
+
+        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int port, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions, bool Readonly)
+            : this(username, password, database, databaseServer, port, 5, 10, 600, UpdateStructureDebugMode, connectionName, allowTableDeletions, Readonly)
+        { }
+
+        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode, string connectionName, int readTimeout, bool Readonly)
+            : this(username, password, database, databaseServer, 1433, minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode, connectionName, true, readTimeout, Readonly)
+        { }
+
+        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions, int readTimeout, bool Readonly)
+            : this(username, password, database, databaseServer, 1433, minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode, connectionName, allowTableDeletions, readTimeout, Readonly)
+        { }
+
+        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, bool UpdateStructureDebugMode, string connectionName, int readTimeout, bool Readonly)
+            : this(username, password, database, databaseServer, 1433, UpdateStructureDebugMode, connectionName, readTimeout, Readonly)
+        { }
+
+        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int port, bool UpdateStructureDebugMode, string connectionName, int readTimeout, bool Readonly)
+            : this(username, password, database, databaseServer, port, 5, 10, 600, UpdateStructureDebugMode, connectionName, true, readTimeout, Readonly)
+        {
+
+        }
+
+        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions, int readTimeout, bool Readonly)
+            : this(username, password, database, databaseServer, 1433, UpdateStructureDebugMode, connectionName, allowTableDeletions, readTimeout, Readonly)
+        { }
+
+        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int port, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions, bool Readonly)
+            : base("Data Source=" + databaseServer + ", " + port.ToString() +
+                   ";Initial Catalog=" + database + ";" +
+                   "User ID=" + username + ";" +
+                   "Password=" + password + ";", minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode, connectionName, allowTableDeletions, Readonly)
+        { }
+
+        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int port, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions, int readTimeout, bool Readonly)
+            : base("Data Source=" + databaseServer + ", " + port.ToString() +
+                   ";Initial Catalog=" + database + ";" +
+                   "User ID=" + username + ";" +
+                   "Password=" + password + ";", minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode, connectionName, allowTableDeletions, readTimeout, Readonly)
         { }
 
 		private string[] _words = null;
@@ -113,7 +151,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 		
 		protected override Connection CreateConnection()
 		{
-			return new MsSqlConnection(this,connectionString);
+			return new MsSqlConnection(this,connectionString,_readonly);
 		}
 		
 		internal override bool AllowChangingBasicAutogenField {
@@ -122,64 +160,68 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 		
 		protected override void PreInit()
 		{
-			Connection c = CreateConnection();
-			bool exists=false;
-			bool create=false;
-			string query = new StreamReader(this.GetType().Assembly.GetManifestResourceStream("Org.Reddragonit.Dbpro.Connections.MsSql.IdentitySP.sql")).ReadToEnd();
-			string version = query.Substring(query.IndexOf("-- Version: ")+12,query.IndexOf("\n",query.IndexOf("-- Version: ")+12)-query.IndexOf("-- Version: ")-12);
-			c.ExecuteQuery("SELECT name FROM sys.procedures where name='Org_Reddragonit_DbPro_Create_Remove_Identity'");
-			if (c.Read())
-			{
-				if (c[0].ToString()!=null)
-					exists=true;
-			}
-			c.Close();
-			if (exists)
-			{
-				c.ExecuteQuery("EXEC Org_Reddragonit_DbPro_Create_Remove_Identity null,null,null,1");
-				c.Read();
-				if (double.Parse(c[0].ToString())!=double.Parse(version))
-					create=true;
-				c.Close();
-				if (create)
-					c.ExecuteNonQuery("DROP PROCEDURE Org_Reddragonit_DbPro_Create_Remove_Identity");
-			}else
-				create=true;
-			if (create)
-				c.ExecuteNonQuery(query);
-			c.Commit();
-            
-            create = false;
-            c.ExecuteQuery("SELECT name FROM sys.objects WHERE type IN ('FN', 'IF', 'TF') AND name='Org_Reddragonit_Dbpro_Connections_MsSql_ConvertBigintToCharstring'");
-            if (c.Read())
+            if (!_readonly)
             {
-                if (c[0].ToString() != null)
+                Connection c = CreateConnection();
+                bool exists = false;
+                bool create = false;
+                string query = new StreamReader(this.GetType().Assembly.GetManifestResourceStream("Org.Reddragonit.Dbpro.Connections.MsSql.IdentitySP.sql")).ReadToEnd();
+                string version = query.Substring(query.IndexOf("-- Version: ") + 12, query.IndexOf("\n", query.IndexOf("-- Version: ") + 12) - query.IndexOf("-- Version: ") - 12);
+                c.ExecuteQuery("SELECT name FROM sys.procedures where name='Org_Reddragonit_DbPro_Create_Remove_Identity'");
+                if (c.Read())
+                {
+                    if (c[0].ToString() != null)
+                        exists = true;
+                }
+                c.Close();
+                if (exists)
+                {
+                    c.ExecuteQuery("EXEC Org_Reddragonit_DbPro_Create_Remove_Identity null,null,null,1");
+                    c.Read();
+                    if (double.Parse(c[0].ToString()) != double.Parse(version))
+                        create = true;
+                    c.Close();
+                    if (create)
+                        c.ExecuteNonQuery("DROP PROCEDURE Org_Reddragonit_DbPro_Create_Remove_Identity");
+                }
+                else
                     create = true;
-            }
-            c.Close();
-            if (create)
-            {
-                query = new StreamReader(this.GetType().Assembly.GetManifestResourceStream("Org.Reddragonit.Dbpro.Connections.MsSql.CONVERT_BIGINT_CHAR.sql")).ReadToEnd();
-                c.ExecuteNonQuery(query);
+                if (create)
+                    c.ExecuteNonQuery(query);
                 c.Commit();
-            }
 
-            create = false;
-            c.ExecuteQuery("SELECT name FROM sys.objects WHERE type IN ('FN', 'IF', 'TF') AND name='Org_Reddragonit_Dbpro_Connections_MsSql_GeneateUniqueID'");
-            if (c.Read())
-            {
-                if (c[0].ToString() != null)
-                    create = true;
-            }
-            c.Close();
-            if (create)
-            {
-                query = new StreamReader(this.GetType().Assembly.GetManifestResourceStream("Org.Reddragonit.Dbpro.Connections.MsSql.GENERATE_UNIQUE_ID.sql")).ReadToEnd();
-                c.ExecuteNonQuery(query);
-                c.Commit();
-            }
+                create = false;
+                c.ExecuteQuery("SELECT name FROM sys.objects WHERE type IN ('FN', 'IF', 'TF') AND name='Org_Reddragonit_Dbpro_Connections_MsSql_ConvertBigintToCharstring'");
+                if (c.Read())
+                {
+                    if (c[0].ToString() != null)
+                        create = true;
+                }
+                c.Close();
+                if (create)
+                {
+                    query = new StreamReader(this.GetType().Assembly.GetManifestResourceStream("Org.Reddragonit.Dbpro.Connections.MsSql.CONVERT_BIGINT_CHAR.sql")).ReadToEnd();
+                    c.ExecuteNonQuery(query);
+                    c.Commit();
+                }
 
-			c.CloseConnection();
+                create = false;
+                c.ExecuteQuery("SELECT name FROM sys.objects WHERE type IN ('FN', 'IF', 'TF') AND name='Org_Reddragonit_Dbpro_Connections_MsSql_GeneateUniqueID'");
+                if (c.Read())
+                {
+                    if (c[0].ToString() != null)
+                        create = true;
+                }
+                c.Close();
+                if (create)
+                {
+                    query = new StreamReader(this.GetType().Assembly.GetManifestResourceStream("Org.Reddragonit.Dbpro.Connections.MsSql.GENERATE_UNIQUE_ID.sql")).ReadToEnd();
+                    c.ExecuteNonQuery(query);
+                    c.Commit();
+                }
+
+                c.CloseConnection();
+            }
 		}
 	}
 }

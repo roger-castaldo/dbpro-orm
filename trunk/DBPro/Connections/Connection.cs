@@ -34,6 +34,7 @@ namespace Org.Reddragonit.Dbpro.Connections
         private bool firstReadResult;
         private bool lockedForBackup=false;
         private string _uniqueID;
+        private bool _readonly;
 		
 		private QueryBuilder _qb;
 		internal virtual QueryBuilder queryBuilder
@@ -44,6 +45,11 @@ namespace Org.Reddragonit.Dbpro.Connections
 				return _qb;
 			}
 		}
+
+        protected bool Readonly
+        {
+            get { return _readonly; }
+        }
 		
 		internal virtual bool UsesGenerators{
 			get{
@@ -110,7 +116,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             return queryBuilder.CreateParameterName(parameter);
         }
 		
-		public Connection(ConnectionPool pool,string connectionString){
+		public Connection(ConnectionPool pool,string connectionString,bool Readonly){
 			this.connectionString=connectionString;
 			this.pool=pool;
             this._uniqueID = System.Convert.ToBase64String(Guid.NewGuid().ToByteArray());
@@ -309,6 +315,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         public void Delete(Table table)
         {
+            if (_readonly)
+                throw new Exception("Unable to delete from a readonly database.");
             if (!table.IsSaved)
                 throw new Exception("Unable to delete an object from the database that is not saved.");
             if (table.ConnectionName != ConnectionName)
@@ -320,11 +328,15 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         internal void DeleteAll(Type tableType)
         {
+            if (_readonly)
+                throw new Exception("Unable to delete from a readonly database.");
             this.ExecuteNonQuery(queryBuilder.DeleteAll(tableType));
         }
 		
 		private Table Update(Table table)
         {
+            if (_readonly)
+                throw new Exception("Unable to update to a readonly database.");
 			if (table.ConnectionName!=ConnectionName)
 			{
 				throw new Exception("Cannot update an entry into a table into the database connection that it was not specified for.");
@@ -448,6 +460,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		private Table Insert(Table table,bool ignoreAutogen)
 		{
+            if (_readonly)
+                throw new Exception("Unable to insert into a readonly database.");
 			TableMap map = ClassMapper.GetTableMap(table.GetType());
             if (!ignoreAutogen)
             {
@@ -861,6 +875,15 @@ namespace Org.Reddragonit.Dbpro.Connections
 
 		public int ExecuteNonQuery(string queryString, IDbDataParameter[] parameters)
 		{
+            if (_readonly)
+            {
+                if (queryString.ToUpper().StartsWith("INSERT"))
+                    throw new Exception("Unable to insert into a readonly database.");
+                else if (queryString.ToUpper().StartsWith("DELETE"))
+                    throw new Exception("Unable to delete from a readonly database.");
+                else if (queryString.ToUpper().StartsWith("UPDATE"))
+                    throw new Exception("Unable to update into a readonly database.");
+            }
 			commCntr++;
 			if (commCntr>=MAX_COMM_QUERIES){
 				commCntr=0;
@@ -1003,6 +1026,15 @@ namespace Org.Reddragonit.Dbpro.Connections
 
 		public void ExecuteQuery(string queryString, IDbDataParameter[] parameters)
 		{
+            if (_readonly)
+            {
+                if (queryString.ToUpper().StartsWith("INSERT"))
+                    throw new Exception("Unable to insert into a readonly database.");
+                else if (queryString.ToUpper().StartsWith("DELETE"))
+                    throw new Exception("Unable to delete from a readonly database.");
+                else if (queryString.ToUpper().StartsWith("UPDATE"))
+                    throw new Exception("Unable to update into a readonly database.");
+            }
 			commCntr++;
 			if (commCntr>=MAX_COMM_QUERIES){
 				commCntr=0;

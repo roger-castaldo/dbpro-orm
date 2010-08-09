@@ -41,6 +41,7 @@ namespace Org.Reddragonit.Dbpro.Connections
         internal int readTimeout;
 		private bool _debugMode=false;
 		private bool _allowTableDeletions=true;
+        protected bool _readonly = false;
 		
 		private bool isClosed=false;
 		private bool isReady=false;
@@ -249,10 +250,14 @@ namespace Org.Reddragonit.Dbpro.Connections
 		}
 
         protected ConnectionPool(string connectionString, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions)
-            :this(connectionName,minPoolSize,maxPoolSize,maxKeepAlive,UpdateStructureDebugMode,connectionName,allowTableDeletions,DEFAULT_READ_TIMEOUT)
+            :this(connectionName,minPoolSize,maxPoolSize,maxKeepAlive,UpdateStructureDebugMode,connectionName,allowTableDeletions,DEFAULT_READ_TIMEOUT,false)
+        { }
+
+        protected ConnectionPool(string connectionString, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions,bool Readonly)
+            : this(connectionName, minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode, connectionName, allowTableDeletions, DEFAULT_READ_TIMEOUT, Readonly)
         { }
 		
-		protected ConnectionPool(string connectionString,int minPoolSize,int maxPoolSize,long maxKeepAlive,bool UpdateStructureDebugMode,string connectionName,bool allowTableDeletions,int readTimeout)
+		protected ConnectionPool(string connectionString,int minPoolSize,int maxPoolSize,long maxKeepAlive,bool UpdateStructureDebugMode,string connectionName,bool allowTableDeletions,int readTimeout,bool Readonly)
 		{
 			Logger.LogLine("Establishing Connection with string: "+connectionString);
 			this.connectionString=connectionString;
@@ -262,6 +267,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			_debugMode=UpdateStructureDebugMode;
 			_connectionName=connectionName;
 			_allowTableDeletions=allowTableDeletions;
+            _readonly = Readonly;
             this.readTimeout = readTimeout;
 			ConnectionPoolManager.AddConnection(connectionName,this);
 		}

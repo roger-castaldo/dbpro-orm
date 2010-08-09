@@ -41,8 +41,8 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 			get { return true; }
 		}
 
-		public MsSqlConnection(ConnectionPool pool, string ConnectionString)
-			: base(pool, ConnectionString)
+		public MsSqlConnection(ConnectionPool pool, string ConnectionString,bool Readonly)
+			: base(pool, ConnectionString,Readonly)
 		{ }
 
 		internal override IDbDataParameter CreateParameter(string parameterName, object parameterValue, FieldType type, int fieldLength)

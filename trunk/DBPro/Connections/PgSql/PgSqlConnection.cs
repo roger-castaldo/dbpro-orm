@@ -21,7 +21,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 	/// </summary>
 	public class PgSqlConnection : Connection
 	{
-		public PgSqlConnection(ConnectionPool pool,string connectionString) : base(pool,connectionString)
+		public PgSqlConnection(ConnectionPool pool,string connectionString,bool Readonly) : base(pool,connectionString,Readonly)
 		{
 		}
 		

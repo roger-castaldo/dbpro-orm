@@ -43,7 +43,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 			get { return true; }
 		}
 		
-		public FBConnection(ConnectionPool pool,string connectionString) : base(pool,connectionString)
+		public FBConnection(ConnectionPool pool,string connectionString,bool Readonly) : base(pool,connectionString,Readonly)
 		{
 
 		}
