@@ -40,7 +40,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 			get { return true; }
 		}
 		
-		public MySqlConnection(ConnectionPool pool,string connectionString) :base(pool,connectionString)
+		public MySqlConnection(ConnectionPool pool,string connectionString,bool Readonly) :base(pool,connectionString,Readonly)
 		{
 		}
 		
