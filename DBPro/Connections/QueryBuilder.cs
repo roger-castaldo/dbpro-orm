@@ -873,7 +873,14 @@ namespace Org.Reddragonit.Dbpro.Connections
                             }
                             else
                             {
-                                queryParameters.Add(conn.CreateParameter(CreateParameterName(fnp.TableFieldName), table.GetField(fnp.ClassFieldName), ((InternalFieldMap)map[fnp]).FieldType, ((InternalFieldMap)map[fnp]).FieldLength));
+                                if (map[fnp].ObjectType.IsEnum)
+                                {
+                                    queryParameters.Add(conn.CreateParameter(CreateParameterName(fnp.TableFieldName), pool.GetEnumID(map[fnp].ObjectType,table.GetField(fnp.ClassFieldName).ToString())));
+                                }
+                                else
+                                {
+                                    queryParameters.Add(conn.CreateParameter(CreateParameterName(fnp.TableFieldName), table.GetField(fnp.ClassFieldName), ((InternalFieldMap)map[fnp]).FieldType, ((InternalFieldMap)map[fnp]).FieldLength));
+                                }
                             }
                         }
                     }
