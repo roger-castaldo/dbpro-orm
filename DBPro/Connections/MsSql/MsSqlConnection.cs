@@ -66,7 +66,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
             {
                 parameterValue = System.Text.ASCIIEncoding.ASCII.GetString(System.BitConverter.GetBytes(ushort.Parse(parameterValue.ToString()))).ToCharArray();
             }
-            else if ((parameterValue is ulong) || (parameterValue is Int64))
+            else if ((parameterValue is ulong) || (parameterValue is UInt64))
             {
                 parameterValue = System.Text.ASCIIEncoding.ASCII.GetString(System.BitConverter.GetBytes(ulong.Parse(parameterValue.ToString()))).ToCharArray();
             }

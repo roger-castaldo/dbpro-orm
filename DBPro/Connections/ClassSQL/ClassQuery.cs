@@ -31,6 +31,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
         private Dictionary<string, Type> _tableFields;
         private Dictionary<int, string> _fieldNames;
         private Dictionary<int, int> _tableFieldCounts;
+        private Dictionary<int, Type> _enumFields;
 		private Connection _conn = null;
 	
 		public ClassQuery(string NameSpace,string query)
@@ -43,6 +44,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             _tableFieldCounts = new Dictionary<int, int>();
             _fieldNames = new Dictionary<int, string>();
             _tableFields = new Dictionary<string, Type>();
+            _enumFields = new Dictionary<int, Type>();
             Translate();
             Logger.LogLine("Class Query: " + query + "\nTranslated To:" + _outputQuery);
 		}
@@ -1256,21 +1258,30 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 					}
 					else
 					{
-						if (map[fieldName] is ExternalFieldMap)
-						{
-							TableMap extMap = ClassMapper.GetTableMap(((ExternalFieldMap)map[fieldName]).Type);
-							ret = "";
+                        if (map[fieldName] is ExternalFieldMap)
+                        {
+                            TableMap extMap = ClassMapper.GetTableMap(((ExternalFieldMap)map[fieldName]).Type);
+                            ret = "";
                             if (ordinal != -1)
                             {
                                 _tableFieldCounts.Add(ordinal, fieldList[field.Value].Count);
                                 _tableFields.Add(fieldAlias, ((ExternalFieldMap)map[fieldName]).Type);
                             }
-							foreach (string str in fieldList[field.Value])
-							{
-								ret += field.Value.Replace(".", "_") + "." + str + " AS " + _conn.WrapAlias(fieldAlias + "_" + str) + ", ";
-							}
-						}else
-                            ret = TranslateParentFieldName(tableAlias,fieldName,map);
+                            foreach (string str in fieldList[field.Value])
+                            {
+                                ret += field.Value.Replace(".", "_") + "." + str + " AS " + _conn.WrapAlias(fieldAlias + "_" + str) + ", ";
+                            }
+                        }
+                        else
+                        {
+                            if (map[fieldName].ObjectType.IsEnum)
+                            {
+                                if (_enumFields.ContainsKey(ordinal))
+                                    _enumFields.Remove(ordinal);
+                                _enumFields.Add(ordinal, map[fieldName].ObjectType);
+                            }
+                            ret = TranslateParentFieldName(tableAlias, fieldName, map);
+                        }
 					}
 				}
 			}
@@ -1446,6 +1457,10 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 t.SetValues(_conn,_fieldNames[i]);
                 t.LoadStatus = LoadStatus.Complete;
                 return t;
+            }
+            else if (_enumFields.ContainsKey(i))
+            {
+                return _conn.Pool.GetEnumValue(_enumFields[i], _conn.GetInt32(TranslateFieldIndex(i)));
             }else
                 return _conn.GetValue(TranslateFieldIndex(i));
         }
