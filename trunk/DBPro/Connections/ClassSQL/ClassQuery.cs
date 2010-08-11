@@ -65,9 +65,9 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 			Dictionary<int, string> subQueryTranlsations = TranslateSubQueries(out parameters);
 			foreach (int x in Utility.SortDictionaryKeys(subQueryTranlsations.Keys)){
                 string orig = "";
-                for (int y = x; y < _subQueryIndexes[x]; y++)
+                for (int y = 0; y < _subQueryIndexes[x]; y++)
                 {
-                    orig += _tokenizer.Tokens[y].Value + " ";
+                    orig += _tokenizer.Tokens[y+x].Value + " ";
                 }
                 _outputQuery = _outputQuery.Replace(orig, subQueryTranlsations[x]);
 			}
@@ -350,38 +350,39 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 			}
 			if (x < _subQueryIndexes[i] && (_tokenizer.Tokens[x + i].Value.ToUpper() == "WHERE"))
 			{
-				whereIndex=x;
+				whereIndex=x+i;
 				while (x < _subQueryIndexes[i])
 				{
-                    if ((_tokenizer.Tokens[x].Value.ToUpper()=="GROUP")||
-                        (_tokenizer.Tokens[x].Value.ToUpper()=="ORDER"))
+                    if ((_tokenizer.Tokens[i + x].Value.ToUpper() == "GROUP") ||
+                        (_tokenizer.Tokens[i + x].Value.ToUpper() == "ORDER"))
                         break;
-					if ((_tokenizer.Tokens[x-1].Value.ToUpper()=="WHERE")
-					    ||(_tokenizer.Tokens[x-1].Value=="(")
-					    ||(_tokenizer.Tokens[x-1].Value.ToUpper()=="OR")
-					    ||(_tokenizer.Tokens[x-1].Value.ToUpper()=="AND")
+                    if ((_tokenizer.Tokens[i + x - 1].Value.ToUpper() == "WHERE")
+                        || (_tokenizer.Tokens[i + x - 1].Value == "(")
+                        || (_tokenizer.Tokens[i + x - 1].Value.ToUpper() == "OR")
+                        || (_tokenizer.Tokens[i + x - 1].Value.ToUpper() == "AND")
 					   ){
-						if (_tokenizer.Tokens[x].Value!="("){
-							int start=x;
+                           if (_tokenizer.Tokens[i + x].Value != "(")
+                           {
+                               int start = i + x;
 							x++;
 							while (x < _subQueryIndexes[i])
 							{
-								if ((_tokenizer.Tokens[x].Value.ToUpper()=="OR")
-								    ||(_tokenizer.Tokens[x].Value.ToUpper()=="AND")
-                                    ||(_tokenizer.Tokens[x].Value.ToUpper() == "GROUP") 
-                                    ||(_tokenizer.Tokens[x].Value.ToUpper() == "ORDER"))
+                                if ((_tokenizer.Tokens[i + x].Value.ToUpper() == "OR")
+                                    || (_tokenizer.Tokens[i + x].Value.ToUpper() == "AND")
+                                    || (_tokenizer.Tokens[i + x].Value.ToUpper() == "GROUP")
+                                    || (_tokenizer.Tokens[i + x].Value.ToUpper() == "ORDER"))
                                 {
 									break;
 								}
 								x++;
 							}
-							conditionIndexes.Add(start,x);
+                            conditionIndexes.Add(start, i + x);
 						}
 					}
                     if ((x < _subQueryIndexes[i])&&
                         (
-                            (_tokenizer.Tokens[x].Value.ToUpper() == "GROUP") ||
-                            (_tokenizer.Tokens[x].Value.ToUpper() == "ORDER")
+                            (_tokenizer.Tokens[i + x].Value.ToUpper() == "GROUP") ||
+                            (_tokenizer.Tokens[i + x].Value.ToUpper() == "ORDER")
                         ))
                         break;
 					x++;
