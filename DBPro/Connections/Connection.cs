@@ -467,8 +467,31 @@ namespace Org.Reddragonit.Dbpro.Connections
             {
                 if (map.ParentType != null)
                 {
-                    Table ta = Insert((Table)table.ToType(map.ParentType, null), ignoreAutogen);
-                    table.CopyValuesFrom(ta);
+                    Table tblPar = (Table)table.ToType(map.ParentType, null);
+                    List<SelectParameter> tmpPars = new List<SelectParameter>();
+                    TableMap pMap = ClassMapper.GetTableMap(map.ParentType);
+                    foreach (FieldNamePair fnp in pMap.FieldNamePairs)
+                    {
+                        if (pMap[fnp].PrimaryKey)
+                        {
+                            tmpPars.Add(new EqualParameter(fnp.ClassFieldName, tblPar.GetField(fnp.ClassFieldName)));
+                        }
+                    }
+                    if (Select(map.ParentType, tmpPars.ToArray()).Count > 0)
+                    {
+                        Table ta = Select(map.ParentType, tmpPars.ToArray())[0];
+                        foreach (FieldNamePair fnp in pMap.FieldNamePairs)
+                        {
+                            if (!pMap[fnp].PrimaryKey)
+                            {
+                                ta.SetField(fnp.ClassFieldName, tblPar.GetField(fnp.ClassFieldName));
+                            }
+                        }
+                        tblPar = Update(ta);
+                    }
+                    else
+                        tblPar = Insert(tblPar, ignoreAutogen);
+                    table.CopyValuesFrom(tblPar);
                 }
                 foreach (Type t in map.ForeignTables)
                 {
