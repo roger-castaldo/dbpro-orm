@@ -1290,37 +1290,24 @@ namespace Org.Reddragonit.Dbpro.Connections
 		{
 			return reader.GetDataTypeName(i);
 		}
-		
-		public Type GetFieldType(int i)
-		{
-			return reader.GetFieldType(i);
-		}
-		
-		public object GetValue(int i)
-		{
-			return reader.GetValue(i);
-		}
-		
-		public int GetValues(object[] values)
-		{
-			return GetValues(values);
-		}
-		
-		public int GetOrdinal(string name)
-		{
-			return reader.GetOrdinal(name);
-		}
-		
-		public bool ContainsField(string name)
-		{
-			try{
-				reader.GetOrdinal(name);
-				return true;
-			}catch (Exception e)
-			{
-				return false;
-			}
-		}
+
+        public int GetOrdinal(string name)
+        {
+            return reader.GetOrdinal(name);
+        }
+
+        public bool ContainsField(string name)
+        {
+            try
+            {
+                reader.GetOrdinal(name);
+                return true;
+            }
+            catch (Exception e)
+            {
+                return false;
+            }
+        }
 		
 		public byte GetByte(int i)
 		{
@@ -1386,21 +1373,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 		{
 			return reader.IsDBNull(i);
 		}
-		public object this[int i]
-		{
-			get {
-				return reader[i];
-			}
-		}
 		
-		public object this[string name]
-		{
-			get {
-				return reader[name];
-			}
-		}
-		
-		public bool GetBoolean(int i)
+		public virtual bool GetBoolean(int i)
 		{
 			return reader.GetBoolean(i);
 		}
@@ -1414,7 +1388,45 @@ namespace Org.Reddragonit.Dbpro.Connections
 		{
 			return reader.GetString(i);
 		}
-		
+
+        public object this[int i]
+        {
+            get
+            {
+                return this.GetValue(i);
+            }
+        }
+
+        public object this[string name]
+        {
+            get
+            {
+                return this.GetValue(this.GetOrdinal(name));
+            }
+        }
+
+        public virtual Type GetFieldType(int i)
+        {
+            return reader.GetFieldType(i);
+        }
+
+        public virtual object GetValue(int i)
+        {
+            return reader.GetValue(i);
+        }
+
+        public virtual int GetValues(object[] values)
+        {
+            object[] ret = new object[reader.FieldCount];
+            for (int x = 0; x < reader.FieldCount; x++)
+            {
+                if (reader.IsDBNull(x))
+                    ret[x] = null;
+                else
+                    ret[x] = this.GetValue(x);
+            }
+            return ret.Length;
+        }
 		
 		public List<string> FieldNames{
 			get{

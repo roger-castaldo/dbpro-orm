@@ -658,18 +658,21 @@ namespace Org.Reddragonit.Dbpro.Connections
 			try{
 				string conditions="";
 				TableMap map = ClassMapper.GetTableMap(table.GetType());
-				foreach(InternalFieldMap ifm in map.PrimaryKeys)
-				{
-					conditions+=ifm.FieldName+" = "+pool.CorrectName(CreateParameterName(ifm.FieldName))+" AND ";
-                    object val = null;
-                    if (map.GetClassFieldName(ifm) == null)
-                        val = LocateFieldValue(table,map , ifm.FieldName,_pool);
-                    else
-                        val = table.GetField(map.GetClassFieldName(ifm));
-					parameters.Add(conn.CreateParameter(pool.CorrectName(CreateParameterName(ifm.FieldName)),val,ifm.FieldType,ifm.FieldLength));
-				}
+                List<EqualParameter> tmpPars = new List<EqualParameter>();
+                foreach (FieldNamePair fnp in map.FieldNamePairs)
+                {
+                    if (map[fnp].PrimaryKey || !map.HasPrimaryKeys)
+                    {
+                        tmpPars.Add(new EqualParameter(fnp.ClassFieldName, table.GetInitialPrimaryValue(fnp.ClassFieldName)));
+                    }
+                }
+                int parCount = 0;
+                foreach (EqualParameter eq in tmpPars)
+                {
+                    conditions += eq.ConstructString(map, _conn, this, ref parameters, ref parCount) + " AND ";
+                }
                 if (conditions.Length > 0)
-                    conditions = conditions.Substring(0, conditions.Length - 4);
+                    conditions = conditions.Substring(0, conditions.Length - 4).Replace("main_table.", "");
 				return string.Format(DeleteWithConditions,map.Name,conditions);
 			}catch(Exception e)
 			{
@@ -765,7 +768,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             {
                 foreach (ExternalFieldMap efm in relatedMap.GetFieldInfoForForeignTable(t))
                 {
-                    if (fieldName.StartsWith(efm.AddOnName + "_"))
+                    if ((fieldName.StartsWith(pool.CorrectName(efm.AddOnName) + "_"))||(fieldName.StartsWith(efm.AddOnName + "_")))
                     {
                         TableMap etm = ClassMapper.GetTableMap(efm.ObjectType);
                         foreach (InternalFieldMap ifm in etm.Fields)

@@ -241,7 +241,10 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 				if (
 					(tokens[x].Value.ToUpper() == "SELECT") &&
 					(x > 0) &&
-					(tokens[x - 1].Value == "(")
+					(
+                        (tokens[x - 1].Value == "(")||
+                        (tokens[x-1].Value=="UNION")
+                    )
 				)
 				{
 					pos = x;
@@ -1035,13 +1038,13 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         while (parentMap.ParentType != null)
                         {
                             parentMap = ClassMapper.GetTableMap(map.ParentType);
-                            string innerJoin = " INNER JOIN " + _conn.Pool.CorrectName(parentMap.Name) + " " + alias + "_parent ON ";
+                            string innerJoin = " INNER JOIN " + _conn.Pool.CorrectName(parentMap.Name) + " " + alias + "_prnt ON ";
                             foreach (InternalFieldMap ifm in parentMap.PrimaryKeys)
-                                innerJoin += alias + "." + _conn.Pool.CorrectName(ifm.FieldName) + " = " + alias + "_parent." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
+                                innerJoin += alias + "." + _conn.Pool.CorrectName(ifm.FieldName) + " = " + alias + "_prnt." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
                             innerJoin = innerJoin.Substring(0, innerJoin.Length - 4);
                             if (!joins.Contains(innerJoin))
                                 joins.Add(innerJoin);
-                            alias += "_parent";
+                            alias += "_prnt";
                         }
                     }
                 }
@@ -1050,7 +1053,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             {
                 if (map[field] is ExternalFieldMap)
                 {
-                    ExternalFieldMap efm = (ExternalFieldMap)baseMap[field];
+                    ExternalFieldMap efm = (ExternalFieldMap)map[field];
                     TableMap eMap = ClassMapper.GetTableMap(efm.Type);
                     string className = field;
                     string innerJoin = " INNER JOIN ";
@@ -1095,14 +1098,14 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     TableMap parentMap = map;
                     while (parentMap.ParentType != null)
                     {
-                        parentMap = ClassMapper.GetTableMap(map.ParentType);
-                        string innerJoin = " INNER JOIN " + _conn.Pool.CorrectName(parentMap.Name) + " " + alias + "_parent ON ";
+                        parentMap = ClassMapper.GetTableMap(parentMap.ParentType);
+                        string innerJoin = " INNER JOIN " + _conn.Pool.CorrectName(parentMap.Name) + " " + alias + "_prnt ON ";
                         foreach (InternalFieldMap ifm in parentMap.PrimaryKeys)
-                            innerJoin += alias + "." + _conn.Pool.CorrectName(ifm.FieldName) + " = " + alias + "_parent." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
+                            innerJoin += alias + "." + _conn.Pool.CorrectName(ifm.FieldName) + " = " + alias + "_prnt." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
                         innerJoin = innerJoin.Substring(0, innerJoin.Length - 4);
                         if (!joins.Contains(innerJoin))
                             joins.Add(innerJoin);
-                        alias += "_parent";
+                        alias += "_prnt";
                     }
                 }
             }
@@ -1117,7 +1120,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             while (parentMap.ParentType != null)
             {
                 parentMap = ClassMapper.GetTableMap(map.ParentType);
-                alias += "_parent";
+                alias += "_prnt";
                 if (!parentMap.IsParentClassField(field))
                     break;
             }

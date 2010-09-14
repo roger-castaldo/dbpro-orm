@@ -221,6 +221,27 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
             }
 			return new FbParameter(parameterName,parameterValue);
 		}
+
+        public override object GetValue(int i)
+        {
+            if ((reader[i].ToString().Length == 1) && ((reader[i].ToString() == "T") || (reader[i].ToString() == "F")))
+                return this.GetBoolean(i);
+            return base.GetValue(i);
+        }
+
+        public override Type GetFieldType(int i)
+        {
+            if ((reader[i].ToString().Length == 1) && ((reader[i].ToString() == "T") || (reader[i].ToString() == "F")))
+                return typeof(bool);
+            return base.GetFieldType(i);
+        }
+
+        public override bool GetBoolean(int i)
+        {
+            if ((reader[i].ToString().Length == 1) && ((reader[i].ToString() == "T") || (reader[i].ToString() == "F")))
+                return reader[i].ToString() == "T";
+            return base.GetBoolean(i);
+        }
 		
 		protected override System.Data.IDbCommand EstablishCommand()
 		{
