@@ -152,11 +152,11 @@ namespace Org.Reddragonit.Dbpro
                         ((Table)owner).LoadStatus = LoadStatus.Complete;
                     }
                 }
-                else if (obj is PropertySetChangesField)
+                else if (obj is MethodInvokeChangesField)
                 {
                     if (fieldsAffected == null)
                         fieldsAffected = new List<string>();
-                    fieldsAffected.Add(((PropertySetChangesField)obj).FieldAffected);
+                    fieldsAffected.AddRange(((MethodInvokeChangesField)obj).FieldAffected);
                 }
             }
 			
@@ -179,7 +179,7 @@ namespace Org.Reddragonit.Dbpro
                         {
                             if (fieldsAffected == null)
                                 fieldsAffected = new List<string>();
-                            fieldsAffected.Add(((PropertySetChangesField)obj).FieldAffected);
+                            fieldsAffected.AddRange(((PropertySetChangesField)obj).FieldAffected);
                         }
                     }
                 }
@@ -303,6 +303,14 @@ namespace Org.Reddragonit.Dbpro
                         try
                         {
                             outVal = mi.Invoke(owner, mc.Args);
+                            if (fieldsAffected != null)
+                            {
+                                foreach (string str in fieldsAffected)
+                                {
+                                    if (!_changedFields.Contains(str))
+                                        _changedFields.Add(str);
+                                }
+                            }
                         }
                         catch (Exception ex)
                         {
