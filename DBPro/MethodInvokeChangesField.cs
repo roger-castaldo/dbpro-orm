@@ -4,22 +4,21 @@ using System.Text;
 
 namespace Org.Reddragonit.Dbpro
 {
-    [AttributeUsage(AttributeTargets.Property)]
-    public class PropertySetChangesField : Attribute
+    [AttributeUsage(AttributeTargets.Method)]
+    public class MethodInvokeChangesField :Attribute 
     {
-
         private string[] _fieldAffected;
         public string[] FieldAffected
         {
             get { return _fieldAffected; }
         }
 
-        public PropertySetChangesField(string[] fieldsAffected)
+        public MethodInvokeChangesField(string[] fieldsAffected)
         {
             _fieldAffected = fieldsAffected;
         }
 
-        public PropertySetChangesField(string fieldAffected)
+        public MethodInvokeChangesField(string fieldAffected)
         {
             _fieldAffected = new string[]{fieldAffected};
         }

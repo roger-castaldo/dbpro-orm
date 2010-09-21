@@ -1001,9 +1001,9 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 {
                     if (map[fnp] is ExternalFieldMap)
                     {
-                        ExternalFieldMap efm = (ExternalFieldMap)baseMap[field];
+                        ExternalFieldMap efm = (ExternalFieldMap)baseMap[fnp];
                         TableMap eMap = ClassMapper.GetTableMap(efm.Type);
-                        string className = field;
+                        string className = fnp.ClassFieldName;
                         string innerJoin = " INNER JOIN ";
                         if (efm.Nullable)
                             innerJoin = " LEFT JOIN ";
