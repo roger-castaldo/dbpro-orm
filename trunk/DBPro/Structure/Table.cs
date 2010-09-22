@@ -538,17 +538,36 @@ namespace Org.Reddragonit.Dbpro.Structure
             TableMap map = ClassMapper.GetTableMap(conversionType);
             if (conversionType.IsSubclassOf(this.GetType()))
                 map = ClassMapper.GetTableMap(this.GetType());
+            ((Table)ret)._changedFields = new List<string>();
             foreach (FieldNamePair fnp in map.FieldNamePairs)
             {
                 if (!this.IsFieldNull(fnp.ClassFieldName))
                     ((Table)ret).SetField(fnp.ClassFieldName, this.GetField(fnp.ClassFieldName));
+                if (this.ChangedFields != null)
+                {
+                    if (this.ChangedFields.Contains(fnp.ClassFieldName))
+                        ((Table)ret)._changedFields.Add(fnp.ClassFieldName);
+                }
             }
             foreach (FieldNamePair fnp in map.ParentFieldNamePairs)
             {
                 if (!this.IsFieldNull(fnp.ClassFieldName))
                     ((Table)ret).SetField(fnp.ClassFieldName, this.GetField(fnp.ClassFieldName));
+                if (this.ChangedFields != null)
+                {
+                    if (this.ChangedFields.Contains(fnp.ClassFieldName))
+                        ((Table)ret)._changedFields.Add(fnp.ClassFieldName);
+                }
             }
 			((Table)ret).InitPrimaryKeys();
+            foreach (string str in this._initialPrimaryKeys.Keys)
+            {
+                if (((Table)ret)._initialPrimaryKeys.ContainsKey(str))
+                {
+                    ((Table)ret)._initialPrimaryKeys.Remove(str);
+                    ((Table)ret)._initialPrimaryKeys.Add(str, this._initialPrimaryKeys[str]);
+                }
+            }
 			return ret;
 		}
 
