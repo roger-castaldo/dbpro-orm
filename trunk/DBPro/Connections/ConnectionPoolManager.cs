@@ -6,16 +6,29 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Xml;
+using Org.Reddragonit.Dbpro.Structure;
 
 namespace Org.Reddragonit.Dbpro.Connections
 {
 	public static class ConnectionPoolManager
 	{
+
+        internal enum TriggerTypes{
+            PRE_UPDATE,
+            POST_UPDATE,
+            PRE_DELETE,
+            POST_DELETE,
+            PRE_INSERT,
+            POST_INSERT,
+            PRE_DELETE_ALL,
+            POST_DELETE_ALL
+        }
 		
 		public readonly static string DEFAULT_CONNECTION_NAME="Org.Reddragonit.Dbpro.Connections.DEFAULT";
 		private readonly static string CONNECTION_CONFIG_FILENAME="DbPro.xml";
 
 		private static Dictionary<string, ConnectionPool> _connectionPools = new Dictionary<string, ConnectionPool>();
+        private static Dictionary<Type, List<ITrigger>> _triggers = new Dictionary<Type, List<ITrigger>>();
 		
 		static ConnectionPoolManager()
 		{
@@ -64,6 +77,80 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
 			Utility.Release(_connectionPools);
 		}
+
+        public static void RegisterTrigger(Type objectType, ITrigger trigger)
+        {
+            Monitor.Enter(_triggers);
+            if (!_triggers.ContainsKey(objectType))
+                _triggers.Add(objectType, new List<ITrigger>());
+            _triggers[objectType].Add(trigger);
+            Monitor.Exit(_triggers);
+        }
+
+        internal static void RunTriggers(Type tblType, TriggerTypes type)
+        {
+            ITrigger[] tmp = new ITrigger[0];
+            Monitor.Enter(_triggers);
+            if (_triggers.ContainsKey(tblType))
+            {
+                tmp = new ITrigger[_triggers[tblType].Count];
+                _triggers[tblType].CopyTo(tmp);
+            }
+            Monitor.Exit(_triggers);
+            foreach (ITrigger tr in tmp)
+            {
+                switch (type)
+                {
+                    case TriggerTypes.PRE_DELETE_ALL:
+                        tr.PreDeleteAll();
+                        break;
+                    case TriggerTypes.POST_DELETE_ALL:
+                        tr.PostDeleteAll();
+                        break;
+                }
+            }
+        }
+
+        internal static void RunTriggers(Table tbl, TriggerTypes type)
+        {
+            ITrigger[] tmp = new ITrigger[0];
+            Monitor.Enter(_triggers);
+            if (_triggers.ContainsKey(tbl.GetType())){
+                tmp = new ITrigger[_triggers[tbl.GetType()].Count];
+                _triggers[tbl.GetType()].CopyTo(tmp);
+            }
+            Monitor.Exit(_triggers);
+            foreach (ITrigger tr in tmp)
+            {
+                switch (type)
+                {
+                    case TriggerTypes.PRE_DELETE:
+                        tr.PreDelete(tbl);
+                        break;
+                    case TriggerTypes.POST_DELETE:
+                        tr.PostDelete(tbl);
+                        break;
+                    case TriggerTypes.PRE_INSERT:
+                        tr.PreInsert(tbl);
+                        break;
+                    case TriggerTypes.POST_INSERT:
+                        tr.PostInsert(tbl);
+                        break;
+                    case TriggerTypes.PRE_UPDATE:
+                        tr.PreUpdate(tbl, tbl.ChangedFields);
+                        break;
+                    case TriggerTypes.POST_UPDATE:
+                        tr.PostUpdate(tbl, tbl.ChangedFields);
+                        break;
+                    case TriggerTypes.PRE_DELETE_ALL:
+                        tr.PreDeleteAll();
+                        break;
+                    case TriggerTypes.POST_DELETE_ALL:
+                        tr.PostDeleteAll();
+                        break;
+                }
+            }
+        }
 		
 		private static void ExtractConnectionFromXml(XmlNode connectionNode)
 		{

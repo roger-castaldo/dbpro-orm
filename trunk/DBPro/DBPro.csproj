@@ -130,6 +130,7 @@
     <Compile Include="Connections\MsSql\MsSqlConnection.cs" />
     <Compile Include="Connections\MsSql\MsSqlConnectionPool.cs" />
     <Compile Include="Connections\QueryBuilder.cs" />
+    <Compile Include="Connections\ITrigger.cs" />
     <Compile Include="Exceptions\Exceptions.cs" />
     <Compile Include="MethodInvokeChangesField.cs" />
     <Compile Include="PropertySetChangesField.cs" />
