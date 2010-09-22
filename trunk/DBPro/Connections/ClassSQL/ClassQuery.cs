@@ -345,13 +345,13 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                             }
 							tableDeclarations.Add(i + x);
 						}
-						else if (_tokenizer.Tokens[i + x].Value.ToUpper() == "WHERE")
+                        else if (_tokenizer.Tokens[i + x].Value.ToUpper() == "WHERE" || _tokenizer.Tokens[i + x].Value.ToUpper() == "ORDER" || _tokenizer.Tokens[i + x].Value.ToUpper() == "GROUP")
 							break;
 					}
 					x++;
 				}
 			}
-			if (x < _subQueryIndexes[i] && (_tokenizer.Tokens[x + i].Value.ToUpper() == "WHERE"))
+            if (x < _subQueryIndexes[i] && (_tokenizer.Tokens[i + x].Value.ToUpper() == "WHERE" || _tokenizer.Tokens[i + x].Value.ToUpper() == "ORDER" || _tokenizer.Tokens[i + x].Value.ToUpper() == "GROUP"))
 			{
 				whereIndex=x+i;
 				while (x < _subQueryIndexes[i])
@@ -399,6 +399,15 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 			string tables = CreateTableQuery(tableDeclarations, fieldIndexes,ref fieldList,whereFieldIndexes);
 			string fields = TranslateFields(i,fieldIndexes, tableDeclarations, fieldAliases, tableAliases,fieldList);
 			string wheres = TranslateWhereConditions(whereIndex,conditionIndexes,tableAliases,tableDeclarations,fieldList);
+            if ((whereFieldIndexes.Count == 0) && (whereIndex > 0) && (whereIndex < _subQueryIndexes[i]))
+            {
+                wheres = " ";
+                while (x < _subQueryIndexes[i])
+                {
+                    wheres += _tokenizer.Tokens[x + i].Value + " ";
+                    x++;
+                }
+            }
             string ending = "";
             if (wheres.ToUpper().Contains(" GROUP BY ") || wheres.ToUpper().Contains(" ORDER BY "))
             {
@@ -407,24 +416,27 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     endingStart = wheres.ToUpper().IndexOf(" ORDER BY ");
                 ending = wheres.Substring(endingStart);
                 wheres = wheres.Substring(0, endingStart);
-                QueryTokenizer qt = new QueryTokenizer(ending);
-                for (int y = 0; x < qt.Tokens.Count; x++)
+                QueryTokenizer qt = new QueryTokenizer(ending.Trim());
+                qt.parse();
+                if (qt.Tokens.Count > 0)
+                    wheres += " " + qt.Tokens[0].Value+" ";
+                for (int y = 1; y < qt.Tokens.Count; y++)
                 {
                     if (
                         (qt.Tokens[y - 1].Value == ",") ||
                         (qt.Tokens[y - 1].Value == "(") ||
                         (qt.Tokens[y - 1].Value.ToUpper() == "BY") ||
-                        (qt.Tokens[y + 1].Type == TokenType.OPERATOR) ||
+                        ((y+1<qt.Tokens.Count)&&(qt.Tokens[y + 1].Type == TokenType.OPERATOR)) ||
                         (qt.Tokens[y - 1].Type == TokenType.OPERATOR) ||
                         (qt.Tokens[y - 1].Value.ToUpper() == "WHEN") ||
                         (qt.Tokens[y - 1].Value.ToUpper() == "THEN") ||
                         (qt.Tokens[y - 1].Value.ToUpper() == "ELSE")
                         )
                     {
-                        wheres+=TranslateGroupOrderByFieldName(x, tableDeclarations, fieldAliases, tableAliases, fieldList, qt)+" ";
+                        wheres+=TranslateGroupOrderByFieldName(y, tableDeclarations, fieldAliases, tableAliases, fieldList, qt)+" ";
                     }
                     else
-                        wheres += qt.Tokens[x].Value+ " ";
+                        wheres += qt.Tokens[y].Value+ " ";
                 }
             }
 			return fields+" FROM " + tables+wheres;
@@ -434,11 +446,13 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
         #region GroupOrderByTranslating
         private string TranslateGroupOrderByFieldName(int index, List<int> tableDeclarations, Dictionary<int, string> fieldAliases, Dictionary<string, string> tableAliases, Dictionary<string, List<string>> fieldList,QueryTokenizer tokenizer)
         {
-            QueryToken field = _tokenizer.Tokens[index];
+            QueryToken field = tokenizer.Tokens[index];
             string tableName = "";
             string fieldName = tokenizer.Tokens[index].Value;
+            string alias = "";
             if (field.Value.Contains("."))
             {
+                alias = field.Value.Substring(0, field.Value.IndexOf("."));
                 tableName = field.Value.Substring(0, field.Value.IndexOf("."));
                 fieldName = fieldName.Substring(tableName.Length + 1);
             }
@@ -500,7 +514,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                             }
                         }
                         else
-                            ret = TranslateParentFieldName(tableName,fieldName,map);
+                            ret = TranslateParentFieldName(alias,fieldName,map);
                     }
                 }
             }
