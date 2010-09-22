@@ -61,13 +61,13 @@ namespace Org.Reddragonit.Dbpro
         //this function is called to convert the called method into a propertyinfo
         //object if it is in fact a property, otherwise it returns a null.  It also
         //inidicates if the function is a get or a set call.
-		protected static PropertyInfo GetMethodProperty(MethodInfo methodInfo, object owner, out bool IsGet)
+		protected static PropertyInfo GetMethodProperty(MethodInfo methodInfo, object owner, out bool IsGet,TableMap map)
 		{
 			foreach(PropertyInfo aProp in owner.GetType().GetProperties(BindingFlags.Public |      //Get public members
 			                                                            BindingFlags.NonPublic |   //Get private/protected/internal members
 			                                                            BindingFlags.Static |      //Get static members
 			                                                            BindingFlags.Instance |    //Get instance members
-			                                                            BindingFlags.DeclaredOnly  ))
+			                                                            BindingFlags.DeclaredOnly))
 			{
 				MethodInfo mi = null;
 				mi = aProp.GetGetMethod(true);
@@ -83,6 +83,12 @@ namespace Org.Reddragonit.Dbpro
 					return aProp;
 				}
 			}
+            if (map.ParentType != null)
+            {
+                PropertyInfo ret = GetMethodProperty(methodInfo, Convert.ChangeType(owner, map.ParentType), out IsGet, ClassMapper.GetTableMap(map.ParentType));
+                if (ret != null)
+                    return ret;
+            }
 			IsGet = false;
 			return null;
 		}
@@ -163,7 +169,7 @@ namespace Org.Reddragonit.Dbpro
 			if (owner!=null)
 			{
 				bool isGet=false;
-				PropertyInfo pi = GetMethodProperty(mi,owner, out isGet);
+				PropertyInfo pi = GetMethodProperty(mi,owner, out isGet,_map);
                 if (pi != null)
                 {
                     foreach (object obj in pi.GetCustomAttributes(true))

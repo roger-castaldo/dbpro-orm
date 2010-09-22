@@ -348,6 +348,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			if ((table.ChangedFields==null)||(table.ChangedFields.Count==0))
 				return table;
 			TableMap map = ClassMapper.GetTableMap(table.GetType());
+            table._changedFields = table.ChangedFields;
 			if (map.ParentType!=null)
 			{
 				Table ta = Update((Table)table.ToType(map.ParentType,null));
