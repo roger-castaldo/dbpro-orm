@@ -164,27 +164,30 @@ namespace Org.Reddragonit.Dbpro.Structure
                     setValue = true;
                 }
             }
-            foreach (FieldNamePair fnp in map.FieldNamePairs)
+            if (setValue)
             {
-                if ((map[fnp] is ExternalFieldMap)&&map[fnp].PrimaryKey)
+                foreach (FieldNamePair fnp in map.FieldNamePairs)
                 {
-                    if (!((ExternalFieldMap)map[fnp]).IsArray)
+                    if ((map[fnp] is ExternalFieldMap) && map[fnp].PrimaryKey)
                     {
-                        ExternalFieldMap efm = (ExternalFieldMap)map[fnp];
-                        Table t = (Table)LazyProxy.Instance(efm.Type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
-                        bool sValue = false;
-                        t = SetExternalValues(ClassMapper.GetTableMap(t.GetType()), conn, additionalAddOnName + "_" + efm.AddOnName, out sValue,t);
-                        if (sValue)
-                            setValue = true;
-                        if (!t.AllFieldsNull && sValue)
+                        if (!((ExternalFieldMap)map[fnp]).IsArray)
                         {
-                            t.InitPrimaryKeys();
-                            table.SetField(fnp.ClassFieldName, t);
+                            ExternalFieldMap efm = (ExternalFieldMap)map[fnp];
+                            Table t = (Table)LazyProxy.Instance(efm.Type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
+                            bool sValue = false;
+                            t = SetExternalValues(ClassMapper.GetTableMap(t.GetType()), conn, additionalAddOnName + "_" + efm.AddOnName, out sValue, t);
+                            if (sValue)
+                                setValue = true;
+                            if (!t.AllFieldsNull && sValue)
+                            {
+                                t.InitPrimaryKeys();
+                                table.SetField(fnp.ClassFieldName, t);
+                            }
                         }
                     }
                 }
+                table.LoadStatus = LoadStatus.Partial;
             }
-            table.LoadStatus = LoadStatus.Partial;
             return table;
         }
 		
