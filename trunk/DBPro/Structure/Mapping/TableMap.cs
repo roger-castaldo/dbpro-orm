@@ -282,7 +282,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 					TableMap parentMap = ClassMapper.GetTableMap(ParentType);
 					ret.AddRange(parentMap.FieldNamePairs);
                     if (parentMap.ParentType!=null)
-					    ret.AddRange(ClassMapper.GetTableMap(parentMap.ParentType).ParentFieldNamePairs);
+					    ret.AddRange(parentMap.ParentFieldNamePairs);
 				}
 				return ret;
 			}
