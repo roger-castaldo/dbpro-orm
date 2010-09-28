@@ -404,6 +404,27 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			}
 		}
 
+        public List<System.Type> ForeignTablesBackup
+        {
+            get
+            {
+                List<System.Type> ret = new List<System.Type>();
+                foreach (FieldMap f in _fields.Values)
+                {
+                    if (f is ExternalFieldMap)
+                    {
+                        ExternalFieldMap efm = (ExternalFieldMap)f;
+                        ret.Add(efm.Type);
+                    }
+                }
+                if (this.ParentType != null)
+                {
+                    ret.AddRange(ClassMapper.GetTableMap(this.ParentType).ForeignTablesBackup);
+                }
+                return ret;
+            }
+        }
+
 		public List<ExternalFieldMap> ExternalFieldMapArrays
 		{
 			get

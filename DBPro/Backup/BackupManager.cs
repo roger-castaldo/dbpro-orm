@@ -38,7 +38,7 @@ namespace Org.Reddragonit.Dbpro.Backup
                             enums.Add(ifm.ObjectType);
                     }
                 }
-                if (map.ForeignTables.Count > 0)
+                if (map.ForeignTablesBackup.Count > 0)
                 {
                     if (!complexTypes.Contains(t))
                     {
@@ -218,12 +218,12 @@ namespace Org.Reddragonit.Dbpro.Backup
         {
             if (complexTypes.Contains(type))
                 return;
-            foreach (Type t in map.ForeignTables)
+            foreach (Type t in map.ForeignTablesBackup)
             {
                 if (!t.Equals(type))
                 {
                     TableMap tm = ClassMapper.GetTableMap(t);
-                    if (tm.ForeignTables.Count > 0)
+                    if (tm.ForeignTablesBackup.Count > 0)
                         recurAddRelatedTypes(ref basicTypes, ref complexTypes, tm, t);
                     else
                     {
@@ -243,8 +243,10 @@ namespace Org.Reddragonit.Dbpro.Backup
             Connection c = pool.LockDownForBackupRestore();
             //disable autogen fields as well as all relationship constraints
             c.DisableAutogens();
+            c.Commit();
             foreach (Type ty in ClassMapper.TableTypesForConnection(pool.ConnectionName))
                 c.DeleteAll(ty);
+            c.Commit();
             pool.DisableRelationships(c);
             c.Commit();
 
@@ -347,6 +349,7 @@ namespace Org.Reddragonit.Dbpro.Backup
 
             //reset all relationships and autogen fields
             pool.EnableRelationships(c);
+            c.Commit();
             c.EnableAndResetAutogens();
             c.Commit();
             pool.UnlockPoolPostBackupRestore();
