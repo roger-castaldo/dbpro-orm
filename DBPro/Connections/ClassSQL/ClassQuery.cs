@@ -408,6 +408,14 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     x++;
                 }
             }
+            else if (x < _subQueryIndexes[i])
+            {
+                while (x < _subQueryIndexes[i])
+                {
+                    wheres += _tokenizer.Tokens[x + i].Value + " ";
+                    x++;
+                }
+            }
             string ending = "";
             if (wheres.ToUpper().Contains(" GROUP BY ") || wheres.ToUpper().Contains(" ORDER BY "))
             {
@@ -1133,7 +1141,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             TableMap parentMap = map;
             while (parentMap.ParentType != null)
             {
-                parentMap = ClassMapper.GetTableMap(map.ParentType);
+                parentMap = ClassMapper.GetTableMap(parentMap.ParentType);
                 alias += "_prnt";
                 if (!parentMap.IsParentClassField(field))
                     break;
