@@ -345,7 +345,7 @@ namespace Org.Reddragonit.Dbpro.Connections
         {
             foreach (ExtractedFieldMap efm in Fields)
             {
-                if (efm.FieldName == fieldName)
+                if (efm.FieldName.ToUpper() == fieldName.ToUpper())
                     return efm;
             }
             return new ExtractedFieldMap();
