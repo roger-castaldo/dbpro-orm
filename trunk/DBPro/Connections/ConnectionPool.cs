@@ -491,9 +491,10 @@ namespace Org.Reddragonit.Dbpro.Connections
 					foreach (InternalFieldMap ifm in ftm.PrimaryKeys)
 					{
 						aetm.Fields.Add(new ExtractedFieldMap(CorrectName("child_"+ifm.FieldName),conn.TranslateFieldType(ifm.FieldType,ifm.FieldLength),
-						                                      ifm.FieldLength,true,false,false));
+						                                      ifm.FieldLength,false,false,false));
 						aetm.ForeignFields.Add(new ForeignRelationMap(efm.AddOnName+"_child",CorrectName("child_"+ifm.FieldName),ftm.Name,ifm.FieldName,efm.OnUpdate.ToString(),efm.OnDelete.ToString()));
 					}
+                    aetm.Fields.Add(new ExtractedFieldMap(CorrectName("index"),conn.TranslateFieldType(FieldType.INTEGER,0),4,true,false,true));
 					tables.Add(aetm);
 				}
 				if (tm.VersionType!=null)
