@@ -211,7 +211,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             get { return "SELECT Min({0}) FROM {1}"; }
         }
 		
-		protected virtual string OrderBy
+		public virtual string OrderBy
 		{
 			get{return "{0} ORDER BY {1}";}
 		}
