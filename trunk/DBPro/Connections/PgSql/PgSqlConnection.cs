@@ -21,7 +21,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 	/// </summary>
 	public class PgSqlConnection : Connection
 	{
-		public PgSqlConnection(ConnectionPool pool,string connectionString,bool Readonly) : base(pool,connectionString,Readonly)
+		public PgSqlConnection(ConnectionPool pool,string connectionString,bool Readonly,bool exclusiveLock) : base(pool,connectionString,Readonly,exclusiveLock)
 		{
 		}
 		
@@ -30,6 +30,11 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 				return "information_schema.tables";
 			}
 		}
+
+        internal override IDbTransaction EstablishExclusiveTransaction()
+        {
+            return ((NpgsqlConnection)conn).BeginTransaction(IsolationLevel.Serializable);
+        }
 		
 		public override IDbDataParameter CreateParameter(string parameterName, object parameterValue)
 		{

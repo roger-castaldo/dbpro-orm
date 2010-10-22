@@ -26,6 +26,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		protected IDbCommand comm=null;
 		protected IDataReader reader=null;
 		protected IDbTransaction trans=null;
+        private bool _exclusiveLock;
 		private bool isConnected=false;
 		private DateTime creationTime;
 		protected string connectionString;
@@ -97,6 +98,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		internal abstract List<Trigger> GetVersionTableTriggers(ExtractedTableMap table,VersionTypes versionType,ConnectionPool pool);
         internal abstract void DisableAutogens();
         internal abstract void EnableAndResetAutogens();
+        internal abstract IDbTransaction EstablishExclusiveTransaction();
 		
 		internal virtual List<string> GetDropTableString(string table,bool isVersioned)
 		{
@@ -116,7 +118,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             return queryBuilder.CreateParameterName(parameter);
         }
 		
-		public Connection(ConnectionPool pool,string connectionString,bool Readonly){
+		public Connection(ConnectionPool pool,string connectionString,bool Readonly,bool exclusiveLock){
 			this.connectionString=connectionString;
 			this.pool=pool;
             this._uniqueID = System.Convert.ToBase64String(Guid.NewGuid().ToByteArray());
@@ -195,7 +197,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             if (createTrans)
             {
                 Logger.LogLine("Creating new transaction for connection in reset to replace existing");
-                trans = conn.BeginTransaction();
+                StartTransaction();
             }
             if (comm == null)
                 comm = EstablishCommand();
@@ -245,7 +247,10 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         internal void StartTransaction()
         {
-            trans = conn.BeginTransaction();
+            if (_exclusiveLock)
+                trans = EstablishExclusiveTransaction();
+            else
+                trans = conn.BeginTransaction();
             comm.Transaction = trans;
         }
 		
@@ -934,8 +939,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			if ((trans == null)&&!queryString.ToUpper().StartsWith("SELECT"))
             {
                 Logger.LogLine("Opening transaction for query since it is not performing a select");
-                trans = conn.BeginTransaction();
-                comm.Transaction = trans;
+                StartTransaction();
             }
             else if (trans != null)
                 Logger.LogLine("Connection already has an open transaction");
@@ -1005,8 +1009,7 @@ namespace Org.Reddragonit.Dbpro.Connections
         	if (trans == null)
             {
                 Logger.LogLine("Opening transaction for query since it is not performing a select");
-                trans = conn.BeginTransaction();
-                comm.Transaction = trans;
+                StartTransaction();
             }
             else if (trans != null)
                 Logger.LogLine("Connection already has an open transaction");
@@ -1085,8 +1088,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             if ((trans == null)&&!queryString.ToUpper().StartsWith("SELECT"))
             {
                 Logger.LogLine("Opening transaction for query since it is not performing a select");
-                trans = conn.BeginTransaction();
-                comm.Transaction = trans;
+                StartTransaction();
             }
             else if (trans!=null)
                 Logger.LogLine("Connection already has an open transaction");
@@ -1167,8 +1169,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             if (trans == null)
             {
                 Logger.LogLine("Opening transaction for query since it is not performing a select");
-                trans = conn.BeginTransaction();
-                comm.Transaction = trans;
+                StartTransaction();
             }
             else if (trans != null)
                 Logger.LogLine("Connection already has an open transaction");

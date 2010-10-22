@@ -173,9 +173,9 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 			get { return 31; }
 		}
 		
-		protected override Connection CreateConnection()
+		protected override Connection CreateConnection(bool exclusiveLock)
 		{
-			return new FBConnection(this,connectionString,_readonly);
+			return new FBConnection(this,connectionString,_readonly,exclusiveLock);
 		}
 
         protected override void PreInit()
@@ -183,7 +183,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
             if (!_readonly)
             {
                 Logger.LogLine("Initializing Firebird Connection Pool " + this.ConnectionName + " using the connection string: " + connectionString);
-                Connection c = CreateConnection();
+                Connection c = CreateConnection(false);
                 bool exists = false;
                 string query = new StreamReader(this.GetType().Assembly.GetManifestResourceStream("Org.Reddragonit.Dbpro.Connections.Firebird.RAND.sql")).ReadToEnd();
                 c.ExecuteQuery("SELECT RDB$PROCEDURE_NAME FROM RDB$PROCEDURES WHERE RDB$PROCEDURE_NAME = 'RAND'");
@@ -235,6 +235,5 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
                 c.CloseConnection();
             }
         }
-		
 	}
 }

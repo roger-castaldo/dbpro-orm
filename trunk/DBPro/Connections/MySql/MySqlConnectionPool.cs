@@ -141,9 +141,9 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
         }
 
 		
-		protected override Connection CreateConnection()
+		protected override Connection CreateConnection(bool exclusiveLock)
 		{
-			return new MySqlConnection(this,connectionString,_readonly);
+			return new MySqlConnection(this,connectionString,_readonly,exclusiveLock);
 		}
 	}
 }

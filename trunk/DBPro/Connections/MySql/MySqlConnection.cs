@@ -40,9 +40,14 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 			get { return true; }
 		}
 		
-		public MySqlConnection(ConnectionPool pool,string connectionString,bool Readonly) :base(pool,connectionString,Readonly)
+		public MySqlConnection(ConnectionPool pool,string connectionString,bool Readonly,bool exclusiveLock) :base(pool,connectionString,Readonly,exclusiveLock)
 		{
 		}
+
+        internal override IDbTransaction EstablishExclusiveTransaction()
+        {
+            return ((MyConn)conn).BeginTransaction(IsolationLevel.Serializable);
+        }
 		
 		public override IDbDataParameter CreateParameter(string parameterName, object parameterValue)
 		{

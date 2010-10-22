@@ -690,6 +690,11 @@ namespace Org.Reddragonit.Dbpro.Connections
             TableMap map = ClassMapper.GetTableMap(tableType);
             return string.Format(DeleteWithoutConditions, map.Name);
         }
+
+        internal string DeleteAll(string tableName)
+        {
+            return string.Format(DeleteWithoutConditions, tableName);
+        }
 		#endregion
 		
 		#region Updates

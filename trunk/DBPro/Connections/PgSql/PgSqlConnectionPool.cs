@@ -138,9 +138,9 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
             _dbName = database;
         }
 		
-		protected override Connection CreateConnection()
+		protected override Connection CreateConnection(bool exclusiveLock)
 		{
-			return new PgSqlConnection(this,connectionString,this._readonly);
+			return new PgSqlConnection(this,connectionString,this._readonly,exclusiveLock);
 		}
 	}
 }

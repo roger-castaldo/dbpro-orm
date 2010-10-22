@@ -15,6 +15,7 @@ using Org.Reddragonit.Dbpro.Structure.Mapping;
 using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.FieldType;
 using VersionTypes = Org.Reddragonit.Dbpro.Structure.Attributes.VersionField.VersionTypes;
 using System.Text;
+using System.Data;
 
 namespace Org.Reddragonit.Dbpro.Connections.Firebird
 {
@@ -42,8 +43,13 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		internal override bool UsesGenerators {
 			get { return true; }
 		}
+
+        internal override System.Data.IDbTransaction EstablishExclusiveTransaction()
+        {
+            return conn.BeginTransaction(IsolationLevel.Serializable);
+        }
 		
-		public FBConnection(ConnectionPool pool,string connectionString,bool Readonly) : base(pool,connectionString,Readonly)
+		public FBConnection(ConnectionPool pool,string connectionString,bool Readonly,bool exclusiveLock) : base(pool,connectionString,Readonly,exclusiveLock)
 		{
 
 		}
