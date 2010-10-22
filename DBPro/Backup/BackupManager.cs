@@ -170,8 +170,8 @@ namespace Org.Reddragonit.Dbpro.Backup
             zs.Close();
             c.Reset();
             Logger.LogLine("Backup of database complete, re-enabling pool.");
+            c.Disconnect();
             pool.UnlockPoolPostBackupRestore();
-            c.CloseConnection();
             return true;
         }
 
@@ -242,13 +242,12 @@ namespace Org.Reddragonit.Dbpro.Backup
         {
             Connection c = pool.LockDownForBackupRestore();
             //disable autogen fields as well as all relationship constraints
+            c.StartTransaction();
             c.DisableAutogens();
-            c.Commit();
-            foreach (Type ty in ClassMapper.TableTypesForConnection(pool.ConnectionName))
-                c.DeleteAll(ty);
             c.Commit();
             pool.DisableRelationships(c);
             c.Commit();
+            pool.EmptyAllTables(c);
 
             ZipInputStream zis = new ZipInputStream(inputStream);
             ZipEntry ze = null;
@@ -352,6 +351,7 @@ namespace Org.Reddragonit.Dbpro.Backup
             c.Commit();
             c.EnableAndResetAutogens();
             c.Commit();
+            c.Disconnect();
             pool.UnlockPoolPostBackupRestore();
             return true;
         }

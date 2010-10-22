@@ -41,8 +41,8 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 			get { return true; }
 		}
 
-		public MsSqlConnection(ConnectionPool pool, string ConnectionString,bool Readonly)
-			: base(pool, ConnectionString,Readonly)
+		public MsSqlConnection(ConnectionPool pool, string ConnectionString,bool Readonly,bool exclusiveLock)
+			: base(pool, ConnectionString,Readonly,exclusiveLock)
 		{ }
 
 		internal override IDbDataParameter CreateParameter(string parameterName, object parameterValue, FieldType type, int fieldLength)
@@ -55,6 +55,11 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 			}
 			return ret;
 		}
+
+        internal override IDbTransaction EstablishExclusiveTransaction()
+        {
+            return ((SqlConnection)conn).BeginTransaction(IsolationLevel.Serializable);
+        }
 		
 		public override System.Data.IDbDataParameter CreateParameter(string parameterName, object parameterValue)
 		{

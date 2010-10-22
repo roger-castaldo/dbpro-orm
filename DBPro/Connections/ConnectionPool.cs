@@ -47,7 +47,13 @@ namespace Org.Reddragonit.Dbpro.Connections
 		private bool isReady=false;
 		private string _connectionName;
 		
-		protected abstract Connection CreateConnection();
+		protected abstract Connection CreateConnection(bool exclusiveLock);
+
+        private Connection CreateConnection()
+        {
+            return CreateConnection(false);
+        }
+
 		protected virtual void PreInit()
 		{
 		}
@@ -1517,7 +1523,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             isClosed = true;
             isReady = false;
             Logger.LogLine("Returning new connection from pool: " + ConnectionName + " for BackupRestore process");
-            return CreateConnection();
+            return CreateConnection(true);
         }
         
         internal void ReinstateConnection(Connection conn){
@@ -1586,7 +1592,38 @@ namespace Org.Reddragonit.Dbpro.Connections
             return keys;
         }
 
-        internal void DisableRelationships(Connection conn)
+        private List<PrimaryKey> ExtractExpectedPrimaryKeys(Connection conn)
+        {
+            List<ExtractedTableMap> maps;
+            List<Trigger> triggers;
+            List<Generator> gens;
+            List<IdentityField> identities;
+            List<PrimaryKey> keys = new List<PrimaryKey>();
+            ExtractExpectedStructure(out maps, out triggers, out gens, out identities, conn);
+            foreach (ExtractedTableMap map in maps)
+            {
+                if ((map.PrimaryKeys != null) && (map.PrimaryKeys.Count > 0))
+                {
+                    keys.Add(new PrimaryKey(map));
+                }
+            }
+            return keys;
+        }
+
+        internal void EmptyAllTables(Connection conn)
+        {
+            List<string> tables = new List<string>();
+            conn.ExecuteQuery(conn.queryBuilder.SelectTableNames());
+            while (conn.Read())
+                tables.Add(conn[0].ToString());
+            conn.Close();
+            foreach (string str in tables){
+                conn.ExecuteNonQuery(conn.queryBuilder.DeleteAll(str));
+                conn.Commit();
+            }
+        }
+
+        internal virtual void DisableRelationships(Connection conn)
         {
             foreach (ForeignKey fk in ExtractExpectedForeignKeys(conn))
             {
@@ -1594,7 +1631,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             }
         }
 
-        internal void EnableRelationships(Connection conn)
+        internal virtual void EnableRelationships(Connection conn)
         {
             foreach (ForeignKey fk in ExtractExpectedForeignKeys(conn))
             {

@@ -149,9 +149,9 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 			get { return 128; }
 		}
 		
-		protected override Connection CreateConnection()
+		protected override Connection CreateConnection(bool exclusiveLock)
 		{
-			return new MsSqlConnection(this,connectionString,_readonly);
+			return new MsSqlConnection(this,connectionString,_readonly,exclusiveLock);
 		}
 		
 		internal override bool AllowChangingBasicAutogenField {
@@ -162,7 +162,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 		{
             if (!_readonly)
             {
-                Connection c = CreateConnection();
+                Connection c = CreateConnection(false);
                 bool exists = false;
                 bool create = false;
                 string query = new StreamReader(this.GetType().Assembly.GetManifestResourceStream("Org.Reddragonit.Dbpro.Connections.MsSql.IdentitySP.sql")).ReadToEnd();
