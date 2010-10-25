@@ -19,6 +19,7 @@ namespace Org.Reddragonit.Dbpro.Backup
         {
             Logger.LogLine("Locking down "+pool.ConnectionName+" database for backing up...");
             Connection c = pool.LockDownForBackupRestore();
+            System.Threading.Thread.Sleep(500);
             c.StartTransaction();
             Logger.LogLine("Database locked down for backing up");
             List<Type> types = ClassMapper.TableTypesForConnection(pool.ConnectionName);
@@ -241,13 +242,19 @@ namespace Org.Reddragonit.Dbpro.Backup
         public static bool RestoreDataFromStream(ConnectionPool pool, ref Stream inputStream)
         {
             Connection c = pool.LockDownForBackupRestore();
+            System.Threading.Thread.Sleep(500);
             //disable autogen fields as well as all relationship constraints
             c.StartTransaction();
             c.DisableAutogens();
-            c.Commit();
-            pool.DisableRelationships(c);
+            System.Threading.Thread.Sleep(500);
             c.Commit();
             pool.EmptyAllTables(c);
+            System.Threading.Thread.Sleep(500);
+            c.Commit();
+            //pool.DisableRelationships(c);
+            //System.Threading.Thread.Sleep(500);
+            //c.Commit();
+            System.Threading.Thread.Sleep(500);
 
             ZipInputStream zis = new ZipInputStream(inputStream);
             ZipEntry ze = null;
@@ -347,9 +354,11 @@ namespace Org.Reddragonit.Dbpro.Backup
             c.Commit();
 
             //reset all relationships and autogen fields
-            pool.EnableRelationships(c);
-            c.Commit();
+            //pool.EnableRelationships(c);
+            //System.Threading.Thread.Sleep(500);
+            //c.Commit();
             c.EnableAndResetAutogens();
+            System.Threading.Thread.Sleep(500);
             c.Commit();
             c.Disconnect();
             pool.UnlockPoolPostBackupRestore();

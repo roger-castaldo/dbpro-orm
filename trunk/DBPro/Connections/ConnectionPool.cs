@@ -492,7 +492,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 					{
 						aetm.Fields.Add(new ExtractedFieldMap(CorrectName("parent_"+ifm.FieldName),conn.TranslateFieldType(ifm.FieldType,ifm.FieldLength),
 						                                      ifm.FieldLength,true,false,false));
-						aetm.ForeignFields.Add(new ForeignRelationMap(efm.AddOnName+"_parent","parent_"+ifm.FieldName,tm.Name,ifm.FieldName,efm.OnUpdate.ToString(),efm.OnDelete.ToString()));
+                        aetm.ForeignFields.Add(new ForeignRelationMap(efm.AddOnName + "_parent", CorrectName("parent_" + ifm.FieldName), tm.Name, ifm.FieldName, efm.OnUpdate.ToString(), efm.OnDelete.ToString()));
 					}
 					foreach (InternalFieldMap ifm in ftm.PrimaryKeys)
 					{
@@ -1623,19 +1623,134 @@ namespace Org.Reddragonit.Dbpro.Connections
             }
         }
 
-        internal virtual void DisableRelationships(Connection conn)
+        private void GetPkFksCollection(Connection conn,out Dictionary<PrimaryKey, List<ForeignKey>> primaryKeys, out Dictionary<ForeignKey, PrimaryKey> foreignKeys)
         {
-            foreach (ForeignKey fk in ExtractExpectedForeignKeys(conn))
+            primaryKeys = new Dictionary<PrimaryKey, List<ForeignKey>>();
+            foreignKeys = new Dictionary<ForeignKey, PrimaryKey>();
+            List<PrimaryKey> pks = ExtractExpectedPrimaryKeys(conn);
+            List<ForeignKey> fks = ExtractExpectedForeignKeys(conn);
+            foreach (PrimaryKey pk in pks)
             {
-                conn.ExecuteNonQuery(conn.queryBuilder.DropForeignKey(this.CorrectName(fk.InternalTable), this.CorrectName(fk.ExternalTable),this.CorrectName(fk.ExternalFields[0]),this.CorrectName(fk.InternalFields[0])));
+                primaryKeys.Add(pk, new List<ForeignKey>());
+                foreach (ForeignKey fk in fks)
+                {
+                    if (pk.IsForForeignRelation(fk))
+                        primaryKeys[pk].Add(fk);
+                }
+            }
+            foreach (ForeignKey fk in fks)
+            {
+                foreach (PrimaryKey pk in pks)
+                {
+                    if (pk.ContainsForeignFields(fk))
+                    {
+                        foreignKeys.Add(fk, pk);
+                        break;
+                    }
+                }
             }
         }
 
-        internal virtual void EnableRelationships(Connection conn)
+        internal void RecurDropPK(PrimaryKey pk, Dictionary<PrimaryKey, List<ForeignKey>> pks, Dictionary<ForeignKey, PrimaryKey> fks, ref List<string> queries, Connection conn)
         {
-            foreach (ForeignKey fk in ExtractExpectedForeignKeys(conn))
+            string query;
+            bool add = true;
+            query = conn.queryBuilder.DropPrimaryKey(pk);
+            if (query.Contains("\n"))
             {
-                conn.ExecuteNonQuery(conn.queryBuilder.CreateForeignKey(fk));
+                foreach (string str in query.Split('\n'))
+                {
+                    if (str.Trim().Length > 0)
+                    {
+                        if (queries.Contains(str))
+                        {
+                            add = false;
+                            break;
+                        }
+                    }
+                }
+            }
+            else
+                add = !queries.Contains(query);
+            if (add)
+            {
+                foreach (ForeignKey fk in pks[pk])
+                {
+                    if (!fks.ContainsKey(fk))
+                    {
+                        query = conn.queryBuilder.DropForeignKey(fk.InternalTable, fk.ExternalTable, fk.ExternalFields[0], fk.InternalFields[0]);
+                        if (query.Contains("\n"))
+                            queries.AddRange(query.Split('\n'));
+                        else
+                            queries.Add(query);
+                    }
+                    else
+                    {
+                        if (fks[fk].Name != fk.ExternalTable)
+                            RecurDropPK(fks[fk], pks, fks, ref queries, conn);
+                        query = conn.queryBuilder.DropForeignKey(fk.InternalTable, fk.ExternalTable, fk.ExternalFields[0], fk.InternalFields[0]);
+                        if (query.Contains("\n"))
+                            queries.AddRange(query.Split('\n'));
+                        else
+                            queries.Add(query);
+                    }
+                }
+                query = conn.queryBuilder.DropPrimaryKey(pk);
+                if (query.Contains("\n"))
+                    queries.AddRange(query.Split('\n'));
+                else
+                    queries.Add(query);
+            }
+        }
+
+        internal void DisableRelationships(Connection conn)
+        {
+            List<string> queries = new List<string>();
+            string query;
+            Dictionary<PrimaryKey, List<ForeignKey>> pks;
+            Dictionary<ForeignKey, PrimaryKey> fks;
+            GetPkFksCollection(conn, out pks, out fks);
+            foreach (PrimaryKey pk in pks.Keys)
+            {
+                if (pks[pk].Count == 0)
+                {
+                    query = conn.queryBuilder.DropPrimaryKey(pk);
+                    if (query.Contains("\n"))
+                        queries.AddRange(query.Split('\n'));
+                    else
+                        queries.Add(query);
+                }
+            }
+            foreach (PrimaryKey pk in pks.Keys)
+            {
+                if (pks[pk].Count > 0)
+                {
+                    RecurDropPK(pk, pks, fks, ref queries, conn);
+                }
+            }
+            Utility.RemoveEmptyStrings(ref queries);
+            Utility.RemoveDuplicateStrings(ref queries, null);
+            foreach (string str in queries)
+            {
+                conn.ExecuteNonQuery(str);
+                System.Threading.Thread.Sleep(50);
+                conn.Commit();
+            }
+        }
+
+        internal void EnableRelationships(Connection conn)
+        {
+            List<string> queries = new List<string>();
+            foreach (PrimaryKey pk in ExtractExpectedPrimaryKeys(conn))
+                queries.Add(conn.queryBuilder.CreatePrimaryKey(pk));
+            foreach (ForeignKey fk in ExtractExpectedForeignKeys(conn))
+                queries.Add(conn.queryBuilder.CreateForeignKey(fk));
+            Utility.RemoveEmptyStrings(ref queries);
+            Utility.RemoveDuplicateStrings(ref queries, null);
+            foreach (string str in queries)
+            {
+                conn.ExecuteNonQuery(str);
+                System.Threading.Thread.Sleep(50);
             }
         }
 	}

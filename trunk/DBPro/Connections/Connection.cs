@@ -412,7 +412,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             }
 			foreach (ExternalFieldMap efm in map.ExternalFieldMapArrays)
 			{
-				Dictionary<string, List<List<IDbDataParameter>>> queries = queryBuilder.UpdateMapArray(table,efm);
+				Dictionary<string, List<List<IDbDataParameter>>> queries = queryBuilder.UpdateMapArray(table,efm,false);
 				foreach (string str in queries.Keys)
 				{
 					foreach (List<IDbDataParameter> p in queries[str])
@@ -424,7 +424,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			foreach (InternalFieldMap ifm in map.Fields)
 			{
 				if (ifm.IsArray)
-					InsertArrayValue(table,map,(Array)table.GetField(map.GetClassFieldName(ifm.FieldName)),ifm);
+					InsertArrayValue(table,map,(Array)table.GetField(map.GetClassFieldName(ifm.FieldName)),ifm,false);
 			}
 			return table;
 		}
@@ -566,7 +566,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			table.LoadStatus= LoadStatus.Complete;
 			foreach (ExternalFieldMap efm in map.ExternalFieldMapArrays)
 			{
-				Dictionary<string, List<List<IDbDataParameter>>> queries = queryBuilder.UpdateMapArray(table,efm);
+				Dictionary<string, List<List<IDbDataParameter>>> queries = queryBuilder.UpdateMapArray(table,efm,ignoreAutogen);
 				if (queries!=null)
 				{
 					foreach (string str in queries.Keys)
@@ -582,13 +582,13 @@ namespace Org.Reddragonit.Dbpro.Connections
 			{
 				if (ifm.IsArray)
 				{
-					InsertArrayValue(table,map,(Array)table.GetField(map.GetClassFieldName(ifm.FieldName)),ifm);
+					InsertArrayValue(table,map,(Array)table.GetField(map.GetClassFieldName(ifm.FieldName)),ifm,ignoreAutogen);
 				}
 			}
 			return table;
 		}
 		
-		private void InsertArrayValue(Table table,TableMap map,Array values,InternalFieldMap field)
+		private void InsertArrayValue(Table table,TableMap map,Array values,InternalFieldMap field,bool ignoreAutogen)
 		{
 			List<IDbDataParameter> pars = new List<IDbDataParameter>();
 			string query="";
@@ -608,14 +608,22 @@ namespace Org.Reddragonit.Dbpro.Connections
 			if (values!=null)
 			{
 				pars.Add(CreateParameter(Pool.CorrectName(queryBuilder.CreateParameterName(field.FieldName+"_VALUE")),null));
-				fields+=Pool.CorrectName(field.FieldName+"_VALUE");
-				paramString+=Pool.CorrectName(queryBuilder.CreateParameterName(field.FieldName+"_VALUE"));
+                if (ignoreAutogen)
+                    pars.Add(CreateParameter(CreateParameterName("index_id"), null));
+                fields += Pool.CorrectName(field.FieldName + "_VALUE") + (ignoreAutogen ? ", " + Pool.CorrectName(map.Name + "_" + field.FieldName + "_ID") : "");
+				paramString+=Pool.CorrectName(queryBuilder.CreateParameterName(field.FieldName+"_VALUE"))+(ignoreAutogen ? ", "+CreateParameterName("index_id") : "");
 				query = queryBuilder.Insert(Pool.CorrectName(map.Name+"_"+field.FieldName),fields,paramString);
+                long index = 0;
 				foreach (object obj in values)
 				{
 					pars.RemoveAt(pars.Count-1);
+                    if(ignoreAutogen)
+                        pars.RemoveAt(pars.Count - 1);
 					pars.Add(CreateParameter(Pool.CorrectName(queryBuilder.CreateParameterName(field.FieldName+"_VALUE")),obj));
+                    if (ignoreAutogen)
+                        pars.Add(CreateParameter(CreateParameterName("index_id"), index, FieldType.LONG, 8));
 					ExecuteNonQuery(query,pars);
+                    index++;
 				}
 			}
 		}
@@ -900,11 +908,24 @@ namespace Org.Reddragonit.Dbpro.Connections
         {
             Utility.WaitOne(this);
             lockedForBackup = true;
+            try
+            {
+                reader.Close();
+            }catch(Exception e){
+            }
+            try
+            {
+                conn.Close();
+            }
+            catch (Exception e)
+            {
+            }
         }
 
         internal void UnlockForBackup()
         {
             lockedForBackup = false;
+            ResetConnection(false);
             Utility.Release(this);
         }
 		

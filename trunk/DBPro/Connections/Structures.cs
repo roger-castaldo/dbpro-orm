@@ -38,6 +38,33 @@ namespace Org.Reddragonit.Dbpro.Connections
 			foreach (ExtractedFieldMap efm in table.PrimaryKeys)
 				_fields.Add(efm.FieldName);
 		}
+
+        public override bool Equals(object obj)
+        {
+            return ((PrimaryKey)obj).Name == Name;
+        }
+
+        public bool IsForForeignRelation(ForeignKey fk)
+        {
+            return fk.ExternalTable == Name;
+        }
+
+        public bool ContainsForeignFields(ForeignKey fk)
+        {
+            bool ret = false;
+            if (fk.InternalTable == Name)
+            {
+                foreach (string str in fk.InternalFields)
+                {
+                    if (Fields.Contains(str))
+                    {
+                        ret = true;
+                        break;
+                    }
+                }
+            }
+            return ret;
+        }
 	}
 	
 	internal struct IdentityField{
@@ -140,6 +167,11 @@ namespace Org.Reddragonit.Dbpro.Connections
                 }
 			}
 		}
+
+        public override bool Equals(object obj)
+        {
+            return Equals((ForeignKey)obj);
+        }
 
         public bool Equals(ForeignKey fk)
         {

@@ -698,7 +698,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		#endregion
 		
 		#region Updates
-		internal Dictionary<string,List<List<IDbDataParameter>>> UpdateMapArray(Table table,ExternalFieldMap efm)
+		internal Dictionary<string,List<List<IDbDataParameter>>> UpdateMapArray(Table table,ExternalFieldMap efm,bool ignoreautogen)
 		{
 			Dictionary<string, List<List<IDbDataParameter>>> ret = new Dictionary<string, List<List<IDbDataParameter>>>();
 			try{
@@ -711,7 +711,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 					List<IDbDataParameter> pars = new List<IDbDataParameter>();
 					foreach (InternalFieldMap ifm in map.PrimaryKeys)
 					{
-                        delString += "parent_" + ifm.FieldName + " = " + CreateParameterName("parent_" + ifm.FieldName) + " AND ";
+                        delString += pool.CorrectName("parent_" + ifm.FieldName) + " = " + CreateParameterName("parent_" + ifm.FieldName) + " AND ";
                         if (map.GetClassFieldName(ifm) == null)
                             pars.Add(conn.CreateParameter(CreateParameterName("parent_" + ifm.FieldName), LocateFieldValue(table,map,ifm.FieldName,pool), ifm.FieldType, ifm.FieldLength));
                         else
@@ -723,16 +723,17 @@ namespace Org.Reddragonit.Dbpro.Connections
 					string valueString = "VALUES(";
 					foreach (InternalFieldMap ifm in map.PrimaryKeys)
 					{
-						delString += "parent_"+ifm.FieldName + ",";
+						delString += pool.CorrectName("parent_"+ifm.FieldName) + ",";
                         valueString += CreateParameterName("parent_" + ifm.FieldName) + ",";
 					}
 					foreach (InternalFieldMap ifm in relatedMap.PrimaryKeys)
 					{
-						delString += "child_"+ifm.FieldName + ",";
+						delString += pool.CorrectName("child_"+ifm.FieldName) + ",";
                         valueString += CreateParameterName("child_" + ifm.FieldName) + ",";
 					}
-					delString = delString.Substring(0, delString.Length - 1) + ") " + valueString.Substring(0, valueString.Length - 1) + ")";
+					delString = delString.Substring(0, delString.Length - 1) + (ignoreautogen ? ","+pool.CorrectName("INDEX") : "")+") " + valueString.Substring(0, valueString.Length - 1) +(ignoreautogen ? ","+CreateParameterName("index") : "")+ ")";
 					ret.Add(delString,new List<List<IDbDataParameter>>());
+                    int index = 0;
 					foreach (Table t in values)
 					{
 						foreach (InternalFieldMap ifm in relatedMap.PrimaryKeys)
@@ -752,9 +753,22 @@ namespace Org.Reddragonit.Dbpro.Connections
                                 val = t.GetField(relatedMap.GetClassFieldName(ifm));
 							pars.Add(conn.CreateParameter(CreateParameterName("child_"+ifm.FieldName), val,ifm.FieldType,ifm.FieldLength));
 						}
+                        if (ignoreautogen)
+                        {
+                            for (int x = 0; x < pars.Count; x++)
+                            {
+                                if (pars[x].ParameterName == CreateParameterName("index"))
+                                {
+                                    pars.RemoveAt(x);
+                                    break;
+                                }
+                            }
+                            pars.Add(conn.CreateParameter(CreateParameterName("index"), index, FieldType.INTEGER, 4));
+                        }
                         List<IDbDataParameter> tmp = new List<IDbDataParameter>();
                         tmp.AddRange(pars.ToArray());
                         ret[delString].Add(tmp);
+                        index++;
 					}
 				}
 			}catch (Exception e)
