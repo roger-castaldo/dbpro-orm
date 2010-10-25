@@ -112,6 +112,8 @@ namespace Org.Reddragonit.Dbpro
         //is used to clean up the keyword arrays made by the connections.
 		public static void RemoveDuplicateStrings(ref List<string> list,string[] ignores)
 		{
+            if (ignores == null)
+                ignores = new string[0];
 			for(int x=0;x<list.Count;x++)
 			{
 				bool process=true;
@@ -136,6 +138,20 @@ namespace Org.Reddragonit.Dbpro
 				}
 			}
 		}
+
+        //called to clean up empty strings from an array.  Used through connection pools
+        //running massive updates/inserts/etc
+        public static void RemoveEmptyStrings(ref List<string> list)
+        {
+            for (int x = 0; x < list.Count; x++)
+            {
+                if (list[x].Trim().Length == 0)
+                {
+                    list.RemoveAt(x);
+                    x--;
+                }
+            }
+        }
 
         internal static List<int> SortDictionaryKeys(Dictionary<int, int>.KeyCollection keys)
         {

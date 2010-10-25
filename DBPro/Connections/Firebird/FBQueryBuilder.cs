@@ -82,9 +82,9 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		internal override string DropForeignKey(string table, string tableName,string primaryField,string relatedField)
 		{
 			string ret = "";
-			conn.ExecuteQuery(String.Format(DropForeignKeyString,new object[]{table,tableName,primaryField,relatedField}));
+			conn.ExecuteQuery(String.Format(DropForeignKeyString,new object[]{table.ToUpper(),tableName.ToUpper(),primaryField.ToUpper(),relatedField.ToUpper()}));
 			while (conn.Read())
-				ret+=conn[0].ToString()+";\n";
+				ret+=conn[0].ToString().Trim()+";\n";
 			conn.Close();
 			return ret;
 		}
@@ -95,9 +95,9 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 			string ret="";
 			foreach (string str in key.Fields)
 			{
-				conn.ExecuteQuery(String.Format(DropPrimaryKeyString, key.Name, str));
+				conn.ExecuteQuery(String.Format(DropPrimaryKeyString, key.Name.ToUpper(), str.ToUpper()));
 				if (conn.Read())
-					ret += conn[0].ToString()+";\n";
+					ret += conn[0].ToString().Trim()+";\n";
 				conn.Close();
 			}
 			return ret;
