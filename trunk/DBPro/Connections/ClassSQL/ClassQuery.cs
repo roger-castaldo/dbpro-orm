@@ -497,7 +497,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                             }
                         }
                         else
-                            ret = TranslateParentFieldName(field.Value.Substring(0, field.Value.LastIndexOf(".")).Replace(".", "_"),fieldName,map);
+                            ret = TranslateParentFieldName(field.Value.Substring(0, field.Value.LastIndexOf(".")).Replace(".", "_"),fieldName,map,-1);
                     }
                     else
                     {
@@ -522,7 +522,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                             }
                         }
                         else
-                            ret = TranslateParentFieldName(alias,fieldName,map);
+                            ret = TranslateParentFieldName(alias,fieldName,map,-1);
                     }
                 }
             }
@@ -847,7 +847,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 						}else
 						{
 							ret.RemoveAt(0);
-                            ret.Add(TranslateParentFieldName(field.Value.Substring(0, field.Value.LastIndexOf(".")).Replace(".", "_"),fieldName,map));
+                            ret.Add(TranslateParentFieldName(field.Value.Substring(0, field.Value.LastIndexOf(".")).Replace(".", "_"),fieldName,map,-1));
 						}
 					}
 					else
@@ -881,7 +881,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 							}
 						}else{
 							ret.RemoveAt(0);
-                            ret.Add(TranslateParentFieldName(tableAlias,fieldName,map));
+                            ret.Add(TranslateParentFieldName(tableAlias,fieldName,map,-1));
 						}
 					}
 				}
@@ -1134,10 +1134,19 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 			return joins;
 		}
 
-        private string TranslateParentFieldName(string alias,string field, TableMap map)
+        private string TranslateParentFieldName(string alias,string field, TableMap map,int ordinal)
         {
             if (!map.IsParentClassField(field))
-                return alias+"."+_conn.Pool.CorrectName(map.GetTableFieldName(field));
+            {
+                if ((ordinal != -1) && (map[field].ObjectType.IsEnum))
+                {
+                    if (_enumFields.ContainsKey(ordinal))
+                        _enumFields.Remove(ordinal);
+                    Logger.LogLine("Assigning field at ordinal: " + ordinal.ToString() + " as an enumeration type: " + map[field].ObjectType.FullName);
+                    _enumFields.Add(ordinal, map[field].ObjectType);
+                }
+                return alias + "." + _conn.Pool.CorrectName(map.GetTableFieldName(field));
+            }
             TableMap parentMap = map;
             while (parentMap.ParentType != null)
             {
@@ -1145,6 +1154,13 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 alias += "_prnt";
                 if (!parentMap.IsParentClassField(field))
                     break;
+            }
+            if ((ordinal != -1) && (parentMap[field].ObjectType.IsEnum))
+            {
+                if (_enumFields.ContainsKey(ordinal))
+                    _enumFields.Remove(ordinal);
+                Logger.LogLine("Assigning field at ordinal: " + ordinal.ToString() + " as an enumeration type: " + parentMap[field].ObjectType.FullName);
+                _enumFields.Add(ordinal, parentMap[field].ObjectType);
             }
             return alias+"."+parentMap.GetTableFieldName(field);
         }
@@ -1254,20 +1270,21 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 					}
 					if (fieldName != "*")
 					{
-						if (map[fieldName] is ExternalFieldMap)
-						{
+                        if (map[fieldName] is ExternalFieldMap)
+                        {
                             if (ordinal != -1)
                             {
                                 _tableFieldCounts.Add(ordinal, fieldList[field.Value].Count);
                                 _tableFields.Add(fieldAlias, ((ExternalFieldMap)map[fieldName]).Type);
                             }
-							ret = "";
-							foreach (string str in fieldList[field.Value])
-							{
-								ret += field.Value.Replace(".", "_") + "." + str+" AS "+_conn.WrapAlias(fieldAlias+"_"+str)+", ";
-							}
-						}else
-							ret = TranslateParentFieldName(field.Value.Substring(0, field.Value.LastIndexOf(".")).Replace(".", "_"),fieldName,map);
+                            ret = "";
+                            foreach (string str in fieldList[field.Value])
+                            {
+                                ret += field.Value.Replace(".", "_") + "." + str + " AS " + _conn.WrapAlias(fieldAlias + "_" + str) + ", ";
+                            }
+                        }
+                        else
+                            ret = TranslateParentFieldName(field.Value.Substring(0, field.Value.LastIndexOf(".")).Replace(".", "_"), fieldName, map,ordinal);
 					}
 					else
 					{
@@ -1304,9 +1321,10 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                             {
                                 if (_enumFields.ContainsKey(ordinal))
                                     _enumFields.Remove(ordinal);
+                                Logger.LogLine("Assigning field at ordinal " + ordinal.ToString() + " as enum of type " + map[fieldName].ObjectType.FullName);
                                 _enumFields.Add(ordinal, map[fieldName].ObjectType);
                             }
-                            ret = TranslateParentFieldName(tableAlias, fieldName, map);
+                            ret = TranslateParentFieldName(tableAlias, fieldName, map,ordinal);
                         }
 					}
 				}
@@ -1392,7 +1410,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 
         public long GetChars(int i, long fieldoffset, char[] buffer, int bufferoffset, int length)
         {
-            return GetChars(TranslateFieldIndex(i), fieldoffset, buffer, bufferoffset, length);
+            return _conn.GetChars(TranslateFieldIndex(i), fieldoffset, buffer, bufferoffset, length);
         }
 
         public IDataReader GetData(int i)
