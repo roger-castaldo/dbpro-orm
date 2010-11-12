@@ -1403,7 +1403,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		public long GetInt64(int i)
 		{
-			return reader.GetInt32(i);
+			return reader.GetInt64(i);
 		}
 		
 		public float GetFloat(int i)

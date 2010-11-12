@@ -204,17 +204,48 @@ namespace Org.Reddragonit.Dbpro.Connections
             {
                 string[] tmp = name.Split('_');
                 int len = (int)Math.Floor((double)MaxFieldNameLength / (double)tmp.Length);
-                foreach (string str in tmp)
+                if (len == 1)
                 {
-                    if (str.Length != 0)
+                    if ((tmp[0].Length + (tmp.Length - 2) + tmp[tmp.Length - 1].Length) <= MaxFieldNameLength)
                     {
-                        if (str.Length > len - 1)
-                            ret += str.Substring(0, len - 1) + "_";
+                        ret = tmp[0];
+                        for (int x = 1; x <= tmp.Length - 1; x++)
+                        {
+                            ret += "_";
+                        }
+                        ret += tmp[tmp.Length - 1];
+                    }
+                    else
+                    {
+                        len = (int)Math.Floor((decimal)((tmp[0].Length + (tmp.Length - 2) + tmp[tmp.Length - 1].Length)-MaxFieldNameLength)/(decimal)2);
+                        if (tmp[0].Length > len)
+                            ret = tmp[0].Substring(0, len);
                         else
-                            ret += str + "_";
+                            ret = tmp[0];
+                        for (int x = 1; x <= tmp.Length - 1; x++)
+                        {
+                            ret += "_";
+                        }
+                        if (tmp[tmp.Length - 1].Length > len)
+                            ret += tmp[tmp.Length - 1].Substring(0, len);
+                        else
+                            ret += tmp[tmp.Length - 1];
                     }
                 }
-                ret = ret.Substring(0, ret.Length - 1);
+                else
+                {
+                    foreach (string str in tmp)
+                    {
+                        if (str.Length != 0)
+                        {
+                            if (str.Length > len - 1)
+                                ret += str.Substring(0, len - 1) + "_";
+                            else
+                                ret += str + "_";
+                        }
+                    }
+                    ret = ret.Substring(0, ret.Length - 1);
+                }
             }
             else
             {
