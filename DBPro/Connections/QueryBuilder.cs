@@ -785,7 +785,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 return table.GetField(relatedMap.GetClassFieldName(fieldName));
             foreach (Type t in relatedMap.ForeignTables)
             {
-                foreach (ExternalFieldMap efm in relatedMap.GetFieldInfoForForeignTable(t))
+                foreach (ExternalFieldMap efm in relatedMap.GetFieldInfoForForeignTable(t,false))
                 {
                     if ((fieldName.StartsWith(pool.CorrectName(efm.AddOnName) + "_"))||(fieldName.StartsWith(efm.AddOnName + "_")))
                     {

@@ -356,12 +356,12 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			}
 		}
 		
-		public List<ExternalFieldMap> GetFieldInfoForForeignTable(System.Type table)
+		public List<ExternalFieldMap> GetFieldInfoForForeignTable(System.Type table,bool AllowArray)
 		{
 			List<ExternalFieldMap> ret = new List<ExternalFieldMap>();
 			foreach (FieldMap f in _fields.Values )
 			{
-				if ((f is ExternalFieldMap)&&(((ExternalFieldMap)f).Type==table))
+				if ((f is ExternalFieldMap)&&(((ExternalFieldMap)f).Type==table)&&(AllowArray || !((ExternalFieldMap)f).IsArray))
 				{
 					ret.Add((ExternalFieldMap)f);
 				}
