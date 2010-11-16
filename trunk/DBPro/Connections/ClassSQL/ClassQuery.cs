@@ -329,7 +329,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 						{
                             if (i + x + 1 < _tokenizer.Tokens.Count)
                             {
-                                if ((_tokenizer.Tokens[i + x + 1].Value.ToUpper() != ",") && (_tokenizer.Tokens[i + x + 1].Value != "(") && (_tokenizer.Tokens[i + x + 1].Value != "WHERE"))
+                                if ((_tokenizer.Tokens[i + x + 1].Value.ToUpper() != ",") && (_tokenizer.Tokens[i + x + 1].Value != "(") && (_tokenizer.Tokens[i + x + 1].Value.ToUpper() != "WHERE") && (_tokenizer.Tokens[i + x + 1].Value.ToUpper() != "GROUP") && (_tokenizer.Tokens[i + x + 1].Value.ToUpper() != "ORDER"))
                                 {
                                     if (_tokenizer.Tokens[i + x + 1].Value.ToUpper() == "AS")
                                     {
@@ -997,7 +997,10 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 						innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
                         if (!joins.Contains(innerJoin))
                             joins.Add(innerJoin);
-                        innerJoin = " INNER JOIN (" + tbl + ") " + alias + "_" + className + " ON ";
+                        if (efm.Nullable)
+                            innerJoin = " LEFT JOIN (" + tbl + ") " + alias + "_" + className + " ON ";
+                        else
+                            innerJoin = " INNER JOIN (" + tbl + ") " + alias + "_" + className + " ON ";
 						foreach (InternalFieldMap ifm in eMap.PrimaryKeys)
 							innerJoin += " " + alias + "_intermediate_" + className + "." + _conn.Pool.CorrectName("CHILD_" + ifm.FieldName) + " = " + alias + "_" + className + "." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
 						innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
@@ -1039,7 +1042,10 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                             innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
                             if (!joins.Contains(innerJoin))
                                 joins.Add(innerJoin);
-                            innerJoin = " INNER JOIN (" + tbl + ") " + alias + "_" + className + " ON ";
+                            if (efm.Nullable)
+                                innerJoin = " LEFT JOIN (" + tbl + ") " + alias + "_" + className + " ON ";
+                            else
+                                innerJoin = " INNER JOIN (" + tbl + ") " + alias + "_" + className + " ON ";
                             foreach (InternalFieldMap ifm in eMap.PrimaryKeys)
                                 innerJoin += " " + alias + "_intermediate_" + className + "." + _conn.Pool.CorrectName("CHILD_" + ifm.FieldName) + " = " + alias + "_" + className + "." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
                             innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
@@ -1100,7 +1106,10 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
                         if (!joins.Contains(innerJoin))
                             joins.Add(innerJoin);
-                        innerJoin = " INNER JOIN (" + tbl + ") " + alias + "_" + className + " ON ";
+                        if (efm.Nullable)
+                            innerJoin = " LEFT JOIN (" + tbl + ") " + alias + "_" + className + " ON ";
+                        else
+                            innerJoin = " INNER JOIN (" + tbl + ") " + alias + "_" + className + " ON ";
                         foreach (InternalFieldMap ifm in eMap.PrimaryKeys)
                             innerJoin += " " + alias + "_intermediate_" + className + "." + _conn.Pool.CorrectName("CHILD_" + ifm.FieldName) + " = " + alias + "_" + className + "." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
                         innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);

@@ -361,7 +361,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
 			foreach (Type t in map.ForeignTables)
 			{
-				foreach (ExternalFieldMap efm in map.GetFieldInfoForForeignTable(t))
+				foreach (ExternalFieldMap efm in map.GetFieldInfoForForeignTable(t,false))
 				{
 					Table ext = (Table)table.GetField(map.GetClassPropertyName(efm));
 					if (ext != null)
@@ -517,7 +517,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 }
                 foreach (Type t in map.ForeignTables)
                 {
-                    foreach (ExternalFieldMap efm in map.GetFieldInfoForForeignTable(t))
+                    foreach (ExternalFieldMap efm in map.GetFieldInfoForForeignTable(t,false))
                     {
                         Table ext = (Table)table.GetField(map.GetClassPropertyName(efm));
                         if (ext != null)

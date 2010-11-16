@@ -498,7 +498,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 				foreach (Type t in tm.ForeignTables)
 				{
 					TableMap ftm = ClassMapper.GetTableMap(t);
-					foreach (ExternalFieldMap efm in tm.GetFieldInfoForForeignTable(t)){
+					foreach (ExternalFieldMap efm in tm.GetFieldInfoForForeignTable(t,false)){
 						foreach (InternalFieldMap ifm in ftm.PrimaryKeys)
 						{
 							etm.ForeignFields.Add(new ForeignRelationMap(efm.AddOnName,CorrectName(efm.AddOnName+"_"+ifm.FieldName),ftm.Name,
