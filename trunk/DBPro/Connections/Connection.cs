@@ -630,73 +630,80 @@ namespace Org.Reddragonit.Dbpro.Connections
 
 		private List<Table> AddArrayedTablesToSelect(List<Table> ret, System.Type type)
 		{
-			string query = "";
 			TableMap map = ClassMapper.GetTableMap(type);
-			foreach (ExternalFieldMap f in map.ExternalFieldMapArrays)
-			{
-				foreach (Table t in ret)
-				{
-					List<IDbDataParameter> pars = new List<IDbDataParameter>();
-					TableMap external = ClassMapper.GetTableMap(f.Type);
-					string fields = "";
-					foreach (InternalFieldMap ifm in external.PrimaryKeys)
-					{
-						fields+=pool.CorrectName("child_"+ifm.FieldName)+" AS "+ifm.FieldName+", ";
-					}
-					fields = fields.Substring(0,fields.Length-2);
-					string conditions= "";
-                    foreach (InternalFieldMap ifm in map.PrimaryKeys)
+            while (map != null)
+            {
+                string query = "";
+                foreach (ExternalFieldMap f in map.ExternalFieldMapArrays)
+                {
+                    foreach (Table t in ret)
                     {
-                        conditions += map.Name + "_" + external.Name + "." + Pool.CorrectName("parent_" + ifm.FieldName) + " = " + queryBuilder.CreateParameterName("parent_" + ifm.FieldName) + " AND ";
-                        pars.Add(CreateParameter(queryBuilder.CreateParameterName("parent_" + ifm.FieldName), QueryBuilder.LocateFieldValue(t, map, ifm.FieldName, pool)));
-                    }
-					conditions=conditions.Substring(0,conditions.Length-4);
-                    query = String.Format(queryBuilder.OrderBy, string.Format(queryBuilder.SelectWithConditions, fields, pool.CorrectName(map.Name + "_" + external.Name), conditions),pool.CorrectName("index"));
-					ArrayList values = new ArrayList();
-					ExecuteQuery(query, pars);
-					while (Read())
-					{
-						Table ta = (Table)LazyProxy.Instance(f.Type.GetConstructor(System.Type.EmptyTypes).Invoke(new object[0]));
-						ta.SetValues(this);
-						ta.LoadStatus=LoadStatus.Partial;
-						values.Add(ta);
-					}
-					Close();
-					Array obj = Array.CreateInstance(f.Type , values.Count);
-                    for (int x = 0; x < values.Count; x++)
-                        ((object[])obj)[x] = values[x];
-					t.SetField(map.GetClassFieldName(f),obj);
-				}
-			}
-			foreach (InternalFieldMap ifm in map.Fields)
-			{
-				if (ifm.IsArray)
-				{
-					query = "SELECT "+Pool.CorrectName(ifm.FieldName+"_VALUE")+" FROM "+
-						Pool.CorrectName(map.Name+"_"+ifm.FieldName)+" WHERE ";
-					foreach (InternalFieldMap primary in map.PrimaryKeys)
-						query+=" "+Pool.CorrectName(map.Name+"_"+primary.FieldName)+" = "+Pool.CorrectName(queryBuilder.CreateParameterName(map.Name+"_"+primary.FieldName))+" AND ";
-					query = query.Substring(0,query.Length-4);
-					query+=" ORDER BY "+Pool.CorrectName(map.Name+"_"+ifm.FieldName+"_ID")+" ASC";
-					foreach (Table t in ret)
-					{
-						List<IDbDataParameter> pars = new List<IDbDataParameter>();
-						foreach (InternalFieldMap primary in map.PrimaryKeys)
-							pars.Add(CreateParameter(Pool.CorrectName(queryBuilder.CreateParameterName(map.Name+"_"+primary.FieldName)),QueryBuilder.LocateFieldValue(t,map,primary.FieldName,pool)));
-						ArrayList values = new ArrayList();
-						ExecuteQuery(query,pars);
-						while (Read())
-						{
-							values.Add(this[0]);
-						}
-						Close();
-						Array obj = Array.CreateInstance(ifm.ObjectType,values.Count);
+                        List<IDbDataParameter> pars = new List<IDbDataParameter>();
+                        TableMap external = ClassMapper.GetTableMap(f.Type);
+                        string fields = "";
+                        foreach (InternalFieldMap ifm in external.PrimaryKeys)
+                        {
+                            fields += pool.CorrectName("child_" + ifm.FieldName) + " AS " + ifm.FieldName + ", ";
+                        }
+                        fields = fields.Substring(0, fields.Length - 2);
+                        string conditions = "";
+                        foreach (InternalFieldMap ifm in map.PrimaryKeys)
+                        {
+                            conditions += map.Name + "_" + external.Name + "." + Pool.CorrectName("parent_" + ifm.FieldName) + " = " + queryBuilder.CreateParameterName("parent_" + ifm.FieldName) + " AND ";
+                            pars.Add(CreateParameter(queryBuilder.CreateParameterName("parent_" + ifm.FieldName), QueryBuilder.LocateFieldValue(t, map, ifm.FieldName, pool)));
+                        }
+                        conditions = conditions.Substring(0, conditions.Length - 4);
+                        query = String.Format(queryBuilder.OrderBy, string.Format(queryBuilder.SelectWithConditions, fields, pool.CorrectName(map.Name + "_" + external.Name), conditions), pool.CorrectName("index"));
+                        ArrayList values = new ArrayList();
+                        ExecuteQuery(query, pars);
+                        while (Read())
+                        {
+                            Table ta = (Table)LazyProxy.Instance(f.Type.GetConstructor(System.Type.EmptyTypes).Invoke(new object[0]));
+                            ta.SetValues(this);
+                            ta.LoadStatus = LoadStatus.Partial;
+                            values.Add(ta);
+                        }
+                        Close();
+                        Array obj = Array.CreateInstance(f.Type, values.Count);
                         for (int x = 0; x < values.Count; x++)
                             ((object[])obj)[x] = values[x];
-						t.SetField(map.GetClassFieldName(ifm),obj);
-					}
-				}
-			}
+                        t.SetField(map.GetClassFieldName(f), obj);
+                    }
+                }
+                foreach (InternalFieldMap ifm in map.Fields)
+                {
+                    if (ifm.IsArray)
+                    {
+                        query = "SELECT " + Pool.CorrectName(ifm.FieldName + "_VALUE") + " FROM " +
+                            Pool.CorrectName(map.Name + "_" + ifm.FieldName) + " WHERE ";
+                        foreach (InternalFieldMap primary in map.PrimaryKeys)
+                            query += " " + Pool.CorrectName(map.Name + "_" + primary.FieldName) + " = " + Pool.CorrectName(queryBuilder.CreateParameterName(map.Name + "_" + primary.FieldName)) + " AND ";
+                        query = query.Substring(0, query.Length - 4);
+                        query += " ORDER BY " + Pool.CorrectName(map.Name + "_" + ifm.FieldName + "_ID") + " ASC";
+                        foreach (Table t in ret)
+                        {
+                            List<IDbDataParameter> pars = new List<IDbDataParameter>();
+                            foreach (InternalFieldMap primary in map.PrimaryKeys)
+                                pars.Add(CreateParameter(Pool.CorrectName(queryBuilder.CreateParameterName(map.Name + "_" + primary.FieldName)), QueryBuilder.LocateFieldValue(t, map, primary.FieldName, pool)));
+                            ArrayList values = new ArrayList();
+                            ExecuteQuery(query, pars);
+                            while (Read())
+                            {
+                                values.Add(this[0]);
+                            }
+                            Close();
+                            Array obj = Array.CreateInstance(ifm.ObjectType, values.Count);
+                            for (int x = 0; x < values.Count; x++)
+                                ((object[])obj)[x] = values[x];
+                            t.SetField(map.GetClassFieldName(ifm), obj);
+                        }
+                    }
+                }
+                if (map.ParentType != null)
+                    map = ClassMapper.GetTableMap(map.ParentType);
+                else
+                    map = null;
+            }
 			return ret;
 		}
 		
