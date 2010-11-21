@@ -10,6 +10,27 @@ using Org.Reddragonit.Dbpro.Structure;
 
 namespace Org.Reddragonit.Dbpro.Connections
 {
+    internal struct EnumTranslationPair
+    {
+        private string _origName;
+        public string OriginalName
+        {
+            get { return _origName; }
+        }
+
+        private string _newName;
+        public string NewName
+        {
+            get { return _newName; }
+        }
+
+        public EnumTranslationPair(string originalName, string newName)
+        {
+            _origName = originalName;
+            _newName = newName;
+        }
+    }
+
 	public static class ConnectionPoolManager
 	{
 
@@ -29,6 +50,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 
 		private static Dictionary<string, ConnectionPool> _connectionPools = new Dictionary<string, ConnectionPool>();
         private static Dictionary<Type, List<ITrigger>> _triggers = new Dictionary<Type, List<ITrigger>>();
+        internal static Dictionary<Type, List<EnumTranslationPair>> _translations = new Dictionary<Type, List<EnumTranslationPair>>();
 		
 		static ConnectionPoolManager()
 		{
@@ -40,6 +62,18 @@ namespace Org.Reddragonit.Dbpro.Connections
 				Logger.LogLine("Loaded config file: "+fi.FullName);
 				XmlDocument doc = new XmlDocument();
 				doc.Load(fi.OpenRead());
+                foreach (XmlNode node in doc.DocumentElement.ChildNodes)
+                {
+                    if (node.Name == "ENUM_TRANSLATION")
+                    {
+                        Type t = Utility.LocateType(node["TYPE"].Value);
+                        if (t!=null){
+                            if (!_translations.ContainsKey(t))
+                                _translations.Add(t, new List<EnumTranslationPair>());
+                            _translations[t].Add(new EnumTranslationPair(node["ORIGINAL_NAME"].Value, node["NEW_NAME"].Value));
+                        }
+                    }
+                }
 				foreach (XmlNode node in doc.DocumentElement.ChildNodes)
 				{
 					if (node.Name=="DBConnection")
@@ -60,7 +94,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			ClassMapper.CorrectConnectionNames(tmp);
 			foreach (ConnectionPool pool in _connectionPools.Values)
 			{
-				pool.Init();
+				pool.Init(_translations);
 			}
 			Utility.Release(_connectionPools);
 		}
@@ -73,7 +107,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			ClassMapper.CorrectConnectionNames(tmp);
 			foreach (ConnectionPool pool in _connectionPools.Values)
 			{
-				pool.Init();
+				pool.Init(_translations);
 			}
 			Utility.Release(_connectionPools);
 		}

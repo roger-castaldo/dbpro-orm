@@ -309,13 +309,13 @@ namespace Org.Reddragonit.Dbpro.Connections
 			ConnectionPoolManager.AddConnection(connectionName,this);
 		}
 		
-		internal void Init()
+		internal void Init(Dictionary<Type,List<EnumTranslationPair>> translations)
 		{
             if (!_debugMode)
 			    PreInit();
 			ClassMapper.CorrectNamesForConnection(this);
             if (!(_debugMode&&(ClassMapper.TableTypesForConnection(this.ConnectionName).Count==0)))
-			    UpdateStructure(_debugMode,_allowTableDeletions);
+			    UpdateStructure(_debugMode,_allowTableDeletions,translations);
             for (int x=0;x<minPoolSize;x++){
             	if (unlocked.Count>=minPoolSize)
             		break;
@@ -1033,7 +1033,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
 		}
 
-		private void UpdateStructure(bool Debug,bool AllowTableDeletions)
+        private void UpdateStructure(bool Debug, bool AllowTableDeletions, Dictionary<Type, List<EnumTranslationPair>> translations)
 		{
 			Connection conn = CreateConnection();
 			List<ExtractedTableMap> curStructure =new List<ExtractedTableMap>();
@@ -1302,28 +1302,28 @@ namespace Org.Reddragonit.Dbpro.Connections
 				alterations.Add(conn.queryBuilder.SetIdentityFieldValue(idf));
 			alterations.Add(" COMMIT;");
 			
-			foreach (Type t in _enumTableMaps.Keys)
-			{
-				foreach (string str in Enum.GetNames(t))
-				{
-					alterations.Add(String.Format(
-						"INSERT INTO {2}({0}) SELECT VAL FROM "+
-						" ( "+
-						" SELECT VAL, SUM(CNT) AS CNT "+
-						" FROM ( "+
-						" SELECT '{1}' AS VAL, "+
-						" SUM(CASE RES_VALUE WHEN '{1}' THEN 1 ELSE 0 END) AS CNT   "+
-						" FROM {2} "+
-						" UNION    "+
-						" SELECT '{1}' AS VAL, 0 AS CNT FROM {3} "+
-						" ) tbl GROUP BY VAL "+
-						" ) sums "+
-						" WHERE CNT=0;",CorrectName("VALUE"),
-						str,_enumTableMaps[t],conn.DefaultTableString
-					));
-				}
-				alterations.Add(" COMMIT;");
-			}
+            //foreach (Type t in _enumTableMaps.Keys)
+            //{
+            //    foreach (string str in Enum.GetNames(t))
+            //    {
+            //        alterations.Add(String.Format(
+            //            "INSERT INTO {2}({0}) SELECT VAL FROM "+
+            //            " ( "+
+            //            " SELECT VAL, SUM(CNT) AS CNT "+
+            //            " FROM ( "+
+            //            " SELECT '{1}' AS VAL, "+
+            //            " SUM(CASE RES_VALUE WHEN '{1}' THEN 1 ELSE 0 END) AS CNT   "+
+            //            " FROM {2} "+
+            //            " UNION    "+
+            //            " SELECT '{1}' AS VAL, 0 AS CNT FROM {3} "+
+            //            " ) tbl GROUP BY VAL "+
+            //            " ) sums "+
+            //            " WHERE CNT=0;",CorrectName("VALUE"),
+            //            str,_enumTableMaps[t],conn.DefaultTableString
+            //        ));
+            //    }
+            //    alterations.Add(" COMMIT;");
+            //}
 			
             for (int x = 0; x < alterations.Count; x++)
             {
@@ -1393,21 +1393,69 @@ namespace Org.Reddragonit.Dbpro.Connections
 			{
 				foreach (Type t in _enumTableMaps.Keys)
 				{
+                    if (translations.ContainsKey(t))
+                    {
+                        foreach (EnumTranslationPair etp in translations[t])
+                        {
+                            conn.ExecuteNonQuery(String.Format(
+                                "UPDATE {0} SET {1} = '{3}' WHERE {1} = '{2}'",
+                                new object[]{
+                                _enumTableMaps[t],
+                                CorrectName("VALUE"),
+                                etp.OriginalName,
+                                etp.NewName}
+                            ));
+                            conn.Close();
+                        }
+                    }
 					_enumValuesMap.Add(t,new Dictionary<string, int>());
 					_enumReverseValuesMap.Add(t,new Dictionary<int, string>());
-					foreach (string str in Enum.GetNames(t))
-					{
-						conn.ExecuteQuery(String.Format(
-							"SELECT ID FROM {0} WHERE {1} = '{2}'",
-							_enumTableMaps[t],
-							CorrectName("VALUE"),
-							str
-						));
-						conn.Read();
-						_enumValuesMap[t].Add(str,(int)conn[0]);
-						_enumReverseValuesMap[t].Add((int)conn[0],str);
-						conn.Close();
-					}
+                    List<string> enumNames = new List<string>(Enum.GetNames(t));
+                    List<int> deletes = new List<int>();
+                    conn.ExecuteQuery(String.Format("SELECT ID,{1} FROM {0}",
+                        _enumTableMaps[t],
+                        CorrectName("VALUE")));
+                    while (conn.Read()) {
+                        if (enumNames.Contains(conn[1].ToString()))
+                        {
+                            _enumValuesMap[t].Add(conn[1].ToString(), (int)conn[0]);
+                            _enumReverseValuesMap[t].Add((int)conn[0], conn[1].ToString());
+                            enumNames.Remove(conn[1].ToString());
+                        }
+                        else
+                            deletes.Add((int)conn[0]);
+                    }
+                    conn.Close();
+                    if (deletes.Count > 0)
+                    {
+                        foreach (int i in deletes)
+                        {
+                            conn.ExecuteNonQuery(String.Format("DELETE FROM {0} WHERE ID = {1}",
+                                _enumTableMaps[t],
+                                i));
+                            conn.Close();
+                        }
+                    }
+                    if (enumNames.Count > 0)
+                    {
+                        foreach (string str in enumNames)
+                        {
+                            conn.ExecuteNonQuery(String.Format("INSERT INTO {0}({1}) VALUES('{2}')",
+                                _enumTableMaps[t],
+                                CorrectName("VALUE"),
+                                str));
+                            conn.Close();
+                            conn.ExecuteQuery(String.Format("SELECT ID FROM {0} WHERE {1}='{2}'",
+                                _enumTableMaps[t],
+                                CorrectName("VALUE"),
+                                str));
+                            conn.Read();
+                            _enumValuesMap[t].Add(str, (int)conn[0]);
+                            _enumReverseValuesMap[t].Add((int)conn[0], str);
+                            conn.Close();
+                        }
+                    }
+                    conn.Commit();
 				}
 			}
 			
@@ -1418,7 +1466,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		{
             Utility.WaitOne(this);
 			if (!isReady)
-				Init();
+				Init(ConnectionPoolManager._translations);
             Utility.Release(this);
 			if (isClosed)
 				return null;
