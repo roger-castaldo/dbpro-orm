@@ -326,11 +326,11 @@ namespace Org.Reddragonit.Dbpro.Connections
                 throw new Exception("Unable to delete an object from the database that is not saved.");
             if (table.ConnectionName != ConnectionName)
                 throw new Exception("Unable to delete an object from a database connection it is not part of.");
-            ConnectionPoolManager.RunTriggers(table, ConnectionPoolManager.TriggerTypes.PRE_DELETE);
+            ConnectionPoolManager.RunTriggers(null,table, ConnectionPoolManager.TriggerTypes.PRE_DELETE);
             List<IDbDataParameter> pars;
             string del = queryBuilder.Delete(table, out pars);
             ExecuteNonQuery(del, pars);
-            ConnectionPoolManager.RunTriggers(table, ConnectionPoolManager.TriggerTypes.POST_DELETE);
+            ConnectionPoolManager.RunTriggers(null,table, ConnectionPoolManager.TriggerTypes.POST_DELETE);
         }
 
         internal void DeleteAll(Type tableType)
@@ -442,18 +442,19 @@ namespace Org.Reddragonit.Dbpro.Connections
             {
                 if (table.LoadStatus == LoadStatus.Complete)
                 {
-                    ConnectionPoolManager.RunTriggers(table, ConnectionPoolManager.TriggerTypes.PRE_UPDATE);
+                    Table orig = table.LoadCopyOfOriginal(this);
+                    ConnectionPoolManager.RunTriggers(orig,table, ConnectionPoolManager.TriggerTypes.PRE_UPDATE);
                     ret = Update(table);
-                    ConnectionPoolManager.RunTriggers(ret, ConnectionPoolManager.TriggerTypes.POST_UPDATE);
+                    ConnectionPoolManager.RunTriggers(orig,ret, ConnectionPoolManager.TriggerTypes.POST_UPDATE);
                 }
                 else
                     ret = table;
             }
             else
             {
-                ConnectionPoolManager.RunTriggers(table, ConnectionPoolManager.TriggerTypes.PRE_INSERT);
+                ConnectionPoolManager.RunTriggers(null,table, ConnectionPoolManager.TriggerTypes.PRE_INSERT);
                 ret=Insert(table,false);
-                ConnectionPoolManager.RunTriggers(ret, ConnectionPoolManager.TriggerTypes.POST_INSERT);
+                ConnectionPoolManager.RunTriggers(null,ret, ConnectionPoolManager.TriggerTypes.POST_INSERT);
             }
             if (!ret.IsProxied)
                 ret = (Table)LazyProxy.Instance(ret);
@@ -496,6 +497,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                     if (Select(map.ParentType, tmpPars.ToArray()).Count > 0)
                     {
                         Table ta = Select(map.ParentType, tmpPars.ToArray())[0];
+                        Table orig = ta.LoadCopyOfOriginal(this);
                         foreach (FieldNamePair fnp in pMap.FieldNamePairs)
                         {
                             if (!pMap[fnp].PrimaryKey)
@@ -503,15 +505,16 @@ namespace Org.Reddragonit.Dbpro.Connections
                                 ta.SetField(fnp.ClassFieldName, tblPar.GetField(fnp.ClassFieldName));
                             }
                         }
-                        ConnectionPoolManager.RunTriggers(ta, ConnectionPoolManager.TriggerTypes.PRE_UPDATE);
+                        ConnectionPoolManager.RunTriggers(orig,ta, ConnectionPoolManager.TriggerTypes.PRE_UPDATE);
                         tblPar = Update(ta);
-                        ConnectionPoolManager.RunTriggers(tblPar, ConnectionPoolManager.TriggerTypes.PRE_UPDATE);
+                        orig = tblPar.LoadCopyOfOriginal(this);
+                        ConnectionPoolManager.RunTriggers(orig,tblPar, ConnectionPoolManager.TriggerTypes.PRE_UPDATE);
                     }
                     else
                     {
-                        ConnectionPoolManager.RunTriggers(tblPar, ConnectionPoolManager.TriggerTypes.PRE_INSERT);
+                        ConnectionPoolManager.RunTriggers(null,tblPar, ConnectionPoolManager.TriggerTypes.PRE_INSERT);
                         tblPar = Insert(tblPar, ignoreAutogen);
-                        ConnectionPoolManager.RunTriggers(tblPar, ConnectionPoolManager.TriggerTypes.POST_INSERT);
+                        ConnectionPoolManager.RunTriggers(null,tblPar, ConnectionPoolManager.TriggerTypes.POST_INSERT);
                     }
                     table.CopyValuesFrom(tblPar);
                 }

@@ -145,7 +145,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             }
         }
 
-        internal static void RunTriggers(Table tbl, TriggerTypes type)
+        internal static void RunTriggers(Table original,Table tbl, TriggerTypes type)
         {
             ITrigger[] tmp = new ITrigger[0];
             Monitor.Enter(_triggers);
@@ -171,10 +171,10 @@ namespace Org.Reddragonit.Dbpro.Connections
                         tr.PostInsert(tbl);
                         break;
                     case TriggerTypes.PRE_UPDATE:
-                        tr.PreUpdate(tbl, tbl.ChangedFields);
+                        tr.PreUpdate(original,tbl, tbl.ChangedFields);
                         break;
                     case TriggerTypes.POST_UPDATE:
-                        tr.PostUpdate(tbl, tbl.ChangedFields);
+                        tr.PostUpdate(original,tbl, tbl.ChangedFields);
                         break;
                     case TriggerTypes.PRE_DELETE_ALL:
                         tr.PreDeleteAll();

@@ -225,7 +225,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     if (index < i)
                         ret += _tableFieldCounts[index];
                 }
-                return ret;
+                return (ret==i ? i : ret-1);
             }
             return i;
         }
@@ -1190,6 +1190,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 		private string TranslateFields(int subqueryIndex,List<int> fieldIndexes,List<int> tableDeclarations, Dictionary<int, string> fieldAliases, Dictionary<string, string> tableAliases,Dictionary<string,List<string>> fieldList)
 		{
             int ordinal = 0;
+            int preOrdinal = 0;
 			string ret = "";
 			int previousIndex = subqueryIndex;
 			foreach (int x in fieldIndexes){
@@ -1200,10 +1201,18 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 if (ret.TrimEnd(' ').EndsWith(","))
                     ordinal++;
 				string fieldAlias;
+                if (ordinal > preOrdinal + 1)
+                    ordinal = preOrdinal + 1;
                 if (subqueryIndex == 0)
+                {
                     ret += TranslateFieldName(ordinal, x, out fieldAlias, tableDeclarations, fieldAliases, tableAliases, fieldList) + " ";
+                    preOrdinal = ordinal;
+                }
                 else
+                {
+                    preOrdinal = ordinal;
                     ret += TranslateFieldName(-1, x, out fieldAlias, tableDeclarations, fieldAliases, tableAliases, fieldList) + " ";
+                }
 				if (ret.EndsWith(",  "))
 				{
 					if (_tokenizer.Tokens[x + 1].Value.ToUpper() == "AS")
@@ -1224,6 +1233,8 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 				}
                 if (ret.TrimEnd(' ').EndsWith(","))
                     ordinal++;
+                if (ordinal > preOrdinal + 1)
+                    ordinal = preOrdinal + 1;
 			}
 			int z = previousIndex;
 			while (_tokenizer.Tokens[z].Value.ToUpper() != "FROM")
