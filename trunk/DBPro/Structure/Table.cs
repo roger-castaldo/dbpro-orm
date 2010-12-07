@@ -6,6 +6,7 @@ using Org.Reddragonit.Dbpro.Connections;
 using Org.Reddragonit.Dbpro.Structure.Mapping;
 using FieldNamePair = Org.Reddragonit.Dbpro.Structure.Mapping.TableMap.FieldNamePair;
 using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.FieldType;
+using Org.Reddragonit.Dbpro.Connections.Parameters;
 
 namespace Org.Reddragonit.Dbpro.Structure
 {
@@ -71,6 +72,19 @@ namespace Org.Reddragonit.Dbpro.Structure
 				}
 			}
 		}
+
+        //used to load the original data to be used for update triggers
+        internal Table LoadCopyOfOriginal(Connection conn)
+        {
+            List<SelectParameter> pars = new List<SelectParameter>();
+            foreach (string str in _initialPrimaryKeys.Keys)
+                pars.Add(new EqualParameter(str, _initialPrimaryKeys[str]));
+            List<Org.Reddragonit.Dbpro.Structure.Table> tmp = conn.Select(this.GetType(),
+                pars.ToArray());
+            if (tmp.Count > 0)
+                return tmp[0];
+            return this;
+        }
 		
         //called to get the initial value of a primary key field
 		internal object GetInitialPrimaryValue(string ClassFieldName)

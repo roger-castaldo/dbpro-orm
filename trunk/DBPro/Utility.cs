@@ -207,14 +207,34 @@ namespace Org.Reddragonit.Dbpro
 
         internal static string StripNullParameter(string outputQuery, string ParameterName)
         {
-            outputQuery = outputQuery.Replace(">= " + ParameterName + " ", "IS NULL ");
-            outputQuery = outputQuery.Replace("<= " + ParameterName + " ", "IS NULL ");
-            outputQuery = outputQuery.Replace("= " + ParameterName + " ", "IS NULL ");
-            outputQuery = outputQuery.Replace("<> " + ParameterName + " ", "IS NOT NULL ");
-            outputQuery = outputQuery.Replace(ParameterName + ",", "NULL,");
-            outputQuery = outputQuery.Replace(ParameterName + ")", "NULL)");
-            outputQuery = outputQuery.Replace(" " + ParameterName + " IS NULL", " NULL IS NULL");
-            outputQuery = outputQuery.Replace("(" + ParameterName + " IS NULL", "(NULL IS NULL");
+            if (outputQuery.StartsWith("UPDATE"))
+            {
+                string wheres = outputQuery.Substring(0, outputQuery.LastIndexOf("WHERE") + 5);
+                wheres = wheres.Replace(">= " + ParameterName + " ", "IS NULL ");
+                wheres = wheres.Replace("<= " + ParameterName + " ", "IS NULL ");
+                wheres = wheres.Replace("= " + ParameterName + " ", "IS NULL ");
+                wheres = wheres.Replace(" =" + ParameterName + " ", " IS NULL ");
+                wheres = wheres.Replace("<> " + ParameterName + " ", "IS NOT NULL ");
+                wheres = wheres.Replace(ParameterName + ",", "NULL,");
+                wheres = wheres.Replace(ParameterName + ")", "NULL)");
+                wheres = wheres.Replace(" " + ParameterName + " IS NULL", " NULL IS NULL");
+                wheres = wheres.Replace("(" + ParameterName + " IS NULL", "(NULL IS NULL");
+                wheres= wheres.Replace(" =NULL", " IS NULL");
+                outputQuery = outputQuery.Substring(0, outputQuery.LastIndexOf("WHERE") + 5) + wheres;
+            }
+            else
+            {
+                outputQuery = outputQuery.Replace(">= " + ParameterName + " ", "IS NULL ");
+                outputQuery = outputQuery.Replace("<= " + ParameterName + " ", "IS NULL ");
+                outputQuery = outputQuery.Replace("= " + ParameterName + " ", "IS NULL ");
+                outputQuery = outputQuery.Replace(" =" + ParameterName + " ", " IS NULL ");
+                outputQuery = outputQuery.Replace("<> " + ParameterName + " ", "IS NOT NULL ");
+                outputQuery = outputQuery.Replace(ParameterName + ",", "NULL,");
+                outputQuery = outputQuery.Replace(ParameterName + ")", "NULL)");
+                outputQuery = outputQuery.Replace(" " + ParameterName + " IS NULL", " NULL IS NULL");
+                outputQuery = outputQuery.Replace("(" + ParameterName + " IS NULL", "(NULL IS NULL");
+                outputQuery = outputQuery.Replace(" =NULL", " IS NULL");
+            }
             return outputQuery;
         }
 

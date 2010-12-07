@@ -7,8 +7,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 {
     public interface ITrigger
     {
-        void PostUpdate(Table table, List<string> changedFields);
-        void PreUpdate(Table table, List<string> changedFields);
+        void PostUpdate(Table originalValue,Table newValue, List<string> changedFields);
+        void PreUpdate(Table originalValue,Table newValue, List<string> changedFields);
         void PreDelete(Table table);
         void PostDelete(Table table);
         void PreDeleteAll();
