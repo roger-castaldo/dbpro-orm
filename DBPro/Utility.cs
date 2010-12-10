@@ -207,6 +207,7 @@ namespace Org.Reddragonit.Dbpro
 
         internal static string StripNullParameter(string outputQuery, string ParameterName)
         {
+            outputQuery = outputQuery + " ";
             if (outputQuery.StartsWith("UPDATE"))
             {
                 string wheres = outputQuery.Substring(0, outputQuery.LastIndexOf("WHERE") + 5);
@@ -235,7 +236,7 @@ namespace Org.Reddragonit.Dbpro
                 outputQuery = outputQuery.Replace("(" + ParameterName + " IS NULL", "(NULL IS NULL");
                 outputQuery = outputQuery.Replace(" =NULL", " IS NULL");
             }
-            return outputQuery;
+            return outputQuery.Trim();
         }
 
 	}
