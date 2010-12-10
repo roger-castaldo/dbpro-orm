@@ -340,7 +340,8 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 			// As long as there are white spaces in the input 
 			// stream, advance
 			while ( isWhiteSpace( currentCode() ) ) {
-				next();
+                if (next() == null)
+                    break;
 			}
 		}
 		

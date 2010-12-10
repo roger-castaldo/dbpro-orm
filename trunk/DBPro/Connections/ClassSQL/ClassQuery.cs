@@ -36,18 +36,37 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 	
 		public ClassQuery(string NameSpace,string query)
 		{
-			_namespace=NameSpace;
+            NewQuery(NameSpace, query);
+		}
+
+        public void NewQuery(string NameSpace, string query)
+        {
+            _outputQuery = "";
+            _namespace = NameSpace;
             if (query.StartsWith("(") && query.EndsWith(")"))
                 query = query.TrimStart('(').TrimEnd(')');
-			_tokenizer=new QueryTokenizer(query);
-			_tokenizer.parse();
+            query = query.Trim();
+            _tokenizer = new QueryTokenizer(query);
+            _tokenizer.parse();
             _tableFieldCounts = new Dictionary<int, int>();
             _fieldNames = new Dictionary<int, string>();
             _tableFields = new Dictionary<string, Type>();
             _enumFields = new Dictionary<int, Type>();
+            _subQueryIndexes = new Dictionary<int, int>();
+            if (_conn != null)
+            {
+                try
+                {
+                    _conn.Close();
+                }
+                catch (Exception e)
+                {
+                }
+            }
             Translate();
+            _outputQuery = _outputQuery.Trim();
             Logger.LogLine("Class Query: " + query + "\nTranslated To:" + _outputQuery);
-		}
+        }
 		
 		private void Translate()
 		{
@@ -983,6 +1002,23 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 				while (field.Contains("."))
 				{
 					ExternalFieldMap efm = (ExternalFieldMap)map[field.Substring(0, field.IndexOf("."))];
+                    string talias = alias;
+                    if (map.IsParentClassField(field.Substring(0, field.IndexOf("."))))
+                    {
+                        TableMap parentMap = map;
+                        while (map.IsParentClassField(field.Substring(0, field.IndexOf(".")))&&map.ParentType!=null)
+                        {
+                            parentMap = ClassMapper.GetTableMap(map.ParentType);
+                            string iJoin = " INNER JOIN " + _conn.Pool.CorrectName(parentMap.Name) + " " + talias + "_prnt ON ";
+                            foreach (InternalFieldMap ifm in parentMap.PrimaryKeys)
+                                iJoin += talias + "." + _conn.Pool.CorrectName(ifm.FieldName) + " = " + talias + "_prnt." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
+                            iJoin = iJoin.Substring(0, iJoin.Length - 4);
+                            if (!joins.Contains(iJoin))
+                                joins.Add(iJoin);
+                            talias += "_prnt";
+                            map = parentMap;
+                        }
+                    }
 					TableMap eMap = ClassMapper.GetTableMap(efm.Type);
 					string className = field.Substring(0, field.IndexOf("."));
 					string innerJoin = " INNER JOIN ";
@@ -993,7 +1029,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 					{
 						innerJoin += _conn.Pool.CorrectName(map.Name + "_" + eMap.Name) + " " + alias + "_intermediate_" + className + " ON ";
 						foreach (InternalFieldMap ifm in map.PrimaryKeys)
-							innerJoin += " " + alias + "." + _conn.Pool.CorrectName(ifm.FieldName) + " = " + alias + "_intermediate_" + className + "." + _conn.Pool.CorrectName("PARENT_" + ifm.FieldName) + " AND ";
+							innerJoin += " " + talias + "." + _conn.Pool.CorrectName(ifm.FieldName) + " = " + alias + "_intermediate_" + className + "." + _conn.Pool.CorrectName("PARENT_" + ifm.FieldName) + " AND ";
 						innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
                         if (!joins.Contains(innerJoin))
                             joins.Add(innerJoin);
@@ -1009,7 +1045,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 					{
                         innerJoin += "(" + tbl + ") " + alias + "_" + className + " ON ";
 						foreach (InternalFieldMap ifm in eMap.PrimaryKeys)
-							innerJoin += " " + alias + "." + _conn.Pool.CorrectName(efm.AddOnName + "_" + ifm.FieldName) + " = " + alias + "_" + className + "." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
+							innerJoin += " " + talias + "." + _conn.Pool.CorrectName(efm.AddOnName + "_" + ifm.FieldName) + " = " + alias + "_" + className + "." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
 						innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
 					}
 					alias += "_" + field.Substring(0, field.IndexOf("."));
@@ -1337,13 +1373,6 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         }
                         else
                         {
-                            if (map[fieldName].ObjectType.IsEnum)
-                            {
-                                if (_enumFields.ContainsKey(ordinal))
-                                    _enumFields.Remove(ordinal);
-                                Logger.LogLine("Assigning field at ordinal " + ordinal.ToString() + " as enum of type " + map[fieldName].ObjectType.FullName);
-                                _enumFields.Add(ordinal, map[fieldName].ObjectType);
-                            }
                             ret = TranslateParentFieldName(tableAlias, fieldName, map,ordinal);
                         }
 					}
