@@ -22,7 +22,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 	public class ClassQuery : IDataReader
 	{
 		private static readonly List<string> _conditionOperators =
-			new List<string>(new string[]{"=","NOT","IN","LIKE",">","<"});
+			new List<string>(new string[]{"=","NOT","IN","LIKE",">","<","<=",">="});
 		
 		private string _namespace;
 		private QueryTokenizer _tokenizer;
@@ -295,12 +295,15 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 			Dictionary<int, string> ret = new Dictionary<int, string>();
 			foreach (int i in Utility.SortDictionaryKeys(_subQueryIndexes.Keys))
 			{
-				ret.Add(i, TranslateSubQuery(i, ref parameters));
+                if (!ret.ContainsKey(i))
+                {
+                    ret.Add(i, TranslateSubQuery(i,new Dictionary<string,string>(), ref parameters,ref ret));
+                }
 			}
 			return ret;
 		}
 
-		private string TranslateSubQuery(int i, ref List<IDbDataParameter> parameters)
+		private string TranslateSubQuery(int i,Dictionary<string,string> parentTableAliases, ref List<IDbDataParameter> parameters,ref Dictionary<int,string> translations)
 		{
 			List<int> tableDeclarations = new List<int>();
 			Dictionary<int, string> fieldAliases = new Dictionary<int, string>();
@@ -314,6 +317,12 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 				(_tokenizer.Tokens[i + x].Value.ToUpper() != "FROM")
 			)
 			{
+                if (_subQueryIndexes.ContainsKey(i + x)){
+					x += _subQueryIndexes[i + x] + 2;
+                    if (!((x < _subQueryIndexes[i]) &&
+                    (_tokenizer.Tokens[i + x].Value.ToUpper() != "FROM")))
+                        break;
+                }
 				if ((_tokenizer.Tokens[i + x].Type == TokenType.KEY) &&
 				    (
 				    	(_tokenizer.Tokens[i + x - 1].Value.ToUpper() == "SELECT") ||
@@ -375,6 +384,8 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 				whereIndex=x+i;
 				while (x < _subQueryIndexes[i])
 				{
+                    if (_subQueryIndexes.ContainsKey(i + x))
+                        x += _subQueryIndexes[i + x] + 2;
                     if ((_tokenizer.Tokens[i + x].Value.ToUpper() == "GROUP") ||
                         (_tokenizer.Tokens[i + x].Value.ToUpper() == "ORDER"))
                         break;
@@ -389,6 +400,8 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 							x++;
 							while (x < _subQueryIndexes[i])
 							{
+                                if (_subQueryIndexes.ContainsKey(i + x + 1))
+                                    x += _subQueryIndexes[i + x+1];
                                 if ((_tokenizer.Tokens[i + x].Value.ToUpper() == "OR")
                                     || (_tokenizer.Tokens[i + x].Value.ToUpper() == "AND")
                                     || (_tokenizer.Tokens[i + x].Value.ToUpper() == "GROUP")
@@ -410,14 +423,60 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 					x++;
 				}
 			}
-			List<int> whereFieldIndexes = new List<int>();
-			foreach (int index in Utility.SortDictionaryKeys(conditionIndexes.Keys)){
-				whereFieldIndexes.AddRange(ExtractFieldsFromCondition(index,conditionIndexes[index]));
-			}
+
+            int endIndex = i + _subQueryIndexes[i];
+            foreach (int subIndex in _subQueryIndexes.Keys)
+            {
+                if (subIndex > i && subIndex <= endIndex)
+                {
+                    //int[] tmpIndexes = new int[conditionIndexes.Count];
+                    //conditionIndexes.Keys.CopyTo(tmpIndexes, 0);
+                    //foreach (int tindex in tmpIndexes)
+                    //{
+                    //    if (tindex >= subIndex)
+                    //        conditionIndexes.Remove(tindex);
+                    //    else if (tindex < subIndex && conditionIndexes[tindex] >= subIndex && conditionIndexes[tindex] <= _subQueryIndexes[subIndex] + subIndex)
+                    //    {
+                    //        conditionIndexes.Remove(tindex);
+                    //        conditionIndexes.Add(tindex, subIndex + _subQueryIndexes[subIndex] + 1);
+                    //    }
+                    //}
+                    
+                    if (!translations.ContainsKey(subIndex))
+                    {
+                        if (parentTableAliases.Count != 0)
+                        {
+                            Dictionary<string, string> newList = new Dictionary<string, string>();
+                            foreach (string str in parentTableAliases.Keys)
+                                newList.Add(str, parentTableAliases[str]);
+                            foreach (string str in tableAliases.Keys)
+                            {
+                                if (newList.ContainsKey(str))
+                                    newList.Remove(str);
+                                newList.Add(str, tableAliases[str]);
+                            }
+                            string subquery = TranslateSubQuery(subIndex, newList, ref parameters, ref translations);
+                            if (!translations.ContainsKey(subIndex))
+                                translations.Add(subIndex, subquery);
+                        }
+                        else
+                        {
+                            string subquery = TranslateSubQuery(subIndex, tableAliases, ref parameters, ref translations);
+                            if (!translations.ContainsKey(subIndex))
+                                translations.Add(subIndex, subquery);
+                        }
+                    }
+                }
+            }
+            List<int> whereFieldIndexes = new List<int>();
+            foreach (int index in Utility.SortDictionaryKeys(conditionIndexes.Keys))
+            {
+                whereFieldIndexes.AddRange(ExtractFieldsFromCondition(index, conditionIndexes[index]));
+            }
 			Dictionary<string, List<string>> fieldList = new Dictionary<string, List<string>>();
 			string tables = CreateTableQuery(tableDeclarations, fieldIndexes,ref fieldList,whereFieldIndexes);
-			string fields = TranslateFields(i,fieldIndexes, tableDeclarations, fieldAliases, tableAliases,fieldList);
-			string wheres = TranslateWhereConditions(whereIndex,conditionIndexes,tableAliases,tableDeclarations,fieldList);
+			string fields = TranslateFields(i,fieldIndexes, tableDeclarations, fieldAliases, tableAliases,fieldList,parentTableAliases);
+			string wheres = TranslateWhereConditions(whereIndex,conditionIndexes,tableAliases,tableDeclarations,fieldList,parentTableAliases);
             if ((whereFieldIndexes.Count == 0) && (whereIndex > 0) && (whereIndex < _subQueryIndexes[i]))
             {
                 wheres = " ";
@@ -550,7 +609,8 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
         #endregion
 		
 		#region ConditionTranslating
-		private string TranslateWhereConditions(int whereIndex,Dictionary<int, int> conditionIndexes,Dictionary<string, string> tableAliases,List<int> tableDeclarations,Dictionary<string, List<string>> fieldList){
+        private string TranslateWhereConditions(int whereIndex, Dictionary<int, int> conditionIndexes, Dictionary<string, string> tableAliases, List<int> tableDeclarations, Dictionary<string, List<string>> fieldList, Dictionary<string, string> parentTableAliases)
+        {
 			string ret = "";
 			if (whereIndex>0){
                 string tmp = "Condition Indexes:\n";
@@ -587,7 +647,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 					}
 					bool isTabled=false;
 					foreach (int x in fields){
-						isTabled=isTabled||IsFieldConditionTable(x,tableAliases,tableDeclarations);
+						isTabled=isTabled||IsFieldConditionTable(x,tableAliases,tableDeclarations,parentTableAliases);
 					}
 					if (isTabled){
                         string conditionTemplate = "";
@@ -605,20 +665,20 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                                 conditionTemplate += _tokenizer.Tokens[x].Value + " ";
                         }
                         changedIndexes.Sort();
-                        Type t1 = LocateTableTypeAtIndex(fields[0], tableAliases, tableDeclarations);
+                        Type t1 = LocateTableTypeAtIndex(fields[0], tableAliases, tableDeclarations,parentTableAliases);
                         Type t2=null;
                         if (fields.Count == 2)
                         {
-                            t2 = LocateTableTypeAtIndex(fields[1], tableAliases, tableDeclarations);
+                            t2 = LocateTableTypeAtIndex(fields[1], tableAliases, tableDeclarations,parentTableAliases);
                             if (!t1.Equals(t2) && !t1.IsSubclassOf(t2) && !t2.IsSubclassOf(t1))
                                 throw new Exception("Unable to compare two table objects that are not of the same type.");
                         }
                         string addition = "";
                         TableMap tm = ClassMapper.GetTableMap(t1);
-                        List<string> tmpFields1 = TranslateConditionField(fields[0], tableDeclarations, tableAliases, fieldList);
+                        List<string> tmpFields1 = TranslateConditionField(fields[0], tableDeclarations, tableAliases, fieldList,parentTableAliases);
                         List<string> tmpFields2 = null;
                         if (t2!=null)
-                            tmpFields2 = TranslateConditionField(fields[1], tableDeclarations, tableAliases, fieldList);
+                            tmpFields2 = TranslateConditionField(fields[1], tableDeclarations, tableAliases, fieldList,parentTableAliases);
                         string origParam = "";
                         foreach (int y in changedIndexes)
                         {
@@ -715,7 +775,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 					}else{
 						for(int x=index;x<conditionIndexes[index];x++){
 							if (fields.Contains(x)){
-								ret+=TranslateConditionField(x,tableDeclarations,tableAliases,fieldList)[0]+" ";
+								ret+=TranslateConditionField(x,tableDeclarations,tableAliases,fieldList,parentTableAliases)[0]+" ";
 							}else
 								ret+=_tokenizer.Tokens[x].Value+" ";
 						}
@@ -726,7 +786,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 			return ret;
 		}
 
-        private Type LocateTableTypeAtIndex(int index, Dictionary<string, string> tableAliases, List<int> tableDeclarations)
+        private Type LocateTableTypeAtIndex(int index, Dictionary<string, string> tableAliases, List<int> tableDeclarations, Dictionary<string, string> parentTableAliases)
         {
             QueryToken field = _tokenizer.Tokens[index];
             string tableName = "";
@@ -745,6 +805,8 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             }
             if (tableAliases.ContainsKey(tableName))
                 tableName = tableAliases[tableName];
+            else if (parentTableAliases.ContainsKey(tableName))
+                tableName = parentTableAliases[tableName];
             Type t = LocateTableType(tableName);
             if (t != null)
             {
@@ -769,8 +831,9 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             }
             return t;
         }
-		
-		private bool IsFieldConditionTable(int index,Dictionary<string, string> tableAliases,List<int> tableDeclarations){
+
+        private bool IsFieldConditionTable(int index, Dictionary<string, string> tableAliases, List<int> tableDeclarations, Dictionary<string, string> parentTableAliases)
+        {
 			QueryToken field = _tokenizer.Tokens[index];
 			string tableName = "";
 			string fieldName = _tokenizer.Tokens[index].Value;
@@ -786,8 +849,10 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 					tableName = _tokenizer.Tokens[tableDeclarations[0]].Value;
 				}
 			}
-			if (tableAliases.ContainsKey(tableName))
-				tableName = tableAliases[tableName];
+            if (tableAliases.ContainsKey(tableName))
+                tableName = tableAliases[tableName];
+            else if (parentTableAliases.ContainsKey(tableName))
+                tableName = parentTableAliases[tableName];
 			Type t = LocateTableType(tableName);
 			if (fieldName.EndsWith(".*"))
 				return true;
@@ -818,8 +883,8 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 			return false;
 		}
 
-		
-		private List<string> TranslateConditionField(int index, List<int> tableDeclarations, Dictionary<string, string> tableAliases,Dictionary<string,List<string>> fieldList)
+
+        private List<string> TranslateConditionField(int index, List<int> tableDeclarations, Dictionary<string, string> tableAliases, Dictionary<string, List<string>> fieldList, Dictionary<string, string> parentTableAliases)
 		{
 			List<string> ret = new List<string>();
 			QueryToken field = _tokenizer.Tokens[index];
@@ -840,8 +905,10 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 			}
 			ret.Add(field.Value);
             tableAlias = tableName;
-			if (tableAliases.ContainsKey(tableName))
-				tableName = tableAliases[tableName];
+            if (tableAliases.ContainsKey(tableName))
+                tableName = tableAliases[tableName];
+            else if (parentTableAliases.ContainsKey(tableName))
+                tableName = parentTableAliases[tableName];
 			Type t = LocateTableType(tableName);
 			if (t != null)
 			{
@@ -911,8 +978,10 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 		private List<int> ExtractFieldsFromCondition(int start,int end){
 			List<int> ret = new List<int>();
 			for (int x=start;x<end;x++){
-				if (_tokenizer.Tokens[x-1].Value.ToUpper()=="IN")
-					break;
+                if (_tokenizer.Tokens[x - 1].Value.ToUpper() == "IN")
+                    break;
+                else if (_subQueryIndexes.ContainsKey(x))
+                    break;
 				if ((_tokenizer.Tokens[x].Type == TokenType.KEY) &&
 				    (
 				    	(_tokenizer.Tokens[x - 1].Value.ToUpper() == "CASE") ||
@@ -1223,7 +1292,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 		#endregion
 
 		#region FieldTranslating
-		private string TranslateFields(int subqueryIndex,List<int> fieldIndexes,List<int> tableDeclarations, Dictionary<int, string> fieldAliases, Dictionary<string, string> tableAliases,Dictionary<string,List<string>> fieldList)
+        private string TranslateFields(int subqueryIndex, List<int> fieldIndexes, List<int> tableDeclarations, Dictionary<int, string> fieldAliases, Dictionary<string, string> tableAliases, Dictionary<string, List<string>> fieldList, Dictionary<string, string> parentTableAliases)
 		{
             int ordinal = 0;
             int preOrdinal = 0;
@@ -1241,13 +1310,13 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     ordinal = preOrdinal + 1;
                 if (subqueryIndex == 0)
                 {
-                    ret += TranslateFieldName(ordinal, x, out fieldAlias, tableDeclarations, fieldAliases, tableAliases, fieldList) + " ";
+                    ret += TranslateFieldName(ordinal, x, out fieldAlias, tableDeclarations, fieldAliases, tableAliases, fieldList,parentTableAliases) + " ";
                     preOrdinal = ordinal;
                 }
                 else
                 {
                     preOrdinal = ordinal;
-                    ret += TranslateFieldName(-1, x, out fieldAlias, tableDeclarations, fieldAliases, tableAliases, fieldList) + " ";
+                    ret += TranslateFieldName(-1, x, out fieldAlias, tableDeclarations, fieldAliases, tableAliases, fieldList,parentTableAliases) + " ";
                 }
 				if (ret.EndsWith(",  "))
 				{
@@ -1281,7 +1350,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 			return ret;
 		}
 
-		private string TranslateFieldName(int ordinal,int index, out string fieldAlias, List<int> tableDeclarations, Dictionary<int, string> fieldAliases, Dictionary<string, string> tableAliases,Dictionary<string,List<string>> fieldList)
+        private string TranslateFieldName(int ordinal, int index, out string fieldAlias, List<int> tableDeclarations, Dictionary<int, string> fieldAliases, Dictionary<string, string> tableAliases, Dictionary<string, List<string>> fieldList, Dictionary<string, string> parentTableAliases)
 		{
 			QueryToken field = _tokenizer.Tokens[index];
 			string tableName = "";
@@ -1303,8 +1372,10 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             string tableAlias = tableName;
 			if (fieldAliases.ContainsKey(index))
 				fieldAlias = fieldAliases[index];
-			if (tableAliases.ContainsKey(tableName))
-				tableName = tableAliases[tableName];
+            if (tableAliases.ContainsKey(tableName))
+                tableName = tableAliases[tableName];
+            else if (parentTableAliases.ContainsKey(tableName))
+                tableName = parentTableAliases[tableName];
 			string ret = field.Value;
             if (ordinal != -1)
             {
