@@ -267,8 +267,15 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 				)
 				{
 					pos = x;
+                    int curPos = x-2;
 					EstablishSubQueries(ref pos, tokens);
 					x = pos;
+                    if (tokens[curPos - 1].Value.ToUpper() == "UNION")
+                        pos = curPos;
+                    if (x == tokens.Count)
+                    {
+                        break;
+                    }
 				}
 				if (tokens[x].Value == "(")
 				{
@@ -428,20 +435,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             foreach (int subIndex in _subQueryIndexes.Keys)
             {
                 if (subIndex > i && subIndex <= endIndex)
-                {
-                    //int[] tmpIndexes = new int[conditionIndexes.Count];
-                    //conditionIndexes.Keys.CopyTo(tmpIndexes, 0);
-                    //foreach (int tindex in tmpIndexes)
-                    //{
-                    //    if (tindex >= subIndex)
-                    //        conditionIndexes.Remove(tindex);
-                    //    else if (tindex < subIndex && conditionIndexes[tindex] >= subIndex && conditionIndexes[tindex] <= _subQueryIndexes[subIndex] + subIndex)
-                    //    {
-                    //        conditionIndexes.Remove(tindex);
-                    //        conditionIndexes.Add(tindex, subIndex + _subQueryIndexes[subIndex] + 1);
-                    //    }
-                    //}
-                    
+                {                    
                     if (!translations.ContainsKey(subIndex))
                     {
                         if (parentTableAliases.Count != 0)
@@ -1259,7 +1253,14 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     Logger.LogLine("Assigning field at ordinal: " + ordinal.ToString() + " as an enumeration type: " + map[field].ObjectType.FullName);
                     _enumFields.Add(ordinal, map[field].ObjectType);
                 }
-                return alias + "." + _conn.Pool.CorrectName(map.GetTableFieldName(field));
+                if (map.GetTableFieldName(field) == null)
+                {
+                    if (alias == "")
+                        return field;
+                    return alias + "." + field;
+                }
+                else
+                    return alias + "." + _conn.Pool.CorrectName(map.GetTableFieldName(field));
             }
             TableMap parentMap = map;
             while (parentMap.ParentType != null)
