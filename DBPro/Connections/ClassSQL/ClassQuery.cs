@@ -1060,6 +1060,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 			string origField = field;
 			string origAlias = alias;
 			TableMap map = baseMap;
+            bool parentIsLeftJoin = false;
 			if (field.Contains("."))
 			{
 				while (field.Contains("."))
@@ -1072,7 +1073,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         while (map.IsParentClassField(field.Substring(0, field.IndexOf(".")))&&map.ParentType!=null)
                         {
                             parentMap = ClassMapper.GetTableMap(map.ParentType);
-                            string iJoin = " INNER JOIN " + _conn.Pool.CorrectName(parentMap.Name) + " " + talias + "_prnt ON ";
+                            string iJoin = " "+(parentIsLeftJoin ? "LEFT JOIN" : "INNER JOIN")+" " + _conn.Pool.CorrectName(parentMap.Name) + " " + talias + "_prnt ON ";
                             foreach (InternalFieldMap ifm in parentMap.PrimaryKeys)
                                 iJoin += talias + "." + _conn.Pool.CorrectName(ifm.FieldName) + " = " + talias + "_prnt." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
                             iJoin = iJoin.Substring(0, iJoin.Length - 4);
@@ -1084,9 +1085,9 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     }
 					TableMap eMap = ClassMapper.GetTableMap(efm.Type);
 					string className = field.Substring(0, field.IndexOf("."));
-					string innerJoin = " INNER JOIN ";
-					if (efm.Nullable)
-						innerJoin = " LEFT JOIN ";
+					string innerJoin = " "+(parentIsLeftJoin ? "LEFT JOIN" : "INNER JOIN")+" ";
+                    if (efm.Nullable)
+                        innerJoin = " LEFT JOIN ";
                     string tbl = _conn.queryBuilder.SelectAll(efm.Type,null);
 					if (efm.IsArray)
 					{
@@ -1099,7 +1100,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         if (efm.Nullable)
                             innerJoin = " LEFT JOIN (" + tbl + ") " + alias + "_" + className + " ON ";
                         else
-                            innerJoin = " INNER JOIN (" + tbl + ") " + alias + "_" + className + " ON ";
+                            innerJoin = " "+(parentIsLeftJoin ? "LEFT JOIN" : "INNER JOIN")+" (" + tbl + ") " + alias + "_" + className + " ON ";
 						foreach (InternalFieldMap ifm in eMap.PrimaryKeys)
 							innerJoin += " " + alias + "_intermediate_" + className + "." + _conn.Pool.CorrectName("CHILD_" + ifm.FieldName) + " = " + alias + "_" + className + "." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
 						innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
@@ -1116,6 +1117,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 					if (!joins.Contains(innerJoin))
 						joins.Add(innerJoin);
                     map = eMap;
+                    parentIsLeftJoin |= efm.Nullable;
 				}
 				
 			}
