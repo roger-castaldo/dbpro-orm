@@ -290,6 +290,10 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 						break;
 					}
 				}
+                if (tokens.Count == (x + 1) && bracketCount == 0)
+                {
+                    pos = x+1;
+                }
 			}
 			if (pos == start)
 				pos = tokens.Count;
@@ -325,9 +329,9 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 			)
 			{
                 if (_subQueryIndexes.ContainsKey(i + x)){
-					x += _subQueryIndexes[i + x] + 2;
-                    if (!((x < _subQueryIndexes[i]) &&
-                    (_tokenizer.Tokens[i + x].Value.ToUpper() != "FROM")))
+					x += _subQueryIndexes[i + x];
+                    if ((x > _subQueryIndexes[i]) ||
+                    (_tokenizer.Tokens[i + x].Value.ToUpper() == "FROM"))
                         break;
                 }
 				if ((_tokenizer.Tokens[i + x].Type == TokenType.KEY) &&
@@ -1345,10 +1349,22 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     ordinal = preOrdinal + 1;
 			}
 			int z = previousIndex;
+            if (_subQueryIndexes.ContainsKey(z))
+            {
+                for (int x = 0; x < _subQueryIndexes[z]; x++)
+                    ret += _tokenizer.Tokens[z + x].Value + " ";
+                z += _subQueryIndexes[z];
+            }
 			while (_tokenizer.Tokens[z].Value.ToUpper() != "FROM")
 			{
 				ret += _tokenizer.Tokens[z].Value+" ";
 				z++;
+                if (_subQueryIndexes.ContainsKey(z))
+                {
+                    for (int x = 0; x < _subQueryIndexes[z]; x++)
+                        ret += _tokenizer.Tokens[z + x].Value + " ";
+                    z += _subQueryIndexes[z];
+                }
 			}
 			return ret;
 		}
