@@ -323,6 +323,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 			Dictionary<int, int> conditionIndexes=new Dictionary<int, int>();
 			int x = 1;
 			int whereIndex=-1;
+            int fromIndex = -1;
 			while (
 				(x < _subQueryIndexes[i]) &&
 				(_tokenizer.Tokens[i + x].Value.ToUpper() != "FROM")
@@ -358,6 +359,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 			}
 			if (_tokenizer.Tokens[i + x].Value.ToUpper() == "FROM")
 			{
+                fromIndex = i + x;
 				while (x < _subQueryIndexes[i])
 				{
 					if (_subQueryIndexes.ContainsKey(i + x))
@@ -472,7 +474,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 whereFieldIndexes.AddRange(ExtractFieldsFromCondition(index, conditionIndexes[index]));
             }
 			Dictionary<string, List<string>> fieldList = new Dictionary<string, List<string>>();
-			string tables = CreateTableQuery(tableDeclarations, fieldIndexes,ref fieldList,whereFieldIndexes);
+			string tables = CreateTableQuery(i,fromIndex,tableDeclarations, fieldIndexes,ref fieldList,whereFieldIndexes);
 			string fields = TranslateFields(i,fieldIndexes, tableDeclarations, fieldAliases, tableAliases,fieldList,parentTableAliases);
 			string wheres = TranslateWhereConditions(whereIndex,conditionIndexes,tableAliases,tableDeclarations,fieldList,parentTableAliases);
             if ((whereFieldIndexes.Count == 0) && (whereIndex > 0) && (whereIndex < _subQueryIndexes[i]))
@@ -1008,13 +1010,26 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 		#endregion
 
 		#region TableTranslating
-		private string CreateTableQuery(List<int> tableDeclarations,List<int> fieldIndexes,ref Dictionary<string,List<string>> fieldLists,List<int> whereFieldIndexes)
+		private string CreateTableQuery(int queryIndex,int fromIndex,List<int> tableDeclarations,List<int> fieldIndexes,ref Dictionary<string,List<string>> fieldLists,List<int> whereFieldIndexes)
 		{
-			string tables = "";
+            if (fromIndex == -1)
+                return "";
+			string ret = "";
+            int previousIndex = fromIndex+1;
 			Dictionary<string, List<string>> joins = new Dictionary<string, List<string>>();
-			for (int y = 0; y < tableDeclarations.Count; y++)
+			foreach (int x in tableDeclarations)
 			{
-				int x = tableDeclarations[y];
+                for (int y = previousIndex; y < x; y++)
+                {
+                    if (_subQueryIndexes.ContainsKey(y))
+                    {
+                        for (int a = 0; a < _subQueryIndexes[y]; a++)
+                            ret += _tokenizer.Tokens[y + a].Value + " ";
+                        y += _subQueryIndexes[y];
+                    }
+                    ret += _tokenizer.Tokens[y].Value + " ";
+                }
+                previousIndex = x+1;
 				Type t = LocateTableType(_tokenizer.Tokens[x].Value);
 				if (t == null)
 					throw new CannotLocateTable(_tokenizer.Tokens[x].Value);
@@ -1023,10 +1038,14 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 					if (_conn == null)
 						_conn = ConnectionPoolManager.GetConnection(t).getConnection();
 					TableMap map = ClassMapper.GetTableMap(t);
-					tables += map.Name + " ";
+					ret += map.Name + " ";
 					string alias = _tokenizer.Tokens[x].Value;
-					if ((x + 1 < _tokenizer.Tokens.Count) && (_tokenizer.Tokens[x + 1].Value != ",") && (_tokenizer.Tokens[x + 1].Value.ToUpper() != "WHERE"))
-						alias = _tokenizer.Tokens[x + 1].Value;
+                    if ((x + 1 < _tokenizer.Tokens.Count) && (_tokenizer.Tokens[x + 1].Value != ",") && (_tokenizer.Tokens[x + 1].Value.ToUpper() != "WHERE")
+                        && (_tokenizer.Tokens[x + 1].Value.ToUpper() != "LEFT") && (_tokenizer.Tokens[x + 1].Value.ToUpper() != "RIGHT") && (_tokenizer.Tokens[x + 1].Value.ToUpper() != "INNER") && (_tokenizer.Tokens[x + 1].Value.ToUpper() != "OUTER"))
+                    {
+                        previousIndex++;
+                        alias = _tokenizer.Tokens[x + 1].Value;
+                    }
 					List<string> tmpJoins = new List<string>();
 					foreach (int index in fieldIndexes)
 					{
@@ -1040,11 +1059,10 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 					if (alias != _tokenizer.Tokens[x].Value)
 					{
 						joins.Add(map.Name + " " + alias, tmpJoins);
-						tables += alias;
+						ret += alias;
 					}
 					else
 						joins.Add(map.Name + " ", tmpJoins);
-					tables += ",";
 				}
 			}
 			foreach (string str in joins.Keys)
@@ -1052,11 +1070,27 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 				string joinString = "";
 				foreach (string s in joins[str])
 					joinString += s + " ";
-				tables = tables.Replace(str, str + " " + joinString);
+				ret = ret.Replace(str, str + " " + joinString);
 			}
-			if (tables.EndsWith(","))
-				tables = tables.Substring(0, tables.Length - 1);
-			return tables;
+            int z = previousIndex;
+            if (_subQueryIndexes.ContainsKey(z))
+            {
+                for (int x = 0; x < _subQueryIndexes[z]; x++)
+                    ret += _tokenizer.Tokens[z + x].Value + " ";
+                z += _subQueryIndexes[z];
+            }
+            while (_tokenizer.Tokens[z].Value.ToUpper() != "WHERE" && z < _subQueryIndexes[queryIndex])
+            {
+                ret += _tokenizer.Tokens[z].Value + " ";
+                z++;
+                if (_subQueryIndexes.ContainsKey(z))
+                {
+                    for (int x = 0; x < _subQueryIndexes[z]; x++)
+                        ret += _tokenizer.Tokens[z + x].Value + " ";
+                    z += _subQueryIndexes[z];
+                }
+            }
+			return ret;
 		}
 
 		private List<string> TraceJoins(List<string> joins, TableMap baseMap, string field, string alias,ref Dictionary<string,List<string>> fieldLists)
@@ -1304,10 +1338,17 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             int ordinal = 0;
             int preOrdinal = 0;
 			string ret = "";
-			int previousIndex = subqueryIndex;
+			int previousIndex = subqueryIndex+1;
+            ret += _tokenizer.Tokens[subqueryIndex].Value + " ";
 			foreach (int x in fieldIndexes){
 				for (int y = previousIndex; y<x ; y++)
 				{
+                    if (_subQueryIndexes.ContainsKey(y))
+                    {
+                        for (int a = 0; a < _subQueryIndexes[y]; a++)
+                            ret += _tokenizer.Tokens[y + a].Value + " ";
+                        y += _subQueryIndexes[y];
+                    }
 					ret += _tokenizer.Tokens[y].Value + " ";
 				}
                 if (ret.TrimEnd(' ').EndsWith(","))
