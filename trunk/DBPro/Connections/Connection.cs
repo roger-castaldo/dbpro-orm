@@ -652,7 +652,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                         string conditions = "";
                         foreach (InternalFieldMap ifm in map.PrimaryKeys)
                         {
-                            conditions += map.Name + "_" + external.Name + "." + Pool.CorrectName("parent_" + ifm.FieldName) + " = " + queryBuilder.CreateParameterName("parent_" + ifm.FieldName) + " AND ";
+                            conditions += Pool.CorrectName("parent_" + ifm.FieldName) + " = " + queryBuilder.CreateParameterName("parent_" + ifm.FieldName) + " AND ";
                             pars.Add(CreateParameter(queryBuilder.CreateParameterName("parent_" + ifm.FieldName), QueryBuilder.LocateFieldValue(t, map, ifm.FieldName, pool)));
                         }
                         conditions = conditions.Substring(0, conditions.Length - 4);
