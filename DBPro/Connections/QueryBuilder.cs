@@ -707,7 +707,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 				if (values!=null)
 				{
 					TableMap relatedMap = ClassMapper.GetTableMap(efm.Type);
-					string delString = "DELETE FROM " + map.Name + "_" + relatedMap.Name + " WHERE ";
+					string delString = "DELETE FROM " + pool.CorrectName(map.Name + "_" + relatedMap.Name) + " WHERE ";
 					List<IDbDataParameter> pars = new List<IDbDataParameter>();
 					foreach (InternalFieldMap ifm in map.PrimaryKeys)
 					{
@@ -719,7 +719,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 					}
 					ret.Add(delString.Substring(0, delString.Length - 4),new List<List<IDbDataParameter>>());
 					ret[delString.Substring(0, delString.Length - 4)].Add(pars);
-					delString = "INSERT INTO " + map.Name + "_" + relatedMap.Name + "(";
+                    delString = "INSERT INTO " + pool.CorrectName(map.Name + "_" + relatedMap.Name) + "(";
 					string valueString = "VALUES(";
 					foreach (InternalFieldMap ifm in map.PrimaryKeys)
 					{
