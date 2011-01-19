@@ -406,26 +406,33 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         || (_tokenizer.Tokens[i + x - 1].Value == "(")
                         || (_tokenizer.Tokens[i + x - 1].Value.ToUpper() == "OR")
                         || (_tokenizer.Tokens[i + x - 1].Value.ToUpper() == "AND")
+                        || ((_tokenizer.Tokens[i+x-1].Value.ToUpper()=="NOT")
+                            &&(
+                                (_tokenizer.Tokens[i + x - 2].Value.ToUpper() == "WHERE")
+                                || (_tokenizer.Tokens[i + x - 2].Value.ToUpper() == "OR")
+                                || (_tokenizer.Tokens[i + x - 2].Value.ToUpper() == "AND")        
+                            )
+                        )
 					   ){
-                           if (_tokenizer.Tokens[i + x].Value != "(")
+                           if ((_tokenizer.Tokens[i + x].Value != "(") && (_tokenizer.Tokens[i+x].Value.ToUpper()!="NOT"))
                            {
                                int start = i + x;
-							x++;
-							while (x < _subQueryIndexes[i])
-							{
-                                if (_subQueryIndexes.ContainsKey(i + x + 1))
-                                    x += _subQueryIndexes[i + x+1];
-                                if ((_tokenizer.Tokens[i + x].Value.ToUpper() == "OR")
-                                    || (_tokenizer.Tokens[i + x].Value.ToUpper() == "AND")
-                                    || (_tokenizer.Tokens[i + x].Value.ToUpper() == "GROUP")
-                                    || (_tokenizer.Tokens[i + x].Value.ToUpper() == "ORDER"))
-                                {
-									break;
-								}
-								x++;
-							}
-                            conditionIndexes.Add(start, i + x);
-						}
+                               x++;
+                               while (x < _subQueryIndexes[i])
+                               {
+                                   if (_subQueryIndexes.ContainsKey(i + x + 1))
+                                       x += _subQueryIndexes[i + x + 1];
+                                   if ((_tokenizer.Tokens[i + x].Value.ToUpper() == "OR")
+                                       || (_tokenizer.Tokens[i + x].Value.ToUpper() == "AND")
+                                       || (_tokenizer.Tokens[i + x].Value.ToUpper() == "GROUP")
+                                       || (_tokenizer.Tokens[i + x].Value.ToUpper() == "ORDER"))
+                                   {
+                                       break;
+                                   }
+                                   x++;
+                               }
+                               conditionIndexes.Add(start, i + x);
+                           }
 					}
                     if ((x < _subQueryIndexes[i])&&
                         (
@@ -1079,15 +1086,21 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     ret += _tokenizer.Tokens[z + x].Value + " ";
                 z += _subQueryIndexes[z];
             }
-            while (_tokenizer.Tokens[z].Value.ToUpper() != "WHERE" && z < _subQueryIndexes[queryIndex])
+            if ((z < _subQueryIndexes[queryIndex] + queryIndex))
             {
-                ret += _tokenizer.Tokens[z].Value + " ";
-                z++;
-                if (_subQueryIndexes.ContainsKey(z))
+                while (_tokenizer.Tokens[z].Value.ToUpper() != "WHERE"
+                    && _tokenizer.Tokens[z].Value.ToUpper() != "GROUP"
+                    && _tokenizer.Tokens[z].Value.ToUpper() != "ORDER"
+                    && (z < _subQueryIndexes[queryIndex] + queryIndex))
                 {
-                    for (int x = 0; x < _subQueryIndexes[z]; x++)
-                        ret += _tokenizer.Tokens[z + x].Value + " ";
-                    z += _subQueryIndexes[z];
+                    ret += _tokenizer.Tokens[z].Value + " ";
+                    z++;
+                    if (_subQueryIndexes.ContainsKey(z))
+                    {
+                        for (int x = 0; x < _subQueryIndexes[z]; x++)
+                            ret += _tokenizer.Tokens[z + x].Value + " ";
+                        z += _subQueryIndexes[z];
+                    }
                 }
             }
 			return ret;
