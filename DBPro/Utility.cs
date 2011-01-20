@@ -210,7 +210,7 @@ namespace Org.Reddragonit.Dbpro
             outputQuery = outputQuery + " ";
             if (outputQuery.StartsWith("UPDATE"))
             {
-                string wheres = outputQuery.Substring(0, outputQuery.LastIndexOf("WHERE") + 5);
+                string wheres = outputQuery.Substring(outputQuery.LastIndexOf("WHERE") + 5);
                 wheres = wheres.Replace(">= " + ParameterName + " ", "IS NULL ");
                 wheres = wheres.Replace("<= " + ParameterName + " ", "IS NULL ");
                 wheres = wheres.Replace("= " + ParameterName + " ", "IS NULL ");
@@ -221,7 +221,10 @@ namespace Org.Reddragonit.Dbpro
                 wheres = wheres.Replace(" " + ParameterName + " IS NULL", " NULL IS NULL");
                 wheres = wheres.Replace("(" + ParameterName + " IS NULL", "(NULL IS NULL");
                 wheres= wheres.Replace(" =NULL", " IS NULL");
-                outputQuery = outputQuery.Substring(0, outputQuery.LastIndexOf("WHERE") + 5) + wheres;
+                outputQuery = outputQuery.Substring(0, outputQuery.LastIndexOf("WHERE") + 5);
+                outputQuery = outputQuery.Replace(" = " + ParameterName + ", ", " = NULL, ");
+                outputQuery = outputQuery.Replace(" = " + ParameterName + " WHERE", " = NULL WHERE");
+                outputQuery += wheres;
             }
             else
             {
