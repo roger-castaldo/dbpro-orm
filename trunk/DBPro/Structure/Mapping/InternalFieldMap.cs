@@ -43,8 +43,10 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
             Type propertyType = info.PropertyType;
             if (propertyType.IsGenericType && propertyType.GetGenericTypeDefinition() == typeof(Nullable<>))
                 propertyType = propertyType.GetGenericArguments()[0];
+            if (propertyType.Name.EndsWith("[]"))
+                propertyType = propertyType.GetElementType();
             if ((FieldType == FieldType.ENUM) && (!propertyType.IsEnum))
-				throw new Exception("Unable to cast a field that is not of the type enum to use the ENUM field type.");
+                throw new Exception("Unable to cast a field that is not of the type enum to use the ENUM field type.");
             if ((FieldType == FieldType.STRING) && (this.PrimaryKey) && (this.AutoGen))
                 _fieldLength = 38;
 		}

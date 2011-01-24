@@ -165,6 +165,8 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 		{
             if (propertyType.IsGenericType && propertyType.GetGenericTypeDefinition() == typeof(Nullable<>))
                 propertyType = propertyType.GetGenericArguments()[0];
+            if (propertyType.Name.ToUpper().EndsWith("[]"))
+                propertyType = propertyType.GetElementType();
 			switch (propertyType.Name.ToUpper().Replace("[]",""))
 			{
 				case "INT64":

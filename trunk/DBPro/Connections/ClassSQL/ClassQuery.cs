@@ -22,7 +22,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 	public class ClassQuery : IDataReader
 	{
 		private static readonly List<string> _conditionOperators =
-			new List<string>(new string[]{"=","NOT","IN","LIKE",">","<","<=",">="});
+			new List<string>(new string[]{"=","NOT","IN","LIKE",">","<","<=",">=","IS"});
 		
 		private string _namespace;
 		private QueryTokenizer _tokenizer;
@@ -999,11 +999,13 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 				    	(_tokenizer.Tokens[x - 1].Value.ToUpper() == "WHEN") ||
 				    	(_tokenizer.Tokens[x - 1].Value.ToUpper() == "THEN") ||
 				    	(_tokenizer.Tokens[x - 1].Value.ToUpper() == "ELSE") ||
+                        (_tokenizer.Tokens[x-1].Value.ToUpper()=="WHERE")||
 				    	((x+1<end)&&
 				    	 (
 				    	 	(_tokenizer.Tokens[x+1].Value.ToUpper()=="NOT")||
 				    	 	(_tokenizer.Tokens[x+1].Value.ToUpper()=="IN")||
 				    	 	(_tokenizer.Tokens[x+1].Value.ToUpper()=="LIKE")||
+                            (_tokenizer.Tokens[x+1].Value.ToUpper()=="IS")||
                             (_tokenizer.Tokens[x + 1].Type == TokenType.OPERATOR)
 				    	 )
 				    	)
@@ -1290,6 +1292,24 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                             joins.Add(innerJoin);
                         alias += "_prnt";
                     }
+                    if (parentMap[field].IsArray)
+                    {
+                        string innerJoin = (parentMap[field].Nullable ? " LEFT JOIN " : " INNER JOIN ") + _conn.Pool.CorrectName(parentMap.Name + "_" + ((InternalFieldMap)parentMap[field]).FieldName) + " " + alias + "_" + field + " ON ";
+                        foreach (InternalFieldMap ifm in parentMap.PrimaryKeys)
+                            innerJoin += " " + alias + "." + _conn.Pool.CorrectName(ifm.FieldName) + " = " + alias + "_" + field + "." + _conn.Pool.CorrectName(parentMap.Name+"_" + ifm.FieldName) + " AND ";
+                        innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
+                        if (!joins.Contains(innerJoin))
+                            joins.Add(innerJoin);
+                    }
+                }
+                else if (map[field].IsArray)
+                {
+                    string innerJoin = (map[field].Nullable ? " LEFT JOIN " : " INNER JOIN ")+_conn.Pool.CorrectName(map.Name + "_" + ((InternalFieldMap)map[field]).FieldName) + " " + alias + "_" + field + " ON ";
+                    foreach (InternalFieldMap ifm in map.PrimaryKeys)
+                        innerJoin += " " + alias + "." + _conn.Pool.CorrectName(ifm.FieldName) + " = " + alias + "_" + field + "." + _conn.Pool.CorrectName(map.Name + "_" + ifm.FieldName) + " AND ";
+                    innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
+                    if (!joins.Contains(innerJoin))
+                        joins.Add(innerJoin);
                 }
             }
 			return joins;
@@ -1299,7 +1319,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
         {
             if (!map.IsParentClassField(field))
             {
-                if ((ordinal != -1) && (map[field].ObjectType.IsEnum))
+                if ((ordinal != -1) && (((InternalFieldMap)map[field]).FieldType==Org.Reddragonit.Dbpro.Structure.Attributes.FieldType.ENUM))
                 {
                     if (_enumFields.ContainsKey(ordinal))
                         _enumFields.Remove(ordinal);
@@ -1312,6 +1332,10 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         return field;
                     return alias + "." + field;
                 }
+                else if (map[field].IsArray)
+                {
+                    return alias + "_" + field + "." + _conn.Pool.CorrectName(((InternalFieldMap)map[field]).FieldName + "_VALUE");
+                }
                 else
                     return alias + "." + _conn.Pool.CorrectName(map.GetTableFieldName(field));
             }
@@ -1323,13 +1347,15 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 if (!parentMap.IsParentClassField(field))
                     break;
             }
-            if ((ordinal != -1) && (parentMap[field].ObjectType.IsEnum))
+            if ((ordinal != -1) && (((InternalFieldMap)parentMap[field]).FieldType == Org.Reddragonit.Dbpro.Structure.Attributes.FieldType.ENUM))
             {
                 if (_enumFields.ContainsKey(ordinal))
                     _enumFields.Remove(ordinal);
                 Logger.LogLine("Assigning field at ordinal: " + ordinal.ToString() + " as an enumeration type: " + parentMap[field].ObjectType.FullName);
                 _enumFields.Add(ordinal, parentMap[field].ObjectType);
             }
+            if (parentMap[field].IsArray)
+                return alias + "_" + field + "." + _conn.Pool.CorrectName(((InternalFieldMap)parentMap[field]).FieldName + "_VALUE");
             return alias+"."+parentMap.GetTableFieldName(field);
         }
 
