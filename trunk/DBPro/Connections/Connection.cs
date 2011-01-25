@@ -667,9 +667,9 @@ namespace Org.Reddragonit.Dbpro.Connections
                             values.Add(ta);
                         }
                         Close();
-                        Array obj = Array.CreateInstance(f.Type, values.Count);
+                        Array obj = Array.CreateInstance(f.Type.GetElementType(), values.Count);
                         for (int x = 0; x < values.Count; x++)
-                            ((object[])obj)[x] = values[x];
+                            ((Array)obj).SetValue(values[x],x);
                         t.SetField(map.GetClassFieldName(f), obj);
                     }
                 }
@@ -692,12 +692,15 @@ namespace Org.Reddragonit.Dbpro.Connections
                             ExecuteQuery(query, pars);
                             while (Read())
                             {
-                                values.Add(this[0]);
+                                if (ifm.FieldType == FieldType.ENUM)
+                                    values.Add(this.pool.GetEnumValue(ifm.ObjectType.GetElementType(), this.GetInt32(0)));
+                                else
+                                    values.Add(this[0]);
                             }
                             Close();
-                            Array obj = Array.CreateInstance(ifm.ObjectType, values.Count);
+                            Array obj = Array.CreateInstance(ifm.ObjectType.GetElementType(), values.Count);
                             for (int x = 0; x < values.Count; x++)
-                                ((object[])obj)[x] = values[x];
+                                ((Array)obj).SetValue(values[x],x);
                             t.SetField(map.GetClassFieldName(ifm), obj);
                         }
                     }
