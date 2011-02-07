@@ -667,7 +667,11 @@ namespace Org.Reddragonit.Dbpro.Connections
                             values.Add(ta);
                         }
                         Close();
-                        Array obj = Array.CreateInstance(f.Type.GetElementType(), values.Count);
+                        Array obj;
+                        if (f.Type.GetElementType() != null)
+                            obj = Array.CreateInstance(f.Type.GetElementType(), values.Count);
+                        else
+                            obj = Array.CreateInstance(f.Type, values.Count);
                         for (int x = 0; x < values.Count; x++)
                             ((Array)obj).SetValue(values[x],x);
                         t.SetField(map.GetClassFieldName(f), obj);
