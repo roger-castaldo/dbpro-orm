@@ -1239,7 +1239,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     TableMap eMap = ClassMapper.GetTableMap(efm.Type);
                     string className = field;
                     string innerJoin = " INNER JOIN ";
-                    if (efm.Nullable)
+                    if (efm.Nullable || parentIsLeftJoin)
                         innerJoin = " LEFT JOIN ";
                     string tbl = _conn.queryBuilder.SelectAll(efm.Type, null);
                     List<string> fields = new List<string>();
@@ -1260,7 +1260,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
                         if (!joins.Contains(innerJoin))
                             joins.Add(innerJoin);
-                        if (efm.Nullable)
+                        if (efm.Nullable || parentIsLeftJoin)
                             innerJoin = " LEFT JOIN (" + tbl + ") " + alias + "_" + className + " ON ";
                         else
                             innerJoin = " INNER JOIN (" + tbl + ") " + alias + "_" + className + " ON ";
@@ -1294,7 +1294,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     }
                     if (parentMap[field].IsArray)
                     {
-                        string innerJoin = (parentMap[field].Nullable ? " LEFT JOIN " : " INNER JOIN ") + _conn.Pool.CorrectName(parentMap.Name + "_" + ((InternalFieldMap)parentMap[field]).FieldName) + " " + alias + "_" + field + " ON ";
+                        string innerJoin = (parentMap[field].Nullable || parentIsLeftJoin ? " LEFT JOIN " : " INNER JOIN ") + _conn.Pool.CorrectName(parentMap.Name + "_" + ((InternalFieldMap)parentMap[field]).FieldName) + " " + alias + "_" + field + " ON ";
                         foreach (InternalFieldMap ifm in parentMap.PrimaryKeys)
                             innerJoin += " " + alias + "." + _conn.Pool.CorrectName(ifm.FieldName) + " = " + alias + "_" + field + "." + _conn.Pool.CorrectName(parentMap.Name+"_" + ifm.FieldName) + " AND ";
                         innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
@@ -1304,7 +1304,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 }
                 else if (map[field].IsArray)
                 {
-                    string innerJoin = (map[field].Nullable ? " LEFT JOIN " : " INNER JOIN ")+_conn.Pool.CorrectName(map.Name + "_" + ((InternalFieldMap)map[field]).FieldName) + " " + alias + "_" + field + " ON ";
+                    string innerJoin = (map[field].Nullable || parentIsLeftJoin ? " LEFT JOIN " : " INNER JOIN ")+_conn.Pool.CorrectName(map.Name + "_" + ((InternalFieldMap)map[field]).FieldName) + " " + alias + "_" + field + " ON ";
                     foreach (InternalFieldMap ifm in map.PrimaryKeys)
                         innerJoin += " " + alias + "." + _conn.Pool.CorrectName(ifm.FieldName) + " = " + alias + "_" + field + "." + _conn.Pool.CorrectName(map.Name + "_" + ifm.FieldName) + " AND ";
                     innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
