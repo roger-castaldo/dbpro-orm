@@ -1281,7 +1281,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 if (map.IsParentClassField(field))
                 {
                     TableMap parentMap = map;
-                    while (parentMap.ParentType != null)
+                    while ((parentMap.ParentType != null)&&(parentMap.IsParentClassField(field)))
                     {
                         parentMap = ClassMapper.GetTableMap(parentMap.ParentType);
                         string innerJoin = " INNER JOIN " + _conn.Pool.CorrectName(parentMap.Name) + " " + alias + "_prnt ON ";
