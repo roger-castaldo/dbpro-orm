@@ -15,7 +15,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
 	/// </summary>
 	public class LikeParameter : CompareParameter
 	{
-		public LikeParameter(string fieldName,string fieldValue) : base(fieldName,"%"+fieldValue.ToString()+"%")
+		public LikeParameter(string fieldName,string fieldValue) : base(fieldName,"'%"+fieldValue.ToString()+"%'")
 		{
 		}
 		

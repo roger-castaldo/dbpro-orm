@@ -254,14 +254,14 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                 {
                     if (FieldValue == null)
                     {
-                        ret += ComparatorString + builder.CreateParameterName("parameter_" + parCount.ToString());
+                        ret += ComparatorString +" "+ builder.CreateParameterName("parameter_" + parCount.ToString());
                         queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), FieldValue));
                         parCount++;
                     }
                     else if (FieldValue.GetType().IsArray || (FieldValue is ICollection))
                     {
                         string tmp = ret;
-                        tmp += ComparatorString;
+                        tmp += ComparatorString+ " ";
                         ret += "( ";
                         foreach (object obj in (IEnumerable)FieldValue)
                         {
@@ -286,7 +286,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                     }
                     else
                     {
-                        ret += ComparatorString;
+                        ret += ComparatorString+" ";
                         ret += builder.CreateParameterName("parameter_" + parCount.ToString());
                         if (_objType == null)
                             _objType = FieldValue.GetType();
