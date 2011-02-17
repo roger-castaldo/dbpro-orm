@@ -15,12 +15,20 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
 	/// </summary>
 	public class LikeParameter : CompareParameter
 	{
-		public LikeParameter(string fieldName,string fieldValue) : base(fieldName,"'%"+fieldValue.ToString()+"%'")
+		public LikeParameter(string fieldName,string fieldValue) : base(fieldName,"%"+fieldValue.ToString().ToUpper()+"%")
 		{
 		}
 		
 		protected override string ComparatorString {
 			get {return "LIKE";}
 		}
+
+        protected override bool CaseInsensitive
+        {
+            get
+            {
+                return true;
+            }
+        }
 	}
 }
