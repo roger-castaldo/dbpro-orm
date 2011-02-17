@@ -46,6 +46,11 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
 			get{return false;}
 		}
 
+        protected virtual bool CaseInsensitive
+        {
+            get { return false; }
+        }
+
         private FieldNamePair? LocateFieldNamePair(string fieldName,TableMap map,out bool ClassBased,out bool isExternal,out TableMap newMap,out string alias)
         {
             FieldNamePair? ret = null;
@@ -138,7 +143,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                     TableMap relatedMap = ClassMapper.GetTableMap(efm.Type);
                     foreach (InternalFieldMap ifm in relatedMap.PrimaryKeys)
                     {
-                        ret += " AND " + alias + conn.Pool.CorrectName(efm.AddOnName + "_" + ifm.FieldName) + " " + ComparatorString + " ";
+                        ret += " AND " + (this.CaseInsensitive ? "UPPER(" : "") + alias + conn.Pool.CorrectName(efm.AddOnName + "_" + ifm.FieldName) + " " + (this.CaseInsensitive ? ")" : "") +ComparatorString + " ";
                         type = ifm.FieldType;
                         _objType = ifm.ObjectType;
                         fieldLength = ifm.FieldLength;
@@ -196,7 +201,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                         }
                         ifm = (InternalFieldMap)m[fnp.Value];
                     }
-                    ret = alias+conn.Pool.CorrectName(fnp.Value.TableFieldName) + " ";
+                    ret = (this.CaseInsensitive ? "UPPER(" : "") + alias + conn.Pool.CorrectName(fnp.Value.TableFieldName) + " "+(this.CaseInsensitive ? ")" : "");
                     type = ifm.FieldType;
                     _objType = ifm.ObjectType;
                     fieldLength = ifm.FieldLength;
