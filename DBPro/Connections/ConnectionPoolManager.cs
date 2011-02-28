@@ -80,13 +80,6 @@ namespace Org.Reddragonit.Dbpro.Connections
 					{
 						ExtractConnectionFromXml(node);
                     }
-                    else if (node.Name == "LogDiagnosticsOutput")
-                    {
-                        if (node.Attributes["NLogName"] != null)
-                            Logger.SetLogger(node.Attributes["NLogName"].Value);
-                        else
-                            Logger.SetLogger("*");
-                    }
 				}
 			}
 			string[] tmp = new string[_connectionPools.Count];
