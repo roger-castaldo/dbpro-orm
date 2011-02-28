@@ -77,10 +77,6 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\mysql.data.dll</HintPath>
     </Reference>
-    <Reference Include="NLog, Version=1.0.0.505, Culture=neutral, PublicKeyToken=5120e14c03d0593c, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\\NLog.dll</HintPath>
-    </Reference>
     <Reference Include="Npgsql, Version=2.0.5.0, Culture=neutral, PublicKeyToken=5d8b90d52f46fda7, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\npgsql\Npgsql.dll</HintPath>
@@ -132,6 +128,8 @@
     <Compile Include="Connections\QueryBuilder.cs" />
     <Compile Include="Connections\ITrigger.cs" />
     <Compile Include="Exceptions\Exceptions.cs" />
+    <Compile Include="Logging\Enums.cs" />
+    <Compile Include="Logging\ILogWriter.cs" />
     <Compile Include="MethodInvokeChangesField.cs" />
     <Compile Include="PropertySetChangesField.cs" />
     <Compile Include="LazyProxy.cs" />
@@ -197,6 +195,6 @@
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.Targets" />
   <PropertyGroup>
-    <PostBuildEvent>"C:\Program Files (x86)\Microsoft\ILMerge\ILMerge.exe" /out:mergedDBPro.dll DBPro.dll FirebirdSql.Data.FirebirdClient.dll Mono.Security.dll MySql.Data.dll Npgsql.dll .\de\Npgsql.resources.dll .\es\Npgsql.resources.dll .\fi\Npgsql.resources.dll .\fr\Npgsql.resources.dll .\ja\Npgsql.resources.dll .\zh-CN\Npgsql.resources.dll NLog.dll Mono.Posix.dll ICSharpCode.SharpZipLib.dll</PostBuildEvent>
+    <PostBuildEvent>"C:\Program Files (x86)\Microsoft\ILMerge\ILMerge.exe" /out:mergedDBPro.dll DBPro.dll FirebirdSql.Data.FirebirdClient.dll Mono.Security.dll MySql.Data.dll Npgsql.dll .\de\Npgsql.resources.dll .\es\Npgsql.resources.dll .\fi\Npgsql.resources.dll .\fr\Npgsql.resources.dll .\ja\Npgsql.resources.dll .\zh-CN\Npgsql.resources.dll Mono.Posix.dll ICSharpCode.SharpZipLib.dll</PostBuildEvent>
   </PropertyGroup>
 </Project>

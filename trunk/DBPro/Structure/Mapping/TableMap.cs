@@ -149,11 +149,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
             {
                 if (fm.PrimaryKey)
                 {
-                    Logger.Log("Located Primary Key Field (");
-                    if (fm is InternalFieldMap)
-                        Logger.LogLine(((InternalFieldMap)fm).FieldName + ")");
-                    else
-                        Logger.LogLine(((ExternalFieldMap)fm).AddOnName + " to " + ((ExternalFieldMap)fm).Type.ToString() + ")");
+                    Logger.LogLine("Located Primary Key Field (" + (fm is InternalFieldMap ? ((InternalFieldMap)fm).FieldName : ((ExternalFieldMap)fm).AddOnName + " to " + ((ExternalFieldMap)fm).Type.ToString()) + ")");
                 }
             }
 			int autoGenCount=0;
