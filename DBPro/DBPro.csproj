@@ -63,23 +63,27 @@
   <ItemGroup>
     <Reference Include="FirebirdSql.Data.FirebirdClient, Version=2.5.2.0, Culture=neutral, PublicKeyToken=3750abcc3150b00c, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\FirebirdSql.Data.FirebirdClient.dll</HintPath>
+      <HintPath>..\..\..\..\libraries\database libs\FirebirdSql.Data.FirebirdClient.dll</HintPath>
     </Reference>
     <Reference Include="ICSharpCode.SharpZipLib, Version=0.85.5.452, Culture=neutral, PublicKeyToken=1b03e6acf1164f73, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\ICSharpCode.SharpZipLib.dll</HintPath>
+      <HintPath>..\..\..\..\libraries\database libs\ICSharpCode.SharpZipLib.dll</HintPath>
     </Reference>
     <Reference Include="Mono.Posix, Version=2.0.0.0, Culture=neutral, PublicKeyToken=0738eb9f132ed756, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\Mono.Posix.dll</HintPath>
+      <HintPath>..\..\..\..\libraries\database libs\Mono.Posix.dll</HintPath>
+    </Reference>
+    <Reference Include="Mono.Security, Version=2.0.0.0, Culture=neutral, PublicKeyToken=0738eb9f132ed756, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\libraries\database libs\Mono.Security.dll</HintPath>
     </Reference>
     <Reference Include="mysql.data, Version=6.3.6.0, Culture=neutral, PublicKeyToken=c5687fc88969c44d, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\mysql.data.dll</HintPath>
+      <HintPath>..\..\..\..\libraries\database libs\mysql.data.dll</HintPath>
     </Reference>
     <Reference Include="Npgsql, Version=2.0.5.0, Culture=neutral, PublicKeyToken=5d8b90d52f46fda7, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\npgsql\Npgsql.dll</HintPath>
+      <HintPath>..\..\..\..\libraries\database libs\Npgsql.dll</HintPath>
     </Reference>
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
@@ -167,9 +171,6 @@
     <EmbeddedResource Include="Connections\Firebird\GENERATE_UNIQUE_ID.sql" />
     <EmbeddedResource Include="Connections\Firebird\RAND.sql" />
     <EmbeddedResource Include="Connections\MsSql\GENERATE_UNIQUE_ID.sql" />
-    <None Include="DbPro.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
   <ItemGroup />
   <ItemGroup />

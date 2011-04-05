@@ -239,6 +239,13 @@ namespace Org.Reddragonit.Dbpro
                 outputQuery = outputQuery.Replace("(" + ParameterName + " IS NULL", "(NULL IS NULL");
                 outputQuery = outputQuery.Replace(" =NULL", " IS NULL");
             }
+            if (outputQuery.StartsWith("INSERT"))
+            {
+                outputQuery = outputQuery.Replace("("+ParameterName + ",", "(NULL,");
+                outputQuery = outputQuery.Replace("," + ParameterName + ",", ",NULL,");
+                outputQuery = outputQuery.Replace("(" + ParameterName + ")", "(NULL)");
+                outputQuery = outputQuery.Replace("," + ParameterName + ")", ",NULL)");
+            }
             return outputQuery.Trim();
         }
 

@@ -63,10 +63,6 @@
     <Compile Include="Structure\SecurityRight.cs" />
     <Compile Include="Structure\User.cs" />
     <Compile Include="UserGroupList.cs" />
-    <None Include="..\DBPro\DbPro.xml">
-      <Link>DbPro.xml</Link>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.Targets" />
