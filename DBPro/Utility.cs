@@ -215,6 +215,8 @@ namespace Org.Reddragonit.Dbpro
                 wheres = wheres.Replace("<= " + ParameterName + " ", "IS NULL ");
                 wheres = wheres.Replace("= " + ParameterName + " ", "IS NULL ");
                 wheres = wheres.Replace(" =" + ParameterName + " ", " IS NULL ");
+                wheres = wheres.Replace("= " + ParameterName + ")", "IS NULL)");
+                wheres = wheres.Replace(" =" + ParameterName + ")", " IS NULL)");
                 wheres = wheres.Replace("<> " + ParameterName + " ", "IS NOT NULL ");
                 wheres = wheres.Replace(ParameterName + ",", "NULL,");
                 wheres = wheres.Replace(ParameterName + ")", "NULL)");
@@ -232,6 +234,8 @@ namespace Org.Reddragonit.Dbpro
                 outputQuery = outputQuery.Replace("<= " + ParameterName + " ", "IS NULL ");
                 outputQuery = outputQuery.Replace("= " + ParameterName + " ", "IS NULL ");
                 outputQuery = outputQuery.Replace(" =" + ParameterName + " ", " IS NULL ");
+                outputQuery = outputQuery.Replace("= " + ParameterName + ")", "IS NULL)");
+                outputQuery = outputQuery.Replace(" =" + ParameterName + ")", " IS NULL)");
                 outputQuery = outputQuery.Replace("<> " + ParameterName + " ", "IS NOT NULL ");
                 outputQuery = outputQuery.Replace(ParameterName + ",", "NULL,");
                 outputQuery = outputQuery.Replace(ParameterName + ")", "NULL)");
