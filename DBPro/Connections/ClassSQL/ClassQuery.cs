@@ -360,37 +360,34 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 			if (_tokenizer.Tokens[i + x].Value.ToUpper() == "FROM")
 			{
                 fromIndex = i + x;
-				while (x < _subQueryIndexes[i])
-				{
-					if (_subQueryIndexes.ContainsKey(i + x))
-						x += _subQueryIndexes[i + x] + 2;
-					else
-					{
-						if (((_tokenizer.Tokens[i + x - 1].Value.ToUpper() == "FROM") || (_tokenizer.Tokens[i + x - 1].Value == ",")) && (_tokenizer.Tokens[i + x].Value != "("))
-						{
-                            if (i + x + 1 < _tokenizer.Tokens.Count)
+                while (x < _subQueryIndexes[i])
+                {
+                    if (_subQueryIndexes.ContainsKey(i + x))
+                        x += _subQueryIndexes[i + x] + 2;
+                    if (((_tokenizer.Tokens[i + x - 1].Value.ToUpper() == "FROM") || (_tokenizer.Tokens[i + x - 1].Value == ",")) && (_tokenizer.Tokens[i + x].Value != "("))
+                    {
+                        if (i + x + 1 < _tokenizer.Tokens.Count)
+                        {
+                            if ((_tokenizer.Tokens[i + x + 1].Value.ToUpper() != ",") && (_tokenizer.Tokens[i + x + 1].Value != "(") && (_tokenizer.Tokens[i + x + 1].Value.ToUpper() != "WHERE") && (_tokenizer.Tokens[i + x + 1].Value.ToUpper() != "GROUP") && (_tokenizer.Tokens[i + x + 1].Value.ToUpper() != "ORDER"))
                             {
-                                if ((_tokenizer.Tokens[i + x + 1].Value.ToUpper() != ",") && (_tokenizer.Tokens[i + x + 1].Value != "(") && (_tokenizer.Tokens[i + x + 1].Value.ToUpper() != "WHERE") && (_tokenizer.Tokens[i + x + 1].Value.ToUpper() != "GROUP") && (_tokenizer.Tokens[i + x + 1].Value.ToUpper() != "ORDER"))
+                                if (_tokenizer.Tokens[i + x + 1].Value.ToUpper() == "AS")
                                 {
-                                    if (_tokenizer.Tokens[i + x + 1].Value.ToUpper() == "AS")
-                                    {
-                                        if (!tableAliases.ContainsKey(_tokenizer.Tokens[i + x + 2].Value))
-                                            tableAliases.Add(_tokenizer.Tokens[i + x + 2].Value, _tokenizer.Tokens[i + x].Value);
-                                    }
-                                    else
-                                    {
-                                        if (!tableAliases.ContainsKey(_tokenizer.Tokens[i + x + 1].Value))
-                                            tableAliases.Add(_tokenizer.Tokens[i + x + 1].Value, _tokenizer.Tokens[i + x].Value);
-                                    }
+                                    if (!tableAliases.ContainsKey(_tokenizer.Tokens[i + x + 2].Value))
+                                        tableAliases.Add(_tokenizer.Tokens[i + x + 2].Value, _tokenizer.Tokens[i + x].Value);
+                                }
+                                else
+                                {
+                                    if (!tableAliases.ContainsKey(_tokenizer.Tokens[i + x + 1].Value))
+                                        tableAliases.Add(_tokenizer.Tokens[i + x + 1].Value, _tokenizer.Tokens[i + x].Value);
                                 }
                             }
-							tableDeclarations.Add(i + x);
-						}
-                        else if (_tokenizer.Tokens[i + x].Value.ToUpper() == "WHERE" || _tokenizer.Tokens[i + x].Value.ToUpper() == "ORDER" || _tokenizer.Tokens[i + x].Value.ToUpper() == "GROUP")
-							break;
-					}
-					x++;
-				}
+                        }
+                        tableDeclarations.Add(i + x);
+                    }
+                    else if (_tokenizer.Tokens[i + x].Value.ToUpper() == "WHERE" || _tokenizer.Tokens[i + x].Value.ToUpper() == "ORDER" || _tokenizer.Tokens[i + x].Value.ToUpper() == "GROUP")
+                        break;
+                    x++;
+                }
 			}
             if (x < _subQueryIndexes[i] && (_tokenizer.Tokens[i + x].Value.ToUpper() == "WHERE" || _tokenizer.Tokens[i + x].Value.ToUpper() == "ORDER" || _tokenizer.Tokens[i + x].Value.ToUpper() == "GROUP"))
 			{
