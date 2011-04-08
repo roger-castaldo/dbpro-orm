@@ -1,0 +1,25 @@
+#labels Phase-Deploy
+#This page explains how to use the DbPro.xml configuration file.
+
+= Introduction =
+
+The DbPro.xml file can be placed anywhere within your project, the library searches to find it.  It contains the definitions for the database connections that the library uses for the mapped table classes.  It also contains a section for remapping enum values in the case of an enum name being changed, in order to not destroy data associated with the mapped enum values.
+
+
+= Details =
+
+The Connections configuration file is an xml file built with the structure of a parent element of DbPro followed by child elements of the type DBConnection and/or ENUM_TRANSLATION.
+
+*DBConnection* contains a single attribute of *connection_type* which can use the implemented class values of:
+  * Org.Reddragonit.Dbpro.Connections.Firebird.FBConnectionPool
+  * Org.Reddragonit.Dbpro.Connections.MsSql.MsSqlConnectionPool
+  * Org.Reddragonit.Dbpro.Connections.MySql.MySqlConnectionPool
+  * Org.Reddragonit.Dbpro.Connections.PgSql.PgSqlConnectionPool
+If a connection type is not implement in the library you can implement one by defining a class that inherits Org.Reddragonit.Dbpro.Connections.ConnectionPool, it will require the implementation of a *Connection* and *Query Builder* class.  Inside the DBConnection element you will define *ConnectionParameter* elements.  These elements contain two attributes:
+  * *parameter_name* The name of the parameter in the connection pool constructor being defined
+  * *parameter_value* The value of the parameter being specified, to pass a null value set this to null.
+
+*ENUM_TRANSLATION* contains three attributes:
+     * *TYPE* which  is the full name of the type of enum being changed.
+     * *ORIGINAL_NAME* which is the original string value of the enum value.
+     * *NEW_NAME* which is the new string value of the enum value being replaced.
