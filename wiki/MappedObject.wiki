@@ -1,0 +1,31 @@
+#How to map a class to the database
+
+= Introduction =
+
+Mapping a Class into a database requires two simple components.  The first being that the Class MUST inherit *Org.Reddragonit.Dbpro.Structure.Table*, and it must contain properties that have tags from the *Org.Reddragonit.Dbpro.Structure.Attributes* namespace.  These attributes are explained below.
+
+
+= Attributes =
+
+== PrimaryKeyField ==
+
+This will indicate that the property field is a primary key for the table.
+Parameters:
+  * *autogen*:  This indicated whether or not the value for this field is auto-generated.  The valid field types for this is DateTime, int, long, short, and string (the system will generate a random 32-character key, only implemented for firebirdsql).  (DEFAULT: false)
+  * *fieldLength*:  The length of the field, only required for a string when not doing autogen.
+  * *nullable*:  This indicated whether or not the field is allowed to be nullable.  This does violate basic SQL rules, and is not valid for compliant SQL servers such as Firebird SQL.  (DEFAULT: false)
+
+== ForeignPrimaryKeyField ==
+
+This will indicate that the property is another mapped class linked to this one, but its primary keys also construct the primary key property for this class.
+Parameters:
+  * *OnUpdate*:  Indicates the action the database will perform on an Update to the primary key table, found in the enum Org.Reddragonit.Dbpro.Structure.Attributes.ForeignField.UpdateDeleteAction.  (DEFAULT: NO_ACTION)
+  * *OnDelete*:  Indicated the action the database will perform on a Delete to the primary key table, found in the enum Org.Reddragonit.Dbpro.Structure.Attributes.ForeignField.UpdateDeleteAction.  (DEFAULT: NO_ACTION)
+
+== ForeignField ==
+
+This will indicate that the specified property is a mapped table class to be linked to the entry for this table class.
+Parameters:
+  * *NullAble*:  Indicates whether or not the field can be null.  (DEFAULT: true)
+  * *OnUpdate*:  Indicates the action the database will perform on an Update to the primary key table, found in the enum Org.Reddragonit.Dbpro.Structure.Attributes.ForeignField.UpdateDeleteAction.  (DEFAULT: NO_ACTION)
+  * *OnDelete*:  Indicated the action the database will perform on a Delete to the primary key table, found in the enum Org.Reddragonit.Dbpro.Structure.Attributes.ForeignField.UpdateDeleteAction.  (DEFAULT: NO_ACTION)
