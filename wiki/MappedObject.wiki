@@ -29,3 +29,20 @@ Parameters:
   * *NullAble*:  Indicates whether or not the field can be null.  (DEFAULT: true)
   * *OnUpdate*:  Indicates the action the database will perform on an Update to the primary key table, found in the enum Org.Reddragonit.Dbpro.Structure.Attributes.ForeignField.UpdateDeleteAction.  (DEFAULT: NO_ACTION)
   * *OnDelete*:  Indicated the action the database will perform on a Delete to the primary key table, found in the enum Org.Reddragonit.Dbpro.Structure.Attributes.ForeignField.UpdateDeleteAction.  (DEFAULT: NO_ACTION)
+
+== Field ==
+
+This will indicate that the specified property is to be mapped as a field into the table representing this class.  Array fields get mapped to a separate table linked to this class through primary keys and maintains the order of the array within the database.
+  * *FieldName*:  This is the name of the field to be used in the database, if not specified, the name is generated from the property name.  (OPTIONAL)
+  * *type*:  This is the type of field to use in the database to represent this property.  If it is not specified it is automatically determined from the property info.  The available types are specified in the enum Org.Reddragonit.Dbpro.Structure.Attributes.FieldType.  (OPTIONAL)
+  * *NullAble*:  Indicates whether or not the field can be null.  (DEFAULT: true)
+  * *fieldLength*:  Indicates the length of the field when it is a string.  -1 will indicate that the string is to be stored as a blob and is to have no set maximum length.  (OPTIONAL) (DEFAULT: -1 when string)
+
+== VersionField ==
+
+This will indicate that the fields changes should be tracked by versioning.  This is done in a table linked to this table with the version indicator.  It contains all the same parameters as *Field* with one addition.  All version fields within a class must use the same type.
+  * *VersionType*:  The type of versioning indicator to use, found in the enum Org.Reddragonit.Dbpro.Structure.Attributes.VersionField.VersionTypes.  The system is capable of using an number (long) or a datestamp (Datetime) to indicate the version number.  (OPTIONAL) (DEFAULT: datestamp)
+
+== VersionForeignField ==
+
+This will indicate that the changing of the class linked to this field must be indicated in the version table.  It runs the same as a *ForeignField* for the inputs, except with the same difference and rules that the *VersionField* uses.
