@@ -492,6 +492,8 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             }
             else if (x < _subQueryIndexes[i])
             {
+                if (wheres == "")
+                    wheres = " ";
                 while (x < _subQueryIndexes[i])
                 {
                     wheres += _tokenizer.Tokens[x + i].Value + " ";
