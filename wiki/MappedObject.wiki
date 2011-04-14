@@ -7,6 +7,14 @@ Mapping a Class into a database requires two simple components.  The first being
 
 = Attributes =
 
+== Table ==
+
+This attribute is for the class itself and must be supplied.  It defines, amongst other items, which connection this class belongs to.
+Parameters:
+  * *alwaysInsert*:  This will indicate whether to use updates or always insert when changes are made.  It is used to override basic data check behaviors.  (DEFAULT: false).
+  * *TableName*:  This indicates what to name the table in the database that represents this class.  This must be unique, however if it is not specified, the table name is generated from the class name.  (DEFAULT:  generated from classname)  
+  * *ConnectionName*:  This tells the system which connection to use when interacting with this class and the database(s).  If not specified it becomes associated with the default connection.
+
 == PrimaryKeyField ==
 
 This will indicate that the property field is a primary key for the table.
