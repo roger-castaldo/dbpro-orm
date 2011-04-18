@@ -1096,6 +1096,8 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 {
                     ret += _tokenizer.Tokens[z].Value + " ";
                     z++;
+                    if ((z >= _subQueryIndexes[queryIndex] + queryIndex))
+                        break;
                     if (_subQueryIndexes.ContainsKey(z))
                     {
                         for (int x = 0; x < _subQueryIndexes[z]; x++)
