@@ -320,6 +320,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 			Dictionary<int, string> fieldAliases = new Dictionary<int, string>();
 			Dictionary<string, string> tableAliases = new Dictionary<string, string>();
 			List<int> fieldIndexes = new List<int>();
+            List<int> joinConditionIndexes = new List<int>();
 			Dictionary<int, int> conditionIndexes=new Dictionary<int, int>();
 			int x = 1;
 			int whereIndex=-1;
@@ -364,7 +365,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 {
                     if (_subQueryIndexes.ContainsKey(i + x))
                         x += _subQueryIndexes[i + x] + 2;
-                    if (((_tokenizer.Tokens[i + x - 1].Value.ToUpper() == "FROM") || (_tokenizer.Tokens[i + x - 1].Value == ",")) && (_tokenizer.Tokens[i + x].Value != "("))
+                    if (((_tokenizer.Tokens[i + x - 1].Value.ToUpper() == "FROM") || (_tokenizer.Tokens[i + x - 1].Value == ",") || _tokenizer.Tokens[i + x -1].Value.ToUpper()=="JOIN") && (_tokenizer.Tokens[i + x].Value != "("))
                     {
                         if (i + x + 1 < _tokenizer.Tokens.Count)
                         {
@@ -383,6 +384,34 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                             }
                         }
                         tableDeclarations.Add(i + x);
+                    }
+                    else if (_tokenizer.Tokens[i + x - 1].Value.ToUpper() == "ON")
+                    {
+                        while (x < _subQueryIndexes[i])
+                        {
+                            if (_subQueryIndexes.ContainsKey(i + x))
+                                x += _subQueryIndexes[i + x] + 2;
+                            if (_tokenizer.Tokens[i + x].Value.ToUpper() == "WHERE" || _tokenizer.Tokens[i + x].Value.ToUpper() == "ORDER" || _tokenizer.Tokens[i + x].Value.ToUpper() == "GROUP" || _tokenizer.Tokens[i + x].Value == "," || _tokenizer.Tokens[i + x].Value.ToUpper() == "INNER" || _tokenizer.Tokens[i + x].Value.ToUpper() == "OUTER" || _tokenizer.Tokens[i + x].Value.ToUpper() == "LEFT" || _tokenizer.Tokens[i + x].Value.ToUpper() == "RIGHT")
+                                break;
+                            else if ((_tokenizer.Tokens[i + x].Type == TokenType.KEY) &&
+                                (
+                                    (_tokenizer.Tokens[i + x - 1].Value.ToUpper() == "ON") ||
+                                    (_tokenizer.Tokens[i + x - 1].Value == ",") ||
+                                    (_tokenizer.Tokens[i + x - 1].Value == "(") ||
+                                    (_tokenizer.Tokens[i + x + 1].Type == TokenType.OPERATOR) ||
+                                    (_tokenizer.Tokens[i + x - 1].Type == TokenType.OPERATOR) ||
+                                    (_tokenizer.Tokens[i + x - 1].Value.ToUpper() == "WHEN") ||
+                                    (_tokenizer.Tokens[i + x - 1].Value.ToUpper() == "THEN") ||
+                                    (_tokenizer.Tokens[i + x - 1].Value.ToUpper() == "ELSE")||
+                                    (_tokenizer.Tokens[i+x-1].Value.ToUpper()=="AND") ||
+                                    (_tokenizer.Tokens[i+x-1].Value.ToUpper()=="OR")
+                                ))
+                            {
+                                joinConditionIndexes.Add(i + x);
+                            }
+                            x++;
+                        }
+                        x--;
                     }
                     else if (_tokenizer.Tokens[i + x].Value.ToUpper() == "WHERE" || _tokenizer.Tokens[i + x].Value.ToUpper() == "ORDER" || _tokenizer.Tokens[i + x].Value.ToUpper() == "GROUP")
                         break;
@@ -478,7 +507,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 whereFieldIndexes.AddRange(ExtractFieldsFromCondition(index, conditionIndexes[index]));
             }
 			Dictionary<string, List<string>> fieldList = new Dictionary<string, List<string>>();
-			string tables = CreateTableQuery(i,fromIndex,tableDeclarations, fieldIndexes,ref fieldList,whereFieldIndexes);
+			string tables = CreateTableQuery(i,fromIndex,tableDeclarations, fieldIndexes,ref fieldList,whereFieldIndexes,joinConditionIndexes,tableAliases,parentTableAliases);
 			string fields = TranslateFields(i,fieldIndexes, tableDeclarations, fieldAliases, tableAliases,fieldList,parentTableAliases);
 			string wheres = TranslateWhereConditions(whereIndex,conditionIndexes,tableAliases,tableDeclarations,fieldList,parentTableAliases);
             if ((whereFieldIndexes.Count == 0) && (whereIndex > 0) && (whereIndex < _subQueryIndexes[i]))
@@ -1018,7 +1047,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 		#endregion
 
 		#region TableTranslating
-		private string CreateTableQuery(int queryIndex,int fromIndex,List<int> tableDeclarations,List<int> fieldIndexes,ref Dictionary<string,List<string>> fieldLists,List<int> whereFieldIndexes)
+		private string CreateTableQuery(int queryIndex,int fromIndex,List<int> tableDeclarations,List<int> fieldIndexes,ref Dictionary<string,List<string>> fieldLists,List<int> whereFieldIndexes,List<int> joinConditionIndexes,Dictionary<string,string> tableAliases,Dictionary<string,string> parentTableAliases)
 		{
             if (fromIndex == -1)
                 return "";
@@ -1035,7 +1064,10 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                             ret += _tokenizer.Tokens[y + a].Value + " ";
                         y += _subQueryIndexes[y];
                     }
-                    ret += _tokenizer.Tokens[y].Value + " ";
+                    if (joinConditionIndexes.Contains(y))
+                        ret += TranslateConditionField(y, tableDeclarations, tableAliases, fieldLists, parentTableAliases)[0]+" ";
+                    else
+                        ret += _tokenizer.Tokens[y].Value + " ";
                 }
                 previousIndex = x+1;
 				Type t = LocateTableType(_tokenizer.Tokens[x].Value);
@@ -1064,6 +1096,11 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 						if (_tokenizer.Tokens[index].Value.StartsWith(alias))
 							tmpJoins=TraceJoins(tmpJoins,map,_tokenizer.Tokens[index].Value.Substring(alias.Length+1),alias,ref fieldLists);
 					}
+                    foreach (int index in joinConditionIndexes)
+                    {
+                        if (_tokenizer.Tokens[index].Value.StartsWith(alias))
+                            tmpJoins=TraceJoins(tmpJoins, map, _tokenizer.Tokens[index].Value.Substring(alias.Length + 1), alias, ref fieldLists);
+                    }
 					if (alias != _tokenizer.Tokens[x].Value)
 					{
 						joins.Add(map.Name + " " + alias, tmpJoins);
@@ -1094,7 +1131,10 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     && _tokenizer.Tokens[z].Value.ToUpper() != "ORDER"
                     && (z < _subQueryIndexes[queryIndex] + queryIndex))
                 {
-                    ret += _tokenizer.Tokens[z].Value + " ";
+                    if (joinConditionIndexes.Contains(z))
+                        ret += TranslateConditionField(z, tableDeclarations, tableAliases, fieldLists, parentTableAliases)[0]+" ";
+                    else
+                        ret += _tokenizer.Tokens[z].Value + " ";
                     z++;
                     if ((z >= _subQueryIndexes[queryIndex] + queryIndex))
                         break;
