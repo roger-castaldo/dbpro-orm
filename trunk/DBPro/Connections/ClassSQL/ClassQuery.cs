@@ -471,7 +471,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 			}
 
             int endIndex = i + _subQueryIndexes[i];
-            foreach (int subIndex in _subQueryIndexes.Keys)
+            foreach (int subIndex in Utility.SortDictionaryKeys(_subQueryIndexes.Keys))
             {
                 if (subIndex > i && subIndex <= endIndex)
                 {                    
@@ -1415,6 +1415,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 		#region FieldTranslating
         private string TranslateFields(int subqueryIndex, List<int> fieldIndexes, List<int> tableDeclarations, Dictionary<int, string> fieldAliases, Dictionary<string, string> tableAliases, Dictionary<string, List<string>> fieldList, Dictionary<string, string> parentTableAliases)
 		{
+            _fieldNames.Clear();
             int ordinal = 0;
             int preOrdinal = 0;
 			string ret = "";
@@ -1429,7 +1430,31 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                             ret += _tokenizer.Tokens[y + a].Value + " ";
                         y += _subQueryIndexes[y];
                     }
-					ret += _tokenizer.Tokens[y].Value + " ";
+                    if (subqueryIndex == 0)
+                    {
+                        if (_tokenizer.Tokens[y - 1].Value == ")" && _tokenizer.Tokens[y].Value == ",")
+                        {
+                            ret += " AS " + _conn.WrapAlias("FIELD_" + ordinal.ToString()) + ", ";
+                            if (_fieldNames.ContainsKey(ordinal))
+                                ordinal++;
+                            _fieldNames.Add(ordinal, "FIELD_" + ordinal.ToString());
+                            ordinal++;
+                            preOrdinal++;
+                        }
+                        else if (_tokenizer.Tokens[y - 1].Value == ")" && _tokenizer.Tokens[y].Value.ToUpper() == "AS" && (_tokenizer.Tokens[y + 2].Value == "," || _tokenizer.Tokens[y + 2].Value.ToUpper() == "FROM"))
+                        {
+                            ret += " AS " + _conn.WrapAlias(_tokenizer.Tokens[y + 1].Value.Trim("'\"".ToCharArray()));
+                            if (_fieldNames.ContainsKey(ordinal))
+                                ordinal++;
+                            _fieldNames.Add(ordinal, _tokenizer.Tokens[y + 1].Value.Trim("'\"".ToCharArray()));
+                            ordinal++;
+                            preOrdinal++;
+                            y += 1;
+                        }
+                        else
+                            ret += _tokenizer.Tokens[y].Value + " ";
+                    }else
+                        ret += _tokenizer.Tokens[y].Value + " ";
 				}
                 if (ret.TrimEnd(' ').EndsWith(","))
                     ordinal++;
@@ -1439,6 +1464,18 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 if (subqueryIndex == 0)
                 {
                     ret += TranslateFieldName(ordinal, x, out fieldAlias, tableDeclarations, fieldAliases, tableAliases, fieldList,parentTableAliases) + " ";
+                    if (_tokenizer.Tokens[x + 1].Value != "," && _tokenizer.Tokens[x + 1].Value.ToUpper() != "AS" && _tokenizer.Tokens[x + 1].Value.ToUpper() != "FROM")
+                    {
+                        if (_fieldNames.ContainsKey(ordinal))
+                        {
+                            if (_fieldNames[ordinal] == fieldAlias)
+                            {
+                                _fieldNames.Remove(ordinal);
+                                ordinal--;
+                            }
+                        }
+                        fieldAlias = "";
+                    }
                     preOrdinal = ordinal;
                 }
                 else
@@ -1460,9 +1497,15 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 				}
 				else
 				{
+                    int incr = 1;
                     if ((fieldAlias != "") && ((_tokenizer.Tokens[x + 1].Value == ",") || (_tokenizer.Tokens[x + 1].Value == "FROM")))
                         ret += " AS " + _conn.WrapAlias(fieldAlias);
-					previousIndex = x + 1;
+                    else if (_tokenizer.Tokens[x + 1].Value.ToUpper() == "AS" && _tokenizer.Tokens[x + 2].Value == fieldAlias)
+                    {
+                        ret += _tokenizer.Tokens[x + 1].Value + " " + _tokenizer.Tokens[x + 2].Value+" "+_tokenizer.Tokens[x+3].Value;
+                        incr = 4;
+                    }
+					previousIndex = x + incr;
 				}
                 if (ret.TrimEnd(' ').EndsWith(","))
                     ordinal++;
@@ -1478,7 +1521,31 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             }
 			while (_tokenizer.Tokens[z].Value.ToUpper() != "FROM")
 			{
-				ret += _tokenizer.Tokens[z].Value+" ";
+                if (subqueryIndex == 0)
+                {
+                    if (_tokenizer.Tokens[z - 1].Value == ")" && _tokenizer.Tokens[z].Value == ",")
+                    {
+                        ret += " AS " + _conn.WrapAlias("FIELD_" + ordinal.ToString()) + ", ";
+                        if (_fieldNames.ContainsKey(ordinal))
+                            ordinal++;
+                        _fieldNames.Add(ordinal, "FIELD_" + ordinal.ToString());
+                        ordinal++;
+                        preOrdinal++;
+                    }
+                    else if (_tokenizer.Tokens[z - 1].Value == ")" && _tokenizer.Tokens[z].Value.ToUpper() == "AS" && (_tokenizer.Tokens[z + 2].Value == "," || _tokenizer.Tokens[z + 2].Value.ToUpper() == "FROM"))
+                    {
+                        ret += " AS " + _conn.WrapAlias(_tokenizer.Tokens[z + 1].Value.Trim("'\"".ToCharArray()));
+                        if (_fieldNames.ContainsKey(ordinal))
+                            ordinal++;
+                        _fieldNames.Add(ordinal, _tokenizer.Tokens[z + 1].Value.Trim("'\"".ToCharArray()));
+                        ordinal++;
+                        preOrdinal++;
+                        z += 1;
+                    }
+                    else
+                        ret += _tokenizer.Tokens[z].Value + " ";
+                }else
+                    ret += _tokenizer.Tokens[z].Value + " ";
 				z++;
                 if (_subQueryIndexes.ContainsKey(z))
                 {
