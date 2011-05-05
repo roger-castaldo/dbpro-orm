@@ -365,7 +365,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 {
                     if (_subQueryIndexes.ContainsKey(i + x))
                         x += _subQueryIndexes[i + x] + 2;
-                    if (((_tokenizer.Tokens[i + x - 1].Value.ToUpper() == "FROM") || (_tokenizer.Tokens[i + x - 1].Value == ",") || _tokenizer.Tokens[i + x -1].Value.ToUpper()=="JOIN") && (_tokenizer.Tokens[i + x].Value != "("))
+                    if (((_tokenizer.Tokens[i + x - 1].Value.ToUpper() == "FROM") || (_tokenizer.Tokens[i + x - 1].Value == ",") || _tokenizer.Tokens[i + x - 1].Value.ToUpper() == "JOIN") && (_tokenizer.Tokens[i + x].Value != "("))
                     {
                         if (i + x + 1 < _tokenizer.Tokens.Count)
                         {
@@ -402,9 +402,9 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                                     (_tokenizer.Tokens[i + x - 1].Type == TokenType.OPERATOR) ||
                                     (_tokenizer.Tokens[i + x - 1].Value.ToUpper() == "WHEN") ||
                                     (_tokenizer.Tokens[i + x - 1].Value.ToUpper() == "THEN") ||
-                                    (_tokenizer.Tokens[i + x - 1].Value.ToUpper() == "ELSE")||
-                                    (_tokenizer.Tokens[i+x-1].Value.ToUpper()=="AND") ||
-                                    (_tokenizer.Tokens[i+x-1].Value.ToUpper()=="OR")
+                                    (_tokenizer.Tokens[i + x - 1].Value.ToUpper() == "ELSE") ||
+                                    (_tokenizer.Tokens[i + x - 1].Value.ToUpper() == "AND") ||
+                                    (_tokenizer.Tokens[i + x - 1].Value.ToUpper() == "OR")
                                 ))
                             {
                                 joinConditionIndexes.Add(i + x);
@@ -413,6 +413,8 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         }
                         x--;
                     }
+                    else if (x >= _subQueryIndexes[i])
+                        break;
                     else if (_tokenizer.Tokens[i + x].Value.ToUpper() == "WHERE" || _tokenizer.Tokens[i + x].Value.ToUpper() == "ORDER" || _tokenizer.Tokens[i + x].Value.ToUpper() == "GROUP")
                         break;
                     x++;
@@ -1502,8 +1504,16 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         ret += " AS " + _conn.WrapAlias(fieldAlias);
                     else if (_tokenizer.Tokens[x + 1].Value.ToUpper() == "AS" && _tokenizer.Tokens[x + 2].Value == fieldAlias)
                     {
-                        ret += _tokenizer.Tokens[x + 1].Value + " " + _tokenizer.Tokens[x + 2].Value+" "+_tokenizer.Tokens[x+3].Value;
-                        incr = 4;
+                        if (_tokenizer.Tokens[x + 3].Value.ToUpper() == "FROM")
+                        {
+                            ret += _tokenizer.Tokens[x + 1].Value + " " + _tokenizer.Tokens[x + 2].Value + " ";
+                            incr = 3;
+                        }
+                        else
+                        {
+                            ret += _tokenizer.Tokens[x + 1].Value + " " + _tokenizer.Tokens[x + 2].Value + " " + _tokenizer.Tokens[x + 3].Value;
+                            incr = 4;
+                        }
                     }
 					previousIndex = x + incr;
 				}
