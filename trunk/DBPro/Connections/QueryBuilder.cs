@@ -1033,6 +1033,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 string field = fields[x];
                 TableMap map = baseMap;
                 string alias = "main_table";
+                bool parentIsNullable = false;
                 if (field.Contains("."))
                 {
                     while (field.Contains("."))
@@ -1042,6 +1043,11 @@ namespace Org.Reddragonit.Dbpro.Connections
                         string className = field.Substring(0, field.IndexOf("."));
                         string innerJoin = " INNER JOIN ";
                         if (efm.Nullable)
+                        {
+                            parentIsNullable = true;
+                            innerJoin = " LEFT JOIN ";
+                        }
+                        else if (parentIsNullable)
                             innerJoin = " LEFT JOIN ";
                         string tbl = _conn.queryBuilder.SelectAll(efm.Type, null);
                         if (efm.IsArray)
@@ -1052,7 +1058,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                             innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
                             if (!joins.Contains(innerJoin))
                                 joins += innerJoin;
-                            innerJoin = " INNER JOIN (" + tbl + ") " + alias + "_" + className + " ON ";
+                            innerJoin = " "+(efm.Nullable||parentIsNullable ? "LEFT" : "INNER")+" JOIN (" + tbl + ") " + alias + "_" + className + " ON ";
                             foreach (InternalFieldMap ifm in eMap.PrimaryKeys)
                                 innerJoin += " " + alias + "_intermediate_" + className + "." + _conn.Pool.CorrectName("CHILD_" + ifm.FieldName) + " = " + alias + "_" + className + "." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
                             innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);

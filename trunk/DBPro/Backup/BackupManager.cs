@@ -348,6 +348,8 @@ namespace Org.Reddragonit.Dbpro.Backup
                     }
                     Logger.LogLine("Object data has been imported.");
                 }
+                //force garbage collection to occur to prevent memory leaks
+                GC.Collect();
             }
 
             zis.Close();
