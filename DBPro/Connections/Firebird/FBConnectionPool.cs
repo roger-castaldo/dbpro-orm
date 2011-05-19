@@ -34,7 +34,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
         { }
 
 		public FBConnectionPool(string username, string password, string databasePath, string databaseServer, int port, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode,string connectionName,bool allowTableDeletions)
-			: this(username,password,databasePath,databaseServer,port,minPoolSize,maxPoolSize,maxKeepAlive,UpdateStructureDebugMode,connectionName,allowTableDeletions,ConnectionPool.DEFAULT_READ_TIMEOUT,false)
+			: this(username,password,databasePath,databaseServer,port,null,minPoolSize,maxPoolSize,maxKeepAlive,UpdateStructureDebugMode,connectionName,allowTableDeletions,ConnectionPool.DEFAULT_READ_TIMEOUT,false)
 		{ }
 
 		public FBConnectionPool(string username, string password, string databasePath, string databaseServer, bool UpdateStructureDebugMode,string connectionName)
@@ -56,15 +56,15 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		{}
 
         public FBConnectionPool(string username, string password, string databasePath, string databaseServer, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode, string connectionName, int readTimeout)
-            : this(username, password, databasePath, databaseServer, 3050, minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode, connectionName, true,readTimeout,false)
+            : this(username, password, databasePath, databaseServer, 3050,null, minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode, connectionName, true,readTimeout,false)
         { }
 
         public FBConnectionPool(string username, string password, string databasePath, string databaseServer, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions, int readTimeout)
-            : this(username, password, databasePath, databaseServer, 3050, minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode, connectionName, allowTableDeletions,readTimeout,false)
+            : this(username, password, databasePath, databaseServer, 3050,null, minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode, connectionName, allowTableDeletions,readTimeout,false)
         { }
 
         public FBConnectionPool(string username, string password, string databasePath, string databaseServer, int port, int minPoolSize, int maxPoolSize, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions, int readTimeout)
-            : this(username, password, databasePath, databaseServer, port, minPoolSize, maxPoolSize, DEFAULT_TIMEOUT, UpdateStructureDebugMode, connectionName, allowTableDeletions,readTimeout,false)
+            : this(username, password, databasePath, databaseServer, port,null, minPoolSize, maxPoolSize, DEFAULT_TIMEOUT, UpdateStructureDebugMode, connectionName, allowTableDeletions,readTimeout,false)
         { }
 
         public FBConnectionPool(string username, string password, string databasePath, string databaseServer, bool UpdateStructureDebugMode, string connectionName,int readTimeout)
@@ -72,7 +72,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
         { }
 
         public FBConnectionPool(string username, string password, string databasePath, string databaseServer, int port, bool UpdateStructureDebugMode, string connectionName,int readTimeout)
-            : this(username, password, databasePath, databaseServer, port, 5, 10, DEFAULT_TIMEOUT, UpdateStructureDebugMode, connectionName, true,readTimeout,false)
+            : this(username, password, databasePath, databaseServer, port,null, 5, 10, DEFAULT_TIMEOUT, UpdateStructureDebugMode, connectionName, true,readTimeout,false)
         {
 
         }
@@ -82,7 +82,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
         { }
 
         public FBConnectionPool(string username, string password, string databasePath, string databaseServer, int port, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions,int readTimeout,bool Readonly)
-            : this(username, password, databasePath, databaseServer, port, 5, 10, DEFAULT_TIMEOUT, UpdateStructureDebugMode, connectionName, allowTableDeletions,readTimeout,Readonly)
+            : this(username, password, databasePath, databaseServer, port,null, 5, 10, DEFAULT_TIMEOUT, UpdateStructureDebugMode, connectionName, allowTableDeletions,readTimeout,Readonly)
         { }
 
         public FBConnectionPool(string username, string password, string databasePath, string databaseServer, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions, bool Readonly)
@@ -94,7 +94,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
         { }
 
         public FBConnectionPool(string username, string password, string databasePath, string databaseServer, int port, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions, bool Readonly)
-            : this(username, password, databasePath, databaseServer, port, minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode, connectionName, allowTableDeletions, ConnectionPool.DEFAULT_READ_TIMEOUT, Readonly)
+            : this(username, password, databasePath, databaseServer, port,null, minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode, connectionName, allowTableDeletions, ConnectionPool.DEFAULT_READ_TIMEOUT, Readonly)
         { }
 
         public FBConnectionPool(string username, string password, string databasePath, string databaseServer, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions, bool Readonly)
@@ -106,15 +106,15 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
         { }
 
         public FBConnectionPool(string username, string password, string databasePath, string databaseServer, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode, string connectionName, int readTimeout, bool Readonly)
-            : this(username, password, databasePath, databaseServer, 3050, minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode, connectionName, true, readTimeout, Readonly)
+            : this(username, password, databasePath, databaseServer, 3050,null, minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode, connectionName, true, readTimeout, Readonly)
         { }
 
         public FBConnectionPool(string username, string password, string databasePath, string databaseServer, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions, int readTimeout, bool Readonly)
-            : this(username, password, databasePath, databaseServer, 3050, minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode, connectionName, allowTableDeletions, readTimeout, Readonly)
+            : this(username, password, databasePath, databaseServer, 3050,null, minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode, connectionName, allowTableDeletions, readTimeout, Readonly)
         { }
 
         public FBConnectionPool(string username, string password, string databasePath, string databaseServer, int port, int minPoolSize, int maxPoolSize, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions, int readTimeout, bool Readonly)
-            : this(username, password, databasePath, databaseServer, port, minPoolSize, maxPoolSize, DEFAULT_TIMEOUT, UpdateStructureDebugMode, connectionName, allowTableDeletions, readTimeout, Readonly)
+            : this(username, password, databasePath, databaseServer, port,null, minPoolSize, maxPoolSize, DEFAULT_TIMEOUT, UpdateStructureDebugMode, connectionName, allowTableDeletions, readTimeout, Readonly)
         { }
 
         public FBConnectionPool(string username, string password, string databasePath, string databaseServer, bool UpdateStructureDebugMode, string connectionName, int readTimeout, bool Readonly)
@@ -122,7 +122,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
         { }
 
         public FBConnectionPool(string username, string password, string databasePath, string databaseServer, int port, bool UpdateStructureDebugMode, string connectionName, int readTimeout, bool Readonly)
-            : this(username, password, databasePath, databaseServer, port, 5, 10, DEFAULT_TIMEOUT, UpdateStructureDebugMode, connectionName, true, readTimeout, Readonly)
+            : this(username, password, databasePath, databaseServer, port,null, 5, 10, DEFAULT_TIMEOUT, UpdateStructureDebugMode, connectionName, true, readTimeout, Readonly)
         {
 
         }
@@ -131,12 +131,13 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
             : this(username, password, databasePath, databaseServer, 3050, UpdateStructureDebugMode, connectionName, allowTableDeletions, readTimeout,Readonly)
         { }
 
-        public FBConnectionPool(string username, string password, string databasePath, string databaseServer, int port, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions, int readTimeout,bool Readonly)
+        public FBConnectionPool(string username, string password, string databasePath, string databaseServer, int port,string charset, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions, int readTimeout,bool Readonly)
             : base("User=" + username + ";" +
                    "Password=" + password + ";" +
                    "Database=" + databasePath + ";" +
                    "DataSource=" + databaseServer + ";" +
-                   "Port=" + port.ToString() + ";", minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode, connectionName, allowTableDeletions, readTimeout,Readonly)
+                   "Port=" + port.ToString() + ";"+
+                    (charset!=null ? "Charset="+charset : ""), minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode, connectionName, allowTableDeletions, readTimeout,Readonly)
         { }
 		
 		private string[] _words=null;
