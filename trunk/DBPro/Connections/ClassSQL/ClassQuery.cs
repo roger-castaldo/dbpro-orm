@@ -393,6 +393,8 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                                 x += _subQueryIndexes[i + x] + 2;
                             if (_tokenizer.Tokens[i + x].Value.ToUpper() == "WHERE" || _tokenizer.Tokens[i + x].Value.ToUpper() == "ORDER" || _tokenizer.Tokens[i + x].Value.ToUpper() == "GROUP" || _tokenizer.Tokens[i + x].Value == "," || _tokenizer.Tokens[i + x].Value.ToUpper() == "INNER" || _tokenizer.Tokens[i + x].Value.ToUpper() == "OUTER" || _tokenizer.Tokens[i + x].Value.ToUpper() == "LEFT" || _tokenizer.Tokens[i + x].Value.ToUpper() == "RIGHT")
                                 break;
+                            else if (x + i + 1 == _tokenizer.Tokens.Count)
+                                break;
                             else if ((_tokenizer.Tokens[i + x].Type == TokenType.KEY) &&
                                 (
                                     (_tokenizer.Tokens[i + x - 1].Value.ToUpper() == "ON") ||
