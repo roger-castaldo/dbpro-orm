@@ -869,19 +869,27 @@ namespace Org.Reddragonit.Dbpro.Connections
                                 TableMap relatedTableMap = ClassMapper.GetTableMap(efm.Type);
                                 if (table.GetField(fnp.ClassFieldName) == null)
                                 {
-                                    foreach (FieldMap fm in relatedTableMap.PrimaryKeys)
+                                    foreach (InternalFieldMap ifm in relatedTableMap.PrimaryKeys)
                                     {
-                                        fields += conn.Pool.CorrectName(efm.AddOnName + "_" + relatedTableMap.GetTableFieldName(fm)) + " = " + CreateParameterName(conn.Pool.CorrectName(efm.AddOnName + "_" + relatedTableMap.GetTableFieldName(fm))) + ", ";
-                                        queryParameters.Add(conn.CreateParameter(CreateParameterName(conn.Pool.CorrectName(efm.AddOnName + "_" + relatedTableMap.GetTableFieldName(fm))), null));
+                                        fields += conn.Pool.CorrectName(efm.AddOnName + "_" +ifm.FieldName) + " = " + CreateParameterName(conn.Pool.CorrectName(efm.AddOnName + "_" + ifm.FieldName)) + ", ";
+                                        queryParameters.Add(conn.CreateParameter(CreateParameterName(conn.Pool.CorrectName(efm.AddOnName + "_" + ifm.FieldName)), null));
                                     }
                                 }
                                 else
                                 {
                                     Table relatedTable = (Table)table.GetField(fnp.ClassFieldName);
-                                    foreach (FieldMap fm in relatedTableMap.PrimaryKeys)
+                                    foreach (InternalFieldMap ifm in relatedTableMap.PrimaryKeys)
                                     {
-                                        fields += conn.Pool.CorrectName(efm.AddOnName + "_" + relatedTableMap.GetTableFieldName(fm)) + " = " + CreateParameterName(conn.Pool.CorrectName(efm.AddOnName + "_" + relatedTableMap.GetTableFieldName(fm))) + ", ";
-                                        queryParameters.Add(conn.CreateParameter(CreateParameterName(conn.Pool.CorrectName(efm.AddOnName + "_" + relatedTableMap.GetTableFieldName(fm))), relatedTable.GetField(relatedTableMap.GetClassFieldName(fm)), ((InternalFieldMap)fm).FieldType, ((InternalFieldMap)fm).FieldLength));
+                                        object val = null;
+                                        if (relatedTableMap.GetClassFieldName(ifm) == null)
+                                            val = LocateFieldValue(relatedTable, relatedTableMap, ifm.FieldName, _pool);
+                                        else
+                                            val = relatedTable.GetField(relatedTableMap.GetClassFieldName(ifm));
+                                        string fieldName = relatedTableMap.GetTableFieldName(ifm);
+                                        if (fieldName == null)
+                                            fieldName = ifm.FieldName;
+                                        fields += conn.Pool.CorrectName(efm.AddOnName + "_" + fieldName) + " = " + CreateParameterName(conn.Pool.CorrectName(efm.AddOnName + "_" + fieldName)) + ", ";
+                                        queryParameters.Add(conn.CreateParameter(CreateParameterName(conn.Pool.CorrectName(efm.AddOnName + "_" + fieldName)), val, ifm.FieldType, ifm.FieldLength));
                                     }
                                 }
                             }
