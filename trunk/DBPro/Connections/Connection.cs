@@ -341,6 +341,18 @@ namespace Org.Reddragonit.Dbpro.Connections
             this.ExecuteNonQuery(queryBuilder.DeleteAll(tableType));
             ConnectionPoolManager.RunTriggers(tableType, ConnectionPoolManager.TriggerTypes.POST_DELETE_ALL);
         }
+
+        public void Update(Type tableType, Dictionary<string, object> updateFields, SelectParameter[] parameters)
+        {
+            List<IDbDataParameter> pars = new List<IDbDataParameter>();
+            string query = queryBuilder.Update(tableType, updateFields, parameters, out pars);
+            if (query != null)
+            {
+                ConnectionPoolManager.RunTriggers(tableType, updateFields, parameters, ConnectionPoolManager.TriggerTypes.PRE_UPDATE);
+                ExecuteNonQuery(query, pars.ToArray());
+                ConnectionPoolManager.RunTriggers(tableType, updateFields, parameters, ConnectionPoolManager.TriggerTypes.POST_UPDATE);
+            }
+        }
 		
 		private Table Update(Table table)
         {

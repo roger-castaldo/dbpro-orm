@@ -140,6 +140,7 @@
     <Compile Include="Logger.cs" />
     <Compile Include="Structure\Attributes\INullable.cs" />
     <Compile Include="Structure\Attributes\IVersionField.cs" />
+    <Compile Include="Structure\Attributes\TableIndex.cs" />
     <Compile Include="Structure\Attributes\VersionField.cs" />
     <Compile Include="Structure\Attributes\VersionForiegnField.cs" />
     <Compile Include="Structure\Mapping\ClassMapper.cs" />

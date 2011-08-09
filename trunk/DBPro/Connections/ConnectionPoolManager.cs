@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading;
 using System.Xml;
 using Org.Reddragonit.Dbpro.Structure;
+using Org.Reddragonit.Dbpro.Connections.Parameters;
 
 namespace Org.Reddragonit.Dbpro.Connections
 {
@@ -133,6 +134,30 @@ namespace Org.Reddragonit.Dbpro.Connections
                         break;
                     case TriggerTypes.POST_DELETE_ALL:
                         tr.PostDeleteAll();
+                        break;
+                }
+            }
+        }
+
+        internal static void RunTriggers(Type tableType, Dictionary<string, object> updateFields, SelectParameter[] parameters, TriggerTypes type)
+        {
+            ITrigger[] tmp = new ITrigger[0];
+            Monitor.Enter(_triggers);
+            if (_triggers.ContainsKey(tableType))
+            {
+                tmp = new ITrigger[_triggers[tableType].Count];
+                _triggers[tableType].CopyTo(tmp);
+            }
+            Monitor.Exit(_triggers);
+            foreach (ITrigger tr in tmp)
+            {
+                switch (type)
+                {
+                    case TriggerTypes.PRE_UPDATE:
+                        tr.PreUpdate(tableType, updateFields, parameters);
+                        break;
+                    case TriggerTypes.POST_UPDATE:
+                        tr.PostUpdate(tableType, updateFields, parameters);
                         break;
                 }
             }

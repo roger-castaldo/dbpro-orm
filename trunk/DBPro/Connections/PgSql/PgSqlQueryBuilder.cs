@@ -7,6 +7,7 @@
  * To change this template use Tools | Options | Coding | Edit Standard Headers.
  */
 using System;
+using System.Collections.Generic;
 
 namespace Org.Reddragonit.Dbpro.Connections.PgSql
 {
@@ -178,6 +179,13 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 			}
 			return ret;
 		}
+
+        internal override List<Index> ExtractTableIndexes(string tableName, Connection conn)
+        {
+            List<Index> ret = new List<Index>();
+            //TODO: complete the extraction of indexes here
+            return ret;
+        }
 		
 		protected override string DropForeignKeyString {
 			get { return "SELECT 'ALTER TABLE {0} DROP CONSTRAINT '||ccu.constraint_name AS query "+
@@ -213,5 +221,35 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 		protected override string SelectWithPagingIncludeOffset {
 			get { return "{0} LIMIT {2} OFFSET {1}"; }
 		}
+
+        internal override string CreateTableIndex(string table, string[] fields, string indexName, bool unique, bool ascending)
+        {
+            string sfields = "";
+            foreach (string str in fields)
+                sfields += str + " " + (ascending ? "ASC" : "DESC") + ",";
+            sfields = sfields.Substring(0, sfields.Length - 1);
+            return string.Format(CreateTableIndexString, new object[]{
+                table,
+                sfields,
+                indexName,
+                (unique ? "UNIQUE" : "")
+            });
+        }
+
+        protected override string DropTableIndexString
+        {
+            get
+            {
+                return "DROP INDEX {1}";
+            }
+        }
+
+        protected override string CreateTableIndexString
+        {
+            get
+            {
+                return "CREATE {3} INDEX {2} ON {0} ({1})";
+            }
+        }
 	}
 }

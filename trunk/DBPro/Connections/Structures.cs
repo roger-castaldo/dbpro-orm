@@ -291,20 +291,82 @@ namespace Org.Reddragonit.Dbpro.Connections
         }
 	}
 
+    internal struct Index
+    {
+        private string _name;
+        public string Name
+        {
+            get { return _name; }
+        }
+
+        private string[] _fields;
+        public string[] Fields
+        {
+            get { return _fields; }
+            set { _fields = value; }
+        }
+
+        private bool _unique;
+        public bool Unique
+        {
+            get { return _unique; }
+        }
+
+        private bool _ascending;
+        public bool Ascending
+        {
+            get { return _ascending; }
+        }
+
+        public Index(string name, string[] fields, bool unique,bool ascending)
+        {
+            _name = name;
+            _fields = fields;
+            _unique = unique;
+            _ascending = ascending;
+        }
+
+        public override bool Equals(object obj)
+        {
+            Index ind = (Index)obj;
+            bool ret = Name==ind.Name && ind.Unique==Unique && ind.Ascending==Ascending;
+            if (ret)
+            {
+                if (Fields.Length == ind.Fields.Length)
+                {
+                    for (int x = 0; x < Fields.Length; x++)
+                    {
+                        if (Fields[x] != ind.Fields[x])
+                        {
+                            ret = false;
+                            break;
+                        }
+                    }
+                }
+                else
+                    ret = false;
+            }
+            return ret;
+        }
+    }
+
 	internal struct ExtractedTableMap
 	{
 		private string _tableName;
 		private List<ExtractedFieldMap> _fields;
 		private List<ForeignRelationMap> _ForeignFields;
+        private List<Index> _indices;
 
 		public ExtractedTableMap(string tableName)
 		{
 			_tableName=tableName;
 			_fields=new List<ExtractedFieldMap>();
 			_ForeignFields=new List<ForeignRelationMap>();
+            _indices = new List<Index>();
 		}
 
 		public string TableName{get{return _tableName;}}
+        public List<Index> Indices { get { return _indices; } set { _indices = value; } }
 		public List<ExtractedFieldMap> Fields{get{return _fields;}set{_fields=value;}}
 		public List<ForeignRelationMap> ForeignFields{get{return _ForeignFields;} set{_ForeignFields=value;}}
 		public List<ExtractedFieldMap> PrimaryKeys{
