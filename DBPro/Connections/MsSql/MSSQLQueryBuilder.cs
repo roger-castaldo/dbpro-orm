@@ -188,6 +188,39 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 					" AND cast(fc.name as varchar(255)) = '{3}'"; }
 		}
 
+        internal override List<Index> ExtractTableIndexes(string tableName, Connection conn)
+        {
+            List<Index> ret = new List<Index>();
+            Dictionary<string, string> objIds = new Dictionary<string, string>();
+            List<string> indexIds = new List<string>();
+            conn.ExecuteQuery("select ind.object_id,ind.index_id,ind.name,ind.is_unique from sys.indexes ind, sysobjects tbl "+
+                "WHERE ind.object_id = tbl.id AND tbl.xtype='U' AND ind.is_primary_key=0 AND tbl.name = '"+tableName+"'");
+            while (conn.Read())
+            {
+                ret.Add(new Index(conn[2].ToString(), null, conn[3].ToString() == "1", false));
+                objIds.Add(conn[2].ToString(), conn[0].ToString());
+                indexIds.Add(conn[1].ToString());
+            }
+            conn.Close();
+            for (int x = 0; x < ret.Count; x++)
+            {
+                List<string> fields = new List<string>();
+                bool asc = false;
+                conn.ExecuteQuery("SELECT c.COLUMN_NAME,indcol.is_descending_key FROM sys.index_columns indcol,INFORMATION_SCHEMA.COLUMNS c " +
+                    "WHERE indcol.object_id = '"+objIds[ret[x].Name]+"' AND indcol.index_id = "+indexIds[x]+" AND c.table_name = '"+tableName+"' AND c.ORDINAL_POSITION = indcol.column_id ORDER BY index_id,key_ordinal");
+                while (conn.Read())
+                {
+                    fields.Add(conn[0].ToString());
+                    asc = conn[1].ToString() == "0";
+                }
+                conn.Close();
+                Index ind = ret[x];
+                ret.RemoveAt(x);
+                ret.Insert(x, new Index(ind.Name,fields.ToArray(),ind.Unique,asc));
+            }
+            return ret;
+        }
+
         internal override string DropForeignKey(string table, string externalTable, string primaryField, string relatedField)
 		{
 			string ret="";
@@ -265,6 +298,36 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
                 }
             }
             return String.Format(SelectWithPagingIncludeOffset, baseQuery, CreateParameterName("startIndex"), CreateParameterName("rowCount"), primarys);
+        }
+
+        protected override string DropTableIndexString
+        {
+            get
+            {
+                return "DROP INDEX {1}";
+            }
+        }
+
+        internal override string CreateTableIndex(string table, string[] fields, string indexName, bool unique, bool ascending)
+        {
+            string sfields = "";
+            foreach (string str in fields)
+                sfields += str + " "+(ascending ? "ASC" : "DESC")+",";
+            sfields = sfields.Substring(0, sfields.Length - 1);
+            return string.Format(CreateTableIndexString, new object[]{
+                table,
+                sfields,
+                indexName,
+                (unique ? "UNIQUE" : "")
+            });
+        }
+
+        protected override string CreateTableIndexString
+        {
+            get
+            {
+                return "CREATE {3} INDEX {2} ON {0} ({1})";
+            }
         }
 	}
 }

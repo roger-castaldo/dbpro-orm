@@ -7,6 +7,7 @@
  * To change this template use Tools | Options | Coding | Edit Standard Headers.
  */
 using System;
+using System.Collections.Generic;
 
 namespace Org.Reddragonit.Dbpro.Connections.MySql
 {
@@ -173,6 +174,33 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 			conn.Close();
 			return ret;
 		}
+
+        internal override List<Index> ExtractTableIndexes(string tableName, Connection conn)
+        {
+            List<Index> ret = new List<Index>();
+            conn.ExecuteQuery("SHOW INDEX FROM " + tableName + " FROM " + ((MySqlConnectionPool)conn.Pool).DbName+" WHERE Key_Name <> 'PRIMARY' AND "+
+                "Key_Name NOT IN (SELECT CONSTRAINT_NAME FROM information_schema.REFERENTIAL_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = '" + ((MySqlConnectionPool)conn.Pool).DbName+"' AND TABLE_NAME='"+tableName+"')");
+            string curName = null;
+            bool unique=false;
+            List<string> fields = new List<string>();
+            while (conn.Read())
+            {
+                if (curName!=null){
+                    if (curName!=conn[2].ToString()){
+                        ret.Add(new Index(curName,fields.ToArray(),unique,false));
+                        curName = conn[2].ToString();
+                        fields=new List<string>();
+                    }
+                }
+                fields.Add(conn[4].ToString());
+                unique = conn[1].ToString()=="0";
+            }
+            if (curName!=null){
+                ret.Add(new Index(curName,fields.ToArray(),unique,false));
+            }
+            conn.Close();
+            return ret;
+        }
 		
 		protected override string DropPrimaryKeyString {
 			get { return "ALTER TABLE {0} DROP PRIMARY KEY"; }
@@ -187,6 +215,22 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
             if (!field.Nullable)
                 return string.Format(AlterFieldTypeString, table, field.FieldName, field.FullFieldType, "NOT");
             return string.Format(AlterFieldTypeString, table, field.FieldName, field.FullFieldType, "");
+        }
+
+        protected override string CreateTableIndexString
+        {
+            get
+            {
+                return "CREATE {3} INDEX {2} ON {0} ({1})";
+            }
+        }
+
+        protected override string DropTableIndexString
+        {
+            get
+            {
+                return "DROP INDEX {1} ON {0}";
+            }
         }
 	}
 }

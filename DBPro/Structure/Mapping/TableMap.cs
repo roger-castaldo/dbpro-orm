@@ -42,6 +42,12 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			}
 		}
 
+        private List<Index> _indices;
+        public List<Index> Indices
+        {
+            get { return _indices; }
+        }
+
         private bool _alwaysInsert;
         public bool AlwaysInsert
         {
@@ -80,6 +86,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 			}			
 			_tableName=TableName;
 			_fields = new Dictionary<string,FieldMap>();
+            _indices = new List<Index>();
 			foreach (PropertyInfo mi in info)
 			{
 				foreach (object obj in mi.GetCustomAttributes(true))
@@ -144,6 +151,22 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 						_fields.Add(t.GetClassFieldName(ifm.FieldName),new InternalFieldMap(ifm,true));
 				}
 			}
+            foreach (TableIndex ti in type.GetCustomAttributes(typeof(TableIndex),false))
+            {
+                List<string> sfields = new List<string>();
+                foreach (string str in ti.Fields)
+                {
+                    if (this[str] is ExternalFieldMap)
+                    {
+                        TableMap tm = ClassMapper.GetTableMap(((ExternalFieldMap)this[str]).Type);
+                        foreach (InternalFieldMap ifm in tm.PrimaryKeys)
+                            sfields.Add(ifm.FieldName);
+                    }
+                    else
+                        sfields.Add(this.GetTableFieldName(str));
+                }
+                _indices.Add(new Index(ti.Name, sfields.ToArray(), ti.Unique, ti.Ascending));
+            }
             Logger.LogLine("Checking Primary Key Fields...");
             foreach (FieldMap fm in _fields.Values)
             {

@@ -175,6 +175,22 @@ namespace Org.Reddragonit.Dbpro.Connections
 				throw new Exception("Method Not Implemented.");
 			}
 		}
+
+        protected virtual string DropTableIndexString
+        {
+            get
+            {
+                throw new Exception("Method Not Implemented");
+            }
+        }
+
+        protected virtual string CreateTableIndexString
+        {
+            get
+            {
+                throw new Exception("Method Not Implemented");
+            }
+        }
 		#endregion
 		#endregion
 		
@@ -331,6 +347,11 @@ namespace Org.Reddragonit.Dbpro.Connections
 		{
 			return String.Format(SelectForeignKeysString,tableName);
 		}
+
+        internal virtual List<Index> ExtractTableIndexes(string tableName, Connection conn)
+        {
+            throw new Exception("Method Not Implemented");
+        }
 		#endregion
 		
 		#region TableAlterations
@@ -338,6 +359,26 @@ namespace Org.Reddragonit.Dbpro.Connections
 		{
 			return string.Format(DropColumnString,table,field);
 		}
+
+        internal string DropTableIndex(string table, string indexName)
+        {
+            return string.Format(DropTableIndexString, table, indexName);
+        }
+
+        internal virtual string CreateTableIndex(string table, string[] fields, string indexName, bool unique,bool ascending)
+        {
+            string sfields = "";
+            foreach (string str in fields)
+                sfields += str + ",";
+            sfields = sfields.Substring(0, sfields.Length - 1);
+            return string.Format(CreateTableIndexString, new object[]{
+                table,
+                sfields,
+                indexName,
+                (unique ? "UNIQUE" : ""),
+                (ascending ? "ASC" : "DESC")
+            });
+        }
 		
 		internal string DropTable(string table)
 		{
@@ -809,31 +850,19 @@ namespace Org.Reddragonit.Dbpro.Connections
             }
             return null;
         }
-		
-		internal string Update(Table table,out List<IDbDataParameter> queryParameters)
-		{
-			queryParameters = new List<IDbDataParameter>();
-            if ((table.ChangedFields == null) || (table.ChangedFields.Count == 0))
-                return "";
-			try{
-				TableMap map = ClassMapper.GetTableMap(table.GetType());
-				string fields = "";
-				string conditions = "";
+
+        internal string Update(Type tableType, Dictionary<string, object> updateFields, SelectParameter[] parameters, out List<IDbDataParameter> queryParameters)
+        {
+            queryParameters = new List<IDbDataParameter>();
+            TableMap map = ClassMapper.GetTableMap(tableType);
+            try
+            {
+                string fields = "";
+                string conditions = "";
                 bool addedAutogenCorrection = false;
-				List<string> changedFields=table.ChangedFields;
-                if (changedFields == null)
+                foreach (FieldNamePair fnp in map.FieldNamePairs)
                 {
-                    changedFields = new List<string>();
-                    foreach (FieldNamePair fnp in map.FieldNamePairs)
-                    {
-                        changedFields.Add(fnp.ClassFieldName);
-                    }
-                }
-                if (changedFields.Count == 0)
-                    return "";
-				foreach (FieldNamePair fnp in map.FieldNamePairs)
-				{
-                    if (changedFields.Contains(fnp.ClassFieldName))
+                    if (updateFields.ContainsKey(fnp.ClassFieldName))
                     {
                         if (map[fnp].PrimaryKey && !map[fnp].AutoGen && !addedAutogenCorrection && map.HasComplexNumberAutogen)
                         {
@@ -845,12 +874,12 @@ namespace Org.Reddragonit.Dbpro.Connections
                                     int cnt = 0;
                                     foreach (InternalFieldMap i in map.PrimaryKeys)
                                     {
-                                        object val = LocateFieldValue(table, map, ifm.FieldName, pool);
+                                        object val = updateFields[fnp.ClassFieldName];
                                         if (val == null)
                                             fields += pool.CorrectName(ifm.FieldName) + " IS NULL AND ";
                                         else
                                         {
-                                            fields += pool.CorrectName(ifm.FieldName) + " = " + CreateParameterName(ifm.FieldName + "_" + cnt.ToString())+" AND ";
+                                            fields += pool.CorrectName(ifm.FieldName) + " = " + CreateParameterName(ifm.FieldName + "_" + cnt.ToString()) + " AND ";
                                             queryParameters.Add(conn.CreateParameter(CreateParameterName(ifm.FieldName + "_" + cnt.ToString()), val));
                                         }
                                     }
@@ -867,17 +896,17 @@ namespace Org.Reddragonit.Dbpro.Connections
                             {
                                 ExternalFieldMap efm = (ExternalFieldMap)map[fnp];
                                 TableMap relatedTableMap = ClassMapper.GetTableMap(efm.Type);
-                                if (table.GetField(fnp.ClassFieldName) == null)
+                                if (updateFields[fnp.ClassFieldName] == null)
                                 {
                                     foreach (InternalFieldMap ifm in relatedTableMap.PrimaryKeys)
                                     {
-                                        fields += conn.Pool.CorrectName(efm.AddOnName + "_" +ifm.FieldName) + " = " + CreateParameterName(conn.Pool.CorrectName(efm.AddOnName + "_" + ifm.FieldName)) + ", ";
+                                        fields += conn.Pool.CorrectName(efm.AddOnName + "_" + ifm.FieldName) + " = " + CreateParameterName(conn.Pool.CorrectName(efm.AddOnName + "_" + ifm.FieldName)) + ", ";
                                         queryParameters.Add(conn.CreateParameter(CreateParameterName(conn.Pool.CorrectName(efm.AddOnName + "_" + ifm.FieldName)), null));
                                     }
                                 }
                                 else
                                 {
-                                    Table relatedTable = (Table)table.GetField(fnp.ClassFieldName);
+                                    Table relatedTable = (Table)updateFields[fnp.ClassFieldName];
                                     foreach (InternalFieldMap ifm in relatedTableMap.PrimaryKeys)
                                     {
                                         object val = null;
@@ -897,7 +926,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                         else if (!map[fnp].IsArray)
                         {
                             fields += fnp.TableFieldName + " = " + CreateParameterName(fnp.TableFieldName) + ", ";
-                            if (table.GetField(fnp.ClassFieldName) == null)
+                            if (updateFields[fnp.ClassFieldName] == null)
                             {
                                 queryParameters.Add(conn.CreateParameter(CreateParameterName(fnp.TableFieldName), null));
                             }
@@ -905,42 +934,76 @@ namespace Org.Reddragonit.Dbpro.Connections
                             {
                                 if (map[fnp].ObjectType.IsEnum)
                                 {
-                                    queryParameters.Add(conn.CreateParameter(CreateParameterName(fnp.TableFieldName), pool.GetEnumID(map[fnp].ObjectType,table.GetField(fnp.ClassFieldName).ToString())));
+                                    queryParameters.Add(conn.CreateParameter(CreateParameterName(fnp.TableFieldName), pool.GetEnumID(map[fnp].ObjectType, updateFields[fnp.ClassFieldName].ToString())));
                                 }
                                 else
                                 {
-                                    queryParameters.Add(conn.CreateParameter(CreateParameterName(fnp.TableFieldName), table.GetField(fnp.ClassFieldName), ((InternalFieldMap)map[fnp]).FieldType, ((InternalFieldMap)map[fnp]).FieldLength));
+                                    queryParameters.Add(conn.CreateParameter(CreateParameterName(fnp.TableFieldName), updateFields[fnp.ClassFieldName], ((InternalFieldMap)map[fnp]).FieldType, ((InternalFieldMap)map[fnp]).FieldLength));
                                 }
                             }
                         }
                     }
-				}
-                List<EqualParameter> tmpPars = new List<EqualParameter>();
-                foreach (FieldNamePair fnp in map.FieldNamePairs)
-                {
-                    if (map[fnp].PrimaryKey || !map.HasPrimaryKeys)
-                    {
-                        tmpPars.Add(new EqualParameter(fnp.ClassFieldName,table.GetInitialPrimaryValue(fnp.ClassFieldName)));
-                    }
                 }
-                int parCount=0;
-                foreach (EqualParameter eq in tmpPars){
-                    conditions+=eq.ConstructString(map,_conn,this,ref queryParameters,ref parCount)+" AND ";
+                int parCount = 0;
+                foreach (SelectParameter eq in parameters)
+                {
+                    conditions += eq.ConstructString(map, _conn, this, ref queryParameters, ref parCount) + " AND ";
                 }
                 if (fields.Length == 0)
                     return "";
-				fields = fields.Substring(0,fields.Length-2);
-				if (conditions.Length>0)
-				{
-					return String.Format(UpdateWithConditions,map.Name,fields,conditions.Substring(0,conditions.Length-4).Replace("main_table.",""));
-				}else
+                fields = fields.Substring(0, fields.Length - 2);
+                if (conditions.Length > 0)
+                {
+                    return String.Format(UpdateWithConditions, map.Name, fields, conditions.Substring(0, conditions.Length - 4).Replace("main_table.", ""));
+                }
+                else
                     return String.Format(UpdateWithoutConditions, map.Name, fields);
-			}catch (Exception e)
-			{
-				Logger.LogLine(e.Message);
-			}
-			return null;
-		}
+            }
+            catch (Exception e)
+            {
+                Logger.LogLine(e.Message);
+            }
+            return null;
+        }
+
+        internal string Update(Table table, out List<IDbDataParameter> queryParameters)
+        {
+            queryParameters = new List<IDbDataParameter>();
+            if ((table.ChangedFields == null) || (table.ChangedFields.Count == 0))
+                return "";
+            TableMap map = ClassMapper.GetTableMap(table.GetType());
+            string fields = "";
+            string conditions = "";
+            bool addedAutogenCorrection = false;
+            List<string> changedFields = table.ChangedFields;
+            if (changedFields == null)
+            {
+                changedFields = new List<string>();
+                foreach (FieldNamePair fnp in map.FieldNamePairs)
+                {
+                    changedFields.Add(fnp.ClassFieldName);
+                }
+            }
+            if (changedFields.Count == 0)
+                return "";
+            Dictionary<string, object> updateFields = new Dictionary<string, object>();
+            List<SelectParameter> parameters = new List<SelectParameter>();
+            foreach (FieldNamePair fnp in map.FieldNamePairs)
+            {
+                if (changedFields.Contains(fnp.ClassFieldName))
+                {
+                    updateFields.Add(fnp.ClassFieldName, table.GetField(fnp.ClassFieldName));
+                }
+            }
+            foreach (FieldNamePair fnp in map.FieldNamePairs)
+            {
+                if (map[fnp].PrimaryKey || !map.HasPrimaryKeys)
+                {
+                    parameters.Add(new EqualParameter(fnp.ClassFieldName, table.GetInitialPrimaryValue(fnp.ClassFieldName)));
+                }
+            }
+            return Update(table.GetType(), updateFields, parameters.ToArray(), out queryParameters);
+        }
 		#endregion
 		
 		#region Selects

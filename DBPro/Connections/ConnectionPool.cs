@@ -345,6 +345,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			for(int x=0;x<tables.Count;x++)
 			{
 				ExtractedTableMap etm = tables[x];
+                etm.Indices = conn.queryBuilder.ExtractTableIndexes(etm.TableName, conn);
 				conn.ExecuteQuery(conn.queryBuilder.SelectTableFields(etm.TableName));
 				while (conn.Read())
 				{
@@ -877,6 +878,85 @@ namespace Org.Reddragonit.Dbpro.Connections
 				}
 			}
 		}
+
+        private void ExtractIndexCteaionsDrops(List<ExtractedTableMap> curStructure, List<ExtractedTableMap> expectedStructure, out Dictionary<string, List<Index>> dropIndexes, out Dictionary<string, List<Index>> createIndexes)
+        {
+            dropIndexes = new Dictionary<string, List<Index>>();
+            createIndexes = new Dictionary<string, List<Index>>();
+            List<Index> indAdd = new List<Index>();
+            List<Index> indDel = new List<Index>();
+            foreach (ExtractedTableMap etm in expectedStructure)
+            {
+                bool found = false;
+                foreach (ExtractedTableMap e in curStructure)
+                {
+                    if (e.TableName == etm.TableName)
+                    {
+                        found = true;
+                        indAdd = new List<Index>();
+                        indDel = new List<Index>();
+                        foreach (Index ind in etm.Indices)
+                        {
+                            bool foundindex = false;
+                            foreach (Index i in e.Indices)
+                            {
+                                if (i.Name == ind.Name)
+                                {
+                                    foundindex = true;
+                                    if (!i.Equals(ind))
+                                    {
+                                        indDel.Add(i);
+                                        indAdd.Add(ind);
+                                    }
+                                    break;
+                                }
+                            }
+                            if (!foundindex)
+                                indAdd.Add(ind);
+                        }
+                        createIndexes.Add(etm.TableName, indAdd);
+                        dropIndexes.Add(etm.TableName, indDel);
+                    }
+                }
+                if (!found)
+                    createIndexes.Add(etm.TableName,etm.Indices);
+            }
+
+            foreach (ExtractedTableMap etm in curStructure)
+            {
+                bool found = false;
+                indDel = new List<Index>();
+                if (dropIndexes.ContainsKey(etm.TableName))
+                {
+                    indDel = dropIndexes[etm.TableName];
+                    dropIndexes.Remove(etm.TableName);
+                }
+                foreach (ExtractedTableMap e in expectedStructure)
+                {
+                    if (e.TableName == etm.TableName)
+                    {
+                        found = true;
+                        foreach (Index ind in etm.Indices)
+                        {
+                            bool foundindex = false;
+                            foreach (Index i in e.Indices)
+                            {
+                                if (i.Name == ind.Name)
+                                {
+                                    foundindex = true;
+                                    break;
+                                }
+                            }
+                            if (!foundindex)
+                                indDel.Add(ind);
+                        }
+                        dropIndexes.Add(etm.TableName, indDel);
+                    }
+                }
+                if (!found)
+                    dropIndexes.Add(etm.TableName,etm.Indices);
+            }
+        }
 		
 		private void ExtractForeignKeyCreatesDrops(List<ExtractedTableMap> curStructure,List<ExtractedTableMap> expectedStructure,out List<ForeignKey> foreignKeyDrops,out List<ForeignKey> foreignKeyCreations)
 		{
@@ -1081,6 +1161,11 @@ namespace Org.Reddragonit.Dbpro.Connections
 			List<IdentityField> setIdentities=new List<IdentityField>();
 
             CompareIdentities(curIdentities, expectedIdentities, out dropIdentities, out createIdentities, out setIdentities);
+
+            Dictionary<string, List<Index>> dropIndexes = new Dictionary<string, List<Index>>();
+            Dictionary<string, List<Index>> createIndexes = new Dictionary<string, List<Index>>();
+
+            ExtractIndexCteaionsDrops(curStructure, expectedStructure, out dropIndexes, out createIndexes);
 			
 			List<string> tableCreations = new List<string>();
 			List<string> tableAlterations = new List<string>();
@@ -1243,7 +1328,14 @@ namespace Org.Reddragonit.Dbpro.Connections
 			foreach (Trigger trig in dropTriggers)
 				alterations.Add(conn.queryBuilder.DropTrigger(trig.Name));
 			alterations.Add(" COMMIT;");
-			
+
+            foreach (string str in dropIndexes.Keys)
+            {
+                foreach (Index ind in dropIndexes[str])
+                    alterations.Add(conn.queryBuilder.DropTableIndex(str, ind.Name));
+            }
+            alterations.Add(" COMMIT;");
+
 			foreach (Generator gen in dropGenerators)
 				alterations.Add(conn.queryBuilder.DropGenerator(gen.Name));
 			alterations.Add(" COMMIT;");
@@ -1280,6 +1372,13 @@ namespace Org.Reddragonit.Dbpro.Connections
 			foreach (ForeignKey fk in foreignKeyCreations)
 				alterations.Add(conn.queryBuilder.CreateForeignKey(fk));
 			alterations.Add(" COMMIT;");
+
+            foreach (string str in createIndexes.Keys)
+            {
+                foreach (Index ind in createIndexes[str])
+                    alterations.Add(conn.queryBuilder.CreateTableIndex(str, ind.Fields, ind.Name, ind.Unique, ind.Ascending));
+            }
+            alterations.Add(" COMMIT;");
 			
 			foreach (Generator gen in createGenerators)
 			{

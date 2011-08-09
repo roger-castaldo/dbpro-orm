@@ -8,6 +8,7 @@
  */
 
 using System;
+using System.Collections.Generic;
 
 namespace Org.Reddragonit.Dbpro.Connections.Firebird
 {
@@ -184,7 +185,34 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 					"ORDER BY rc.rdb$relation_name,fseg.rdb$field_name";
 			}
 		}
-		
+
+        internal override List<Index> ExtractTableIndexes(string tableName, Connection conn)
+        {
+            List<Index> ret = new List<Index>();
+            conn.ExecuteQuery("SELECT ind.RDB$INDEX_NAME,ind.RDB$UNIQUE_FLAG,(CASE WHEN ind.RDB$INDEX_TYPE IS NULL THEN 0 ELSE 1 END) FROM RDB$INDICES ind "+
+                "WHERE ind.RDB$RELATION_NAME = '" + tableName + "' AND ind.RDB$INDEX_NAME NOT LIKE '%RDB$PRIMARY%' AND ind.RDB$INDEX_NAME NOT LIKE '%RDB$FOREIGN%' ORDER BY ind.RDB$INDEX_ID");
+            while (conn.Read())
+            {
+                ret.Add(new Index(conn[0].ToString(), null, conn[1].ToString() == "1", conn[2].ToString() == "0"));
+            }
+            conn.Close();
+            for (int x = 0; x < ret.Count; x++)
+            {
+                conn.ExecuteQuery("SELECT ind.RDB$FIELD_NAME FROM RDB$INDEX_SEGMENTS ind WHERE ind.RDB$INDEX_NAME = '" + ret[0].Name + "' ORDER BY ind.RDB$FIELD_POSITION");
+                List<string> fields = new List<string>();
+                while (conn.Read())
+                {
+                    fields.Add(conn[0].ToString());
+                }
+                conn.Close();
+                Index ind = ret[x];
+                ind.Fields = fields.ToArray();
+                ret.RemoveAt(x);
+                ret.Insert(x, ind);
+            }
+            return ret;
+        }
+
 		protected override string CreateGeneratorString {
 			get { return "CREATE GENERATOR {0}"; }
 		}
@@ -226,6 +254,22 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
                 return DropColumn(table, field.FieldName) + ";" + CreateColumn(table, field)+";";
             else
                 return base.AlterFieldType(table, field,oldFieldInfo);
+        }
+
+        protected override string DropTableIndexString
+        {
+            get
+            {
+                return "DROP INDEX {1}";
+            }
+        }
+
+        protected override string CreateTableIndexString
+        {
+            get
+            {
+                return "CREATE {3} {4} INDEX {2} ON {0} ({1})";
+            }
         }
 	}
 }
