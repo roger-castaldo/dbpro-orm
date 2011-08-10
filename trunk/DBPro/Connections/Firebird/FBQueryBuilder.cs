@@ -189,7 +189,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
         internal override List<Index> ExtractTableIndexes(string tableName, Connection conn)
         {
             List<Index> ret = new List<Index>();
-            conn.ExecuteQuery("SELECT ind.RDB$INDEX_NAME,ind.RDB$UNIQUE_FLAG,(CASE WHEN ind.RDB$INDEX_TYPE IS NULL THEN 0 ELSE 1 END) FROM RDB$INDICES ind "+
+            conn.ExecuteQuery("SELECT TRIM(ind.RDB$INDEX_NAME),ind.RDB$UNIQUE_FLAG,(CASE WHEN ind.RDB$INDEX_TYPE IS NULL THEN 0 ELSE 1 END) FROM RDB$INDICES ind "+
                 "WHERE ind.RDB$RELATION_NAME = '" + tableName + "' AND ind.RDB$INDEX_NAME NOT LIKE '%RDB$PRIMARY%' AND ind.RDB$INDEX_NAME NOT LIKE '%RDB$FOREIGN%' ORDER BY ind.RDB$INDEX_ID");
             while (conn.Read())
             {
@@ -198,7 +198,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
             conn.Close();
             for (int x = 0; x < ret.Count; x++)
             {
-                conn.ExecuteQuery("SELECT ind.RDB$FIELD_NAME FROM RDB$INDEX_SEGMENTS ind WHERE ind.RDB$INDEX_NAME = '" + ret[0].Name + "' ORDER BY ind.RDB$FIELD_POSITION");
+                conn.ExecuteQuery("SELECT TRIM(ind.RDB$FIELD_NAME) FROM RDB$INDEX_SEGMENTS ind WHERE TRIM(ind.RDB$INDEX_NAME) = '" + ret[0].Name + "' ORDER BY ind.RDB$FIELD_POSITION");
                 List<string> fields = new List<string>();
                 while (conn.Read())
                 {

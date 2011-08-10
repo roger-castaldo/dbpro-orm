@@ -407,6 +407,13 @@ namespace Org.Reddragonit.Dbpro.Connections
 			{
 				TableMap tm = ClassMapper.GetTableMap(type);
 				ExtractedTableMap etm = new ExtractedTableMap(tm.Name);
+                foreach (Index ind in tm.Indices)
+                {
+                    List<string> tfields = new List<string>();
+                    foreach (string str in ind.Fields)
+                        tfields.Add(CorrectName(str));
+                    etm.Indices.Add(new Index(CorrectName(ind.Name), tfields.ToArray(), ind.Unique, ind.Ascending));
+                }
 				foreach (InternalFieldMap ifm in tm.Fields)
 				{
 					if (!ifm.IsArray)
@@ -879,7 +886,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
 		}
 
-        private void ExtractIndexCteaionsDrops(List<ExtractedTableMap> curStructure, List<ExtractedTableMap> expectedStructure, out Dictionary<string, List<Index>> dropIndexes, out Dictionary<string, List<Index>> createIndexes)
+        private void ExtractIndexCreationsDrops(List<ExtractedTableMap> curStructure, List<ExtractedTableMap> expectedStructure, out Dictionary<string, List<Index>> dropIndexes, out Dictionary<string, List<Index>> createIndexes)
         {
             dropIndexes = new Dictionary<string, List<Index>>();
             createIndexes = new Dictionary<string, List<Index>>();
@@ -914,8 +921,10 @@ namespace Org.Reddragonit.Dbpro.Connections
                             if (!foundindex)
                                 indAdd.Add(ind);
                         }
-                        createIndexes.Add(etm.TableName, indAdd);
-                        dropIndexes.Add(etm.TableName, indDel);
+                        if (indAdd.Count>0)
+                            createIndexes.Add(etm.TableName, indAdd);
+                        if (indDel.Count>0)
+                            dropIndexes.Add(etm.TableName, indDel);
                     }
                 }
                 if (!found)
@@ -950,7 +959,8 @@ namespace Org.Reddragonit.Dbpro.Connections
                             if (!foundindex)
                                 indDel.Add(ind);
                         }
-                        dropIndexes.Add(etm.TableName, indDel);
+                        if (indDel.Count>0)
+                            dropIndexes.Add(etm.TableName, indDel);
                     }
                 }
                 if (!found)
@@ -1165,7 +1175,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             Dictionary<string, List<Index>> dropIndexes = new Dictionary<string, List<Index>>();
             Dictionary<string, List<Index>> createIndexes = new Dictionary<string, List<Index>>();
 
-            ExtractIndexCteaionsDrops(curStructure, expectedStructure, out dropIndexes, out createIndexes);
+            ExtractIndexCreationsDrops(curStructure, expectedStructure, out dropIndexes, out createIndexes);
 			
 			List<string> tableCreations = new List<string>();
 			List<string> tableAlterations = new List<string>();
