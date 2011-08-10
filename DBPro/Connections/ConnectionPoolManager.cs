@@ -139,6 +139,30 @@ namespace Org.Reddragonit.Dbpro.Connections
             }
         }
 
+        internal static void RunTriggers(Type tableType, SelectParameter[] parameters, TriggerTypes type)
+        {
+            ITrigger[] tmp = new ITrigger[0];
+            Monitor.Enter(_triggers);
+            if (_triggers.ContainsKey(tableType))
+            {
+                tmp = new ITrigger[_triggers[tableType].Count];
+                _triggers[tableType].CopyTo(tmp);
+            }
+            Monitor.Exit(_triggers);
+            foreach (ITrigger tr in tmp)
+            {
+                switch (type)
+                {
+                    case TriggerTypes.PRE_DELETE:
+                        tr.PreDelete(tableType, parameters);
+                        break;
+                    case TriggerTypes.POST_DELETE:
+                        tr.PostDelete(tableType, parameters);
+                        break;
+                }
+            }
+        }
+
         internal static void RunTriggers(Type tableType, Dictionary<string, object> updateFields, SelectParameter[] parameters, TriggerTypes type)
         {
             ITrigger[] tmp = new ITrigger[0];

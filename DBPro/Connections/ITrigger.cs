@@ -13,7 +13,9 @@ namespace Org.Reddragonit.Dbpro.Connections
         void PreUpdate(Table originalValue,Table newValue, List<string> changedFields);
         void PreUpdate(Type tableType, Dictionary<string, object> updateFields, SelectParameter[] parameters);
         void PreDelete(Table table);
+        void PreDelete(Type tableType, SelectParameter[] parameters);
         void PostDelete(Table table);
+        void PostDelete(Type tableType, SelectParameter[] parameters);
         void PreDeleteAll();
         void PostDeleteAll();
         void PreInsert(Table table);
