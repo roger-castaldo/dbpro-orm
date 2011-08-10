@@ -693,33 +693,41 @@ namespace Org.Reddragonit.Dbpro.Connections
 		#endregion
 		
 		#region Deletes
-		internal string Delete(Table table,out List<IDbDataParameter> parameters)
-		{
-			parameters = new List<IDbDataParameter>();
-			try{
-				string conditions="";
-				TableMap map = ClassMapper.GetTableMap(table.GetType());
-                List<EqualParameter> tmpPars = new List<EqualParameter>();
-                foreach (FieldNamePair fnp in map.FieldNamePairs)
-                {
-                    if (map[fnp].PrimaryKey || !map.HasPrimaryKeys)
-                    {
-                        tmpPars.Add(new EqualParameter(fnp.ClassFieldName, table.GetInitialPrimaryValue(fnp.ClassFieldName)));
-                    }
-                }
+        internal string Delete(Type tableType, SelectParameter[] pars, out List<IDbDataParameter> parameters)
+        {
+            parameters = new List<IDbDataParameter>();
+            try
+            {
+                string conditions = "";
+                TableMap map = ClassMapper.GetTableMap(tableType);
                 int parCount = 0;
-                foreach (EqualParameter eq in tmpPars)
+                foreach (SelectParameter eq in pars)
                 {
                     conditions += eq.ConstructString(map, _conn, this, ref parameters, ref parCount) + " AND ";
                 }
                 if (conditions.Length > 0)
                     conditions = conditions.Substring(0, conditions.Length - 4).Replace("main_table.", "");
-				return string.Format(DeleteWithConditions,map.Name,conditions);
-			}catch(Exception e)
-			{
-				Logger.LogLine(e.Message);
-				return null;
-			}
+                return string.Format(DeleteWithConditions, map.Name, conditions);
+            }
+            catch (Exception e)
+            {
+                Logger.LogLine(e.Message);
+                return null;
+            }
+        }
+
+		internal string Delete(Table table,out List<IDbDataParameter> parameters)
+		{
+            TableMap map = ClassMapper.GetTableMap(table.GetType());
+            List<SelectParameter> tmpPars = new List<SelectParameter>();
+            foreach (FieldNamePair fnp in map.FieldNamePairs)
+            {
+                if (map[fnp].PrimaryKey || !map.HasPrimaryKeys)
+                {
+                    tmpPars.Add(new EqualParameter(fnp.ClassFieldName, table.GetInitialPrimaryValue(fnp.ClassFieldName)));
+                }
+            }
+            return Delete(table.GetType(), tmpPars.ToArray(), out parameters);
 		}
 		
 		internal string Delete(string tableName,string conditions)

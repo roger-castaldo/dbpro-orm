@@ -318,6 +318,25 @@ namespace Org.Reddragonit.Dbpro.Connections
 			comm.CommandType=type;
 		}
 
+        public void Delete(Type tableType, SelectParameter[] pars){
+            if (_readonly)
+                throw new Exception("Unable to delete to a readonly database.");
+            if (ClassMapper.GetTableMap(tableType) == null)
+                throw new Exception("Unable to delete type " + tableType.FullName + " no matching Table Map found.");
+            if (ClassMapper.GetTableMap(tableType).ConnectionName != ConnectionName)
+                throw new Exception("Cannot delete an entry into a table into the database connection that it was not specified for.");
+            List<IDbDataParameter> parameters = new List<IDbDataParameter>();
+            string del = queryBuilder.Delete(tableType, pars, out parameters);
+            if (del != null)
+            {
+                ConnectionPoolManager.RunTriggers(tableType, pars, ConnectionPoolManager.TriggerTypes.PRE_DELETE);
+                ExecuteNonQuery(del, parameters);
+                ConnectionPoolManager.RunTriggers(tableType, pars, ConnectionPoolManager.TriggerTypes.POST_DELETE);
+            }
+            else
+                throw new Exception("An error occured attempting to build the delete query.");
+        }
+
         public void Delete(Table table)
         {
             if (_readonly)
@@ -344,6 +363,12 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         public void Update(Type tableType, Dictionary<string, object> updateFields, SelectParameter[] parameters)
         {
+            if (_readonly)
+                throw new Exception("Unable to update to a readonly database.");
+            if (ClassMapper.GetTableMap(tableType) == null)
+                throw new Exception("Unable to update type " + tableType.FullName + " no matching Table Map found.");
+            if (ClassMapper.GetTableMap(tableType).ConnectionName != ConnectionName)
+                throw new Exception("Cannot update an entry into a table into the database connection that it was not specified for.");
             List<IDbDataParameter> pars = new List<IDbDataParameter>();
             string query = queryBuilder.Update(tableType, updateFields, parameters, out pars);
             if (query != null)
