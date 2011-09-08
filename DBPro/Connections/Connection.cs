@@ -734,12 +734,12 @@ namespace Org.Reddragonit.Dbpro.Connections
                             while (Read())
                             {
                                 if (ifm.FieldType == FieldType.ENUM)
-                                    values.Add(this.pool.GetEnumValue(ifm.ObjectType.GetElementType(), this.GetInt32(0)));
+                                    values.Add(this.pool.GetEnumValue(ifm.ObjectType, this.GetInt32(0)));
                                 else
                                     values.Add(this[0]);
                             }
                             Close();
-                            Array obj = Array.CreateInstance(ifm.ObjectType.GetElementType(), values.Count);
+                            Array obj = Array.CreateInstance(ifm.ObjectType, values.Count);
                             for (int x = 0; x < values.Count; x++)
                                 ((Array)obj).SetValue(values[x],x);
                             t.SetField(map.GetClassFieldName(ifm), obj);
