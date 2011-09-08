@@ -38,6 +38,16 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 		
 		public override IDbDataParameter CreateParameter(string parameterName, object parameterValue)
 		{
+            if (parameterValue != null)
+            {
+                if (parameterValue.GetType().IsEnum)
+                {
+                    if (parameterValue != null)
+                        parameterValue = Pool.GetEnumID(parameterValue.GetType(), parameterValue.ToString());
+                    else
+                        parameterValue = (int?)null;
+                }
+            }
             if ((parameterValue is uint) || (parameterValue is UInt32))
             {
                 parameterValue = System.Text.ASCIIEncoding.ASCII.GetString(System.BitConverter.GetBytes(uint.Parse(parameterValue.ToString()))).ToCharArray();

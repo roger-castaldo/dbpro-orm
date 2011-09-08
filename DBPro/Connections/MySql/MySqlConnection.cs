@@ -51,6 +51,16 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 		
 		public override IDbDataParameter CreateParameter(string parameterName, object parameterValue)
 		{
+            if (parameterValue != null)
+            {
+                if (parameterValue.GetType().IsEnum)
+                {
+                    if (parameterValue != null)
+                        parameterValue = Pool.GetEnumID(parameterValue.GetType(), parameterValue.ToString());
+                    else
+                        parameterValue = (int?)null;
+                }
+            }
             if ((parameterValue is uint) || (parameterValue is UInt32))
             {
                 parameterValue = System.Text.ASCIIEncoding.ASCII.GetString(System.BitConverter.GetBytes(uint.Parse(parameterValue.ToString()))).ToCharArray();
@@ -68,6 +78,16 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 		
 		internal override IDbDataParameter CreateParameter(string parameterName, object parameterValue, FieldType type, int fieldLength)
 		{
+            if (parameterValue != null)
+            {
+                if (parameterValue.GetType().IsEnum)
+                {
+                    if (parameterValue != null)
+                        parameterValue = Pool.GetEnumID(parameterValue.GetType(), parameterValue.ToString());
+                    else
+                        parameterValue = (int?)null;
+                }
+            }
 			IDbDataParameter ret= CreateParameter(parameterName,parameterValue);
 			if (((type==FieldType.CHAR)||(type==FieldType.STRING))
 			    &&((fieldLength == -1)||(fieldLength>65350)))
