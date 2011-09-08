@@ -1041,7 +1041,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 						}
 					}
 				}else{
-					fields+="table_"+origCount.ToString()+"."+fnp.TableFieldName+",";
+                    if (!map[fnp].IsArray)
+					    fields+="table_"+origCount.ToString()+"."+fnp.TableFieldName+",";
 				}
 			}
 			foreach (InternalFieldMap ifm in parentMap.PrimaryKeys)

@@ -416,61 +416,64 @@ namespace Org.Reddragonit.Dbpro.Connections
                 }
 				foreach (InternalFieldMap ifm in tm.Fields)
 				{
+                    if (ifm.FieldType == FieldType.ENUM)
+                    {
+                        if (!_enumTableMaps.ContainsKey(ifm.ObjectType))
+                        {
+                            string[] split = ifm.ObjectType.FullName.Replace("+", ".").Split(".".ToCharArray());
+                            string name = "";
+                            if (split.Length > 1)
+                                name += split[split.Length - 2] + "_" + split[split.Length - 1];
+                            else
+                                name += split[0];
+                            string newName = "";
+                            foreach (char c in name.ToCharArray())
+                            {
+                                if (c.ToString().ToUpper() == c.ToString())
+                                {
+                                    newName += "_" + c.ToString().ToLower();
+                                }
+                                else
+                                {
+                                    newName += c;
+                                }
+                            }
+                            if (newName[0] == '_')
+                            {
+                                newName = newName[1].ToString().ToUpper() + newName.Substring(2);
+                            }
+                            newName = "ENUM_" + newName;
+                            newName = newName.Replace("__", "_").Replace("__", "_");
+                            name = CorrectName(newName.ToUpper());
+                            ExtractedTableMap enumMap = new ExtractedTableMap(name);
+                            enumMap.Fields.Add(new ExtractedFieldMap("ID", conn.TranslateFieldType(FieldType.INTEGER, 4),
+                                                                     4, true, false, true));
+                            enumMap.Fields.Add(new ExtractedFieldMap(CorrectName("VALUE"), conn.TranslateFieldType(FieldType.STRING, 500),
+                                                                     500, false, false, false));
+                            tables.Add(enumMap);
+                            conn.GetAddAutogen(enumMap, this, out tmpIdentities, out tmpGenerators, out tmpTriggers);
+                            if (tmpGenerators != null)
+                            {
+                                generators.AddRange(tmpGenerators);
+                                tmpGenerators.Clear();
+                            }
+                            if (tmpTriggers != null)
+                            {
+                                triggers.AddRange(tmpTriggers);
+                                tmpTriggers.Clear();
+                            }
+                            if (tmpIdentities != null)
+                            {
+                                identities.AddRange(tmpIdentities);
+                                tmpIdentities.Clear();
+                            }
+                            _enumTableMaps.Add(ifm.ObjectType, name);
+                        }
+                    }
 					if (!ifm.IsArray)
 					{
 						if (ifm.FieldType==FieldType.ENUM)
 						{
-							if (!_enumTableMaps.ContainsKey(ifm.ObjectType))
-							{
-								string[] split = ifm.ObjectType.FullName.Replace("+",".").Split(".".ToCharArray());
-								string name="";
-								if (split.Length>1)
-									name+=split[split.Length-2]+"_"+split[split.Length-1];
-								else
-									name+=split[0];
-                                string newName = "";
-                                foreach (char c in name.ToCharArray())
-                                {
-                                    if (c.ToString().ToUpper() == c.ToString())
-                                    {
-                                        newName += "_" + c.ToString().ToLower();
-                                    }
-                                    else
-                                    {
-                                        newName += c;
-                                    }
-                                }
-                                if (newName[0] == '_')
-                                {
-                                    newName = newName[1].ToString().ToUpper() + newName.Substring(2);
-                                }
-                                newName = "ENUM_" + newName;
-                                newName = newName.Replace("__", "_").Replace("__","_");
-								name=CorrectName(newName.ToUpper());
-								ExtractedTableMap enumMap = new ExtractedTableMap(name);
-								enumMap.Fields.Add(new ExtractedFieldMap("ID",conn.TranslateFieldType(FieldType.INTEGER,4),
-								                                         4,true,false,true));
-								enumMap.Fields.Add(new ExtractedFieldMap(CorrectName("VALUE"),conn.TranslateFieldType(FieldType.STRING,500),
-								                                         500,false,false,false));
-								tables.Add(enumMap);
-								conn.GetAddAutogen(enumMap,this,out tmpIdentities,out tmpGenerators,out tmpTriggers);
-								if (tmpGenerators!=null)
-								{
-									generators.AddRange(tmpGenerators);
-									tmpGenerators.Clear();
-								}
-								if (tmpTriggers!=null)
-								{
-									triggers.AddRange(tmpTriggers);
-									tmpTriggers.Clear();
-								}
-								if (tmpIdentities!=null)
-								{
-									identities.AddRange(tmpIdentities);
-									tmpIdentities.Clear();
-								}
-								_enumTableMaps.Add(ifm.ObjectType,name);
-							}
 							etm.Fields.Add(new ExtractedFieldMap(ifm.FieldName,conn.TranslateFieldType(FieldType.INTEGER,4),4,ifm.PrimaryKey,ifm.Nullable,false));
 							etm.ForeignFields.Add(new ForeignRelationMap(ifm.FieldName+"_ENUM",ifm.FieldName,CorrectName(_enumTableMaps[ifm.ObjectType]),
 							                                             "ID",UpdateDeleteAction.SET_NULL.ToString(),UpdateDeleteAction.SET_NULL.ToString()));
@@ -491,8 +494,14 @@ namespace Org.Reddragonit.Dbpro.Connections
 						}
 						etmField.Fields.Add(new ExtractedFieldMap(CorrectName(tm.Name+"_"+ifm.FieldName+"_ID"),conn.TranslateFieldType(FieldType.LONG,0),8,
 						                                          true,false,true));
-						etmField.Fields.Add(new ExtractedFieldMap(CorrectName(ifm.FieldName+"_VALUE"),conn.TranslateFieldType(ifm.FieldType,ifm.FieldLength),ifm.FieldLength,
-						                                          false,ifm.Nullable,false));
+                        if (ifm.FieldType == FieldType.ENUM)
+                        {
+                            etmField.Fields.Add(new ExtractedFieldMap(CorrectName(ifm.FieldName + "_VALUE"), conn.TranslateFieldType(FieldType.INTEGER, 4), 4, ifm.PrimaryKey, ifm.Nullable, false));
+                            etmField.ForeignFields.Add(new ForeignRelationMap(ifm.FieldName + "_ENUM", CorrectName(ifm.FieldName + "_VALUE"), CorrectName(_enumTableMaps[ifm.ObjectType]),
+                                                                         "ID", UpdateDeleteAction.CASCADE.ToString(), UpdateDeleteAction.CASCADE.ToString()));
+                        }else
+						    etmField.Fields.Add(new ExtractedFieldMap(CorrectName(ifm.FieldName+"_VALUE"),conn.TranslateFieldType(ifm.FieldType,ifm.FieldLength),ifm.FieldLength,
+						                                              false,ifm.Nullable,false));
 						tables.Add(etmField);
 						conn.GetAddAutogen(etmField,this,out tmpIdentities,out tmpGenerators,out tmpTriggers);
 						if (tmpGenerators!=null)
