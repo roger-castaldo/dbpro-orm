@@ -210,7 +210,17 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		
 		public override System.Data.IDbDataParameter CreateParameter(string parameterName, object parameterValue)
 		{
-			if (parameterValue is bool)
+            if (parameterValue != null)
+            {
+                if (parameterValue.GetType().IsEnum)
+                {
+                    if (parameterValue != null)
+                        parameterValue = Pool.GetEnumID(parameterValue.GetType(), parameterValue.ToString());
+                    else
+                        parameterValue = (int?)null;
+                }
+            }
+            if (parameterValue is bool)
 			{
 				if ((bool)parameterValue)
 					parameterValue='T';
