@@ -190,7 +190,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
         {
             List<Index> ret = new List<Index>();
             conn.ExecuteQuery("SELECT TRIM(ind.RDB$INDEX_NAME),ind.RDB$UNIQUE_FLAG,(CASE WHEN ind.RDB$INDEX_TYPE IS NULL THEN 0 ELSE 1 END) FROM RDB$INDICES ind "+
-                "WHERE ind.RDB$RELATION_NAME = '" + tableName + "' AND ind.RDB$INDEX_NAME NOT LIKE '%RDB$PRIMARY%' AND ind.RDB$INDEX_NAME NOT LIKE '%RDB$FOREIGN%' ORDER BY ind.RDB$INDEX_ID");
+                "WHERE ind.RDB$RELATION_NAME = '" + tableName + "' AND ind.RDB$INDEX_NAME NOT IN (SELECT RDB$INDEX_NAME FROM RDB$RELATION_CONSTRAINTS WHERE RDB$RELATION_NAME = '"+tableName+"') ORDER BY ind.RDB$INDEX_ID");
             while (conn.Read())
             {
                 ret.Add(new Index(conn[0].ToString(), null, conn[1].ToString() == "1", conn[2].ToString() == "0"));
