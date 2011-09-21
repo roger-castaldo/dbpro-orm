@@ -158,9 +158,10 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
                 {
                     if (this[str] is ExternalFieldMap)
                     {
-                        TableMap tm = ClassMapper.GetTableMap(((ExternalFieldMap)this[str]).Type);
+                        ExternalFieldMap efm = (ExternalFieldMap)this[str];
+                        TableMap tm = ClassMapper.GetTableMap(efm.Type);
                         foreach (InternalFieldMap ifm in tm.PrimaryKeys)
-                            sfields.Add(ifm.FieldName);
+                            sfields.Add(efm.AddOnName+"_"+ifm.FieldName);
                     }
                     else
                         sfields.Add(this.GetTableFieldName(str));
