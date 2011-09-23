@@ -32,12 +32,21 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
         private Dictionary<int, string> _fieldNames;
         private Dictionary<int, int> _tableFieldCounts;
         private Dictionary<int, Type> _enumFields;
+        private bool _connectionPassed;
 		private Connection _conn = null;
 	
 		public ClassQuery(string NameSpace,string query)
 		{
+            _connectionPassed = false;
             NewQuery(NameSpace, query);
 		}
+
+        public ClassQuery(string NameSpace, string query, Connection conn)
+        {
+            _connectionPassed = true;
+            _conn = conn;
+            NewQuery(NameSpace, query);
+        }
 
         public void NewQuery(string NameSpace, string query)
         {
@@ -1681,7 +1690,10 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 
         public void Close()
         {
-            _conn.CloseConnection();
+            if (_connectionPassed)
+                _conn.Close();
+            else
+                _conn.CloseConnection();
         }
 
         public int Depth
