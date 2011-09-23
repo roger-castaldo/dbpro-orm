@@ -329,9 +329,13 @@ namespace Org.Reddragonit.Dbpro.Connections
             string del = queryBuilder.Delete(tableType, pars, out parameters);
             if (del != null)
             {
-                ConnectionPoolManager.RunTriggers(tableType, pars, ConnectionPoolManager.TriggerTypes.PRE_DELETE);
-                ExecuteNonQuery(del, parameters);
-                ConnectionPoolManager.RunTriggers(tableType, pars, ConnectionPoolManager.TriggerTypes.POST_DELETE);
+                bool abort = false;
+                ConnectionPoolManager.RunTriggers(this,tableType, pars, ConnectionPoolManager.TriggerTypes.PRE_DELETE,out abort);
+                if (!abort)
+                {
+                    ExecuteNonQuery(del, parameters);
+                    ConnectionPoolManager.RunTriggers(this, tableType, pars, ConnectionPoolManager.TriggerTypes.POST_DELETE, out abort);
+                }
             }
             else
                 throw new Exception("An error occured attempting to build the delete query.");
@@ -345,20 +349,28 @@ namespace Org.Reddragonit.Dbpro.Connections
                 throw new Exception("Unable to delete an object from the database that is not saved.");
             if (table.ConnectionName != ConnectionName)
                 throw new Exception("Unable to delete an object from a database connection it is not part of.");
-            ConnectionPoolManager.RunTriggers(null,table, ConnectionPoolManager.TriggerTypes.PRE_DELETE);
-            List<IDbDataParameter> pars;
-            string del = queryBuilder.Delete(table, out pars);
-            ExecuteNonQuery(del, pars);
-            ConnectionPoolManager.RunTriggers(null,table, ConnectionPoolManager.TriggerTypes.POST_DELETE);
+            bool abort = false;
+            ConnectionPoolManager.RunTriggers(this, null, table, ConnectionPoolManager.TriggerTypes.PRE_DELETE, out abort);
+            if (!abort)
+            {
+                List<IDbDataParameter> pars;
+                string del = queryBuilder.Delete(table, out pars);
+                ExecuteNonQuery(del, pars);
+                ConnectionPoolManager.RunTriggers(this, null, table, ConnectionPoolManager.TriggerTypes.POST_DELETE, out abort);
+            }
         }
 
         internal void DeleteAll(Type tableType)
         {
             if (_readonly)
                 throw new Exception("Unable to delete from a readonly database.");
-            ConnectionPoolManager.RunTriggers(tableType, ConnectionPoolManager.TriggerTypes.PRE_DELETE_ALL);
-            this.ExecuteNonQuery(queryBuilder.DeleteAll(tableType));
-            ConnectionPoolManager.RunTriggers(tableType, ConnectionPoolManager.TriggerTypes.POST_DELETE_ALL);
+            bool abort = false;
+            ConnectionPoolManager.RunTriggers(this, tableType, ConnectionPoolManager.TriggerTypes.PRE_DELETE_ALL, out abort);
+            if (!abort)
+            {
+                this.ExecuteNonQuery(queryBuilder.DeleteAll(tableType));
+                ConnectionPoolManager.RunTriggers(this, tableType, ConnectionPoolManager.TriggerTypes.POST_DELETE_ALL, out abort);
+            }
         }
 
         public void Update(Type tableType, Dictionary<string, object> updateFields, SelectParameter[] parameters)
@@ -373,9 +385,13 @@ namespace Org.Reddragonit.Dbpro.Connections
             string query = queryBuilder.Update(tableType, updateFields, parameters, out pars);
             if (query != null)
             {
-                ConnectionPoolManager.RunTriggers(tableType, updateFields, parameters, ConnectionPoolManager.TriggerTypes.PRE_UPDATE);
-                ExecuteNonQuery(query, pars.ToArray());
-                ConnectionPoolManager.RunTriggers(tableType, updateFields, parameters, ConnectionPoolManager.TriggerTypes.POST_UPDATE);
+                bool abort = false;
+                ConnectionPoolManager.RunTriggers(this, tableType, updateFields, parameters, ConnectionPoolManager.TriggerTypes.PRE_UPDATE, out abort);
+                if (!abort)
+                {
+                    ExecuteNonQuery(query, pars.ToArray());
+                    ConnectionPoolManager.RunTriggers(this, tableType, updateFields, parameters, ConnectionPoolManager.TriggerTypes.POST_UPDATE, out abort);
+                }
             }
         }
 		
@@ -480,18 +496,26 @@ namespace Org.Reddragonit.Dbpro.Connections
                 if (table.LoadStatus == LoadStatus.Complete)
                 {
                     Table orig = table.LoadCopyOfOriginal(this);
-                    ConnectionPoolManager.RunTriggers(orig,table, ConnectionPoolManager.TriggerTypes.PRE_UPDATE);
-                    ret = Update(table);
-                    ConnectionPoolManager.RunTriggers(orig,ret, ConnectionPoolManager.TriggerTypes.POST_UPDATE);
+                    bool abort = false;
+                    ConnectionPoolManager.RunTriggers(this, orig, table, ConnectionPoolManager.TriggerTypes.PRE_UPDATE, out abort);
+                    if (!abort)
+                    {
+                        ret = Update(table);
+                        ConnectionPoolManager.RunTriggers(this, orig, ret, ConnectionPoolManager.TriggerTypes.POST_UPDATE, out abort);
+                    }
                 }
                 else
                     ret = table;
             }
             else
             {
-                ConnectionPoolManager.RunTriggers(null,table, ConnectionPoolManager.TriggerTypes.PRE_INSERT);
-                ret=Insert(table,false);
-                ConnectionPoolManager.RunTriggers(null,ret, ConnectionPoolManager.TriggerTypes.POST_INSERT);
+                bool abort = false;
+                ConnectionPoolManager.RunTriggers(this, null, table, ConnectionPoolManager.TriggerTypes.PRE_INSERT, out abort);
+                if (!abort)
+                {
+                    ret = Insert(table, false);
+                    ConnectionPoolManager.RunTriggers(this, null, ret, ConnectionPoolManager.TriggerTypes.POST_INSERT, out abort);
+                }
             }
             if (!ret.IsProxied)
                 ret = (Table)LazyProxy.Instance(ret);
@@ -542,16 +566,24 @@ namespace Org.Reddragonit.Dbpro.Connections
                                 ta.SetField(fnp.ClassFieldName, tblPar.GetField(fnp.ClassFieldName));
                             }
                         }
-                        ConnectionPoolManager.RunTriggers(orig,ta, ConnectionPoolManager.TriggerTypes.PRE_UPDATE);
-                        tblPar = Update(ta);
-                        orig = tblPar.LoadCopyOfOriginal(this);
-                        ConnectionPoolManager.RunTriggers(orig,tblPar, ConnectionPoolManager.TriggerTypes.PRE_UPDATE);
+                        bool abort = false;
+                        ConnectionPoolManager.RunTriggers(this, orig, ta, ConnectionPoolManager.TriggerTypes.PRE_UPDATE, out abort);
+                        if (!abort)
+                        {
+                            tblPar = Update(ta);
+                            orig = tblPar.LoadCopyOfOriginal(this);
+                            ConnectionPoolManager.RunTriggers(this, orig, tblPar, ConnectionPoolManager.TriggerTypes.PRE_UPDATE, out abort);
+                        }
                     }
                     else
                     {
-                        ConnectionPoolManager.RunTriggers(null,tblPar, ConnectionPoolManager.TriggerTypes.PRE_INSERT);
-                        tblPar = Insert(tblPar, ignoreAutogen);
-                        ConnectionPoolManager.RunTriggers(null,tblPar, ConnectionPoolManager.TriggerTypes.POST_INSERT);
+                        bool abort = false;
+                        ConnectionPoolManager.RunTriggers(this, null, tblPar, ConnectionPoolManager.TriggerTypes.PRE_INSERT, out abort);
+                        if (!abort)
+                        {
+                            tblPar = Insert(tblPar, ignoreAutogen);
+                            ConnectionPoolManager.RunTriggers(this, null, tblPar, ConnectionPoolManager.TriggerTypes.POST_INSERT, out abort);
+                        }
                     }
                     table.CopyValuesFrom(tblPar);
                 }

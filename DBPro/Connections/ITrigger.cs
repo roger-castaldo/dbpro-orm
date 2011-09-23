@@ -8,17 +8,18 @@ namespace Org.Reddragonit.Dbpro.Connections
 {
     public interface ITrigger
     {
-        void PostUpdate(Table originalValue,Table newValue, List<string> changedFields);
-        void PostUpdate(Type tableType, Dictionary<string, object> updateFields, SelectParameter[] parameters);
-        void PreUpdate(Table originalValue,Table newValue, List<string> changedFields);
-        void PreUpdate(Type tableType, Dictionary<string, object> updateFields, SelectParameter[] parameters);
-        void PreDelete(Table table);
-        void PreDelete(Type tableType, SelectParameter[] parameters);
-        void PostDelete(Table table);
-        void PostDelete(Type tableType, SelectParameter[] parameters);
-        void PreDeleteAll();
-        void PostDeleteAll();
-        void PreInsert(Table table);
-        void PostInsert(Table table);
+        void PreInsert(Connection conn,Table table, out bool abort);
+        void PreUpdate(Connection conn, Table originalValue, Table newValue, List<string> changedFields, out bool abort);
+        void PreUpdate(Connection conn, Type tableType, Dictionary<string, object> updateFields, SelectParameter[] parameters, out bool abort);
+        void PreDelete(Connection conn, Table table, out bool abort);
+        void PreDelete(Connection conn, Type tableType, SelectParameter[] parameters, out bool abort);
+        void PreDeleteAll(Connection conn, out bool abort);
+        
+        void PostDeleteAll(Connection conn);
+        void PostInsert(Connection conn, Table table);
+        void PostUpdate(Connection conn, Table originalValue, Table newValue, List<string> changedFields);
+        void PostUpdate(Connection conn, Type tableType, Dictionary<string, object> updateFields, SelectParameter[] parameters);
+        void PostDelete(Connection conn, Table table);
+        void PostDelete(Connection conn, Type tableType, SelectParameter[] parameters);
     }
 }
