@@ -115,8 +115,9 @@ namespace Org.Reddragonit.Dbpro.Connections
             Monitor.Exit(_triggers);
         }
 
-        internal static void RunTriggers(Type tblType, TriggerTypes type)
+        internal static void RunTriggers(Connection conn, Type tblType, TriggerTypes type, out bool abort)
         {
+            abort = false;
             ITrigger[] tmp = new ITrigger[0];
             Monitor.Enter(_triggers);
             if (_triggers.ContainsKey(tblType))
@@ -130,17 +131,18 @@ namespace Org.Reddragonit.Dbpro.Connections
                 switch (type)
                 {
                     case TriggerTypes.PRE_DELETE_ALL:
-                        tr.PreDeleteAll();
+                        tr.PreDeleteAll(conn,out abort);
                         break;
                     case TriggerTypes.POST_DELETE_ALL:
-                        tr.PostDeleteAll();
+                        tr.PostDeleteAll(conn);
                         break;
                 }
             }
         }
 
-        internal static void RunTriggers(Type tableType, SelectParameter[] parameters, TriggerTypes type)
+        internal static void RunTriggers(Connection conn, Type tableType, SelectParameter[] parameters, TriggerTypes type, out bool abort)
         {
+            abort = false;
             ITrigger[] tmp = new ITrigger[0];
             Monitor.Enter(_triggers);
             if (_triggers.ContainsKey(tableType))
@@ -154,17 +156,18 @@ namespace Org.Reddragonit.Dbpro.Connections
                 switch (type)
                 {
                     case TriggerTypes.PRE_DELETE:
-                        tr.PreDelete(tableType, parameters);
+                        tr.PreDelete(conn,tableType, parameters,out abort);
                         break;
                     case TriggerTypes.POST_DELETE:
-                        tr.PostDelete(tableType, parameters);
+                        tr.PostDelete(conn,tableType, parameters);
                         break;
                 }
             }
         }
 
-        internal static void RunTriggers(Type tableType, Dictionary<string, object> updateFields, SelectParameter[] parameters, TriggerTypes type)
+        internal static void RunTriggers(Connection conn, Type tableType, Dictionary<string, object> updateFields, SelectParameter[] parameters, TriggerTypes type, out bool abort)
         {
+            abort = false;
             ITrigger[] tmp = new ITrigger[0];
             Monitor.Enter(_triggers);
             if (_triggers.ContainsKey(tableType))
@@ -178,17 +181,18 @@ namespace Org.Reddragonit.Dbpro.Connections
                 switch (type)
                 {
                     case TriggerTypes.PRE_UPDATE:
-                        tr.PreUpdate(tableType, updateFields, parameters);
+                        tr.PreUpdate(conn,tableType, updateFields, parameters,out abort);
                         break;
                     case TriggerTypes.POST_UPDATE:
-                        tr.PostUpdate(tableType, updateFields, parameters);
+                        tr.PostUpdate(conn,tableType, updateFields, parameters);
                         break;
                 }
             }
         }
 
-        internal static void RunTriggers(Table original,Table tbl, TriggerTypes type)
+        internal static void RunTriggers(Connection conn, Table original, Table tbl, TriggerTypes type, out bool abort)
         {
+            abort = false;
             ITrigger[] tmp = new ITrigger[0];
             Monitor.Enter(_triggers);
             if (_triggers.ContainsKey(tbl.GetType())){
@@ -201,28 +205,28 @@ namespace Org.Reddragonit.Dbpro.Connections
                 switch (type)
                 {
                     case TriggerTypes.PRE_DELETE:
-                        tr.PreDelete(tbl);
+                        tr.PreDelete(conn,tbl,out abort);
                         break;
                     case TriggerTypes.POST_DELETE:
-                        tr.PostDelete(tbl);
+                        tr.PostDelete(conn, tbl);
                         break;
                     case TriggerTypes.PRE_INSERT:
-                        tr.PreInsert(tbl);
+                        tr.PreInsert(conn, tbl, out abort);
                         break;
                     case TriggerTypes.POST_INSERT:
-                        tr.PostInsert(tbl);
+                        tr.PostInsert(conn, tbl);
                         break;
                     case TriggerTypes.PRE_UPDATE:
-                        tr.PreUpdate(original,tbl, tbl.ChangedFields);
+                        tr.PreUpdate(conn, original, tbl, tbl.ChangedFields, out abort);
                         break;
                     case TriggerTypes.POST_UPDATE:
-                        tr.PostUpdate(original,tbl, tbl.ChangedFields);
+                        tr.PostUpdate(conn, original, tbl, tbl.ChangedFields);
                         break;
                     case TriggerTypes.PRE_DELETE_ALL:
-                        tr.PreDeleteAll();
+                        tr.PreDeleteAll(conn, out abort);
                         break;
                     case TriggerTypes.POST_DELETE_ALL:
-                        tr.PostDeleteAll();
+                        tr.PostDeleteAll(conn);
                         break;
                 }
             }
