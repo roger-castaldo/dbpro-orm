@@ -108,6 +108,7 @@
     <Compile Include="Connections\MySql\MySqlQueryBuilder.cs" />
     <Compile Include="Connections\Parameters\AndParameter.cs" />
     <Compile Include="Connections\Parameters\CompareParameter.cs" />
+    <Compile Include="Connections\Parameters\EqualIgnoreCaseParameter.cs" />
     <Compile Include="Connections\Parameters\EqualParameter.cs" />
     <Compile Include="Connections\Parameters\GreaterThanEqualToParameter.cs" />
     <Compile Include="Connections\Parameters\GreaterThanParameter.cs" />
