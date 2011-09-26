@@ -856,6 +856,10 @@ namespace Org.Reddragonit.Dbpro.Connections
                     }
                 }
             }
+            if (relatedMap.ParentType != null)
+            {
+                return LocateFieldValue(table, ClassMapper.GetTableMap(relatedMap.ParentType), fieldName, pool);
+            }
             return null;
         }
 
