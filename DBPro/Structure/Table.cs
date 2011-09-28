@@ -551,10 +551,15 @@ namespace Org.Reddragonit.Dbpro.Structure
 				throw new Exception("Cannot convert object to type that does not inherit table.");
 			if (!this.GetType().IsSubclassOf(conversionType) && !conversionType.IsSubclassOf(this.GetType()))
 				throw new Exception("Cannot convert object to type that is not a parent/child of the current class.");
-			object ret = conversionType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
+			Table ret = (Table)conversionType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
             TableMap map = ClassMapper.GetTableMap(conversionType);
             if (conversionType.IsSubclassOf(this.GetType()))
                 map = ClassMapper.GetTableMap(this.GetType());
+            else
+            {
+                ret._isSaved = this._isSaved;
+                ret._loadStatus = this._loadStatus;
+            }
             ((Table)ret)._changedFields = new List<string>();
             foreach (FieldNamePair fnp in map.FieldNamePairs)
             {
