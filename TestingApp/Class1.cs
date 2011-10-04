@@ -93,7 +93,7 @@ namespace TestingApp
 
         public static Stream LocateEmbededResource(string name)
         {
-            Stream ret = typeof(Utility).Assembly.GetManifestResourceStream(name);
+            Stream ret = typeof(Table).Assembly.GetManifestResourceStream(name);
             if (ret == null)
             {
                 foreach (Assembly ass in AppDomain.CurrentDomain.GetAssemblies())
