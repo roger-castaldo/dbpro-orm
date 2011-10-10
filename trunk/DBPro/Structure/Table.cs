@@ -411,10 +411,30 @@ namespace Org.Reddragonit.Dbpro.Structure
                 pi.SetValue(this, BitConverter.ToUInt32(BitConverter.GetBytes(int.Parse(value.ToString())), 0),new object[0]);
             }else if (pi.PropertyType.Equals(typeof(ushort)) || pi.PropertyType.Equals(typeof(UInt16))){
                 pi.SetValue(this, BitConverter.ToUInt16(BitConverter.GetBytes(short.Parse(value.ToString())), 0), new object[0]);
-            }else if (pi.PropertyType.Equals(typeof(ulong)) || pi.PropertyType.Equals(typeof(UInt64))){
+            }
+            else if (pi.PropertyType.Equals(typeof(ulong)) || pi.PropertyType.Equals(typeof(UInt64)))
+            {
                 pi.SetValue(this, BitConverter.ToUInt64(BitConverter.GetBytes(long.Parse(value.ToString())), 0), new object[0]);
-            }else 
-				pi.SetValue(this,value,new object[0]);
+            }
+            else
+            {
+                if (value != null)
+                {
+                    if (value.GetType().FullName != pi.PropertyType.FullName)
+                    {
+                        try
+                        {
+                            object val = Convert.ChangeType(value, pi.PropertyType);
+                            value = val;
+                        }
+                        catch (Exception e)
+                        {
+                            Logger.LogLine(e);
+                        }
+                    }
+                }
+                pi.SetValue(this, value, new object[0]);
+            }
 		}
 		
 		internal bool IsFieldNull(string FieldName)
