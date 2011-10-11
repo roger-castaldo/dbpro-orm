@@ -499,6 +499,16 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
                         }
                     }
                 }
+                for (int x = 1; x < ret.Count; x++)
+                {
+                    if (this[ret[x].ClassFieldName].PrimaryKey)
+                    {
+                        FieldNamePair fnp = ret[x];
+                        ret.RemoveAt(x);
+                        ret.Insert(0, fnp);
+                        x--;
+                    }
+                }
 				return ret;
 			}
 		}
