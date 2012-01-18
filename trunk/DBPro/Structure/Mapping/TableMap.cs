@@ -499,7 +499,15 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
                         }
                     }
                 }
-                for (int x = 1; x < ret.Count; x++)
+                int lastPrimary = 0;
+                for (int x = 0; x < ret.Count; x++)
+                {
+                    if (this[ret[x].ClassFieldName].PrimaryKey)
+                        lastPrimary = x;
+                    else
+                        break;
+                }
+                for (int x = lastPrimary+1; x < ret.Count; x++)
                 {
                     if (this[ret[x].ClassFieldName].PrimaryKey)
                     {
