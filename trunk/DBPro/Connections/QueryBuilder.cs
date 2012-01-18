@@ -756,7 +756,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 				if (values!=null)
 				{
 					TableMap relatedMap = ClassMapper.GetTableMap(efm.Type);
-					string delString = "DELETE FROM " + pool.CorrectName(map.Name + "_" + relatedMap.Name) + " WHERE ";
+					string delString = "DELETE FROM " + pool.CorrectName(map.Name + "_" + relatedMap.Name+"_"+efm.AddOnName) + " WHERE ";
 					List<IDbDataParameter> pars = new List<IDbDataParameter>();
 					foreach (InternalFieldMap ifm in map.PrimaryKeys)
 					{
@@ -768,7 +768,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 					}
 					ret.Add(delString.Substring(0, delString.Length - 4),new List<List<IDbDataParameter>>());
 					ret[delString.Substring(0, delString.Length - 4)].Add(pars);
-                    delString = "INSERT INTO " + pool.CorrectName(map.Name + "_" + relatedMap.Name) + "(";
+                    delString = "INSERT INTO " + pool.CorrectName(map.Name + "_" + relatedMap.Name+"_"+efm.AddOnName) + "(";
 					string valueString = "VALUES(";
 					foreach (InternalFieldMap ifm in map.PrimaryKeys)
 					{
@@ -1136,7 +1136,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                         string tbl = _conn.queryBuilder.SelectAll(efm.Type, null);
                         if (efm.IsArray)
                         {
-                            innerJoin += _conn.Pool.CorrectName(map.Name + "_" + eMap.Name) + " " + alias + "_intermediate_" + className + " ON ";
+                            innerJoin += _conn.Pool.CorrectName(map.Name + "_" + eMap.Name+efm.AddOnName) + " " + alias + "_intermediate_" + className + " ON ";
                             foreach (InternalFieldMap ifm in map.PrimaryKeys)
                                 innerJoin += " " + alias + "." + _conn.Pool.CorrectName(ifm.FieldName) + " = " + alias + "_intermediate_" + className + "." + _conn.Pool.CorrectName("PARENT_" + ifm.FieldName) + " AND ";
                             innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);

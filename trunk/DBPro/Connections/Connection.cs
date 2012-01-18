@@ -725,7 +725,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                             pars.Add(CreateParameter(queryBuilder.CreateParameterName("parent_" + ifm.FieldName), QueryBuilder.LocateFieldValue(t, map, ifm.FieldName, pool)));
                         }
                         conditions = conditions.Substring(0, conditions.Length - 4);
-                        query = String.Format(queryBuilder.OrderBy, string.Format(queryBuilder.SelectWithConditions, fields, pool.CorrectName(map.Name + "_" + external.Name), conditions), pool.CorrectName("index"));
+                        query = String.Format(queryBuilder.OrderBy, string.Format(queryBuilder.SelectWithConditions, fields, pool.CorrectName(map.Name + "_" + external.Name+"_"+f.AddOnName), conditions), pool.CorrectName("index"));
                         ArrayList values = new ArrayList();
                         ExecuteQuery(query, pars);
                         while (Read())
