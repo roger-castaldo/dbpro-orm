@@ -159,7 +159,7 @@ namespace Org.Reddragonit.Dbpro.Virtual
                         innerJoin = " LEFT JOIN ";
                     if (efm.IsArray)
                     {
-                        innerJoin += conn.Pool.CorrectName(mainMap.Name + "_" + extMap.Name) + " main_intermediate_" + fnp.ClassFieldName + " ON ";
+                        innerJoin += conn.Pool.CorrectName(mainMap.Name + "_" + extMap.Name+"_"+efm.AddOnName) + " main_intermediate_" + fnp.ClassFieldName + " ON ";
                         foreach (InternalFieldMap ifm in mainMap.PrimaryKeys)
                             innerJoin += " virtualTable." + conn.Pool.CorrectName(ifm.FieldName) + " = main_intermediate_" + fnp.ClassFieldName + "." + conn.Pool.CorrectName("PARENT_" + ifm.FieldName) + " AND ";
                         innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
@@ -251,7 +251,7 @@ namespace Org.Reddragonit.Dbpro.Virtual
 								if (efm.Nullable)
 									innerJoin=" LEFT JOIN ";
 								if (efm.IsArray){
-									innerJoin+=conn.Pool.CorrectName(eMap.Name+"_"+eMap.Name)+" "+tp.EndTable+"_intermediate_"+fnp.ClassFieldName +" ON ";
+									innerJoin+=conn.Pool.CorrectName(eMap.Name+"_"+eMap.Name+"_"+efm.AddOnName)+" "+tp.EndTable+"_intermediate_"+fnp.ClassFieldName +" ON ";
 									foreach (InternalFieldMap ifm in extMap.PrimaryKeys)
 										innerJoin+=" "+tp.EndTable+"."+conn.Pool.CorrectName(ifm.FieldName)+" = "+tp.EndTable+"_intermediate_"+fnp.ClassFieldName +"."+conn.Pool.CorrectName("PARENT_"+ifm.FieldName)+" AND ";
 									innerJoin=innerJoin.Substring(0,innerJoin.Length-5);

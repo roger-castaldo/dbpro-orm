@@ -535,7 +535,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 				foreach (ExternalFieldMap efm in tm.ExternalFieldMapArrays)
 				{
 					TableMap ftm = ClassMapper.GetTableMap(efm.Type);
-					ExtractedTableMap aetm = new ExtractedTableMap(CorrectName(tm.Name+"_"+ftm.Name));
+					ExtractedTableMap aetm = new ExtractedTableMap(CorrectName(tm.Name+"_"+ftm.Name+"_"+efm.AddOnName));
 					foreach (InternalFieldMap ifm in tm.PrimaryKeys)
 					{
 						aetm.Fields.Add(new ExtractedFieldMap(CorrectName("parent_"+ifm.FieldName),conn.TranslateFieldType(ifm.FieldType,ifm.FieldLength),

@@ -1198,7 +1198,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     string tbl = _conn.queryBuilder.SelectAll(efm.Type,null);
 					if (efm.IsArray)
 					{
-						innerJoin += _conn.Pool.CorrectName(map.Name + "_" + eMap.Name) + " " + alias + "_intermediate_" + className + " ON ";
+						innerJoin += _conn.Pool.CorrectName(map.Name + "_" + eMap.Name+"_"+efm.AddOnName) + " " + alias + "_intermediate_" + className + " ON ";
 						foreach (InternalFieldMap ifm in map.PrimaryKeys)
 							innerJoin += " " + talias + "." + _conn.Pool.CorrectName(ifm.FieldName) + " = " + alias + "_intermediate_" + className + "." + _conn.Pool.CorrectName("PARENT_" + ifm.FieldName) + " AND ";
 						innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
@@ -1244,7 +1244,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         string fieldString = tbl.Substring(tbl.IndexOf("SELECT") + "SELECT".Length);
                         if (efm.IsArray)
                         {
-                            innerJoin += _conn.Pool.CorrectName(map.Name + "_" + eMap.Name) + " " + alias + "_intermediate_" + className + " ON ";
+                            innerJoin += _conn.Pool.CorrectName(map.Name + "_" + eMap.Name+"_"+efm.AddOnName) + " " + alias + "_intermediate_" + className + " ON ";
                             foreach (InternalFieldMap ifm in baseMap.PrimaryKeys)
                                 innerJoin += " " + alias + "." + _conn.Pool.CorrectName(ifm.FieldName) + " = " + alias + "_intermediate_" + className + "." + _conn.Pool.CorrectName("PARENT_" + ifm.FieldName) + " AND ";
                             innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
@@ -1308,7 +1308,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         fieldLists.Add(origAlias + "." + origField, fields);
                     if (efm.IsArray)
                     {
-                        innerJoin += _conn.Pool.CorrectName(map.Name + "_" + eMap.Name) + " " + alias + "_intermediate_" + className + " ON ";
+                        innerJoin += _conn.Pool.CorrectName(map.Name + "_" + eMap.Name+"_"+efm.AddOnName) + " " + alias + "_intermediate_" + className + " ON ";
                         foreach (InternalFieldMap ifm in baseMap.PrimaryKeys)
                             innerJoin += " " + alias + "." + _conn.Pool.CorrectName(ifm.FieldName) + " = " + alias + "_intermediate_" + className + "." + _conn.Pool.CorrectName("PARENT_" + ifm.FieldName) + " AND ";
                         innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
