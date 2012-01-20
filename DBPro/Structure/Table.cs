@@ -424,7 +424,10 @@ namespace Org.Reddragonit.Dbpro.Structure
                     {
                         try
                         {
-                            object val = Convert.ChangeType(value, pi.PropertyType);
+                            Type pt = pi.PropertyType;
+                            if (pt.IsGenericType && pt.GetGenericTypeDefinition().FullName.StartsWith("System.Nullable"))
+                                pt = pt.GetGenericArguments()[0];
+                            object val = Convert.ChangeType(value, pt);
                             value = val;
                         }
                         catch (Exception e)
