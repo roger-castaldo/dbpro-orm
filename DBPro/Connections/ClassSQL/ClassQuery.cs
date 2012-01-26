@@ -233,8 +233,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 if (parameters != null)
                     pars.AddRange(parameters);
                 query = _conn.queryBuilder.SelectPaged(_outputQuery, ClassMapper.GetTableMap(primaryTable), ref pars, start, recordCount);
-                List<IDbDataParameter> p = CorrectParameters(parameters, ref query);
-                _conn.ExecuteQuery(query, pars);
+                List<IDbDataParameter> p = CorrectParameters(pars, ref query);
                 _conn.ExecuteQuery(query, p);
             }
             catch (Exception e)
