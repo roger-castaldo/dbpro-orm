@@ -2,16 +2,20 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Data;
-using System.Data.SqlClient;
 using Org.Reddragonit.Dbpro.Connections;
 using Org.Reddragonit.Dbpro.Structure.Mapping;
 using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.FieldType;
 using VersionTypes = Org.Reddragonit.Dbpro.Structure.Attributes.VersionField.VersionTypes;
+using System.Reflection;
 
 namespace Org.Reddragonit.Dbpro.Connections.MsSql
 {
 	class MsSqlConnection : Connection
 	{
+        private const string _PARAMETER_TYPE_NAME = "System.Data.SqlClient";
+        private const string _CONNECTION_TYPE_NAME = "System.Data.SqlConnection";
+        private const string _COMMAND_TYPE_NAME = "System.Data.SqlCommand";
+
         internal override string ConcatenationCharacter
         {
             get
@@ -61,14 +65,16 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 			if (((type==FieldType.CHAR)||(type==FieldType.STRING))
 			    &&((fieldLength == -1)||(fieldLength>8000)))
 			{
-				((SqlParameter)ret).SqlDbType=SqlDbType.Text;
+                Type t = Utility.LocateType(_PARAMETER_TYPE_NAME);
+                PropertyInfo pi = t.GetProperty("SqlDbType");
+                pi.SetValue(ret, SqlDbType.Text, new object[] { });
 			}
 			return ret;
 		}
 
         internal override IDbTransaction EstablishExclusiveTransaction()
         {
-            return ((SqlConnection)conn).BeginTransaction(IsolationLevel.Serializable);
+            return conn.BeginTransaction(IsolationLevel.Serializable);
         }
 		
 		public override System.Data.IDbDataParameter CreateParameter(string parameterName, object parameterValue)
@@ -95,7 +101,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
             {
                 parameterValue = System.Text.ASCIIEncoding.ASCII.GetString(System.BitConverter.GetBytes(ulong.Parse(parameterValue.ToString()))).ToCharArray();
             }
-			return new SqlParameter(parameterName, parameterValue);
+            return (IDbDataParameter)Utility.LocateType(_PARAMETER_TYPE_NAME).GetConstructor(new Type[] { typeof(string), typeof(object) }).Invoke(new object[] { parameterName, parameterValue });
 		}
 
 		internal override void GetAddAutogen(ExtractedTableMap map,ConnectionPool pool, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers)
@@ -218,15 +224,15 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 			}
 		}
 
-		protected override System.Data.IDbCommand EstablishCommand()
-		{
-			return new SqlCommand("", (SqlConnection)conn);
-		}
+        protected override IDbCommand EstablishCommand()
+        {
+            return (IDbCommand)Utility.LocateType(_COMMAND_TYPE_NAME).GetConstructor(new Type[] { typeof(string), Utility.LocateType(_CONNECTION_TYPE_NAME) }).Invoke(new object[] { "", conn });
+        }
 
-		protected override System.Data.IDbConnection EstablishConnection()
-		{
-			return new SqlConnection(connectionString);
-		}
+        protected override IDbConnection EstablishConnection()
+        {
+            return (IDbConnection)Utility.LocateType(_CONNECTION_TYPE_NAME).GetConstructor(new Type[] { typeof(String) }).Invoke(new object[] { connectionString });
+        }
 		
 		internal override List<Trigger> GetVersionTableTriggers(ExtractedTableMap table,VersionTypes versionType,ConnectionPool pool)
 		{

@@ -48,6 +48,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		private string _connectionName;
 		
 		protected abstract Connection CreateConnection(bool exclusiveLock);
+        protected abstract void _InitClass();
 
         private Connection CreateConnection()
         {
@@ -311,6 +312,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		internal void Init(Dictionary<Type,List<EnumTranslationPair>> translations)
 		{
+            _InitClass();
             if (!_debugMode)
 			    PreInit();
 			ClassMapper.CorrectNamesForConnection(this);
