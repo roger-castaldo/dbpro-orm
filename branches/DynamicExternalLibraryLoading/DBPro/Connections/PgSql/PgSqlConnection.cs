@@ -6,13 +6,12 @@
  * 
  * To change this template use Tools | Options | Coding | Edit Standard Headers.
  */
-using NpgsqlTypes;
 using System;
 using System.Collections.Generic;
 using System.Data;
-using Npgsql;
 using Org.Reddragonit.Dbpro.Structure.Attributes;
 using Org.Reddragonit.Dbpro.Structure.Mapping;
+using System.Reflection;
 
 namespace Org.Reddragonit.Dbpro.Connections.PgSql
 {
@@ -21,8 +20,15 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 	/// </summary>
 	public class PgSqlConnection : Connection
 	{
+        private const string _ASSEMBLY_NAME = "Npgsql";
+        private const string _PARAMETER_TYPE_NAME = "Npgsql.NpgsqlParameter";
+        private const string _CONNECTION_TYPE_NAME = "Npgsql.NpgsqlConnection";
+        private const string _COMMAND_TYPE_NAME = "Npgsql.NpgsqlCommand";
+
 		public PgSqlConnection(ConnectionPool pool,string connectionString,bool Readonly,bool exclusiveLock) : base(pool,connectionString,Readonly,exclusiveLock)
 		{
+            if (Utility.LocateType(_PARAMETER_TYPE_NAME) == null)
+                Assembly.Load(_ASSEMBLY_NAME);
 		}
 		
 		internal override string DefaultTableString {
@@ -33,7 +39,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 
         internal override IDbTransaction EstablishExclusiveTransaction()
         {
-            return ((NpgsqlConnection)conn).BeginTransaction(IsolationLevel.Serializable);
+            return conn.BeginTransaction(IsolationLevel.Serializable);
         }
 		
 		public override IDbDataParameter CreateParameter(string parameterName, object parameterValue)
@@ -60,7 +66,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
             {
                 parameterValue = System.Text.ASCIIEncoding.ASCII.GetString(System.BitConverter.GetBytes(ulong.Parse(parameterValue.ToString()))).ToCharArray();
             }
-			return  new NpgsqlParameter(parameterName,parameterValue);
+            return (IDbDataParameter)Utility.LocateType(_PARAMETER_TYPE_NAME).GetConstructor(new Type[] { typeof(string), typeof(object) }).Invoke(new object[] { parameterName, parameterValue });
 		}
 		
 		internal override IDbDataParameter CreateParameter(string parameterName, object parameterValue, Org.Reddragonit.Dbpro.Structure.Attributes.FieldType type, int fieldLength)
@@ -70,12 +76,12 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 		
 		protected override IDbCommand EstablishCommand()
 		{
-			return new NpgsqlCommand("",(NpgsqlConnection)conn);
+            return (IDbCommand)Utility.LocateType(_COMMAND_TYPE_NAME).GetConstructor(new Type[] { typeof(string), Utility.LocateType(_CONNECTION_TYPE_NAME) }).Invoke(new object[] { "", conn });
 		}
 		
 		protected override IDbConnection EstablishConnection()
 		{
-			return new NpgsqlConnection(connectionString);
+            return (IDbConnection)Utility.LocateType(_CONNECTION_TYPE_NAME).GetConstructor(new Type[] { typeof(String) }).Invoke(new object[] { connectionString });
 		}
 		
 		internal override void GetAddAutogen(ExtractedTableMap map, ConnectionPool pool, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers)

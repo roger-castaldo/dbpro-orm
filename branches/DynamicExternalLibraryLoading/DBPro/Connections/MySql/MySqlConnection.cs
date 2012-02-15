@@ -9,9 +9,8 @@
 using System;
 using System.Data;
 using System.Collections.Generic;
-using MySql.Data.MySqlClient;
-using MyConn = MySql.Data.MySqlClient.MySqlConnection;
 using Org.Reddragonit.Dbpro.Structure.Attributes;
+using System.Reflection;
 
 namespace Org.Reddragonit.Dbpro.Connections.MySql
 {
@@ -20,6 +19,12 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 	/// </summary>
 	public class MySqlConnection : Connection
 	{
+        private const string _ASSEMBLY_NAME = "MySql.Data";
+        private const string _PARAMETER_NAME = "MySql.Data.MySqlClient.MySqlParameter";
+        private const string _SQL_DB_TYPE_ENUM = "MySql.Data.MySqlClient.MySqlDbType";
+        private const string _CONNECTION_TYPE_NAME = "MySql.Data.MySqlClient.MySqlConnection";
+        private const string _COMMAND_TYPE_NAME = "MySql.Data.MySqlClient.MySqlCommand";
+
 		
 		private QueryBuilder _queryBuilder = null;
 		internal override QueryBuilder queryBuilder {
@@ -42,11 +47,13 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 		
 		public MySqlConnection(ConnectionPool pool,string connectionString,bool Readonly,bool exclusiveLock) :base(pool,connectionString,Readonly,exclusiveLock)
 		{
+            if (Utility.LocateType(_PARAMETER_NAME) == null)
+                Assembly.Load(_ASSEMBLY_NAME);
 		}
 
         internal override IDbTransaction EstablishExclusiveTransaction()
         {
-            return ((MyConn)conn).BeginTransaction(IsolationLevel.Serializable);
+            return conn.BeginTransaction(IsolationLevel.Serializable);
         }
 		
 		public override IDbDataParameter CreateParameter(string parameterName, object parameterValue)
@@ -73,7 +80,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
             {
                 parameterValue = System.Text.ASCIIEncoding.ASCII.GetString(System.BitConverter.GetBytes(ulong.Parse(parameterValue.ToString()))).ToCharArray();
             }
-			return (IDbDataParameter)new MySqlParameter(parameterName,parameterValue);
+            return (IDbDataParameter)Utility.LocateType(_PARAMETER_NAME).GetConstructor(new Type[] { typeof(string), typeof(object) }).Invoke(new object[] { parameterName, parameterValue });
 		}
 		
 		internal override IDbDataParameter CreateParameter(string parameterName, object parameterValue, FieldType type, int fieldLength)
@@ -92,19 +99,21 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 			if (((type==FieldType.CHAR)||(type==FieldType.STRING))
 			    &&((fieldLength == -1)||(fieldLength>65350)))
 			{
-				((MySqlParameter)ret).MySqlDbType= MySqlDbType.Text;
+                Type t = Utility.LocateType(_PARAMETER_NAME);
+                PropertyInfo pi = t.GetProperty("MySqlDbType");
+                pi.SetValue(ret, Enum.Parse(Utility.LocateType(_SQL_DB_TYPE_ENUM), "Text"), new object[] { });
 			}
 			return ret;
 		}
 		
 		protected override IDbCommand EstablishCommand()
 		{
-			return new MySqlCommand("",(MyConn)conn);
+            return (IDbCommand)Utility.LocateType(_COMMAND_TYPE_NAME).GetConstructor(new Type[]{typeof(string),Utility.LocateType(_CONNECTION_TYPE_NAME)}).Invoke(new object[]{"",conn});
 		}
 		
 		protected override IDbConnection EstablishConnection()
 		{
-			return new MyConn(connectionString);
+			return (IDbConnection)Utility.LocateType(_CONNECTION_TYPE_NAME).GetConstructor(new Type[]{typeof(string)}).Invoke(new object[]{connectionString});
 		}
 		
 		internal override void GetAddAutogen(ExtractedTableMap map, ConnectionPool pool, out System.Collections.Generic.List<IdentityField> identities, out System.Collections.Generic.List<Generator> generators, out System.Collections.Generic.List<Trigger> triggers)

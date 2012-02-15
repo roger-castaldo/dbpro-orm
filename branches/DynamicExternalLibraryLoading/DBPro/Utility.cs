@@ -199,8 +199,8 @@ namespace Org.Reddragonit.Dbpro
         internal static bool IsParameterNull(IDbDataParameter par)
         {
             return (par.Value == null ||
-                        ((par is Npgsql.NpgsqlParameter) && (par.Value.ToString().Length == 0))
-                        || ((par is FirebirdSql.Data.FirebirdClient.FbParameter) && (par.Value.ToString() == "{}"))
+                        ((par.GetType().FullName == "Npgsql.NpgsqlParameter") && (par.Value.ToString().Length == 0))
+                        || ((par.GetType().FullName == "FirebirdSql.Data.FirebirdClient.FbParameter") && (par.Value.ToString() == "{}"))
                         ||(DBNull.Value.Equals(par.Value))
                        );
         }
