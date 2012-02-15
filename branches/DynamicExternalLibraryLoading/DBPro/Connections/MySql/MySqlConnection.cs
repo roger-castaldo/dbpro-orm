@@ -19,8 +19,8 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 	/// </summary>
 	public class MySqlConnection : Connection
 	{
-        private const string _ASSEMBLY_NAME = "MySql.Data";
-        private const string _PARAMETER_NAME = "MySql.Data.MySqlClient.MySqlParameter";
+        internal const string _ASSEMBLY_NAME = "MySql.Data";
+        internal const string _PARAMETER_NAME = "MySql.Data.MySqlClient.MySqlParameter";
         private const string _SQL_DB_TYPE_ENUM = "MySql.Data.MySqlClient.MySqlDbType";
         private const string _CONNECTION_TYPE_NAME = "MySql.Data.MySqlClient.MySqlConnection";
         private const string _COMMAND_TYPE_NAME = "MySql.Data.MySqlClient.MySqlCommand";
@@ -47,8 +47,6 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 		
 		public MySqlConnection(ConnectionPool pool,string connectionString,bool Readonly,bool exclusiveLock) :base(pool,connectionString,Readonly,exclusiveLock)
 		{
-            if (Utility.LocateType(_PARAMETER_NAME) == null)
-                Assembly.Load(_ASSEMBLY_NAME);
 		}
 
         internal override IDbTransaction EstablishExclusiveTransaction()

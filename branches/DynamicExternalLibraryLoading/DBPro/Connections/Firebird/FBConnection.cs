@@ -24,8 +24,8 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 	/// </summary>
 	public class FBConnection : Connection
 	{
-        private const string _ASSEMBLY_NAME = "FirebirdSql.Data.FirebirdClient";
-        private const string _PARAMETER_CLASS_NAME = "FirebirdSql.Data.FirebirdClient.FbParameter";
+        internal const string _ASSEMBLY_NAME = "FirebirdSql.Data.FirebirdClient";
+        internal const string _PARAMETER_CLASS_NAME = "FirebirdSql.Data.FirebirdClient.FbParameter";
         private const string _COMMAND_CLASS_NAME = "FirebirdSql.Data.FirebirdClient.FbCommand";
         private const string _CONNECTION_CLASS_NAME = "FirebirdSql.Data.FirebirdClient.FbConnection";
 

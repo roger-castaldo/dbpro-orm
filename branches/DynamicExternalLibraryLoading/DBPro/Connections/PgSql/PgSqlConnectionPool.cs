@@ -7,6 +7,7 @@
  * To change this template use Tools | Options | Coding | Edit Standard Headers.
  */
 using System;
+using System.Reflection;
 
 namespace Org.Reddragonit.Dbpro.Connections.PgSql
 {
@@ -142,5 +143,11 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 		{
 			return new PgSqlConnection(this,connectionString,this._readonly,exclusiveLock);
 		}
+
+        protected override void _InitClass()
+        {
+            if (Utility.LocateType(PgSqlConnection._PARAMETER_TYPE_NAME) == null)
+                Assembly.Load(PgSqlConnection._ASSEMBLY_NAME);
+        }
 	}
 }

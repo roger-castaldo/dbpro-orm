@@ -20,8 +20,8 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 	/// </summary>
 	public class PgSqlConnection : Connection
 	{
-        private const string _ASSEMBLY_NAME = "Npgsql";
-        private const string _PARAMETER_TYPE_NAME = "Npgsql.NpgsqlParameter";
+        internal const string _ASSEMBLY_NAME = "Npgsql";
+        internal const string _PARAMETER_TYPE_NAME = "Npgsql.NpgsqlParameter";
         private const string _CONNECTION_TYPE_NAME = "Npgsql.NpgsqlConnection";
         private const string _COMMAND_TYPE_NAME = "Npgsql.NpgsqlCommand";
 
