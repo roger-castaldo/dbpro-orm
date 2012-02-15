@@ -55,8 +55,6 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		
 		public FBConnection(ConnectionPool pool,string connectionString,bool Readonly,bool exclusiveLock) : base(pool,connectionString,Readonly,exclusiveLock)
 		{
-            if (Utility.LocateType(_PARAMETER_CLASS_NAME) == null)
-                Assembly.Load("FirebirdSql.Data.FirebirdClient");
 		}
 		
 		internal override void GetAddAutogen(ExtractedTableMap map,ConnectionPool pool, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers)
