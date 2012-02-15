@@ -1136,7 +1136,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                         string tbl = _conn.queryBuilder.SelectAll(efm.Type, null);
                         if (efm.IsArray)
                         {
-                            innerJoin += _conn.Pool.CorrectName(map.Name + "_" + eMap.Name+efm.AddOnName) + " " + alias + "_intermediate_" + className + " ON ";
+                            innerJoin += _conn.Pool.CorrectName(map.Name + "_" + eMap.Name+"_"+efm.AddOnName) + " " + alias + "_intermediate_" + className + " ON ";
                             foreach (InternalFieldMap ifm in map.PrimaryKeys)
                                 innerJoin += " " + alias + "." + _conn.Pool.CorrectName(ifm.FieldName) + " = " + alias + "_intermediate_" + className + "." + _conn.Pool.CorrectName("PARENT_" + ifm.FieldName) + " AND ";
                             innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
