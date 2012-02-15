@@ -223,5 +223,9 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
                 c.CloseConnection();
             }
 		}
+
+        protected override void _InitClass()
+        {
+        }
 	}
 }

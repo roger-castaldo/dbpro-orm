@@ -10,6 +10,7 @@
 using System;
 using Org.Reddragonit.Dbpro.Connections;
 using System.IO;
+using System.Reflection;
 
 namespace Org.Reddragonit.Dbpro.Connections.Firebird
 {
@@ -235,6 +236,12 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
                 c.Commit();
                 c.CloseConnection();
             }
+        }
+
+        protected override void _InitClass()
+        {
+            if (Utility.LocateType(FBConnection._PARAMETER_CLASS_NAME) == null)
+                Assembly.Load(FBConnection._ASSEMBLY_NAME);
         }
 	}
 }

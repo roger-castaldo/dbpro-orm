@@ -61,29 +61,9 @@
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="FirebirdSql.Data.FirebirdClient, Version=2.5.2.0, Culture=neutral, PublicKeyToken=3750abcc3150b00c, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\libraries\database libs\FirebirdSql.Data.FirebirdClient.dll</HintPath>
-    </Reference>
     <Reference Include="ICSharpCode.SharpZipLib, Version=0.85.5.452, Culture=neutral, PublicKeyToken=1b03e6acf1164f73, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\..\..\libraries\database libs\ICSharpCode.SharpZipLib.dll</HintPath>
-    </Reference>
-    <Reference Include="Mono.Posix, Version=2.0.0.0, Culture=neutral, PublicKeyToken=0738eb9f132ed756, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\libraries\database libs\Mono.Posix.dll</HintPath>
-    </Reference>
-    <Reference Include="Mono.Security, Version=2.0.0.0, Culture=neutral, PublicKeyToken=0738eb9f132ed756, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\libraries\database libs\Mono.Security.dll</HintPath>
-    </Reference>
-    <Reference Include="mysql.data, Version=6.3.6.0, Culture=neutral, PublicKeyToken=c5687fc88969c44d, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\libraries\database libs\mysql.data.dll</HintPath>
-    </Reference>
-    <Reference Include="Npgsql, Version=2.0.5.0, Culture=neutral, PublicKeyToken=5d8b90d52f46fda7, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\libraries\database libs\Npgsql.dll</HintPath>
     </Reference>
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
@@ -198,6 +178,7 @@
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.Targets" />
   <PropertyGroup>
-    <PostBuildEvent>"C:\Program Files (x86)\Microsoft\ILMerge\ILMerge.exe" /out:mergedDBPro.dll DBPro.dll FirebirdSql.Data.FirebirdClient.dll Mono.Security.dll MySql.Data.dll Npgsql.dll .\de\Npgsql.resources.dll .\es\Npgsql.resources.dll .\fi\Npgsql.resources.dll .\fr\Npgsql.resources.dll .\ja\Npgsql.resources.dll .\zh-CN\Npgsql.resources.dll Mono.Posix.dll ICSharpCode.SharpZipLib.dll</PostBuildEvent>
+    <PostBuildEvent>
+    </PostBuildEvent>
   </PropertyGroup>
 </Project>

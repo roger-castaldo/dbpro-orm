@@ -9,13 +9,13 @@
 
 using System;
 using System.Collections.Generic;
-using FirebirdSql.Data.FirebirdClient;
 using Org.Reddragonit.Dbpro.Connections;
 using Org.Reddragonit.Dbpro.Structure.Mapping;
 using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.FieldType;
 using VersionTypes = Org.Reddragonit.Dbpro.Structure.Attributes.VersionField.VersionTypes;
 using System.Text;
 using System.Data;
+using System.Reflection;
 
 namespace Org.Reddragonit.Dbpro.Connections.Firebird
 {
@@ -24,6 +24,10 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 	/// </summary>
 	public class FBConnection : Connection
 	{
+        internal const string _ASSEMBLY_NAME = "FirebirdSql.Data.FirebirdClient";
+        internal const string _PARAMETER_CLASS_NAME = "FirebirdSql.Data.FirebirdClient.FbParameter";
+        private const string _COMMAND_CLASS_NAME = "FirebirdSql.Data.FirebirdClient.FbCommand";
+        private const string _CONNECTION_CLASS_NAME = "FirebirdSql.Data.FirebirdClient.FbConnection";
 
 		private QueryBuilder _builder;
 		internal override QueryBuilder queryBuilder {
@@ -51,7 +55,6 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		
 		public FBConnection(ConnectionPool pool,string connectionString,bool Readonly,bool exclusiveLock) : base(pool,connectionString,Readonly,exclusiveLock)
 		{
-
 		}
 		
 		internal override void GetAddAutogen(ExtractedTableMap map,ConnectionPool pool, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers)
@@ -235,7 +238,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
             else if ((parameterValue is ulong) || (parameterValue is UInt64)){
 				parameterValue = BitConverter.ToInt64(BitConverter.GetBytes(ulong.Parse(parameterValue.ToString())),0);
             }
-			return new FbParameter(parameterName,parameterValue);
+            return (System.Data.IDbDataParameter)Utility.LocateType(_PARAMETER_CLASS_NAME).GetConstructor(new Type[] { typeof(string), typeof(object) }).Invoke(new object[] { parameterName, parameterValue });
 		}
 
         public override object GetValue(int i)
@@ -261,12 +264,12 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		
 		protected override System.Data.IDbCommand EstablishCommand()
 		{
-			return new FbCommand("",(FbConnection)conn);
+            return (System.Data.IDbCommand)Utility.LocateType(_COMMAND_CLASS_NAME).GetConstructor(new Type[] { typeof(string), Utility.LocateType(_CONNECTION_CLASS_NAME) }).Invoke(new object[] { "", conn });
 		}
 		
 		protected override System.Data.IDbConnection EstablishConnection()
 		{
-			return new FbConnection(connectionString);
+            return (IDbConnection)Utility.LocateType(_CONNECTION_CLASS_NAME).GetConstructor(new Type[] { typeof(string) }).Invoke(new object[] { connectionString });
 		}
 		
 		internal override string TranslateFieldType(FieldType type, int fieldLength)

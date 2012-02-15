@@ -7,6 +7,7 @@
  * To change this template use Tools | Options | Coding | Edit Standard Headers.
  */
 using System;
+using System.Reflection;
 
 namespace Org.Reddragonit.Dbpro.Connections.MySql
 {
@@ -145,5 +146,11 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 		{
 			return new MySqlConnection(this,connectionString,_readonly,exclusiveLock);
 		}
+
+        protected override void _InitClass()
+        {
+            if (Utility.LocateType(MySqlConnection._PARAMETER_NAME) == null)
+                Assembly.Load(MySqlConnection._ASSEMBLY_NAME);
+        }
 	}
 }
