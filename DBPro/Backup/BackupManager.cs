@@ -1,5 +1,4 @@
-﻿using ICSharpCode.SharpZipLib.Zip;
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -54,7 +53,7 @@ namespace Org.Reddragonit.Dbpro.Backup
             }
 
             //begin data dumping and outputting
-            ZipOutputStream zs = new ZipOutputStream(outputStream);
+            ZipFile zf = new ZipFile(outputStream,false);
             byte[] buff = new byte[1024];
             XmlDocument doc;
             XmlElement elem;
@@ -77,14 +76,8 @@ namespace Org.Reddragonit.Dbpro.Backup
                     elem.Attributes.Append(CreateAttributeWithValue(doc,"Value",pool.GetEnumID(t,str).ToString()));
                     doc.DocumentElement.AppendChild(elem);
                 }
-                zs.PutNextEntry(new ZipEntry(cnt.ToString("0000000")+"_"+t.FullName + ".xml"));
+                zf.AppendFile(cnt.ToString("0000000") + "_" + t.FullName + ".xml", XMLCompressor.CompressXMLDocument(doc));
                 cnt++;
-                ms = new MemoryStream(XMLCompressor.CompressXMLDocument(doc));
-                for (long x = 0; x < ms.Length; x += 1024)
-                {
-                    len = ms.Read(buff, 0, 1024);
-                    zs.Write(buff, 0, len);
-                }
             }
 
             //output all basic types
@@ -109,14 +102,8 @@ namespace Org.Reddragonit.Dbpro.Backup
                     doc.DocumentElement.AppendChild(elem);
                 }
                 Logger.LogLine("Compressing basic type: " + t.FullName + " data and appending it into the zip file.");
-                zs.PutNextEntry(new ZipEntry(cnt.ToString("0000000") + "_" + t.FullName + ".xml"));
+                zf.AppendFile(cnt.ToString("0000000") + "_" + t.FullName + ".xml", XMLCompressor.CompressXMLDocument(doc));
                 cnt++;
-                ms = new MemoryStream(XMLCompressor.CompressXMLDocument(doc));
-                for (long x = 0; x < ms.Length; x += 1024)
-                {
-                    len = ms.Read(buff, 0, 1024);
-                    zs.Write(buff, 0, len);
-                }
                 c.ResetConnection(false);
             }
 
@@ -156,19 +143,13 @@ namespace Org.Reddragonit.Dbpro.Backup
                     doc.DocumentElement.AppendChild(elem);
                 }
                 Logger.LogLine("Compressing complex type: " + t.FullName + " data and appending it into the zip file.");
-                zs.PutNextEntry(new ZipEntry(cnt.ToString("0000000") + "_" + t.FullName + ".xml"));
+                zf.AppendFile(cnt.ToString("0000000") + "_" + t.FullName + ".xml", XMLCompressor.CompressXMLDocument(doc));
                 cnt++;
-                ms = new MemoryStream(XMLCompressor.CompressXMLDocument(doc));
-                for (long x = 0; x < ms.Length; x += 1024)
-                {
-                    len = ms.Read(buff, 0, 1024);
-                    zs.Write(buff, 0, len);
-                }
                 c.ResetConnection(false);
             }
 
-            zs.Flush();
-            zs.Close();
+            zf.Flush();
+            zf.Close();
             c.Reset();
             Logger.LogLine("Backup of database complete, re-enabling pool.");
             c.Disconnect();
@@ -256,32 +237,20 @@ namespace Org.Reddragonit.Dbpro.Backup
             //c.Commit();
             System.Threading.Thread.Sleep(500);
 
-            ZipInputStream zis = new ZipInputStream(inputStream);
-            ZipEntry ze = null;
-            MemoryStream ms;
+            ZipFile zf = new ZipFile(inputStream, true);
             XmlDocument doc;
             string type;
-            BinaryWriter bw;
-            byte[] buff = new byte[1024];
             Type t;
             Dictionary<string, int> enumMap;
             Dictionary<int, string> reverseMap;
             int len;
             Table tbl;
 
-            while ((ze=zis.GetNextEntry())!=null)
+            foreach (string str in zf.Keys)
             {
-                type = ze.Name.Substring(ze.Name.IndexOf("_") + 1);
+                type = str.Substring(str.IndexOf("_") + 1);
                 type=type.Substring(0,type.Length-4);
-                ms = new MemoryStream();
-                bw = new BinaryWriter(ms);
-                while (bw.BaseStream.Length<ze.Size)
-                {
-                    len = zis.Read(buff, 0, 1024);
-                    bw.Write(buff,0,len);
-                }
-                ms.Position = 0;
-                doc = XMLCompressor.DecompressXMLDocument(ms);
+                doc = XMLCompressor.DecompressXMLDocument(new MemoryStream(zf[str]));
                 Logger.LogLine("Extracted xml data for type " + type);
                 t = Utility.LocateType(type);
                 if (t.IsEnum)
@@ -352,7 +321,7 @@ namespace Org.Reddragonit.Dbpro.Backup
                 GC.Collect();
             }
 
-            zis.Close();
+            zf.Close();
             c.Commit();
 
             //reset all relationships and autogen fields
