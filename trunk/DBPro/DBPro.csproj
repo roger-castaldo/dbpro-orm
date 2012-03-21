@@ -61,10 +61,6 @@
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="ICSharpCode.SharpZipLib, Version=0.85.5.452, Culture=neutral, PublicKeyToken=1b03e6acf1164f73, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\libraries\database libs\ICSharpCode.SharpZipLib.dll</HintPath>
-    </Reference>
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
     <Reference Include="System" />
@@ -73,6 +69,7 @@
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="Backup\BackupManager.cs" />
     <Compile Include="Backup\XMLCompressor.cs" />
+    <Compile Include="Backup\ZipFile.cs" />
     <Compile Include="CompleteLazyLoadPriorToCall.cs" />
     <Compile Include="Connections\ClassSQL\ClassQuery.cs" />
     <Compile Include="Connections\ClassSQL\Enums.cs" />
