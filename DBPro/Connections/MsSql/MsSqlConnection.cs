@@ -12,9 +12,10 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 {
 	class MsSqlConnection : Connection
 	{
-        private const string _PARAMETER_TYPE_NAME = "System.Data.SqlClient";
-        private const string _CONNECTION_TYPE_NAME = "System.Data.SqlConnection";
-        private const string _COMMAND_TYPE_NAME = "System.Data.SqlCommand";
+        internal const string _ASSEMBLY_NAME = "System.Data";
+        private const string _PARAMETER_TYPE_NAME = "System.Data.SqlClient.SqlParameter";
+        internal const string _CONNECTION_TYPE_NAME = "System.Data.SqlClient.SqlConnection";
+        private const string _COMMAND_TYPE_NAME = "System.Data.SqlClient.SqlCommand";
 
         internal override string ConcatenationCharacter
         {
