@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Reflection;
 
 namespace Org.Reddragonit.Dbpro.Connections.MsSql
 {
@@ -226,6 +227,8 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 
         protected override void _InitClass()
         {
+            if (Utility.LocateType(MsSqlConnection._CONNECTION_TYPE_NAME) == null)
+                Assembly.Load(MsSqlConnection._ASSEMBLY_NAME);
         }
 	}
 }
