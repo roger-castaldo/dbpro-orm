@@ -154,6 +154,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             {
                 Logger.LogLine("Attempting to close the currently open reader for resetting.");
                 t = new Thread(new ThreadStart(ThreadedReaderClose));
+                t.IsBackground = true;
                 t.Start();
                 try
                 {
@@ -172,6 +173,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                     createTrans = true;
                     Logger.LogLine("Attempting to close the currently open transaction for resetting.");
                     t = new Thread(new ThreadStart(ThreadedTransactionCommit));
+                    t.IsBackground = true;
                     try
                     {
                         t.Start();
@@ -183,6 +185,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 }
                 Logger.LogLine("Attempting to close the currently open connection for resetting.");
                 t = new Thread(new ThreadStart(ThreadedConnectionClose));
+                t.IsBackground = true;
                 try {
                     t.Start();
                     t.Join(new TimeSpan(0, 0, 0, pool.readTimeout)); }
@@ -1337,6 +1340,7 @@ namespace Org.Reddragonit.Dbpro.Connections
         private void CheckReadLock()
         {
             Thread runner = new Thread(new ThreadStart(RunReadCheck));
+            runner.IsBackground = true;
             for (int x = 0; x < MAX_READCHECK_TRIES; x++)
             {
                 try
