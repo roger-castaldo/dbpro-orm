@@ -532,6 +532,16 @@ namespace Org.Reddragonit.Dbpro.Connections
                     {
                         etm.ForeignFields.Add(new ForeignRelationMap(parentMap.Name,CorrectName(ifm.FieldName), CorrectName(parentMap.Name), CorrectName(ifm.FieldName), UpdateDeleteAction.CASCADE.ToString(), UpdateDeleteAction.CASCADE.ToString()));
                     }
+                    if (tm.AutoDeleteParent)
+                    {
+                        ExtractedTableMap petm = tables[0];
+                        foreach (ExtractedTableMap setm in tables)
+                        {
+                            if (setm.TableName == parentMap.Name)
+                                petm = setm;
+                        }
+                        triggers.AddRange(conn.GetDeleteParentTrigger(etm, petm, this));
+                    }
                 }
 				tables.Add(etm);
 				foreach (ExternalFieldMap efm in tm.ExternalFieldMapArrays)

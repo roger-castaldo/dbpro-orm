@@ -53,6 +53,12 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
         {
             get { return _alwaysInsert; }
         }
+
+        private bool _autoDeleteParent;
+        public bool AutoDeleteParent
+        {
+            get { return _autoDeleteParent; }
+        }
 		
 		private Type _parentType=null;
 		public Type ParentType
@@ -77,6 +83,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Mapping
 						}
 						_connectionName=t.ConnectionName;
                         _alwaysInsert = t.AlwaysInsert;
+                        _autoDeleteParent = t.AutoDeleteParent;
 						break;
 					}
 				}
