@@ -205,6 +205,19 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 			                    tmp));
 			return ret;
 		}
+
+        internal override List<Trigger> GetDeleteParentTrigger(ExtractedTableMap table, ExtractedTableMap parent, ConnectionPool pool)
+        {
+            List<Trigger> ret = new List<Trigger>();
+            string tmp = "AS \nBEGIN\n";
+            tmp += "DELETE FROM " + parent.TableName + " WHERE ";
+            foreach (ExtractedFieldMap efm in parent.PrimaryKeys)
+                tmp += pool.CorrectName(efm.FieldName) + " = old." + pool.CorrectName(efm.FieldName)+" AND ";
+            ret.Add(new Trigger(pool.CorrectName(table.TableName + "_" + parent.TableName + "_AUTO_DELETE"),
+                "FOR " + table.TableName + " ACTIVE AFTER DELETE POSITION 0",
+                tmp.Substring(0,tmp.Length-4)+";\nEND\n\n"));
+            return ret;
+        }
 		
 		internal override System.Data.IDbDataParameter CreateParameter(string parameterName, object parameterValue, FieldType type, int fieldLength)
 		{

@@ -262,6 +262,21 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 			return ret;
 		}
 
+        internal override List<Trigger> GetDeleteParentTrigger(ExtractedTableMap table, ExtractedTableMap parent, ConnectionPool pool)
+        {
+            List<Trigger> ret = new List<Trigger>();
+            string tmp = "AS \n BEGIN \n DELETE FROM " + parent.TableName + " WHERE ";
+            string fields = "CONCAT(";
+            foreach (ExtractedFieldMap efm in parent.PrimaryKeys)
+                fields += efm.FieldName + ",";
+            fields = fields.Substring(0, fields.Length - 1) + ")";
+            tmp += fields + " IN (SELECT " + fields + " FROM DELETED);\nEND\n\n";
+            ret.Add(new Trigger(pool.CorrectName(table.TableName + "_" + parent.TableName + "_AUTO_DELETE"),
+                "ON " + table.TableName + " AFTER DELETE",
+                tmp));
+            return ret;
+        }
+
 		internal override string TranslateFieldType(FieldType type, int fieldLength)
 		{
 			string ret = null;

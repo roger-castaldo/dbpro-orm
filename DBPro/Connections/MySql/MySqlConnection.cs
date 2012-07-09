@@ -220,6 +220,19 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 			                    tmp));
 			return ret;
 		}
+
+        internal override List<Trigger> GetDeleteParentTrigger(ExtractedTableMap table, ExtractedTableMap parent, ConnectionPool pool)
+        {
+            List<Trigger> ret = new List<Trigger>();
+            string tmp = "FOR EACH ROW\nBEGIN\n";
+            tmp += "\tDELETE FROM " + parent.TableName + " WHERE ";
+            foreach (ExtractedFieldMap efm in parent.PrimaryKeys)
+                tmp += efm.FieldName + " = old." + efm.FieldName + " AND ";
+            ret.Add(new Trigger(pool.CorrectName(table.TableName + "_" + parent.TableName + "_AUTO_DELETE"),
+                "AFTER DELETE ON " + parent.TableName,
+                tmp.Substring(0, tmp.Length - 4) + ";"));
+            return ret;
+        }
 		
 		internal override string TranslateFieldType(Org.Reddragonit.Dbpro.Structure.Attributes.FieldType type, int fieldLength)
 		{

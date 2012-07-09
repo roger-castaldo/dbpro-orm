@@ -96,6 +96,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		internal abstract void GetDropAutogenStrings(ExtractedTableMap map,ConnectionPool pool,out List<IdentityField> identities,out List<Generator> generators,out List<Trigger> triggers);
 		internal abstract void GetAddAutogen(ExtractedTableMap map,ConnectionPool pool, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers);
 		internal abstract List<Trigger> GetVersionTableTriggers(ExtractedTableMap table,VersionTypes versionType,ConnectionPool pool);
+        internal abstract List<Trigger> GetDeleteParentTrigger(ExtractedTableMap table, ExtractedTableMap parent, ConnectionPool pool);
         internal abstract void DisableAutogens();
         internal abstract void EnableAndResetAutogens();
         internal abstract IDbTransaction EstablishExclusiveTransaction();
