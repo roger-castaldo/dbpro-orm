@@ -636,6 +636,25 @@ namespace Org.Reddragonit.Dbpro.Structure
             conn.CloseConnection();
         }
 
+        //Called to save the instance of the table object into the database
+        public void Save()
+        {
+            if (this.IsSaved)
+                throw new Exception("Cannot Save an object to the database when it already exists.");
+            Connection conn = ConnectionPoolManager.GetConnection(this.GetType()).getConnection();
+            Table tmp = conn.Save(this);
+            conn.CloseConnection();
+            if (tmp == null)
+                throw new Exception("An error occured attempting to save the table.");
+            foreach (PropertyInfo pi in this.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
+            {
+                if (pi.CanWrite)
+                    pi.SetValue(this, pi.GetValue(tmp, new object[0]), new object[0]);
+            }
+            this._isSaved = true;
+            this._changedFields = null;
+        }
+
         internal bool IsProxied
         {
             get { return false; }

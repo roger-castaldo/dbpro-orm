@@ -28,6 +28,10 @@ namespace TestingApp
 		static void Main(string[] args)
 		{
             Group grp = new Group();
+            grp.Name = "Testing";
+            grp.ParentGroup = null;
+            grp.Rights = SecurityRight.LoadAll().ToArray();
+            grp.Save();
 			/*Console.WriteLine("Selecting from a Virtual Table...");
             grp.Name = "test";
             Group.Save(grp);
