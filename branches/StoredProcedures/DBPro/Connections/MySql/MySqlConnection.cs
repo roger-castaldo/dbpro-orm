@@ -113,12 +113,13 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 		{
 			return (IDbConnection)Utility.LocateType(_CONNECTION_TYPE_NAME).GetConstructor(new Type[]{typeof(string)}).Invoke(new object[]{connectionString});
 		}
-		
-		internal override void GetAddAutogen(ExtractedTableMap map, ConnectionPool pool, out System.Collections.Generic.List<IdentityField> identities, out System.Collections.Generic.List<Generator> generators, out System.Collections.Generic.List<Trigger> triggers)
+
+        internal override void GetAddAutogen(ExtractedTableMap map, ConnectionPool pool, out System.Collections.Generic.List<IdentityField> identities, out System.Collections.Generic.List<Generator> generators, out System.Collections.Generic.List<Trigger> triggers, out List<StoredProcedure> procedures)
 		{
 			identities=new List<IdentityField>();
 			generators=null;
 			triggers=new List<Trigger>();
+            procedures = null;
 			ExtractedFieldMap field = map.PrimaryKeys[0];
 			if ((map.PrimaryKeys.Count>1)&&(!field.AutoGen))
 			{

@@ -7,6 +7,8 @@ using Org.Reddragonit.Dbpro.Structure.Mapping;
 using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.FieldType;
 using VersionTypes = Org.Reddragonit.Dbpro.Structure.Attributes.VersionField.VersionTypes;
 using System.Reflection;
+using System.Xml;
+using System.IO;
 
 namespace Org.Reddragonit.Dbpro.Connections.MsSql
 {
@@ -105,11 +107,12 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
             return (IDbDataParameter)Utility.LocateType(_PARAMETER_TYPE_NAME).GetConstructor(new Type[] { typeof(string), typeof(object) }).Invoke(new object[] { parameterName, parameterValue });
 		}
 
-		internal override void GetAddAutogen(ExtractedTableMap map,ConnectionPool pool, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers)
+		internal override void GetAddAutogen(ExtractedTableMap map,ConnectionPool pool, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers,out List<StoredProcedure> procedures)
 		{
 			identities=new List<IdentityField>();
 			generators=null;
 			triggers = new List<Trigger>();
+            procedures = new List<StoredProcedure>();
 			ExtractedFieldMap field = map.PrimaryKeys[0];
 			if ((map.PrimaryKeys.Count>1)&&(!field.AutoGen))
 			{
@@ -171,6 +174,14 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 				}
             }
             else if (field.Type.ToUpper().Contains("VARCHAR")){
+                XmlDocument doc = new XmlDocument();
+                doc.LoadXml(new StreamReader(Assembly.GetAssembly(typeof(MsSqlConnection)).GetManifestResourceStream("Org.Reddragonit.Dbpro.Connections.MsSql.StringIDProcedures.xml")).ReadToEnd());
+                foreach (XmlElement proc in doc.GetElementsByTagName("Procedure"))
+                    procedures.Add(new StoredProcedure(proc.ChildNodes[0].InnerText,
+                        proc.ChildNodes[1].InnerText,
+                        proc.ChildNodes[2].InnerText,
+                        proc.ChildNodes[3].InnerText,
+                        proc.ChildNodes[4].InnerText));
                 string code = "AS \n";
                 code += "DECLARE @IDVAL VARCHAR(38),\n" +
                 "@cnt BIGINT;\n" +

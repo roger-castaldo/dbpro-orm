@@ -263,6 +263,48 @@ namespace Org.Reddragonit.Dbpro.Connections
         }
     }
 
+    public struct StoredProcedure
+    {
+        private string _procedureName;
+        private string _parameterLines;
+        private string _returnLine;
+        private string _declareLines;
+        private string _code;
+
+        public string ProcedureName
+        {
+            get { return _procedureName; }
+        }
+
+        public string ParameterLines
+        {
+            get { return _parameterLines; }
+        }
+
+        public string ReturnLine
+        {
+            get { return _returnLine; }
+        }
+
+        public string DeclareLines
+        {
+            get { return _declareLines; }
+        }
+
+        public string Code
+        {
+            get { return _code; }
+        }
+
+        public StoredProcedure(string procedureName, string parameterLines, string returnLines, string declareLines, string code)
+        {
+            _procedureName = procedureName.Trim();
+            _parameterLines = parameterLines.Trim();
+            _returnLine = returnLines.Trim();
+            _declareLines = declareLines.Trim();
+            _code = code.Trim();
+        }
+    }
 	
 	internal struct ForeignRelationMap
 	{

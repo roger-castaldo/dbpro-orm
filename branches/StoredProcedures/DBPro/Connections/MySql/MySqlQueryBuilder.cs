@@ -240,5 +240,45 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
                 return "SELECT TABLE_NAME,VIEW_DEFINITION FROM INFORMATION_SCHEMA.VIEWS";
             }
         }
+
+        protected override string SelectProceduresString
+        {
+            get
+            {
+                return @"prc.param_list,
+CONCAT(prc.returns,' ', 
+(CASE WHEN prc.is_deterministic = 'YES' THEN 'DETERMINISTIC' ELSE 'NOT DETERMINISTIC' END)
+,' ',prc.sql_data_access), 
+SUBSTRING(rtns.ROUTINE_DEFINITION,6,LENGTH(rtns.ROUTINE_DEFINITION)-10) as `code`
+FROM INFORMATION_SCHEMA.ROUTINES rtns, mysql.proc prc
+WHERE rtns.ROUTINE_TYPE = 'FUNCTION'
+AND rtns.ROUTINE_SCHEMA = prc.db
+AND rtns.ROUTINE_NAME = prc.`NAME`";
+            }
+        }
+
+        protected override string CreateProcedureString
+        {
+            get
+            {
+                return "CREATE FUNCTION {0} ({1}) RETURNS {2} BEGIN {3} {4} END";
+            }
+        }
+
+        protected override string UpdateProcedureString
+        {
+            get
+            {
+                return "ALTER FUNCTION {0} ({1}) RETURNS {2} BEGIN {3} {4} END";
+            }
+        }
+
+        protected override string DropProcedureString
+        {
+            get
+            {
+                return "DROP FUNCTION {0}";
+            }
+        }
     }
 }

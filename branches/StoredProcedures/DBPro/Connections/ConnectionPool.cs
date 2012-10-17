@@ -330,19 +330,26 @@ namespace Org.Reddragonit.Dbpro.Connections
 			isReady=true;
 		}
 
-		private void ExtractCurrentStructure(out List<ExtractedTableMap> tables,out List<Trigger> triggers,out List<Generator> generators,out List<IdentityField> identities,out List<View> views,Connection conn)
+		private void ExtractCurrentStructure(out List<ExtractedTableMap> tables,out List<Trigger> triggers,out List<Generator> generators,out List<IdentityField> identities,out List<View> views,out List<StoredProcedure> procedures,Connection conn)
 		{
 			tables = new List<ExtractedTableMap>();
 			triggers = new List<Trigger>();
 			generators=new List<Generator>();
 			identities=new List<IdentityField>();
             views = new List<View>();
+            procedures = new List<StoredProcedure>();
 			conn.ExecuteQuery(conn.queryBuilder.SelectTriggers());
 			while (conn.Read())
 			{
 				triggers.Add(new Trigger((string)conn[0],(string)conn[1],(string)conn[2]));
 			}
 			conn.Close();
+            conn.ExecuteQuery(conn.queryBuilder.SelectProcedures());
+            while (conn.Read())
+            {
+                procedures.Add(new StoredProcedure(conn[0].ToString(), conn[1].ToString(), conn[2].ToString(), conn[3].ToString(), conn[4].ToString()));
+            }
+            conn.Close();
             conn.ExecuteQuery(conn.queryBuilder.SelectViews());
             while (conn.Read())
                 views.Add(new View((string)conn[0], (string)conn[1]));
@@ -410,22 +417,31 @@ namespace Org.Reddragonit.Dbpro.Connections
             return new View(CorrectName("VW_" + virtualTable.Name), VirtualTableQueryBuilder.ConstructQuery(virtualTable, conn));
         }
 		
-		private void ExtractExpectedStructure(out List<ExtractedTableMap> tables,out List<Trigger> triggers,out List<Generator> generators,out List<IdentityField> identities,out List<View> views,Connection conn)
+		private void ExtractExpectedStructure(out List<ExtractedTableMap> tables,out List<Trigger> triggers,out List<Generator> generators,out List<IdentityField> identities,out List<View> views,out List<StoredProcedure> procedures,Connection conn)
 		{
 			tables = new List<ExtractedTableMap>();
 			triggers = new List<Trigger>();
 			generators=new List<Generator>();
 			identities = new List<IdentityField>();
             views = new List<View>();
+            procedures = new List<StoredProcedure>();
 			List<Trigger> tmpTriggers = new List<Trigger>();
 			List<Generator> tmpGenerators = new List<Generator>();
 			List<IdentityField> tmpIdentities = new List<IdentityField>();
-
+            List<StoredProcedure> tmpProcedures = new List<StoredProcedure>();
+            
             foreach (Type t in Utility.LocateTypeInstances(typeof(ICustomViewDefiner)))
             {
                 List<View> tmpViews = ((ICustomViewDefiner)t.GetConstructor(Type.EmptyTypes).Invoke(new object[] { })).GetViewsForConnectionPool(this);
                 if (tmpViews != null)
                     views.AddRange(tmpViews);
+            }
+
+            foreach (Type t in Utility.LocateTypeInstances(typeof(ICustomStoredProcedureDefiner)))
+            {
+                tmpProcedures = ((ICustomStoredProcedureDefiner)t.GetConstructor(Type.EmptyTypes).Invoke(new object[] { })).GetStoredProceduresForConnectionPool(this);
+                if (tmpProcedures != null)
+                    procedures.AddRange(tmpProcedures);
             }
 
             foreach (Type t in Utility.LocateAllTypesWithAttribute(typeof(VirtualTableAttribute)))
@@ -479,7 +495,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                             enumMap.Fields.Add(new ExtractedFieldMap(CorrectName("VALUE"), conn.TranslateFieldType(FieldType.STRING, 500),
                                                                      500, false, false, false));
                             tables.Add(enumMap);
-                            conn.GetAddAutogen(enumMap, this, out tmpIdentities, out tmpGenerators, out tmpTriggers);
+                            conn.GetAddAutogen(enumMap, this, out tmpIdentities, out tmpGenerators, out tmpTriggers,out tmpProcedures);
                             if (tmpGenerators != null)
                             {
                                 generators.AddRange(tmpGenerators);
@@ -494,6 +510,11 @@ namespace Org.Reddragonit.Dbpro.Connections
                             {
                                 identities.AddRange(tmpIdentities);
                                 tmpIdentities.Clear();
+                            }
+                            if (tmpProcedures != null)
+                            {
+                                procedures.AddRange(tmpProcedures);
+                                tmpProcedures.Clear();
                             }
                             _enumTableMaps.Add(ifm.ObjectType, name);
                         }
@@ -531,13 +552,15 @@ namespace Org.Reddragonit.Dbpro.Connections
 						    etmField.Fields.Add(new ExtractedFieldMap(CorrectName(ifm.FieldName+"_VALUE"),conn.TranslateFieldType(ifm.FieldType,ifm.FieldLength),ifm.FieldLength,
 						                                              false,ifm.Nullable,false));
 						tables.Add(etmField);
-						conn.GetAddAutogen(etmField,this,out tmpIdentities,out tmpGenerators,out tmpTriggers);
+						conn.GetAddAutogen(etmField,this,out tmpIdentities,out tmpGenerators,out tmpTriggers,out tmpProcedures);
 						if (tmpGenerators!=null)
 							generators.AddRange(tmpGenerators);
 						if (tmpTriggers!=null)
 							triggers.AddRange(tmpTriggers);
 						if (tmpIdentities!=null)
 							identities.AddRange(tmpIdentities);
+                        if (tmpProcedures != null)
+                            procedures.AddRange(tmpProcedures);
 					}
 				}
 				foreach (Type t in tm.ForeignTables)
@@ -621,13 +644,15 @@ namespace Org.Reddragonit.Dbpro.Connections
 				{
 					if (efm.AutoGen)
 					{
-						conn.GetAddAutogen(etm,this,out tmpIdentities,out tmpGenerators,out tmpTriggers);
+						conn.GetAddAutogen(etm,this,out tmpIdentities,out tmpGenerators,out tmpTriggers,out tmpProcedures);
 						if (tmpGenerators!=null)
 							generators.AddRange(tmpGenerators);
 						if (tmpTriggers!=null)
 							triggers.AddRange(tmpTriggers);
 						if (tmpIdentities!=null)
 							identities.AddRange(tmpIdentities);
+                        if (tmpProcedures != null)
+                            procedures.AddRange(tmpProcedures);
 					}
 				}
 			}
@@ -1178,6 +1203,47 @@ namespace Org.Reddragonit.Dbpro.Connections
             }
         }
 
+        private void CompareStoredProcedures(List<StoredProcedure> curProcedures, List<StoredProcedure> expectedProcedures, out List<StoredProcedure> createProcedures, out List<StoredProcedure> updateProcedures, out List<StoredProcedure> dropStoredProcedures)
+        {
+            createProcedures = new List<StoredProcedure>();
+            dropStoredProcedures = new List<StoredProcedure>();
+            updateProcedures = new List<StoredProcedure>();
+
+            for (int x = 0; x < expectedProcedures.Count; x++)
+            {
+                bool add = true;
+                for (int y = 0; y < curProcedures.Count; y++)
+                {
+                    if (expectedProcedures[x].ProcedureName == curProcedures[y].ProcedureName)
+                    {
+                        add = false;
+                        if (!Utility.StringsEqual(expectedProcedures[x].DeclareLines, curProcedures[y].DeclareLines)
+                            || !Utility.StringsEqual(expectedProcedures[x].ReturnLine, curProcedures[y].ReturnLine)
+                            || !Utility.StringsEqual(expectedProcedures[x].ParameterLines, curProcedures[y].ParameterLines)
+                            || !Utility.StringsEqual(expectedProcedures[x].Code, curProcedures[y].Code))
+                            updateProcedures.Add(expectedProcedures[x]);
+                    }
+                }
+                if (add)
+                    createProcedures.Add(expectedProcedures[x]);
+            }
+
+            for (int x = 0; x < curProcedures.Count; x++)
+            {
+                bool delete = true;
+                for (int y = 0; y < expectedProcedures.Count; y++)
+                {
+                    if (curProcedures[x].ProcedureName == expectedProcedures[y].ProcedureName)
+                    {
+                        delete=false;
+                        break;
+                    }
+                }
+                if (delete)
+                    dropStoredProcedures.Add(curProcedures[x]);
+            }
+        }
+
         private void CleanUpForeignKeys(ref List<ForeignKey> foreignKeys)
 		{
 			for (int x=0;x<foreignKeys.Count;x++)
@@ -1220,22 +1286,30 @@ namespace Org.Reddragonit.Dbpro.Connections
 			List<Generator> curGenerators = new List<Generator>();
 			List<IdentityField> curIdentities = new List<IdentityField>();
             List<View> curViews = new List<View>();
+            List<StoredProcedure> curProcedures = new List<StoredProcedure>();
 			
-			ExtractCurrentStructure(out curStructure,out curTriggers,out curGenerators,out curIdentities,out curViews,conn);
+			ExtractCurrentStructure(out curStructure,out curTriggers,out curGenerators,out curIdentities,out curViews,out curProcedures,conn);
 			
 			List<ExtractedTableMap> expectedStructure = new List<ExtractedTableMap>();
 			List<Trigger> expectedTriggers = new List<Trigger>();
 			List<Generator> expectedGenerators = new List<Generator>();
 			List<IdentityField> expectedIdentities = new List<IdentityField>();
             List<View> expectedViews = new List<View>();
+            List<StoredProcedure> expectedProcedures = new List<StoredProcedure>();
 			
-			ExtractExpectedStructure(out expectedStructure,out expectedTriggers,out expectedGenerators,out expectedIdentities,out expectedViews,conn);
+			ExtractExpectedStructure(out expectedStructure,out expectedTriggers,out expectedGenerators,out expectedIdentities,out expectedViews,out expectedProcedures,conn);
 
 			List<Trigger> dropTriggers = new List<Trigger>();
 			List<Trigger> createTriggers = new List<Trigger>();
             List<Trigger> recreateTriggers = new List<Trigger>();
 			
 			CompareTriggers(curTriggers,expectedTriggers,out dropTriggers,out createTriggers);
+
+            List<StoredProcedure> dropProcedures = new List<StoredProcedure>();
+            List<StoredProcedure> createProcedures = new List<StoredProcedure>();
+            List<StoredProcedure> updateProcedures = new List<StoredProcedure>();
+
+            CompareStoredProcedures(curProcedures, expectedProcedures, out createProcedures, out updateProcedures, out dropProcedures);
 			
 			List<Generator> dropGenerators = new List<Generator>();
 			List<Generator> createGenerators = new List<Generator>();
@@ -1449,6 +1523,10 @@ namespace Org.Reddragonit.Dbpro.Connections
 			foreach (Generator gen in dropGenerators)
 				alterations.Add(conn.queryBuilder.DropGenerator(gen.Name));
 			alterations.Add(" COMMIT;");
+
+            foreach (StoredProcedure proc in dropProcedures)
+                alterations.Add(conn.queryBuilder.DropProcedure(proc.ProcedureName));
+            alterations.Add(" COMMIT;");
 			
 			foreach (ForeignKey fk in foreignKeyDrops)
 				alterations.Add(conn.queryBuilder.DropForeignKey(fk.InternalTable,fk.ExternalTable,fk.ExternalFields[0],fk.InternalFields[0]));
@@ -1492,6 +1570,14 @@ namespace Org.Reddragonit.Dbpro.Connections
                 foreach (Index ind in createIndexes[str])
                     alterations.Add(conn.queryBuilder.CreateTableIndex(str, ind.Fields, ind.Name, ind.Unique, ind.Ascending));
             }
+            alterations.Add(" COMMIT;");
+
+            foreach (StoredProcedure proc in updateProcedures)
+                alterations.Add(conn.queryBuilder.UpdateProcedure(proc));
+            alterations.Add(" COMMIT;");
+
+            foreach (StoredProcedure proc in createProcedures)
+                alterations.Add(conn.queryBuilder.CreateProcedure(proc));
             alterations.Add(" COMMIT;");
 			
 			foreach (Generator gen in createGenerators)
@@ -1856,7 +1942,8 @@ namespace Org.Reddragonit.Dbpro.Connections
             List<IdentityField> identities;
             List<View> views;
             List<ForeignKey> keys = new List<ForeignKey>();
-            ExtractExpectedStructure(out maps, out triggers, out gens, out identities,out views, conn);
+            List<StoredProcedure> procedures;
+            ExtractExpectedStructure(out maps, out triggers, out gens, out identities,out views,out procedures, conn);
             foreach (ExtractedTableMap map in maps)
             {
                 List<string> extTables = new List<string>();
@@ -1893,7 +1980,8 @@ namespace Org.Reddragonit.Dbpro.Connections
             List<IdentityField> identities;
             List<PrimaryKey> keys = new List<PrimaryKey>();
             List<View> views;
-            ExtractExpectedStructure(out maps, out triggers, out gens, out identities,out views, conn);
+            List<StoredProcedure> procedures;
+            ExtractExpectedStructure(out maps, out triggers, out gens, out identities,out views,out procedures, conn);
             foreach (ExtractedTableMap map in maps)
             {
                 if ((map.PrimaryKeys != null) && (map.PrimaryKeys.Count > 0))
