@@ -27,7 +27,7 @@ namespace TestingApp.Structure
 	/// <summary>
 	/// Description of User.
 	/// </summary>
-	[Table("USERS","Security")]
+    [Table()]
 	public class User : Org.Reddragonit.Dbpro.Structure.Table 
 	{
 		public enum PasswordSecurityType
@@ -340,7 +340,7 @@ namespace TestingApp.Structure
 		private static Connection conn
 		{
 			get{
-				return ConnectionPoolManager.GetConnection("Security").getConnection();
+                return ConnectionPoolManager.GetConnection(typeof(User)).getConnection();
 			}
 		}
 		

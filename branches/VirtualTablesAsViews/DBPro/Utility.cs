@@ -39,6 +39,62 @@ namespace Org.Reddragonit.Dbpro
 			}catch (Exception e){}
 			return ret;
 		}
+
+        //Called to locate all child classes of a given parent type
+        public static List<Type> LocateTypeInstances(Type parent)
+        {
+            List<Type> ret = new List<Type>();
+            foreach (Assembly ass in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                try
+                {
+                    if (!ass.GetName().Name.Contains("mscorlib") && !ass.GetName().Name.StartsWith("System") && !ass.GetName().Name.StartsWith("Microsoft"))
+                    {
+                        foreach (Type t in ass.GetTypes())
+                        {
+                            if (t.IsSubclassOf(parent) || (parent.IsInterface && new List<Type>(t.GetInterfaces()).Contains(parent)))
+                                ret.Add(t);
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    if (e.Message != "The invoked member is not supported in a dynamic assembly.")
+                    {
+                        throw e;
+                    }
+                }
+            }
+            return ret;
+        }
+
+        //Called to locate all Types that have the specified attribute type
+        public static List<Type> LocateAllTypesWithAttribute(Type attributeType)
+        {
+            List<Type> ret = new List<Type>();
+            foreach (Assembly ass in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                try
+                {
+                    if (!ass.GetName().Name.Contains("mscorlib") && !ass.GetName().Name.StartsWith("System") && !ass.GetName().Name.StartsWith("Microsoft"))
+                    {
+                        foreach (Type t in ass.GetTypes())
+                        {
+                            if (t.GetCustomAttributes(attributeType,false).Length>0)
+                                ret.Add(t);
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    if (e.Message != "The invoked member is not supported in a dynamic assembly.")
+                    {
+                        throw e;
+                    }
+                }
+            }
+            return ret;
+        }
 		
         //Called to access the Connection Pool Correct name function
         //while checking for a null pool so clean up common code.

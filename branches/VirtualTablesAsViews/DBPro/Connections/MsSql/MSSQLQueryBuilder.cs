@@ -329,5 +329,14 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
                 return "CREATE {3} INDEX {2} ON {0} ({1})";
             }
         }
+		protected override string SelectViewsString
+        {
+            get
+            {
+                return @"SELECT vws.TABLE_NAME,
+SUBSTRING(vws.VIEW_DEFINITION,CHARINDEX('AS',vws.VIEW_DEFINITION)+3,LEN(vws.VIEW_DEFINITION)-CHARINDEX('AS',vws.VIEW_DEFINITION))
+FROM INFORMATION_SCHEMA.VIEWS vws";
+            }
+        }
 	}
 }

@@ -112,56 +112,56 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		
 		protected override string SelectTableNamesString {
 			get {
-				return "SELECT DISTINCT(TRIM(rfr.rdb$relation_name)) from rdb$relation_fields rfr where rfr.rdb$relation_name NOT LIKE 'RDB$%' and rfr.rdb$relation_name NOT LIKE 'MON$%'";
+                return "SELECT DISTINCT(TRIM(rfr.rdb$relation_name)) from rdb$relation_fields rfr where rfr.rdb$relation_name NOT LIKE 'RDB$%' and rfr.rdb$relation_name NOT LIKE 'MON$%' AND rfr.RDB$RELATION_NAME NOT IN (SELECT vw.RDB$RELATION_NAME FROM RDB$RELATIONS vw WHERE vw.RDB$VIEW_SOURCE IS NOT NULL)";
 			}
 		}
 		
 		protected override string SelectTableFieldsString {
 			get {
-				return "SELECT  "+
-					"	TRIM(rfr.rdb$field_name) AS ColumnName, "+
-					"TRIM(CASE fld.rdb$field_type WHEN 261 THEN "+
-					" (CASE WHEN fld.rdb$field_sub_type = 1 THEN  'BLOB SUB_TYPE TEXT' "+
-					"  ELSE 'BLOB' END) "+
-					" WHEN 14 THEN 'CHAR' "+
-					" WHEN 27 THEN 'DOUBLE PRECISION' "+
-					" WHEN 10 THEN 'FLOAT' "+
-					" WHEN 16 THEN "+
-					" (CASE WHEN fld.rdb$field_sub_type = 2 THEN 'DECIMAL('||CAST(fld.rdb$field_precision as varchar(100))||', '||cast((0-fld.rdb$field_scale) as varchar(100))||')' "+
-					"  ELSE 'BIGINT' END) "+
-					" WHEN 8 THEN 'INTEGER' "+
-					" WHEN 9 THEN 'QUAD' "+
-					" WHEN 7 THEN 'SMALLINT' "+
-					" WHEN 12 THEN 'DATE' "+
-					" WHEN 13 THEN 'TIME' "+
-					" WHEN 35 THEN 'TIMESTAMP' "+
-					" WHEN 37 THEN 'VARCHAR' "+
-					" ELSE 'UNKNOWN' "+
-					" END) AS ColumnDataType, "+
-					"(CASE fld.rdb$field_type WHEN 261 THEN -1 ELSE "+
-					"fld.rdb$field_length END) AS ColumnSize, "+
-					"(CASE WHEN (select count(*) from  "+
-					"rdb$relation_constraints rel, "+
-					"rdb$indices idx, "+
-					"rdb$index_segments seg "+
-					" where  "+
-					"rel.rdb$constraint_type = 'PRIMARY KEY'  "+
-					"and rel.rdb$index_name = idx.rdb$index_name  "+
-					"and idx.rdb$index_name = seg.rdb$index_name  "+
-					"and rel.rdb$relation_name = rfr.rdb$relation_name  "+
-					"and seg.rdb$field_name = rfr.rdb$field_name) = 0 THEN 'false' ELSE 'true' END) AS PrimaryKey, "+
-					"(CASE WHEN rfr.rdb$null_flag IS null or rfr.rdb$null_flag=0 THEN 'true' else 'false' END) AS NullFlag, "+
-					"(CASE WHEN (SELECT COUNT(*)  "+
-					"FROM RDB$GENERATORS gens  "+
-					"where (gens.RDB$SYSTEM_FLAG is null or gens.RDB$SYSTEM_FLAG=0) AND gens.RDB$GENERATOR_NAME = 'GEN_'||rfr.rdb$field_name) = 0 THEN 'false' ELSE 'true' END) AS AUTOGEN "+
-					" FROM  "+
-					"rdb$relation_fields rfr  "+
-					"LEFT JOIN rdb$fields fld ON rfr.rdb$field_source = fld.rdb$field_name  "+
-					"LEFT JOIN rdb$relations rel ON (rfr.rdb$relation_name = rel.rdb$relation_name AND rel.rdb$system_flag IS NOT NULL)  "+
-					"WHERE rfr.rdb$relation_name NOT LIKE 'RDB$%' and rfr.rdb$relation_name NOT LIKE 'MON$%' and  "+
-					"rfr.rdb$relation_name = '{0}'  "+
-					"ORDER BY  "+
-					"rfr.rdb$field_position";
+				return @"SELECT  
+						TRIM(rfr.rdb$field_name) AS ColumnName, 
+					TRIM(CASE fld.rdb$field_type WHEN 261 THEN 
+					 (CASE WHEN fld.rdb$field_sub_type = 1 THEN  'BLOB SUB_TYPE TEXT' 
+					  ELSE 'BLOB' END) 
+					 WHEN 14 THEN 'CHAR' 
+					 WHEN 27 THEN 'DOUBLE PRECISION' 
+					 WHEN 10 THEN 'FLOAT' 
+					 WHEN 16 THEN 
+					 (CASE WHEN fld.rdb$field_sub_type = 2 THEN 'DECIMAL('||CAST(fld.rdb$field_precision as varchar(100))||', '||cast((0-fld.rdb$field_scale) as varchar(100))||')' 
+					  ELSE 'BIGINT' END) 
+					 WHEN 8 THEN 'INTEGER' 
+					 WHEN 9 THEN 'QUAD' 
+					 WHEN 7 THEN 'SMALLINT' 
+					 WHEN 12 THEN 'DATE' 
+					 WHEN 13 THEN 'TIME' 
+					 WHEN 35 THEN 'TIMESTAMP' 
+					 WHEN 37 THEN 'VARCHAR' 
+					 ELSE 'UNKNOWN' 
+					 END) AS ColumnDataType, 
+					(CASE fld.rdb$field_type WHEN 261 THEN -1 ELSE 
+					fld.rdb$field_length END) AS ColumnSize, 
+					(CASE WHEN (select count(*) from  
+					rdb$relation_constraints rel, 
+					rdb$indices idx, 
+					rdb$index_segments seg 
+					 where  
+					rel.rdb$constraint_type = 'PRIMARY KEY'  
+					and rel.rdb$index_name = idx.rdb$index_name  
+					and idx.rdb$index_name = seg.rdb$index_name  
+					and rel.rdb$relation_name = rfr.rdb$relation_name  
+					and seg.rdb$field_name = rfr.rdb$field_name) = 0 THEN 'false' ELSE 'true' END) AS PrimaryKey, 
+					(CASE WHEN rfr.rdb$null_flag IS null or rfr.rdb$null_flag=0 THEN 'true' else 'false' END) AS NullFlag, 
+					(CASE WHEN (SELECT COUNT(*)  
+					FROM RDB$GENERATORS gens  
+					where (gens.RDB$SYSTEM_FLAG is null or gens.RDB$SYSTEM_FLAG=0) AND gens.RDB$GENERATOR_NAME = 'GEN_'||rfr.rdb$field_name) = 0 THEN 'false' ELSE 'true' END) AS AUTOGEN 
+					 FROM  
+					rdb$relation_fields rfr  
+					LEFT JOIN rdb$fields fld ON rfr.rdb$field_source = fld.rdb$field_name  
+					LEFT JOIN rdb$relations rel ON (rfr.rdb$relation_name = rel.rdb$relation_name AND rel.rdb$system_flag IS NOT NULL)  
+					WHERE rfr.rdb$relation_name NOT LIKE 'RDB$%' and rfr.rdb$relation_name NOT LIKE 'MON$%' and  
+					rfr.rdb$relation_name = '{0}'  
+					ORDER BY  
+					rfr.rdb$field_position";
 			}
 		}
 		
@@ -269,6 +269,16 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
             get
             {
                 return "CREATE {3} {4} INDEX {2} ON {0} ({1})";
+            }
+        }
+
+        protected override string SelectViewsString
+        {
+            get
+            {
+                return @"SELECT vw.RDB$RELATION_NAME,vw.RDB$VIEW_SOURCE
+FROM RDB$RELATIONS vw
+WHERE vw.RDB$VIEW_SOURCE IS NOT NULL";
             }
         }
 	}

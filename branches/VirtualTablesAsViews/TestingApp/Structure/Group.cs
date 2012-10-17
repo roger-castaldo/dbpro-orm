@@ -16,7 +16,7 @@ namespace TestingApp.Structure
 	/// <summary>
 	/// Description of Group.
 	/// </summary>
-	[Table("GROUPS","Security")]
+    [Table()]
 	public class Group : Org.Reddragonit.Dbpro.Structure.Table
 	{
 		private long _Id;
