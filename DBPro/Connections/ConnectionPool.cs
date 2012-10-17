@@ -18,6 +18,9 @@ using ForeignRelationMap = Org.Reddragonit.Dbpro.Connections.ForeignRelationMap;
 using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.FieldType;
 using VersionTypes = Org.Reddragonit.Dbpro.Structure.Attributes.VersionField.VersionTypes;
 using UpdateDeleteAction =  Org.Reddragonit.Dbpro.Structure.Attributes.ForeignField.UpdateDeleteAction;
+using Org.Reddragonit.Dbpro.Connections.Interfaces;
+using Org.Reddragonit.Dbpro.Virtual.Attributes;
+using Org.Reddragonit.Dbpro.Virtual;
 
 namespace Org.Reddragonit.Dbpro.Connections
 {
@@ -312,6 +315,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		internal void Init(Dictionary<Type,List<EnumTranslationPair>> translations)
 		{
+            _nameTranslations = new Dictionary<string, string>();
             _InitClass();
             if (!_debugMode)
 			    PreInit();
@@ -326,18 +330,23 @@ namespace Org.Reddragonit.Dbpro.Connections
 			isReady=true;
 		}
 
-		private void ExtractCurrentStructure(out List<ExtractedTableMap> tables,out List<Trigger> triggers,out List<Generator> generators,out List<IdentityField> identities,Connection conn)
+		private void ExtractCurrentStructure(out List<ExtractedTableMap> tables,out List<Trigger> triggers,out List<Generator> generators,out List<IdentityField> identities,out List<View> views,Connection conn)
 		{
 			tables = new List<ExtractedTableMap>();
 			triggers = new List<Trigger>();
 			generators=new List<Generator>();
 			identities=new List<IdentityField>();
+            views = new List<View>();
 			conn.ExecuteQuery(conn.queryBuilder.SelectTriggers());
 			while (conn.Read())
 			{
 				triggers.Add(new Trigger((string)conn[0],(string)conn[1],(string)conn[2]));
 			}
 			conn.Close();
+            conn.ExecuteQuery(conn.queryBuilder.SelectViews());
+            while (conn.Read())
+                views.Add(new View((string)conn[0], (string)conn[1]));
+            conn.Close();
 			conn.ExecuteQuery(conn.queryBuilder.SelectTableNames());
 			while (conn.Read())
 			{
@@ -395,16 +404,33 @@ namespace Org.Reddragonit.Dbpro.Connections
 				conn.Close();
 			}
 		}
+
+        private View _CreateViewForVirtualTable(Type virtualTable,Connection conn)
+        {
+            return new View(CorrectName("VW_" + virtualTable.Name), VirtualTableQueryBuilder.ConstructQuery(virtualTable, conn));
+        }
 		
-		private void ExtractExpectedStructure(out List<ExtractedTableMap> tables,out List<Trigger> triggers,out List<Generator> generators,out List<IdentityField> identities,Connection conn)
+		private void ExtractExpectedStructure(out List<ExtractedTableMap> tables,out List<Trigger> triggers,out List<Generator> generators,out List<IdentityField> identities,out List<View> views,Connection conn)
 		{
 			tables = new List<ExtractedTableMap>();
 			triggers = new List<Trigger>();
 			generators=new List<Generator>();
 			identities = new List<IdentityField>();
+            views = new List<View>();
 			List<Trigger> tmpTriggers = new List<Trigger>();
 			List<Generator> tmpGenerators = new List<Generator>();
 			List<IdentityField> tmpIdentities = new List<IdentityField>();
+
+            foreach (Type t in Utility.LocateTypeInstances(typeof(ICustomViewDefiner)))
+            {
+                List<View> tmpViews = ((ICustomViewDefiner)t.GetConstructor(Type.EmptyTypes).Invoke(new object[] { })).GetViewsForConnectionPool(this);
+                if (tmpViews != null)
+                    views.AddRange(tmpViews);
+            }
+
+            foreach (Type t in Utility.LocateAllTypesWithAttribute(typeof(VirtualTableAttribute)))
+                views.Add(_CreateViewForVirtualTable(t,conn));
+
 			foreach (System.Type type in ClassMapper.TableTypesForConnection(ConnectionName))
 			{
 				TableMap tm = ClassMapper.GetTableMap(type);
@@ -1109,8 +1135,50 @@ namespace Org.Reddragonit.Dbpro.Connections
                 }
             }
 		}
-		
-		private void CleanUpForeignKeys(ref List<ForeignKey> foreignKeys)
+
+
+        private void CompareViews(List<View> curViews, List<View> expectedViews, out List<View> createViews, out List<View> dropViews)
+        {
+            createViews = new List<View>();
+            dropViews = new List<View>();
+
+            for (int x = 0; x < expectedViews.Count; x++)
+            {
+                bool add = true;
+                for (int y = 0; y < curViews.Count; y++)
+                {
+                    if (expectedViews[x].Name == curViews[y].Name)
+                    {
+                        add = false;
+                        if (expectedViews[x].Query != curViews[y].Query)
+                        {
+                            dropViews.Add(expectedViews[x]);
+                            createViews.Add(expectedViews[x]);
+                        }
+                        break;
+                    }
+                }
+                if (add)
+                    createViews.Add(expectedViews[x]);
+            }
+
+            for (int x = 0; x < curViews.Count; x++)
+            {
+                bool remove = true;
+                for (int y = 0; y < expectedViews.Count; y++)
+                {
+                    if (curViews[x].Name == expectedViews[y].Name)
+                    {
+                        remove = false;
+                        break;
+                    }
+                }
+                if (remove)
+                    dropViews.Add(curViews[x]);
+            }
+        }
+
+        private void CleanUpForeignKeys(ref List<ForeignKey> foreignKeys)
 		{
 			for (int x=0;x<foreignKeys.Count;x++)
 			{
@@ -1151,16 +1219,18 @@ namespace Org.Reddragonit.Dbpro.Connections
 			List<Trigger> curTriggers = new List<Trigger>();
 			List<Generator> curGenerators = new List<Generator>();
 			List<IdentityField> curIdentities = new List<IdentityField>();
+            List<View> curViews = new List<View>();
 			
-			ExtractCurrentStructure(out curStructure,out curTriggers,out curGenerators,out curIdentities,conn);
+			ExtractCurrentStructure(out curStructure,out curTriggers,out curGenerators,out curIdentities,out curViews,conn);
 			
 			List<ExtractedTableMap> expectedStructure = new List<ExtractedTableMap>();
 			List<Trigger> expectedTriggers = new List<Trigger>();
 			List<Generator> expectedGenerators = new List<Generator>();
 			List<IdentityField> expectedIdentities = new List<IdentityField>();
+            List<View> expectedViews = new List<View>();
 			
-			ExtractExpectedStructure(out expectedStructure,out expectedTriggers,out expectedGenerators,out expectedIdentities,conn);
-			
+			ExtractExpectedStructure(out expectedStructure,out expectedTriggers,out expectedGenerators,out expectedIdentities,out expectedViews,conn);
+
 			List<Trigger> dropTriggers = new List<Trigger>();
 			List<Trigger> createTriggers = new List<Trigger>();
             List<Trigger> recreateTriggers = new List<Trigger>();
@@ -1197,7 +1267,12 @@ namespace Org.Reddragonit.Dbpro.Connections
             Dictionary<string, List<Index>> createIndexes = new Dictionary<string, List<Index>>();
 
             ExtractIndexCreationsDrops(curStructure, expectedStructure, out dropIndexes, out createIndexes);
-			
+
+            List<View> createViews = new List<View>();
+            List<View> dropViews = new List<View>();
+
+            CompareViews(curViews, expectedViews, out createViews, out dropViews);
+
 			List<string> tableCreations = new List<string>();
 			List<string> tableAlterations = new List<string>();
 			
@@ -1355,6 +1430,10 @@ namespace Org.Reddragonit.Dbpro.Connections
 			//add drops to alterations
 			alterations.AddRange(constraintDrops);
 			alterations.Add(" COMMIT;");
+
+            foreach (View vw in dropViews)
+                alterations.Add(conn.queryBuilder.DropView(vw.Name));
+            alterations.Add(" COMMIT;");
 			
 			foreach (Trigger trig in dropTriggers)
 				alterations.Add(conn.queryBuilder.DropTrigger(trig.Name));
@@ -1391,6 +1470,10 @@ namespace Org.Reddragonit.Dbpro.Connections
 			
 			alterations.AddRange(tableCreations);
 			alterations.Add(" COMMIT;");
+
+            foreach (View vw in createViews)
+                alterations.Add(conn.queryBuilder.CreateView(vw));
+            alterations.Add(" COMMIT;");
 			
 			//add creations to alterations
 			alterations.AddRange(constraintCreations);
@@ -1771,8 +1854,9 @@ namespace Org.Reddragonit.Dbpro.Connections
             List<Trigger> triggers;
             List<Generator> gens;
             List<IdentityField> identities;
+            List<View> views;
             List<ForeignKey> keys = new List<ForeignKey>();
-            ExtractExpectedStructure(out maps, out triggers, out gens, out identities, conn);
+            ExtractExpectedStructure(out maps, out triggers, out gens, out identities,out views, conn);
             foreach (ExtractedTableMap map in maps)
             {
                 List<string> extTables = new List<string>();
@@ -1808,7 +1892,8 @@ namespace Org.Reddragonit.Dbpro.Connections
             List<Generator> gens;
             List<IdentityField> identities;
             List<PrimaryKey> keys = new List<PrimaryKey>();
-            ExtractExpectedStructure(out maps, out triggers, out gens, out identities, conn);
+            List<View> views;
+            ExtractExpectedStructure(out maps, out triggers, out gens, out identities,out views, conn);
             foreach (ExtractedTableMap map in maps)
             {
                 if ((map.PrimaryKeys != null) && (map.PrimaryKeys.Count > 0))

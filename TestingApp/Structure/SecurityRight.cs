@@ -17,7 +17,7 @@ namespace TestingApp.Structure
 	/// <summary>
 	/// Description of SecurityRight.
 	/// </summary>
-	[Table("SECURITY_RIGHTS","Security")]
+    [Table()]
 	public class SecurityRight : Org.Reddragonit.Dbpro.Structure.Table
 	{
 		
@@ -40,7 +40,7 @@ namespace TestingApp.Structure
 		private static Connection conn
 		{
 			get{
-				return ConnectionPoolManager.GetConnection("Security").getConnection();
+				return ConnectionPoolManager.GetConnection(typeof(SecurityRight)).getConnection();
 			}
 		}
 		

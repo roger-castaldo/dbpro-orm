@@ -11,6 +11,7 @@ using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.FieldType;
 using VersionTypes = Org.Reddragonit.Dbpro.Structure.Attributes.VersionField.VersionTypes;
 using System.Reflection;
 using System.Threading;
+using Org.Reddragonit.Dbpro.Virtual.Attributes;
 
 namespace Org.Reddragonit.Dbpro.Connections
 {
@@ -789,6 +790,32 @@ namespace Org.Reddragonit.Dbpro.Connections
             }
 			return ret;
 		}
+
+        public List<Object> SelectVirtualTable(System.Type type)
+        {
+            if (type.GetCustomAttributes(typeof(VirtualTableAttribute), true).Length == 0)
+                throw new Exception("Unable to execute a Virtual Table Query from a class that does not have a VirtualTableAttribute attached to it.");
+            List<Object> ret = new List<object>();
+            Dictionary<string, string> fields = new Dictionary<string, string>();
+            foreach (PropertyInfo pi in type.GetProperties())
+			{
+				if (pi.GetCustomAttributes(typeof(VirtualField), true).Length > 0)
+					fields.Add(pool.CorrectName(pi.Name),pi.Name);
+			}
+            this.ExecuteQuery("SELECT * FROM " + pool.CorrectName("VW_" + type.Name));
+            while (Read())
+            {
+                object obj = type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
+                foreach (string str in fields.Keys)
+                {
+                    if (!this.IsDBNull(this.GetOrdinal(str)))
+                        type.GetProperty(fields[str]).SetValue(obj, this[str], new object[0]);
+                }
+                ret.Add(obj);
+            }
+            Close();
+            return ret;
+        }
 		
 		public List<Table> SelectAll(System.Type type)
 		{

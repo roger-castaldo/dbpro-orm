@@ -240,6 +240,29 @@ namespace Org.Reddragonit.Dbpro.Connections
 			_triggerConditions=conditions;
 		}
 	}
+
+	public struct View
+    {
+        private string _name;
+        private string _query;
+
+        public string Name
+        {
+            get { return _name; }
+        }
+
+        public string Query
+        {
+            get { return _query; }
+        }
+
+        public View(string name, string query)
+        {
+            _name = name;
+            _query=query;
+        }
+    }
+
 	
 	internal struct ForeignRelationMap
 	{
