@@ -32,7 +32,7 @@ namespace TestingApp
             grp.ParentGroup = null;
             grp.Rights = SecurityRight.LoadAll().ToArray();
             grp.Save();
-			/*Console.WriteLine("Selecting from a Virtual Table...");
+			Console.WriteLine("Selecting from a Virtual Table...");
             grp.Name = "test";
             Group.Save(grp);
 			User u = User.Instance();
@@ -44,17 +44,16 @@ namespace TestingApp
 			u.UserGroup=Group.LoadAllGroups()[0];
 			u.UserName="rcastaldo";
 			u=User.Save(u);
-			VirtualTableConnection vtb = new VirtualTableConnection();
-			List<object> tmp =vtb.SelectVirtualTable(typeof(UserGroupList));
-			foreach (UserGroupList ugl in tmp){
-				Console.WriteLine("FirstName: "+ugl.FirstName+"\tLastName: "+ugl.LastName+"\tGroup: "+ugl.GroupName);
-			}*/
-			ClassQuery cq =new ClassQuery("TestingApp.Structure","SELECT u.FirstName||' '||u.LastName AS PersonName,u.UserGroup FROM User u WHERE u.UserGroup IN @Groups");
+            Connection conn = ConnectionPoolManager.GetConnection(typeof(User)).getConnection();
+            foreach (UserGroupList ugl in conn.SelectVirtualTable(typeof(UserGroupList))){
+                Console.WriteLine("FirstName: "+ugl.FirstName+"\tLastName: "+ugl.LastName+"\tGroup: "+ugl.GroupName);
+            }
+			/*ClassQuery cq =new ClassQuery("TestingApp.Structure","SELECT u.FirstName||' '||u.LastName AS PersonName,u.UserGroup FROM User u WHERE u.UserGroup IN @Groups");
             cq.Execute(new IDbDataParameter[]{cq.CreateParameter("@Groups",Group.LoadAllGroups())});
             while (cq.Read()){
                 grp = (Group)cq[1];
                 Console.WriteLine("Person: " + cq[0].ToString() + " in Group: " + grp.Name);
-            }
+            }*/
             
             //XmlDocument doc = new XmlDocument();
             //string xml = ReadEmbeddedResource("TestingApp.CompressionTester.xml");

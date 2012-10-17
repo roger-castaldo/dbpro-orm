@@ -232,5 +232,13 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
                 return "DROP INDEX {1} ON {0}";
             }
         }
-	}
+
+        protected override string SelectViewsString
+        {
+            get
+            {
+                return "SELECT TABLE_NAME,VIEW_DEFINITION FROM INFORMATION_SCHEMA.VIEWS";
+            }
+        }
+    }
 }

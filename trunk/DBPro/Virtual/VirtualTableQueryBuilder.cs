@@ -9,7 +9,7 @@ using System.Data;
 
 namespace Org.Reddragonit.Dbpro.Virtual
 {
-	public class VirtualTableConnection
+	internal class VirtualTableQueryBuilder
 	{
 		private struct ExtractedVirtualField
 		{
@@ -80,7 +80,7 @@ namespace Org.Reddragonit.Dbpro.Virtual
 			}
 		}
 
-		private List<ExtractedVirtualField> ExtractFieldFromType(Type type)
+		private static List<ExtractedVirtualField> ExtractFieldFromType(Type type)
 		{
 			List<ExtractedVirtualField> ret = new List<ExtractedVirtualField>();
 			foreach (PropertyInfo pi in type.GetProperties())
@@ -93,59 +93,15 @@ namespace Org.Reddragonit.Dbpro.Virtual
 			return ret;
 		}
 
-		public List<object> SelectVirtualTable(Type type)
-		{
-            Connection conn;
-            List<IDbDataParameter> parameters;
-            TableMap mainMap;
-            List<ExtractedVirtualField> fields;
-            string fieldString = ConstructQuery(type, out parameters, out mainMap, out conn,out fields);
-            return LoadFromQuery(type,conn, fieldString, parameters, fields);
-		}
-
-        public List<object> SelectVirtualTable(Type type, ulong? startIndex, ulong? rowCount)
-        {
-            Connection conn;
-            List<IDbDataParameter> parameters;
-            TableMap mainMap;
-            List<ExtractedVirtualField> fields;
-            string fieldString = ConstructQuery(type, out parameters, out mainMap, out conn, out fields);
-            fieldString = conn.queryBuilder.SelectPaged(fieldString, mainMap, ref parameters, startIndex, rowCount);
-            return LoadFromQuery(type, conn, fieldString, parameters, fields);
-        }
-
-        private List<object> LoadFromQuery(Type type,Connection conn,string fieldString, List<IDbDataParameter> parameters, List<ExtractedVirtualField> fields)
-        {
-            List<object> ret = new List<object>();
-            conn.ExecuteQuery(fieldString,parameters);
-            while (conn.Read())
-            {
-                object obj = type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
-                for (int x = 0; x < conn.FieldCount; x++)
-                {
-                    PropertyInfo pi = type.GetProperty(fields[x].ClassFieldName);
-                    if (conn.IsDBNull(x))
-                        pi.SetValue(obj, null, new object[0]);
-                    else
-                        pi.SetValue(obj, conn.GetValue(x), new object[0]);
-                }
-                ret.Add(obj);
-            }
-            conn.CloseConnection();
-            return ret;
-        }
-
-        private string ConstructQuery(Type type, out List<IDbDataParameter> parameters, out TableMap mainMap, out Connection conn,out List<ExtractedVirtualField> fields)
+        public static string ConstructQuery(Type type, Connection conn)
         {
             if (type.GetCustomAttributes(typeof(VirtualTableAttribute), true).Length == 0)
                 throw new Exception("Unable to execute a Virtual Table Query from a class that does not have a VirtualTableAttribute attached to it.");
             Type mainTable = VirtualTableAttribute.GetMainTableTypeForVirtualTable(type);
-            conn = ConnectionPoolManager.GetConnection(mainTable).getConnection();
-            mainMap = ClassMapper.GetTableMap(mainTable);
-            parameters=new List<IDbDataParameter>();
+            TableMap mainMap = ClassMapper.GetTableMap(mainTable);
             string originalQuery = conn.queryBuilder.SelectAll(mainTable,null);
             string fieldString = "";
-            fields = ExtractFieldFromType(type);
+            List<ExtractedVirtualField> fields = ExtractFieldFromType(type);
             List<ExtractedVirtualField> fieldsUsed = new List<ExtractedVirtualField>();
             List<TablePath> paths = new List<TablePath>();
             foreach (TableMap.FieldNamePair fnp in mainMap.FieldNamePairs)
@@ -184,7 +140,7 @@ namespace Org.Reddragonit.Dbpro.Virtual
             {
                 if (field.IsInternal)
                 {
-                    fieldString += ", virtualTable." + mainMap.GetTableFieldName(field.FieldName) + " AS " + field.ClassFieldName;
+                    fieldString += ", virtualTable." + mainMap.GetTableFieldName(field.FieldName) + " AS " + conn.Pool.CorrectName(field.ClassFieldName);
                     fieldsUsed.Add(field);
                 }
                 else
@@ -195,7 +151,7 @@ namespace Org.Reddragonit.Dbpro.Virtual
                         {
                             if (!appendedJoins.Contains(tp.Path))
                                 appendedJoins += " " + tp.Path;
-                            fieldString += ", " + field.TablePath + "." + conn.Pool.CorrectName(ClassMapper.GetTableMap(tp.EndType).GetTableFieldName(field.FieldName)) + " AS " + field.ClassFieldName;
+                            fieldString += ", " + field.TablePath + "." + conn.Pool.CorrectName(ClassMapper.GetTableMap(tp.EndType).GetTableFieldName(field.FieldName)) + " AS " + conn.Pool.CorrectName(field.ClassFieldName);
                             break;
                         }
                     }
@@ -206,7 +162,7 @@ namespace Org.Reddragonit.Dbpro.Virtual
             return "SELECT " + fieldString.Substring(1) + " FROM (" + originalQuery + ") virtualTable " + appendedJoins;
         }
 		
-		private void RecurExtractPaths(ref List<TablePath> paths,Connection conn){
+		private static void RecurExtractPaths(ref List<TablePath> paths,Connection conn){
 			bool changed=true;
 			while (changed){
 				changed=false;

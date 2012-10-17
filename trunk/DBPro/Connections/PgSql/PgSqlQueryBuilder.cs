@@ -251,5 +251,13 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
                 return "CREATE {3} INDEX {2} ON {0} ({1})";
             }
         }
+
+        protected override string SelectViewsString
+        {
+            get
+            {
+                return "SELECT table_name,view_definition FROM information_schema.views WHERE table_schema NOT IN ('pg_catalog', 'information_schema') AND table_name !~ '^pg_'";
+            }
+        }
 	}
 }

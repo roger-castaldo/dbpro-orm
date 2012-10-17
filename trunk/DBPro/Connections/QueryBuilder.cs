@@ -191,6 +191,27 @@ namespace Org.Reddragonit.Dbpro.Connections
                 throw new Exception("Method Not Implemented");
             }
         }
+
+        protected virtual string SelectViewsString
+        {
+            get
+            {
+                throw new Exception("Method Not Implemented");
+            }
+        }
+
+        protected virtual string CreateViewString
+        {
+            get
+            {
+                return "CREATE VIEW {0} AS {1}";
+            }
+        }
+
+        protected virtual string DropViewString
+        {
+            get { return "DROP VIEW {0}"; }
+        }
 		#endregion
 		#endregion
 		
@@ -351,6 +372,21 @@ namespace Org.Reddragonit.Dbpro.Connections
         internal virtual List<Index> ExtractTableIndexes(string tableName, Connection conn)
         {
             throw new Exception("Method Not Implemented");
+        }
+
+        internal virtual string SelectViews()
+        {
+            return SelectViewsString;
+        }
+
+        internal virtual string CreateView(View view)
+        {
+            return string.Format(CreateViewString, view.Name,  view.Query);
+        }
+
+        internal virtual string DropView(string view)
+        {
+            return string.Format(DropViewString, view);
         }
 		#endregion
 		

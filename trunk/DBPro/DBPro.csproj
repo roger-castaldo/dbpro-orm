@@ -79,6 +79,7 @@
     <Compile Include="Connections\Connection.cs" />
     <Compile Include="Connections\ConnectionPool.cs" />
     <Compile Include="Connections\ConnectionPoolManager.cs" />
+    <Compile Include="Connections\Interfaces\ICustomViewDefiner.cs" />
     <Compile Include="Connections\MsSql\MSSQLQueryBuilder.cs" />
     <Compile Include="Connections\MySql\MySqlConnection.cs" />
     <Compile Include="Connections\MySql\MySqlConnectionPool.cs" />
@@ -143,7 +144,7 @@
     <Compile Include="Validation\ValidationAttribute.cs" />
     <Compile Include="Virtual\Attributes\VirtualField.cs" />
     <Compile Include="Virtual\Attributes\VirtualTableAttribute.cs" />
-    <Compile Include="Virtual\VirtualTableConnection.cs" />
+    <Compile Include="Virtual\VirtualTableQueryBuilder.cs" />
     <EmbeddedResource Include="Connections\MsSql\IdentitySP.sql" />
     <EmbeddedResource Include="Connections\Firebird\CALCULATE_HASH.sql" />
     <EmbeddedResource Include="Connections\Firebird\CONVERT_BIGINT_CHARSTRING.sql" />
