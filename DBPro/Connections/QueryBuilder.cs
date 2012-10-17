@@ -192,6 +192,38 @@ namespace Org.Reddragonit.Dbpro.Connections
             }
         }
 
+        protected virtual string SelectProceduresString
+        {
+            get
+            {
+                throw new Exception("Method Not Implemented");
+            }
+        }
+
+        protected virtual string CreateProcedureString
+        {
+            get
+            {
+                throw new Exception("Method Not Implemented");
+            }
+        }
+
+        protected virtual string UpdateProcedureString
+        {
+            get
+            {
+                throw new Exception("Method Not Implemented");
+            }
+        }
+
+        protected virtual string DropProcedureString
+        {
+            get
+            {
+                throw new Exception("Method Not Implemented");
+            }
+        }
+
         protected virtual string SelectViewsString
         {
             get
@@ -374,9 +406,29 @@ namespace Org.Reddragonit.Dbpro.Connections
             throw new Exception("Method Not Implemented");
         }
 
+        internal virtual string SelectProcedures()
+        {
+            return SelectProceduresString;
+        }
+
         internal virtual string SelectViews()
         {
             return SelectViewsString;
+        }
+
+        internal string CreateProcedure(StoredProcedure procedure)
+        {
+            return string.Format(CreateProcedureString, new object[]{procedure.ProcedureName,procedure.ParameterLines,procedure.ReturnLine,procedure.DeclareLines,procedure.Code});
+        }
+
+        internal string UpdateProcedure(StoredProcedure procedure)
+        {
+            return string.Format(UpdateProcedureString, new object[] { procedure.ProcedureName, procedure.ParameterLines, procedure.ReturnLine, procedure.DeclareLines, procedure.Code });
+        }
+
+        internal string DropProcedure(string procedureName)
+        {
+            return string.Format(DropProcedureString, procedureName);
         }
 
         internal virtual string CreateView(View view)

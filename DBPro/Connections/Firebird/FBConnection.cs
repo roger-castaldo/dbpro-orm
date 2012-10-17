@@ -16,6 +16,8 @@ using VersionTypes = Org.Reddragonit.Dbpro.Structure.Attributes.VersionField.Ver
 using System.Text;
 using System.Data;
 using System.Reflection;
+using System.Xml;
+using System.IO;
 
 namespace Org.Reddragonit.Dbpro.Connections.Firebird
 {
@@ -57,11 +59,12 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		{
 		}
 		
-		internal override void GetAddAutogen(ExtractedTableMap map,ConnectionPool pool, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers)
+		internal override void GetAddAutogen(ExtractedTableMap map,ConnectionPool pool, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers,out List<StoredProcedure> procedures)
 		{
 			identities=null;
 			generators = new List<Generator>();
 			triggers=new List<Trigger>();
+            procedures = new List<StoredProcedure>();
 			ExtractedFieldMap field = map.PrimaryKeys[0];
 			if ((map.PrimaryKeys.Count>1)&&(!field.AutoGen))
 			{
@@ -118,6 +121,14 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 				}
             }else if (field.Type.ToUpper().Contains("VARCHAR"))
             {
+                XmlDocument doc = new XmlDocument();
+                doc.LoadXml(new StreamReader(Assembly.GetAssembly(typeof(FBConnection)).GetManifestResourceStream("Org.Reddragonit.Dbpro.Connections.Firebird.StringIDProcedures.xml")).ReadToEnd());
+                foreach (XmlElement proc in doc.GetElementsByTagName("Procedure"))
+                    procedures.Add(new StoredProcedure(proc.ChildNodes[0].InnerText,
+                        proc.ChildNodes[1].InnerText,
+                        proc.ChildNodes[2].InnerText,
+                        proc.ChildNodes[3].InnerText,
+                        proc.ChildNodes[4].InnerText));
                 string code = "AS \n";
                 code += "DECLARE VARIABLE IDVAL VARCHAR(38);\n"+
                     "DECLARE VARIABLE CNT BIGINT;\n";

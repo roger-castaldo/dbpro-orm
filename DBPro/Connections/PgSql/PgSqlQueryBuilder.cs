@@ -259,5 +259,29 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
                 return "SELECT table_name,view_definition FROM information_schema.views WHERE table_schema NOT IN ('pg_catalog', 'information_schema') AND table_name !~ '^pg_'";
             }
         }
+
+        protected override string CreateProcedureString
+        {
+            get
+            {
+                return "CREATE FUNCTION {0} ({1}) RETURNS {2} AS $$ {3} BEGIN {4} END; $$";
+            }
+        }
+
+        protected override string UpdateProcedureString
+        {
+            get
+            {
+                return "REPLACE FUNCTION {0} ({1}) RETURNS {2} AS $$ {3} BEGIN {4} END; $$";
+            }
+        }
+
+        protected override string DropProcedureString
+        {
+            get
+            {
+                return "DROP FUNCTION {0}";
+            }
+        }
 	}
 }

@@ -83,12 +83,13 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 		{
             return (IDbConnection)Utility.LocateType(_CONNECTION_TYPE_NAME).GetConstructor(new Type[] { typeof(String) }).Invoke(new object[] { connectionString });
 		}
-		
-		internal override void GetAddAutogen(ExtractedTableMap map, ConnectionPool pool, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers)
+
+        internal override void GetAddAutogen(ExtractedTableMap map, ConnectionPool pool, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers, out List<StoredProcedure> procedures)
 		{
 			identities=null;
 			generators = new List<Generator>();
 			triggers=new List<Trigger>();
+            procedures = new List<StoredProcedure>();
 			ExtractedFieldMap field = map.PrimaryKeys[0];
 			if ((map.PrimaryKeys.Count>1)&&(!field.AutoGen))
 			{

@@ -79,6 +79,7 @@
     <Compile Include="Connections\Connection.cs" />
     <Compile Include="Connections\ConnectionPool.cs" />
     <Compile Include="Connections\ConnectionPoolManager.cs" />
+    <Compile Include="Connections\Interfaces\ICustomStoredProcedureDefiner.cs" />
     <Compile Include="Connections\Interfaces\ICustomViewDefiner.cs" />
     <Compile Include="Connections\MsSql\MSSQLQueryBuilder.cs" />
     <Compile Include="Connections\MySql\MySqlConnection.cs" />
@@ -146,11 +147,6 @@
     <Compile Include="Virtual\Attributes\VirtualTableAttribute.cs" />
     <Compile Include="Virtual\VirtualTableQueryBuilder.cs" />
     <EmbeddedResource Include="Connections\MsSql\IdentitySP.sql" />
-    <EmbeddedResource Include="Connections\Firebird\CALCULATE_HASH.sql" />
-    <EmbeddedResource Include="Connections\Firebird\CONVERT_BIGINT_CHARSTRING.sql" />
-    <EmbeddedResource Include="Connections\Firebird\GENERATE_UNIQUE_ID.sql" />
-    <EmbeddedResource Include="Connections\Firebird\RAND.sql" />
-    <EmbeddedResource Include="Connections\MsSql\GENERATE_UNIQUE_ID.sql" />
   </ItemGroup>
   <ItemGroup />
   <ItemGroup />
@@ -172,7 +168,10 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Connections\MsSql\CONVERT_BIGINT_CHAR.sql" />
+    <EmbeddedResource Include="Connections\Firebird\StringIDProcedures.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Connections\MsSql\StringIDProcedures.xml" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.Targets" />
   <PropertyGroup>
