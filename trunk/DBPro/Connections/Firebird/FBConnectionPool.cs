@@ -182,60 +182,6 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 
         protected override void PreInit()
         {
-            if (!_readonly)
-            {
-                Logger.LogLine("Initializing Firebird Connection Pool " + this.ConnectionName + " using the connection string: " + connectionString);
-                Connection c = CreateConnection(false);
-                bool exists = false;
-                string query = new StreamReader(this.GetType().Assembly.GetManifestResourceStream("Org.Reddragonit.Dbpro.Connections.Firebird.RAND.sql")).ReadToEnd();
-                c.ExecuteQuery("SELECT RDB$PROCEDURE_NAME FROM RDB$PROCEDURES WHERE RDB$PROCEDURE_NAME = 'RAND'");
-                if (c.Read())
-                {
-                    if (c[0].ToString() != null)
-                        exists = true;
-                }
-                c.Close();
-                if (!exists)
-                    c.ExecuteNonQuery(query);
-                c.Commit();
-                exists = false;
-                query = new StreamReader(this.GetType().Assembly.GetManifestResourceStream("Org.Reddragonit.Dbpro.Connections.Firebird.CALCULATE_HASH.sql")).ReadToEnd();
-                c.ExecuteQuery("SELECT RDB$PROCEDURE_NAME FROM RDB$PROCEDURES WHERE RDB$PROCEDURE_NAME = 'CALCULATE_HASH'");
-                if (c.Read())
-                {
-                    if (c[0].ToString() != null)
-                        exists = true;
-                }
-                c.Close();
-                if (!exists)
-                    c.ExecuteNonQuery(query);
-                c.Commit();
-                exists = false;
-                query = new StreamReader(this.GetType().Assembly.GetManifestResourceStream("Org.Reddragonit.Dbpro.Connections.Firebird.CONVERT_BIGINT_CHARSTRING.sql")).ReadToEnd();
-                c.ExecuteQuery("SELECT RDB$PROCEDURE_NAME FROM RDB$PROCEDURES WHERE RDB$PROCEDURE_NAME = 'CONVERT_BIGINT_CHARSTRING'");
-                if (c.Read())
-                {
-                    if (c[0].ToString() != null)
-                        exists = true;
-                }
-                c.Close();
-                if (!exists)
-                    c.ExecuteNonQuery(query);
-                c.Commit();
-                exists = false;
-                query = new StreamReader(this.GetType().Assembly.GetManifestResourceStream("Org.Reddragonit.Dbpro.Connections.Firebird.GENERATE_UNIQUE_ID.sql")).ReadToEnd();
-                c.ExecuteQuery("SELECT RDB$PROCEDURE_NAME FROM RDB$PROCEDURES WHERE RDB$PROCEDURE_NAME = 'GENERATE_UNIQUE_ID'");
-                if (c.Read())
-                {
-                    if (c[0].ToString() != null)
-                        exists = true;
-                }
-                c.Close();
-                if (!exists)
-                    c.ExecuteNonQuery(query);
-                c.Commit();
-                c.CloseConnection();
-            }
         }
 
         protected override void _InitClass()

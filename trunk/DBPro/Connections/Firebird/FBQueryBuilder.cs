@@ -272,6 +272,94 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
             }
         }
 
+        protected override string SelectProceduresString
+        {
+            get
+            {
+                return @"SELECT proc.RDB$PROCEDURE_NAME,inps.pars_code,rets.pars_code,
+SUBSTRING(proc.RDB$PROCEDURE_SOURCE FROM 1 FOR POSITION('BEGIN' IN proc.RDB$PROCEDURE_SOURCE)-1) as declares,
+LEFT(TRIM(SUBSTRING(proc.RDB$PROCEDURE_SOURCE FROM POSITION('BEGIN' IN proc.RDB$PROCEDURE_SOURCE)+6)),CHAR_LENGTH(TRIM(SUBSTRING(proc.RDB$PROCEDURE_SOURCE FROM POSITION('BEGIN' IN proc.RDB$PROCEDURE_SOURCE)+6)))-4) as code
+FROM RDB$PROCEDURES proc LEFT JOIN 
+( SELECT LIST(TRIM(par.RDB$PARAMETER_NAME)
+||' '||TRIM(CASE fld.rdb$field_type WHEN 261 THEN 
+	(CASE WHEN fld.rdb$field_sub_type = 1 THEN  'BLOB SUB_TYPE TEXT' 
+	ELSE 'BLOB' END) 
+	WHEN 14 THEN 'CHAR' 
+	WHEN 27 THEN 'DOUBLE PRECISION' 
+	WHEN 10 THEN 'FLOAT' 
+	WHEN 16 THEN 
+	(CASE WHEN fld.rdb$field_sub_type = 2 THEN 'DECIMAL('||CAST(fld.rdb$field_precision as varchar(100))||', '||cast((0-fld.rdb$field_scale) as varchar(100))||')' 
+	ELSE 'BIGINT' END) 
+	WHEN 8 THEN 'INTEGER' 
+	WHEN 9 THEN 'QUAD' 
+	WHEN 7 THEN 'SMALLINT' 
+	WHEN 12 THEN 'DATE' 
+	WHEN 13 THEN 'TIME' 
+	WHEN 35 THEN 'TIMESTAMP' 
+	WHEN 37 THEN 'VARCHAR' 
+	ELSE 'UNKNOWN' 
+    END)||(CASE WHEN fld.rdb$field_type IN (14,37) THEN '('||fld.rdb$field_length||')' 
+    ELSE '' END)
+) as pars_code,par.RDB$PROCEDURE_NAME as proc_name
+FROM RDB$PROCEDURE_PARAMETERS par, RDB$FIELDS fld
+WHERE par.RDB$PARAMETER_TYPE = 1
+AND par.RDB$FIELD_SOURCE = fld.RDB$FIELD_NAME
+GROUP BY par.RDB$PROCEDURE_NAME
+) rets ON proc.RDB$PROCEDURE_NAME = rets.proc_name
+LEFT JOIN 
+( SELECT LIST(TRIM(par.RDB$PARAMETER_NAME)
+||' '||TRIM(CASE fld.rdb$field_type WHEN 261 THEN 
+	(CASE WHEN fld.rdb$field_sub_type = 1 THEN  'BLOB SUB_TYPE TEXT' 
+	ELSE 'BLOB' END) 
+	WHEN 14 THEN 'CHAR' 
+	WHEN 27 THEN 'DOUBLE PRECISION' 
+	WHEN 10 THEN 'FLOAT' 
+	WHEN 16 THEN 
+	(CASE WHEN fld.rdb$field_sub_type = 2 THEN 'DECIMAL('||CAST(fld.rdb$field_precision as varchar(100))||', '||cast((0-fld.rdb$field_scale) as varchar(100))||')' 
+	ELSE 'BIGINT' END) 
+	WHEN 8 THEN 'INTEGER' 
+	WHEN 9 THEN 'QUAD' 
+	WHEN 7 THEN 'SMALLINT' 
+	WHEN 12 THEN 'DATE' 
+	WHEN 13 THEN 'TIME' 
+	WHEN 35 THEN 'TIMESTAMP' 
+	WHEN 37 THEN 'VARCHAR' 
+	ELSE 'UNKNOWN' 
+    END)||(CASE WHEN fld.rdb$field_type IN (14,37) THEN '('||fld.rdb$field_length||')' 
+    ELSE '' END)
+) as pars_code,par.RDB$PROCEDURE_NAME as proc_name
+FROM RDB$PROCEDURE_PARAMETERS par, RDB$FIELDS fld
+WHERE par.RDB$PARAMETER_TYPE = 0
+AND par.RDB$FIELD_SOURCE = fld.RDB$FIELD_NAME
+GROUP BY par.RDB$PROCEDURE_NAME
+) inps ON proc.RDB$PROCEDURE_NAME = inps.proc_name";
+            }
+        }
+
+        protected override string CreateProcedureString
+        {
+            get
+            {
+                return "CREATE PROCEDURE {0} ({1}) RETURNS ({2}) AS {3} BEGIN {4} END";
+            }
+        }
+
+        protected override string UpdateProcedureString
+        {
+            get
+            {
+                return "ALTER PROCEDURE {0} ({1}) RETURNS ({2}) AS {3} BEGIN {4} END";
+            }
+        }
+
+        protected override string DropProcedureString
+        {
+            get
+            {
+                return "DROP PROCEDURE {0}";
+            }
+        }
+
         protected override string SelectViewsString
         {
             get

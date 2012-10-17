@@ -329,7 +329,65 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
                 return "CREATE {3} INDEX {2} ON {0} ({1})";
             }
         }
-		protected override string SelectViewsString
+
+        protected override string SelectProceduresString
+        {
+            get
+            {
+                return @"select pro.ROUTINE_NAME,
+ISNULL((SELECT STUFF( (SELECT ',' + PARAMETER_NAME + ' '+UPPER(DATA_TYPE+(CASE WHEN CHARACTER_MAXIMUM_LENGTH = -1 THEN '(MAX)' WHEN CHARACTER_MAXIMUM_LENGTH IS NOT NULL THEN '('+CAST(CHARACTER_MAXIMUM_LENGTH AS VARCHAR(MAX))+')' ELSE '' END))
+                             FROM information_schema.PARAMETERS
+                             where SPECIFIC_NAME = pro.SPECIFIC_NAME
+							 AND PARAMETER_MODE = 'IN'
+                             ORDER BY ORDINAL_POSITION
+                             FOR XML PATH('')), 
+                            1, 1, '')),'') as pars,
+ISNULL((SELECT STUFF( (SELECT ',' +UPPER(DATA_TYPE+(CASE WHEN CHARACTER_MAXIMUM_LENGTH = -1 THEN '(MAX)' WHEN CHARACTER_MAXIMUM_LENGTH IS NOT NULL THEN '('+CAST(CHARACTER_MAXIMUM_LENGTH AS VARCHAR(MAX))+')' ELSE '' END))
+                             FROM information_schema.PARAMETERS
+                             where SPECIFIC_NAME = pro.SPECIFIC_NAME
+							 AND PARAMETER_MODE = 'OUT'
+                             ORDER BY ORDINAL_POSITION
+                             FOR XML PATH('')), 
+                            1, 1, '')),'') as returnCode,
+'',
+LTRIM(RTRIM(SUBSTRING(pro.ROUTINE_DEFINITION,CHARINDEX('BEGIN',pro.ROUTINE_DEFINITION)+6,
+LEN(pro.ROUTINE_DEFINITION)-(CHARINDEX('BEGIN',pro.ROUTINE_DEFINITION)+6)-(CHARINDEX('DNE',REVERSE(pro.ROUTINE_DEFINITION))+3)))) as code
+from information_schema.routines pro where 
+pro.routine_type = 'FUNCTION' AND
+pro.SPECIFIC_CATALOG = '{0}'";
+            }
+        }
+
+        internal override string SelectProcedures()
+        {
+            return string.Format(SelectProceduresString, ((MsSqlConnectionPool)this.pool).Catalog);
+        }
+
+        protected override string CreateProcedureString
+        {
+            get
+            {
+                return "CREATE FUNCTION {0} ({1}) RETURNS {2} AS BEGIN {3} {4} END";
+            }
+        }
+
+        protected override string UpdateProcedureString
+        {
+            get
+            {
+                return "ALTER FUNCTION {0} ({1}) RETURNS {2} AS BEGIN {3} {4} END";
+            }
+        }
+
+        protected override string DropProcedureString
+        {
+            get
+            {
+                return "DROP FUNCTION {0}";
+            }
+        }
+
+        protected override string SelectViewsString
         {
             get
             {
