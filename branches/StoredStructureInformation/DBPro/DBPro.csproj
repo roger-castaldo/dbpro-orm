@@ -1,0 +1,180 @@
+﻿<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" xmlns:Conversion="urn:Conversion" ToolsVersion="3.5">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{804A5915-5770-4B62-AF13-E10AE65B5901}</ProjectGuid>
+    <RootNamespace>Org.Reddragonit.Dbpro</RootNamespace>
+    <AssemblyName>DBPro</AssemblyName>
+    <OutputType>Library</OutputType>
+    <ApplicationIcon />
+    <RunPostBuildEvent>OnBuildSuccess</RunPostBuildEvent>
+    <PostBuildEvent />
+    <StartupObject />
+    <NoConfig>false</NoConfig>
+    <FileUpgradeFlags>
+    </FileUpgradeFlags>
+    <OldToolsVersion>2.0</OldToolsVersion>
+    <UpgradeBackupLocation>
+    </UpgradeBackupLocation>
+    <PublishUrl>publish\</PublishUrl>
+    <Install>true</Install>
+    <InstallFrom>Disk</InstallFrom>
+    <UpdateEnabled>false</UpdateEnabled>
+    <UpdateMode>Foreground</UpdateMode>
+    <UpdateInterval>7</UpdateInterval>
+    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
+    <UpdatePeriodically>false</UpdatePeriodically>
+    <UpdateRequired>false</UpdateRequired>
+    <MapFileExtensions>true</MapFileExtensions>
+    <ApplicationRevision>0</ApplicationRevision>
+    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+    <IsWebBootstrapper>false</IsWebBootstrapper>
+    <UseApplicationTrust>false</UseApplicationTrust>
+    <BootstrapperEnabled>true</BootstrapperEnabled>
+    <SourceAnalysisOverrideSettingsFile>C:\Documents and Settings\Roger\Application Data\ICSharpCode/SharpDevelop3.0\Settings.SourceAnalysis</SourceAnalysisOverrideSettingsFile>
+    <SignAssembly>false</SignAssembly>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <NoStdLib>false</NoStdLib>
+    <WarningLevel>4</WarningLevel>
+    <NoWarn />
+    <DebugSymbols>true</DebugSymbols>
+    <Optimize>false</Optimize>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <CheckForOverflowUnderflow>false</CheckForOverflowUnderflow>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <OutputPath>bin\Debug\</OutputPath>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <DebugType>Full</DebugType>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <NoStdLib>false</NoStdLib>
+    <WarningLevel>4</WarningLevel>
+    <NoWarn />
+    <DebugSymbols>false</DebugSymbols>
+    <Optimize>true</Optimize>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <CheckForOverflowUnderflow>false</CheckForOverflowUnderflow>
+    <DefineConstants>TRACE</DefineConstants>
+    <OutputPath>bin\Release\</OutputPath>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+    <Reference Include="System" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="AssemblyInfo.cs" />
+    <Compile Include="Backup\BackupManager.cs" />
+    <Compile Include="Backup\XMLCompressor.cs" />
+    <Compile Include="Backup\ZipFile.cs" />
+    <Compile Include="CompleteLazyLoadPriorToCall.cs" />
+    <Compile Include="Connections\ClassSQL\ClassQuery.cs" />
+    <Compile Include="Connections\ClassSQL\Enums.cs" />
+    <Compile Include="Connections\ClassSQL\QueryFunctions.cs" />
+    <Compile Include="Connections\ClassSQL\QueryKeywords.cs" />
+    <Compile Include="Connections\ClassSQL\QueryToken.cs" />
+    <Compile Include="Connections\Connection.cs" />
+    <Compile Include="Connections\ConnectionPool.cs" />
+    <Compile Include="Connections\ConnectionPoolManager.cs" />
+    <Compile Include="Connections\Interfaces\ICustomStoredProcedureDefiner.cs" />
+    <Compile Include="Connections\Interfaces\ICustomViewDefiner.cs" />
+    <Compile Include="Connections\MsSql\MSSQLQueryBuilder.cs" />
+    <Compile Include="Connections\MySql\MySqlConnection.cs" />
+    <Compile Include="Connections\MySql\MySqlConnectionPool.cs" />
+    <Compile Include="Connections\MySql\MySqlQueryBuilder.cs" />
+    <Compile Include="Connections\Parameters\AndParameter.cs" />
+    <Compile Include="Connections\Parameters\CompareParameter.cs" />
+    <Compile Include="Connections\Parameters\EqualIgnoreCaseParameter.cs" />
+    <Compile Include="Connections\Parameters\EqualParameter.cs" />
+    <Compile Include="Connections\Parameters\GreaterThanEqualToParameter.cs" />
+    <Compile Include="Connections\Parameters\GreaterThanParameter.cs" />
+    <Compile Include="Connections\Parameters\InParameter.cs" />
+    <Compile Include="Connections\Parameters\JoinParameter.cs" />
+    <Compile Include="Connections\Parameters\LessThanEqualToParameter.cs" />
+    <Compile Include="Connections\Parameters\LessThanParameter.cs" />
+    <Compile Include="Connections\Parameters\LikeParameter.cs" />
+    <Compile Include="Connections\Parameters\NotParameter.cs" />
+    <Compile Include="Connections\Parameters\OrParameter.cs" />
+    <Compile Include="Connections\Parameters\SelectParameter.cs" />
+    <Compile Include="Connections\PgSql\PgSqlConnection.cs" />
+    <Compile Include="Connections\PgSql\PgSqlConnectionPool.cs" />
+    <Compile Include="Connections\PgSql\PgSqlQueryBuilder.cs" />
+    <Compile Include="Connections\ClassSQL\QueryTokenizer.cs" />
+    <Compile Include="Connections\PoolComponents\ClassMapping.cs" />
+    <Compile Include="Connections\PoolComponents\EnumsHandler.cs" />
+    <Compile Include="Connections\PoolComponents\NameTranslator.cs" />
+    <Compile Include="Connections\PoolComponents\Structures.cs" />
+    <Compile Include="Connections\Structures.cs" />
+    <Compile Include="Connections\Firebird\FBConnection.cs" />
+    <Compile Include="Connections\Firebird\FBConnectionPool.cs" />
+    <Compile Include="Connections\Firebird\FBQueryBuilder.cs" />
+    <Compile Include="Connections\MsSql\MsSqlConnection.cs" />
+    <Compile Include="Connections\MsSql\MsSqlConnectionPool.cs" />
+    <Compile Include="Connections\QueryBuilder.cs" />
+    <Compile Include="Connections\ITrigger.cs" />
+    <Compile Include="Exceptions\Exceptions.cs" />
+    <Compile Include="Logging\Enums.cs" />
+    <Compile Include="Logging\ILogWriter.cs" />
+    <Compile Include="MethodInvokeChangesField.cs" />
+    <Compile Include="PropertySetChangesField.cs" />
+    <Compile Include="LazyProxy.cs" />
+    <Compile Include="Logger.cs" />
+    <Compile Include="Structure\Attributes\INullable.cs" />
+    <Compile Include="Structure\Attributes\IVersionField.cs" />
+    <Compile Include="Structure\Attributes\TableIndex.cs" />
+    <Compile Include="Structure\Attributes\VersionField.cs" />
+    <Compile Include="Structure\Attributes\VersionForiegnField.cs" />
+    <Compile Include="Structure\PagedTableListEnumerator.cs" />
+    <Compile Include="Structure\PagedTableList.cs" />
+    <Compile Include="Structure\Table.cs" />
+    <Compile Include="Structure\Attributes\Field.cs" />
+    <Compile Include="Structure\Attributes\ForiegnField.cs" />
+    <Compile Include="Structure\Attributes\ForiegnPrimaryKeyField.cs" />
+    <Compile Include="Structure\Attributes\IField.cs" />
+    <Compile Include="Structure\Attributes\IForiegnField.cs" />
+    <Compile Include="Structure\Attributes\IPrimaryKeyField.cs" />
+    <Compile Include="Structure\Attributes\PrimaryKeyField.cs" />
+    <Compile Include="Structure\Attributes\Table.cs" />
+    <Compile Include="Utility.cs" />
+    <Compile Include="Validation\NotNullValidation.cs" />
+    <Compile Include="Validation\RegexValidation.cs" />
+    <Compile Include="Validation\ValidationAttribute.cs" />
+    <Compile Include="Virtual\Attributes\VirtualField.cs" />
+    <Compile Include="Virtual\Attributes\VirtualTableAttribute.cs" />
+    <Compile Include="Virtual\VirtualTableQueryBuilder.cs" />
+    <EmbeddedResource Include="Connections\MsSql\IdentitySP.sql" />
+  </ItemGroup>
+  <ItemGroup />
+  <ItemGroup />
+  <ItemGroup>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.2.0">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 2.0 %28x86%29</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.0">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.0 %28x86%29</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Connections\Firebird\StringIDProcedures.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Connections\MsSql\StringIDProcedures.xml" />
+  </ItemGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.Targets" />
+  <PropertyGroup>
+    <PostBuildEvent>
+    </PostBuildEvent>
+  </PropertyGroup>
+</Project>
