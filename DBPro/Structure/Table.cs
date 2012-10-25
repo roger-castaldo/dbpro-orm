@@ -3,10 +3,10 @@ using System.Reflection;
 using System.Collections.Generic;
 using System.Threading;
 using Org.Reddragonit.Dbpro.Connections;
-using Org.Reddragonit.Dbpro.Structure.Mapping;
-using FieldNamePair = Org.Reddragonit.Dbpro.Structure.Mapping.TableMap.FieldNamePair;
 using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.FieldType;
 using Org.Reddragonit.Dbpro.Connections.Parameters;
+using Org.Reddragonit.Dbpro.Connections.PoolComponents;
+using Org.Reddragonit.Dbpro.Structure.Attributes;
 
 namespace Org.Reddragonit.Dbpro.Structure
 {
@@ -60,18 +60,16 @@ namespace Org.Reddragonit.Dbpro.Structure
 		}
 		
         //Load the initial primary keys into the table object for later comparison.
-		private void InitPrimaryKeys()
-		{
-			_initialPrimaryKeys.Clear();
-			TableMap map = ClassMapper.GetTableMap(this.GetType());
-			foreach (FieldNamePair fnp in map.FieldNamePairs)
-			{
-				if (map[fnp].PrimaryKey || !map.HasPrimaryKeys)
-				{
-					_initialPrimaryKeys.Add(fnp.ClassFieldName,this.GetType().GetProperty(fnp.ClassFieldName).GetValue(this,new object[0]));
-				}
-			}
-		}
+        private void InitPrimaryKeys()
+        {
+            _initialPrimaryKeys.Clear();
+            sTable map = ConnectionPoolManager.GetConnection(this.GetType()).Mapping[this.GetType()];
+            List<string> props = new List<string>(map.PrimaryKeyProperties);
+            if (props.Count == 0)
+                props.AddRange(map.PrimaryKeyProperties);
+            foreach (string prop in props)
+                _initialPrimaryKeys.Add(prop, this.GetType().GetProperty(prop, Utility._BINDING_FLAGS).GetValue(this, new object[0]));
+        }
 
         //used to load the original data to be used for update triggers
         internal Table LoadCopyOfOriginal(Connection conn)
@@ -97,28 +95,35 @@ namespace Org.Reddragonit.Dbpro.Structure
         //called to copy values from an existing table object, this is done for table inheritance
 		internal void CopyValuesFrom(Table table)
 		{
-            TableMap mp = ClassMapper.GetTableMap(table.GetType());
-			foreach (FieldNamePair fnp in mp.FieldNamePairs)
+            ConnectionPool pool = ConnectionPoolManager.GetConnection(table.GetType());
+            sTable mp = pool.Mapping[table.GetType()];
+			foreach (string prop in mp.Properties)
 			{
 				try{
-                    this.SetField(fnp.ClassFieldName, table.GetField(fnp.ClassFieldName));
+                    this.SetField(prop, table.GetField(prop));
 				}catch (Exception e)
 				{
 					
 				}
 			}
-            foreach (FieldNamePair fnp in mp.ParentFieldNamePairs)
+            Type t = table.GetType().BaseType;
+            while (pool.Mapping.IsMappableType(t))
             {
-                try
+                mp = pool.Mapping[t];
+                foreach (string prop in mp.Properties)
                 {
-                    this.SetField(fnp.ClassFieldName, table.GetField(fnp.ClassFieldName));
-                }
-                catch (Exception e)
-                {
+                    try
+                    {
+                        this.SetField(prop, table.GetField(prop));
+                    }
+                    catch (Exception e)
+                    {
 
+                    }
                 }
+                t = t.BaseType;
             }
-			InitPrimaryKeys();
+            InitPrimaryKeys();
 		}
 		
         //returns the connection name that this table is linked to
@@ -151,123 +156,152 @@ namespace Org.Reddragonit.Dbpro.Structure
         //called by a connection to set the values in the table object from the generated query.
         internal void SetValues(Connection conn)
         {
-            SetValues(conn, null);
-        }
-
-        //called by a connection to set the values in the table object from the generated query.
-		internal void SetValues(Connection conn,string addOnName)
-		{
-			_initialPrimaryKeys.Clear();
+            _initialPrimaryKeys.Clear();
             Logger.LogLine("Obtaining table map for " + this.GetType().FullName + " to allow setting of values from query");
-			TableMap map = ClassMapper.GetTableMap(this.GetType());
+            sTable map = conn.Pool.Mapping[this.GetType()];
             Logger.LogLine("Recursively setting values from query for " + this.GetType().FullName);
-			RecurSetValues(map,conn,addOnName);
-			_isSaved = true;
-		}
+            RecurSetValues(map, conn);
+            _isSaved = true;
+        }
 
         //called to set values onto a table that is externally mapped to this current table
         //this is used through lazy loading proxies by only setting the primary key fields.
-        private Table SetExternalValues(TableMap map, Connection conn, string additionalAddOnName, out bool setValue,Table table)
+        private Table SetExternalValues(sTable map,string propertyName, Connection conn, out bool setValue,Table table)
         {
             setValue = false;
-            foreach (InternalFieldMap ifm in map.PrimaryKeys)
+            sTable eMap = conn.Pool.Mapping[table.GetType()];
+            sTableField[] flds = map[propertyName];
+            List<string> fProps = new List<string>(eMap.ForeignTableProperties);
+            foreach (string prop in eMap.PrimaryKeyProperties)
             {
-                if (conn.ContainsField(conn.Pool.CorrectName(additionalAddOnName + "_" + ifm.FieldName)) && !conn.IsDBNull(conn.GetOrdinal(conn.Pool.CorrectName(additionalAddOnName + "_" + ifm.FieldName))))
+                if (fProps.Contains(prop))
                 {
-                    table.SetField(map.GetClassFieldName(ifm.FieldName), conn[conn.Pool.CorrectName(additionalAddOnName + "_" + ifm.FieldName)]);
-                    setValue = true;
-                }
-            }
-            if (setValue)
-            {
-                foreach (FieldNamePair fnp in map.FieldNamePairs)
-                {
-                    if ((map[fnp] is ExternalFieldMap) && map[fnp].PrimaryKey)
+                    PropertyInfo pi = table.GetType().GetProperty(prop, Utility._BINDING_FLAGS);
+                    Table t = (Table)LazyProxy.Instance(pi.PropertyType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
+                    foreach (sTableField f in eMap[prop])
                     {
-                        if (!((ExternalFieldMap)map[fnp]).IsArray)
+                        foreach (sTableField fld in flds)
                         {
-                            ExternalFieldMap efm = (ExternalFieldMap)map[fnp];
-                            Table t = (Table)LazyProxy.Instance(efm.Type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
-                            bool sValue = false;
-                            t = SetExternalValues(ClassMapper.GetTableMap(t.GetType()), conn, additionalAddOnName + "_" + efm.AddOnName, out sValue, t);
-                            if (sValue)
-                                setValue = true;
-                            if (!t.AllFieldsNull && sValue)
+                            if (fld.ExternalField == f.Name)
                             {
-                                t.InitPrimaryKeys();
-                                table.SetField(fnp.ClassFieldName, t);
+                                if (!conn.ContainsField(fld.Name) && !conn.IsDBNull(conn.GetOrdinal(fld.Name)))
+                                {
+                                    RecurSetPropertyValue(f.Name, conn, fld.Name, t);
+                                }
+                                break;
+                            }
+                        }
+                    }
+                    if (!t.AllFieldsNull)
+                    {
+                        t.InitPrimaryKeys();
+                        table.SetField(prop, t);
+                        setValue = true;
+                    }
+                }
+                else
+                {
+                    foreach (sTableField f in eMap[prop])
+                    {
+                        foreach (sTableField fld in flds)
+                        {
+                            if (fld.ExternalField == f.Name)
+                            {
+                                if (!conn.ContainsField(fld.Name)&&!conn.IsDBNull(conn.GetOrdinal(fld.Name))){
+                                    table.SetField(f.ClassProperty, conn[fld.Name]);
+                                    setValue = true;
+                                }
+                                break;
                             }
                         }
                     }
                 }
-                table.LoadStatus = LoadStatus.Partial;
             }
             return table;
         }
+
+        internal void RecurSetPropertyValue(string internalFieldName, Connection conn, string queryFieldName, Table table)
+        {
+            sTable map = conn.Pool.Mapping[table.GetType()];
+            foreach (sTableField fld in map.Fields)
+            {
+                if (fld.Name == internalFieldName)
+                {
+                    if (fld.ExternalField == null)
+                        table.SetField(fld.ClassProperty, conn[queryFieldName]);
+                    else
+                    {
+                        if (table.GetField(fld.ClassProperty) == null)
+                        {
+                            PropertyInfo pi = table.GetType().GetProperty(fld.ClassProperty, Utility._BINDING_FLAGS);
+                            Table t = (Table)LazyProxy.Instance(pi.PropertyType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
+                            table.SetField(fld.Name,t);
+                        }
+                        RecurSetPropertyValue(fld.ExternalField, conn, queryFieldName, (Table)table.GetField(fld.Name));
+                    }
+                    break;
+                }
+            }
+        }
 		
         //recursively sets values 
-		private void RecurSetValues(TableMap map,Connection conn,string addOnName)
+		private void RecurSetValues(sTable map,Connection conn)
 		{
-			foreach (FieldNamePair fnp in map.FieldNamePairs)
+            List<string> extFields = new List<string>(map.ForeignTableProperties);
+			foreach (string prop in map.Properties)
 			{
-				if (map[fnp] is ExternalFieldMap)
+                PropertyInfo pi = this.GetType().GetProperty(prop, Utility._BINDING_FLAGS);
+				if (extFields.Contains(prop))
 				{
-					if (!((ExternalFieldMap)map[fnp]).IsArray)
+					if (!pi.PropertyType.IsArray)
 					{
-						ExternalFieldMap efm = (ExternalFieldMap)map[fnp];
-                        Table t = (Table)LazyProxy.Instance(efm.Type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
+                        Table t = (Table)LazyProxy.Instance(pi.PropertyType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
                         bool setValue = false;
-                        if (addOnName != null)
-                            t = SetExternalValues(ClassMapper.GetTableMap(efm.Type), conn, addOnName+"_"+efm.AddOnName, out setValue, t);
-                        else
-                            t = SetExternalValues(ClassMapper.GetTableMap(efm.Type), conn, efm.AddOnName, out setValue, t);
+                        t = SetExternalValues(map, prop, conn, out setValue, t);
 						if (!t.AllFieldsNull&&setValue)
 						{
 							t.InitPrimaryKeys();
-							this.SetField(fnp.ClassFieldName,t);
+							this.SetField(prop,t);
 						}
 					}
 				}
 				else
 				{
-                    string fieldName = fnp.TableFieldName;
-                    if (addOnName != null)
-                        fieldName = addOnName + "_" + fieldName;
-					if (conn.ContainsField(fieldName))
-					{
-						if (conn.IsDBNull(conn.GetOrdinal(fieldName)))
-						{
-							try{
-								this.SetField(fnp.ClassFieldName,null);
-							}catch(Exception e){}
-						}
-						else
-						{
-							if (((InternalFieldMap)map[fnp]).FieldType==FieldType.ENUM)
-								this.SetField(fnp.ClassFieldName, conn.Pool.GetEnumValue(map[fnp].ObjectType,(int)conn[fieldName]));
-							else
-								this.SetField(fnp.ClassFieldName, conn[fieldName]);
-						}
-					}
-				}
-				if (((map[fnp].PrimaryKey)||!map.HasPrimaryKeys)&&!_initialPrimaryKeys.ContainsKey(fnp.ClassFieldName))
-				{
-					_initialPrimaryKeys.Add(fnp.ClassFieldName,this.GetField(fnp.ClassFieldName));
-				}
+                    if (!pi.PropertyType.IsArray){
+                        sTableField fld = map[prop][0];
+                        if (conn.ContainsField(fld.Name))
+                        {
+                            if (conn.IsDBNull(conn.GetOrdinal(fld.Name)))
+                            {
+                                try
+                                {
+                                    this.SetField(prop, null);
+                                }
+                                catch (Exception e) { }
+                            }else{
+                                if (fld.Type == FieldType.ENUM)
+                                    this.SetField(prop,conn.Pool.GetEnumValue(pi.PropertyType,(int)conn[fld.Name]));
+                                else
+                                    this.SetField(prop,conn[fld.Name]);
+                            }
+                        }
+                    }
+                }
 			}
-			if (map.ParentType!=null)
+			if (conn.Pool.Mapping.IsMappableType(this.GetType().BaseType))
 			{
-				RecurSetValues(ClassMapper.GetTableMap(map.ParentType),conn,addOnName);
+				RecurSetValues(conn.Pool.Mapping[this.GetType().BaseType],conn);
 			}
+            this.InitPrimaryKeys();
 		}
 
 		internal bool AllFieldsNull
 		{
 			get
 			{
-				foreach (FieldNamePair fnp in ClassMapper.GetTableMap(this.GetType()).FieldNamePairs)
+				foreach (string prop in ConnectionPoolManager.GetConnection(GetType()).Mapping[GetType()].Properties)
 				{
-					if (!IsFieldNull(fnp.ClassFieldName))
+					if (!IsFieldNull(prop))
 					{
 						return false;
 					}
@@ -278,15 +312,12 @@ namespace Org.Reddragonit.Dbpro.Structure
 
         internal PropertyInfo LocatePropertyInfo(string FieldName)
         {
-            TableMap map = ClassMapper.GetTableMap(this.GetType());
-            PropertyInfo ret = this.GetType().GetProperty(FieldName);
+            ConnectionPool pool = ConnectionPoolManager.GetConnection(this.GetType());
+            sTable map = pool.Mapping[this.GetType()];
+            PropertyInfo ret = this.GetType().GetProperty(FieldName, Utility._BINDING_FLAGS);
             if (ret == null)
             {
-                foreach (PropertyInfo p in this.GetType().GetProperties(BindingFlags.Public |      //Get public members
-                                                                            BindingFlags.NonPublic |   //Get private/protected/internal members
-                                                                            BindingFlags.Static |      //Get static members
-                                                                            BindingFlags.Instance |    //Get instance members
-                                                                            BindingFlags.DeclaredOnly))
+                foreach (PropertyInfo p in this.GetType().GetProperties(Utility._BINDING_FLAGS))
                 {
                     if (p.Name == FieldName)
                     {
@@ -297,62 +328,26 @@ namespace Org.Reddragonit.Dbpro.Structure
             }
             if (ret == null)
             {
-                if (map.ParentType != null)
-                {
-                    while (map.ParentType != null)
+                Type t = this.GetType().BaseType;
+                while(pool.Mapping.IsMappableType(t)){
+                    foreach (PropertyInfo p in t.GetProperties(Utility._BINDING_FLAGS))
                     {
-                        foreach (PropertyInfo p in map.ParentType.GetProperties(BindingFlags.Public |      //Get public members
-                                                                            BindingFlags.NonPublic |   //Get private/protected/internal members
-                                                                            BindingFlags.Static |      //Get static members
-                                                                            BindingFlags.Instance |    //Get instance members
-                                                                            BindingFlags.DeclaredOnly))
-                        {
-                            if (p.Name == FieldName)
-                            {
-                                ret = p;
-                                break;
-                            }
-                        }
-                        if (ret != null)
+                        if (p.Name == FieldName){
+                            ret = p;
                             break;
-                        map = ClassMapper.GetTableMap(map.ParentType);
+                        }
                     }
+                    if (ret!=null)
+                        break;
+                    t=t.BaseType;
                 }
             }
             if (ret == null)
             {
-                map = ClassMapper.GetTableMap(this.GetType());
-                if (map.GetClassFieldName(FieldName) != null)
-                {
-                    ret = LocatePropertyInfo(map.GetClassFieldName(FieldName));
-                }
-            }
-            return ret;
-        }
-
-        internal object GetField(string FieldName, bool searchExternal)
-        {
-            object ret = GetField(FieldName);
-            if ((ret == null)&&(searchExternal))
-            {
-                TableMap map = ClassMapper.GetTableMap(this.GetType());
-                foreach (FieldNamePair fnp in map.FieldNamePairs)
-                {
-                    if (map[fnp] is ExternalFieldMap)
-                    {
-                        ExternalFieldMap efm = (ExternalFieldMap)map[fnp];
-                        TableMap extMap = ClassMapper.GetTableMap(efm.Type);
-                        foreach (InternalFieldMap ifm in extMap.PrimaryKeys)
-                        {
-                            if (efm.AddOnName + "_" + ifm.FieldName == FieldName)
-                            {
-                                Table obj = (Table)GetField(fnp.ClassFieldName);
-                                if (obj != null)
-                                    ret = obj.GetField(FieldName.Substring(efm.AddOnName.Length+1), true);
-                                if (ret != null)
-                                    break;
-                            }
-                        }
+                foreach (sTableField fld in map.Fields){
+                    if (fld.Name == FieldName){
+                        ret = LocatePropertyInfo(fld.ClassProperty);
+                        break;
                     }
                 }
             }
@@ -379,9 +374,9 @@ namespace Org.Reddragonit.Dbpro.Structure
 		{
             if (FieldName == null)
                 return;
-			if (value==null)
-				value = ClassMapper.InitialValueForClassField(this.GetType(),FieldName);
             PropertyInfo pi = LocatePropertyInfo(FieldName);
+            if (value == null)
+                value = pi.GetValue(this.GetType().GetConstructor(Type.EmptyTypes).Invoke(new object[0]),new object[0]);
 			if (pi.PropertyType.Equals(typeof(bool))&&!(value.GetType().Equals(typeof(bool))))
 			{
 				if (value.GetType().Equals(typeof(int)))
@@ -446,15 +441,17 @@ namespace Org.Reddragonit.Dbpro.Structure
                 return true;
             PropertyInfo pi = LocatePropertyInfo(FieldName);
 			object cur = pi.GetValue(this,new object[0]);
-            if (ClassMapper.GetTableMap(this.GetType())[FieldName] != null)
+            sTable map = ConnectionPoolManager.GetConnection(this.GetType()).Mapping[this.GetType()];
+            if (map[FieldName].Length>0)
             {
+                sTableField fld = map[FieldName][0];
                 if (((pi.PropertyType.Equals(typeof(bool))||pi.PropertyType.IsEnum)
-                    && !ClassMapper.GetTableMap(this.GetType())[FieldName].Nullable) ||
-                    (ClassMapper.GetTableMap(this.GetType())[FieldName].PrimaryKey && this.IsSaved)||
-                    !ClassMapper.GetTableMap(this.GetType())[FieldName].Nullable)
+                    && !fld.Nullable) ||
+                    (new List<string>(map.PrimaryKeyProperties).Contains(FieldName) && this.IsSaved)||
+                    !fld.Nullable)
                     return false;
             }
-			return equalObjects(cur,ClassMapper.InitialValueForClassField(this.GetType(),FieldName));
+            return equalObjects(cur, pi.GetValue(this.GetType().GetConstructor(Type.EmptyTypes).Invoke(new object[0]), new object[0]));
 		}
 
 		private bool equalObjects(object obj1, object obj2)
@@ -575,36 +572,43 @@ namespace Org.Reddragonit.Dbpro.Structure
 			if (!this.GetType().IsSubclassOf(conversionType) && !conversionType.IsSubclassOf(this.GetType()))
 				throw new Exception("Cannot convert object to type that is not a parent/child of the current class.");
 			Table ret = (Table)conversionType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
-            TableMap map = ClassMapper.GetTableMap(conversionType);
+            sTable map = ConnectionPoolManager.GetConnection(conversionType).Mapping[conversionType];
             if (conversionType.IsSubclassOf(this.GetType()))
-                map = ClassMapper.GetTableMap(this.GetType());
+                map = ConnectionPoolManager.GetConnection(this.GetType()).Mapping[this.GetType()];
             else
             {
                 ret._isSaved = this._isSaved;
                 ret._loadStatus = this._loadStatus;
             }
             ((Table)ret)._changedFields = new List<string>();
-            foreach (FieldNamePair fnp in map.FieldNamePairs)
+            foreach (string prop in map.Properties)
             {
-                if (!this.IsFieldNull(fnp.ClassFieldName))
-                    ((Table)ret).SetField(fnp.ClassFieldName, this.GetField(fnp.ClassFieldName));
+                if (!this.IsFieldNull(prop))
+                    ((Table)ret).SetField(prop, this.GetField(prop));
                 if (this.ChangedFields != null)
                 {
-                    if (this.ChangedFields.Contains(fnp.ClassFieldName))
-                        ((Table)ret)._changedFields.Add(fnp.ClassFieldName);
+                    if (this.ChangedFields.Contains(prop))
+                        ((Table)ret)._changedFields.Add(prop);
                 }
             }
-            foreach (FieldNamePair fnp in map.ParentFieldNamePairs)
+            ConnectionPool pool = ConnectionPoolManager.GetConnection(ret.GetType());
+            Type t = ret.GetType().BaseType;
+            while (pool.Mapping.IsMappableType(t))
             {
-                if (!this.IsFieldNull(fnp.ClassFieldName))
-                    ((Table)ret).SetField(fnp.ClassFieldName, this.GetField(fnp.ClassFieldName));
-                if (this.ChangedFields != null)
+                map = pool.Mapping[t];
+                foreach (string prop in map.Properties)
                 {
-                    if (this.ChangedFields.Contains(fnp.ClassFieldName))
-                        ((Table)ret)._changedFields.Add(fnp.ClassFieldName);
-                }
+                    if (!this.IsFieldNull(prop))
+                        ((Table)ret).SetField(prop, this.GetField(prop));
+                    if (this.ChangedFields != null)
+                    {
+                        if (this.ChangedFields.Contains(prop))
+                            ((Table)ret)._changedFields.Add(prop);
+                    }
+                }    
+                t = t.BaseType;
             }
-			((Table)ret).InitPrimaryKeys();
+            ((Table)ret).InitPrimaryKeys();
             foreach (string str in this._initialPrimaryKeys.Keys)
             {
                 if (((Table)ret)._initialPrimaryKeys.ContainsKey(str))
@@ -646,7 +650,7 @@ namespace Org.Reddragonit.Dbpro.Structure
             conn.CloseConnection();
             if (tmp == null)
                 throw new Exception("An error occured attempting to save the table.");
-            foreach (PropertyInfo pi in this.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
+            foreach (PropertyInfo pi in this.GetType().GetProperties(Utility._BINDING_FLAGS))
             {
                 if (pi.CanWrite)
                     pi.SetValue(this, pi.GetValue(tmp, new object[0]), new object[0]);

@@ -11,8 +11,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
-using Org.Reddragonit.Dbpro.Structure.Mapping;
-using FieldNamePair = Org.Reddragonit.Dbpro.Structure.Mapping.TableMap.FieldNamePair;
+using Org.Reddragonit.Dbpro.Connections.PoolComponents;
+using System.Reflection;
 
 namespace Org.Reddragonit.Dbpro.Connections.Parameters
 {
@@ -51,51 +51,59 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
             get { return false; }
         }
 
-        private FieldNamePair? LocateFieldNamePair(string fieldName,TableMap map,out bool ClassBased,out bool isExternal,out TableMap newMap,out string alias)
+        private string LocateTableField(string fieldName,Type tableType,out bool ClassBased,out bool isExternal,out Type newType,out string alias)
         {
-            FieldNamePair? ret = null;
+            string ret = null;
             ClassBased = false;
             isExternal = false;
-            newMap = null;
+            newType = null;
             alias = null;
             if (fieldName.Contains("."))
             {
                 string newField = fieldName.Substring(0, fieldName.IndexOf("."));
-                foreach (FieldNamePair f in map.FieldNamePairs)
-                {
-                    if (f.ClassFieldName == newField)
-                    {
-                        ret = LocateFieldNamePair(fieldName.Substring(fieldName.IndexOf(".") + 1), ClassMapper.GetTableMap(((ExternalFieldMap)map[f]).ObjectType), out ClassBased, out isExternal, out newMap, out alias);
-                        break;
-                    }
-                }
+                PropertyInfo pi = tableType.GetProperty(newField, Utility._BINDING_FLAGS);
+                ret = LocateTableField(fieldName.Substring(fieldName.IndexOf(".") + 1), (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType), out ClassBased, out isExternal, out newType, out alias);
                 alias = fieldName.Substring(0, fieldName.IndexOf("."))+((alias==null) ? "" : "_"+alias);
             }
             else
             {
-                newMap = map;
+                newType = tableType;
                 ClassBased = false;
                 isExternal = false;
-                foreach (FieldNamePair f in map.FieldNamePairs)
+                ConnectionPool pool = ConnectionPoolManager.GetConnection(tableType);
+                sTable map = pool.Mapping[tableType];
+                foreach (sTableField fld in map.Fields)
                 {
-                    if (f.ClassFieldName == fieldName)
+                    if (fld.ClassProperty == fieldName)
                     {
-                        isExternal = map[f] is ExternalFieldMap;
-                        ClassBased = true;
-                        ret = f;
-                        break;
+                        if (fld.ExternalField != null)
+                        {
+                            alias = fieldName+(alias == null ? "" : "_" + alias);
+                            ret = fieldName;
+                            isExternal = true;
+                            ClassBased = true;
+                            break;
+                        }
+                        else
+                        {
+                            isExternal = false;
+                            ClassBased = true;
+                            ret = fld.Name;
+                            break;
+                        }
                     }
-                    else if (f.TableFieldName == fieldName)
+                    else if (fld.Name == fieldName)
                     {
-                        isExternal = map[f] is ExternalFieldMap;
-                        ret = f;
+                        ret = fieldName;
+                        isExternal = fld.ExternalField != null;
+                        ClassBased = false;
                         break;
                     }
                 }
-                if (!ret.HasValue)
+                if (ret==null)
                 {
-                    if (map.ParentType != null)
-                        ret = LocateFieldNamePair(fieldName,ClassMapper.GetTableMap(map.ParentType), out ClassBased, out isExternal,out newMap,out alias);
+                    if (pool.Mapping.IsMappableType(tableType.BaseType))
+                        ret = LocateTableField(fieldName,tableType.BaseType, out ClassBased, out isExternal,out newType,out alias);
                 }
             }
             return ret;
@@ -106,19 +114,19 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
             get { return new List<string>(new string[]{FieldName}); }
         }
 
-        internal sealed override string ConstructString(TableMap map, Connection conn, QueryBuilder builder, ref List<IDbDataParameter> queryParameters, ref int parCount)
+        internal sealed override string ConstructString(Type tableType, Connection conn, QueryBuilder builder, ref List<IDbDataParameter> queryParameters, ref int parCount)
         {
             bool found = false;
             string ret = "";
-            FieldType? type = null;
+            FieldType? type=null;
             Type _objType = null;
             int fieldLength = 0;
             bool isExternal = false;
             bool isClassBased=false;
-            TableMap newMap;
+            Type newType;
             string alias = "";
-            FieldNamePair? fnp = LocateFieldNamePair(FieldName,map, out isClassBased, out isExternal,out newMap,out alias);
-            found = fnp.HasValue;
+            string fldName = LocateTableField(FieldName,tableType, out isClassBased, out isExternal,out newType,out alias);
+            found = fldName != null;
             if ((alias != null) && (alias.Length > 0))
                 alias = "main_table_" + alias + ".";
             if (isExternal)
@@ -127,56 +135,50 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                 {
                     if ((alias == "")||(alias==null))
                         alias = "main_table.";
-                    ExternalFieldMap efm = (ExternalFieldMap)newMap[fnp.Value];
-                    if (efm == null)
+                    sTable relatedMap = conn.Pool.Mapping[newType];
+                    foreach (string prop in relatedMap.PrimaryKeyProperties)
                     {
-                        TableMap m = ClassMapper.GetTableMap(map.ParentType);
-                        while (m[fnp.Value] == null)
+                        sTableField[] flds = relatedMap[prop];
+                        if (flds[0].ExternalField != null)
                         {
-                            if (m.ParentType != null)
-                                m = ClassMapper.GetTableMap(m.ParentType);
-                            else
-                                throw new Exception("Unable to Locate Parent Field.");
-                        }
-                        efm = (ExternalFieldMap)m[fnp.Value];
-                    }
-                    TableMap relatedMap = ClassMapper.GetTableMap(efm.Type);
-                    foreach (InternalFieldMap ifm in relatedMap.PrimaryKeys)
-                    {
-                        ret += " AND " + (this.CaseInsensitive ? "UPPER(" : "") + alias + conn.Pool.CorrectName(efm.AddOnName + "_" + ifm.FieldName) + " " + (this.CaseInsensitive ? ")" : "") +ComparatorString + " ";
-                        type = ifm.FieldType;
-                        _objType = ifm.ObjectType;
-                        fieldLength = ifm.FieldLength;
-                        ret += builder.CreateParameterName("parameter_" + parCount.ToString());
-                        string className = ifm.FieldName;
-                        if (relatedMap.GetClassFieldName(ifm.FieldName)!=null)
-                            className=ifm.FieldName;
-                        if (_objType == null)
-                        {
-                            _objType = ((Org.Reddragonit.Dbpro.Structure.Table)FieldValue).GetField(className,true).GetType();
-                        }
-                        if ((_objType != null) && _objType.IsEnum)
-                        {
-                            queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), conn.Pool.GetEnumID(_objType, ((Org.Reddragonit.Dbpro.Structure.Table)FieldValue).GetField(className,true).ToString())));
-                        }
-                        else if (FieldValue == null)
-                        {
-                            if (type.HasValue)
-                                queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_"+parCount.ToString()),null,type.Value,fieldLength));
-                            else
-                                queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_"+parCount.ToString()),null));
+                            Org.Reddragonit.Dbpro.Structure.Table tbl = (Org.Reddragonit.Dbpro.Structure.Table)QueryBuilder.LocateFieldValue((Org.Reddragonit.Dbpro.Structure.Table)FieldValue, flds[0], conn.Pool);
+                            if (tbl != null)
+                            {
+                                sTable relMap = conn.Pool.Mapping[tbl.GetType()];
+                                foreach (sTableField fld in relMap.Fields)
+                                {
+                                    foreach (sTableField f in flds)
+                                    {
+                                        if (fld.Name == f.ExternalField)
+                                        {
+                                            ret += " AND " + (this.CaseInsensitive ? "UPPER(" : "") + alias +  flds[0].Name + (this.CaseInsensitive ? ")" : "") + " " + ComparatorString + " " + builder.CreateParameterName("parameter_" + parCount.ToString());
+                                            object val = QueryBuilder.LocateFieldValue(tbl, fld, conn.Pool);
+                                            queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), val, fld.Type, fld.Length));
+                                            parCount++;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
                         }
                         else
                         {
-                            object val = ((Org.Reddragonit.Dbpro.Structure.Table)FieldValue).GetField(className, true);
-                            if (val == null)
-                                val = QueryBuilder.LocateFieldValue((Org.Reddragonit.Dbpro.Structure.Table)FieldValue, relatedMap, ifm.FieldName, conn.Pool);
-                            if (type.HasValue)
-                                queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), val, type.Value, fieldLength));
+                            type = flds[0].Type;
+                            fieldLength = flds[0].Length;
+                            ret += " AND " + (this.CaseInsensitive ? "UPPER(" : "") + alias+ flds[0].Name + (this.CaseInsensitive ? ")" : "") + " " + ComparatorString+" "+builder.CreateParameterName("parameter_"+parCount.ToString());
+                            if (type == FieldType.ENUM)
+                                queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), conn.Pool.GetEnumID(newType.GetProperty(prop, Utility._BINDING_FLAGS).PropertyType, ((Org.Reddragonit.Dbpro.Structure.Table)FieldValue).GetField(prop).ToString())));
+                            else if (FieldValue == null)
+                                queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), null, type.Value, fieldLength));
                             else
-                                queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), val));
+                            {
+                                object val = ((Org.Reddragonit.Dbpro.Structure.Table)FieldValue).GetField(prop);
+                                if (val == null)
+                                    val = QueryBuilder.LocateFieldValue((Org.Reddragonit.Dbpro.Structure.Table)FieldValue, flds[0], conn.Pool);
+                                queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), val, type.Value, fieldLength));
+                            }
+                            parCount++;
                         }
-                        parCount++;
                     }
                     ret = ret.Substring(4);
                 }else
@@ -186,30 +188,21 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
             {
                 if ((alias == "") || (alias == null))
                     alias = "main_table.";
-                if (fnp.HasValue)
+                if (fldName != null)
                 {
-                    InternalFieldMap ifm = (InternalFieldMap)newMap[fnp.Value];
-                    if (ifm == null)
+                    ret = (this.CaseInsensitive ? "UPPER(" : "") + alias + fldName + " " + (this.CaseInsensitive ? ")" : "");
+                    foreach (sTableField fld in conn.Pool.Mapping[newType].Fields)
                     {
-                        TableMap m = ClassMapper.GetTableMap(newMap.ParentType);
-                        while (m[fnp.Value] == null)
+                        if (fld.Name == fldName)
                         {
-                            if (m.ParentType != null)
-                                m = ClassMapper.GetTableMap(m.ParentType);
-                            else
-                                throw new Exception("Unable to Locate Parent Field.");
+                            type = fld.Type;
+                            fieldLength = fld.Length;
+                            break;
                         }
-                        ifm = (InternalFieldMap)m[fnp.Value];
                     }
-                    ret = (this.CaseInsensitive ? "UPPER(" : "") + alias + conn.Pool.CorrectName(fnp.Value.TableFieldName) + " "+(this.CaseInsensitive ? ")" : "");
-                    type = ifm.FieldType;
-                    _objType = ifm.ObjectType;
-                    fieldLength = ifm.FieldLength;
                 }
                 if (!found)
-                {
                     ret = FieldName + " ";
-                }
                 if (SupportsList)
                 {
                     ret += ComparatorString + " (";
@@ -241,9 +234,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                         if (_objType == null)
                             _objType = FieldValue.GetType();
                         if ((_objType != null) && _objType.IsEnum)
-                        {
                             queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), conn.Pool.GetEnumID(_objType, FieldValue.ToString())));
-                        }
                         else
                         {
                             if (type.HasValue)

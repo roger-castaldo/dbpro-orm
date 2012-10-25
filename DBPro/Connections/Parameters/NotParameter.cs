@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Org.Reddragonit.Dbpro.Connections.PoolComponents;
 
 namespace Org.Reddragonit.Dbpro.Connections.Parameters
 {
@@ -18,9 +19,9 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
             get { return _negatedParameter.Fields; }
         }
 
-        internal override string ConstructString(Org.Reddragonit.Dbpro.Structure.Mapping.TableMap map, Connection conn, QueryBuilder builder, ref List<System.Data.IDbDataParameter> queryParameters, ref int parCount)
+        internal override string ConstructString(Type tableType, Connection conn, QueryBuilder builder, ref List<System.Data.IDbDataParameter> queryParameters, ref int parCount)
         {
-            return "NOT ( " + _negatedParameter.ConstructString(map, conn, builder, ref queryParameters, ref parCount) + " ) ";
+            return "NOT ( " + _negatedParameter.ConstructString(tableType, conn, builder, ref queryParameters, ref parCount) + " ) ";
         }
     }
 }

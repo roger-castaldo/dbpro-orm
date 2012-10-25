@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Text;
-using Org.Reddragonit.Dbpro.Structure.Mapping;
+using Org.Reddragonit.Dbpro.Connections.PoolComponents;
 
 namespace Org.Reddragonit.Dbpro.Connections.MsSql
 {
@@ -237,66 +237,34 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 					" FROM ({0}) internalTbl) cntTbl WHERE RowNum BETWEEN {1} AND {1}+{2}";
 			}
 		}
-		
-		internal override string SelectPaged(Type type, SelectParameter[] parameters, out List<IDbDataParameter> queryParameters, Nullable<ulong> start, Nullable<ulong> recordCount,string[] OrderByFields)
-		{
-			string query = Select(type,parameters,out queryParameters,null);
-			if (queryParameters==null)
-				queryParameters = new List<IDbDataParameter>();
-			if (!start.HasValue)
-				start=0;
-			if (!recordCount.HasValue)
-				recordCount=0;
-			queryParameters.Add(conn.CreateParameter(CreateParameterName("startIndex"),start.Value));
-			queryParameters.Add(conn.CreateParameter(CreateParameterName("rowCount"),recordCount.Value));
-			string primarys = "";
-            TableMap map = ClassMapper.GetTableMap(type);
-            if ((OrderByFields == null) || (OrderByFields.Length == 0))
-            {
-                foreach (InternalFieldMap ifm in map.PrimaryKeys)
-                {
-                    primarys += "," + ifm.FieldName;
-                }
-            }
-            else
-            {
-                foreach (string str in OrderByFields)
-                {
-                    primarys += "," + ((InternalFieldMap)map[str]).FieldName;
-                }
-            }
-			primarys=primarys.Substring(1);
-			return String.Format(SelectWithPagingIncludeOffset,query,CreateParameterName("startIndex"),CreateParameterName("rowCount"),primarys);
-		}
 
-        internal override string SelectPaged(string baseQuery, TableMap mainMap, ref List<IDbDataParameter> queryParameters, ulong? start, ulong? recordCount,string[] OrderByFields)
+        internal override string SelectPaged(System.Type type, SelectParameter[] parameters, out List<IDbDataParameter> queryParameters, ulong? start, ulong? recordCount, string[] OrderByFields)
         {
             if (!start.HasValue)
                 start = 0;
             if (!recordCount.HasValue)
                 recordCount = 0;
+            string baseQuery = Select(type, parameters, out queryParameters, OrderByFields);
             queryParameters.Add(conn.CreateParameter(CreateParameterName("startIndex"), start.Value));
             queryParameters.Add(conn.CreateParameter(CreateParameterName("rowCount"), recordCount.Value));
             string primarys = "";
             if ((OrderByFields == null) || (OrderByFields.Length == 0))
             {
-                foreach (InternalFieldMap ifm in mainMap.PrimaryKeys)
-                {
-                    primarys += "," + ifm.FieldName;
-                }
-                primarys = primarys.Substring(1);
+                foreach (string str in pool.Mapping[type].PrimaryKeyFields)
+                    primarys += "," + str;
             }
             else if (baseQuery.Contains("ORDER BY"))
-            {
                 primarys = baseQuery.Substring(baseQuery.IndexOf("ORDER BY") + "ORDER BY".Length);
-            }
             else
             {
                 foreach (string str in OrderByFields)
                 {
-                    primarys += "," + ((InternalFieldMap)mainMap[str]).FieldName;
+                    foreach (sTableField fld in pool.Mapping[type][str])
+                        primarys += "," + fld.Name;
                 }
             }
+            if (primarys.StartsWith(","))
+                primarys = primarys.Substring(1);
             return String.Format(SelectWithPagingIncludeOffset, baseQuery, CreateParameterName("startIndex"), CreateParameterName("rowCount"), primarys);
         }
 

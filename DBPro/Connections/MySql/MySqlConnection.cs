@@ -98,7 +98,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 			    &&((fieldLength == -1)||(fieldLength>65350)))
 			{
                 Type t = Utility.LocateType(_PARAMETER_NAME);
-                PropertyInfo pi = t.GetProperty("MySqlDbType");
+                PropertyInfo pi = t.GetProperty("MySqlDbType", Utility._BINDING_FLAGS);
                 pi.SetValue(ret, Enum.Parse(Utility.LocateType(_SQL_DB_TYPE_ENUM), "Text"), new object[] { });
 			}
 			return ret;

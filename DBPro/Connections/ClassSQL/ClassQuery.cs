@@ -9,10 +9,13 @@
 using Org.Reddragonit.Dbpro.Exceptions;
 using System;
 using System.Collections.Generic;
-using Org.Reddragonit.Dbpro.Structure.Mapping;
 using System.Data;
 using Org.Reddragonit.Dbpro.Structure;
 using System.Collections;
+using Org.Reddragonit.Dbpro.Connections.PoolComponents;
+using System.Reflection;
+using Org.Reddragonit.Dbpro.Structure.Attributes;
+using Table = Org.Reddragonit.Dbpro.Structure.Table;
 
 namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 {
@@ -141,10 +144,10 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                             newPar = newPar.Replace(par.ParameterName + "_" + cnt.ToString() + ", ", "NULL, ");
                         else if (obj is Table)
                         {
-                            TableMap tm = ClassMapper.GetTableMap(obj.GetType());
-                            if (tm.PrimaryKeys.Count == 1)
+                            sTable tm = _conn.Pool.Mapping[obj.GetType()];
+                            if (tm.PrimaryKeyFields.Length== 1)
                             {
-                                ret.Add(_conn.CreateParameter(par.ParameterName + "_" + cnt.ToString(), ((Table)obj).GetField(tm.PrimaryKeys[0].FieldName)));
+                                ret.Add(_conn.CreateParameter(par.ParameterName + "_" + cnt.ToString(), ((Table)obj).GetField(tm.PrimaryKeyProperties[0])));
                             }
                             else
                                 throw new Exception("Unable to handle arrayed parameter with complex primary key.");
@@ -157,19 +160,17 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 }else{
                     if (par.Value is Table)
                     {
-                        TableMap tm = ClassMapper.GetTableMap(par.Value.GetType());
+                        sTable tm = _conn.Pool.Mapping[par.Value.GetType()];
                         Table t = (Table)par.Value;
                         if (t == null)
                         {
-                            foreach (InternalFieldMap ifm in tm.PrimaryKeys)
-                            {
-                                outputQuery = Utility.StripNullParameter(outputQuery, par.ParameterName + "_" + tm.GetClassFieldName(ifm));
-                            }
+                            foreach (string prop in tm.PrimaryKeyProperties)
+                                outputQuery = Utility.StripNullParameter(outputQuery, par.ParameterName + "_" + prop);
                         }
                         else
                         {
-                            foreach (InternalFieldMap ifm in tm.PrimaryKeys)
-                                ret.Add(_conn.CreateParameter(par.ParameterName + "_" + tm.GetClassFieldName(ifm), t.GetField(tm.GetClassFieldName(ifm))));
+                            foreach (string prop in tm.PrimaryKeyProperties)
+                                ret.Add(_conn.CreateParameter(par.ParameterName + "_" + prop, t.GetField(prop)));
                         }
                     }
                     else if (Utility.IsParameterNull(par))
@@ -232,7 +233,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 List<IDbDataParameter> pars = new List<IDbDataParameter>();
                 if (parameters != null)
                     pars.AddRange(parameters);
-                query = _conn.queryBuilder.SelectPaged(_outputQuery, ClassMapper.GetTableMap(primaryTable), ref pars, start, recordCount);
+                query = _conn.queryBuilder.SelectPaged(_outputQuery, _conn.Pool.Mapping[primaryTable], ref pars, start, recordCount);
                 List<IDbDataParameter> p = CorrectParameters(pars, ref query);
                 _conn.ExecuteQuery(query, p);
             }
@@ -602,18 +603,18 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             Type t = LocateTableType(tableName);
             if (t != null)
             {
-                TableMap map = ClassMapper.GetTableMap(t);
+                sTable map = _conn.Pool.Mapping[t];
                 if (fieldName.Contains("."))
                 {
                     while (fieldName.Contains("."))
                     {
-                        ExternalFieldMap efm = (ExternalFieldMap)map[fieldName.Substring(0, fieldName.IndexOf("."))];
-                        map = ClassMapper.GetTableMap(efm.Type);
+                        PropertyInfo pi = t.GetProperty(fieldName.Substring(0, fieldName.IndexOf(".")), Utility._BINDING_FLAGS);
+                        map = _conn.Pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
                         fieldName = fieldName.Substring(fieldName.IndexOf(".") + 1);
                     }
                     if (fieldName != "*")
                     {
-                        if (map[fieldName] is ExternalFieldMap)
+                        if (map.GetRelationForProperty(fieldName).HasValue)
                         {
                             ret = "";
                             foreach (string str in fieldList[field.Value])
@@ -622,7 +623,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                             }
                         }
                         else
-                            ret = TranslateParentFieldName(field.Value.Substring(0, field.Value.LastIndexOf(".")).Replace(".", "_"),fieldName,map,-1);
+                            ret = TranslateParentFieldName(field.Value.Substring(0, field.Value.LastIndexOf(".")).Replace(".", "_"),fieldName,t,-1);
                     }
                     else
                     {
@@ -637,9 +638,8 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     }
                     else
                     {
-                        if (map[fieldName] is ExternalFieldMap)
+                        if (map.GetRelationForProperty(fieldName).HasValue)
                         {
-                            TableMap extMap = ClassMapper.GetTableMap(((ExternalFieldMap)map[fieldName]).Type);
                             ret = "";
                             foreach (string str in fieldList[field.Value])
                             {
@@ -647,7 +647,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                             }
                         }
                         else
-                            ret = TranslateParentFieldName(alias,fieldName,map,-1);
+                            ret = TranslateParentFieldName(alias,fieldName,t,-1);
                     }
                 }
             }
@@ -721,7 +721,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                                 throw new Exception("Unable to compare two table objects that are not of the same type.");
                         }
                         string addition = "";
-                        TableMap tm = ClassMapper.GetTableMap(t1);
+                        sTable tm = _conn.Pool.Mapping[t1];
                         List<string> tmpFields1 = TranslateConditionField(fields[0], tableDeclarations, tableAliases, fieldList,parentTableAliases);
                         List<string> tmpFields2 = null;
                         if (t2!=null)
@@ -739,7 +739,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         {
                             case "NOT IN":
                             case "IN":
-                                if (tm.PrimaryKeys.Count == 1)
+                                if (tm.PrimaryKeyFields.Length == 1)
                                 {
                                     string list = "";
                                     for (int x = fields[0] + condition.Split(' ').Length; x < conditionIndexes[index]; x++)
@@ -759,9 +759,9 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                                     }
                                     int cntr = 0;
                                     string field1 = tmpFields1[0];
-                                    foreach (InternalFieldMap ifm in tm.PrimaryKeys)
+                                    foreach (string str in tm.PrimaryKeyFields)
                                     {
-                                        while (!field1.Contains(_conn.Pool.CorrectName(ifm.FieldName)) && (cntr < tmpFields1.Count))
+                                        while (!field1.Contains(str) && (cntr < tmpFields1.Count))
                                         {
                                             field1 = tmpFields1[cntr];
                                             cntr++;
@@ -787,11 +787,11 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                                 if (condition.Trim() == "=" || (condition.TrimEnd().ToUpper() == "LIKE") || (condition.TrimEnd().ToUpper()=="NOT LIKE"))
                                     joint = " AND ";
                                 addition = "( ";
-                                foreach (InternalFieldMap ifm in tm.PrimaryKeys)
+                                foreach (string str in tm.PrimaryKeyFields)
                                 {
                                     int cntr = 0;
                                     string field1 = tmpFields1[0];
-                                    while (!field1.Contains(_conn.Pool.CorrectName(ifm.FieldName)) && (cntr < tmpFields1.Count))
+                                    while (!field1.Contains(str) && (cntr < tmpFields1.Count))
                                     {
                                         field1 = tmpFields1[cntr];
                                         cntr++;
@@ -801,14 +801,14 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                                     {
                                         cntr = 0;
                                         field2 = tmpFields2[0];
-                                        while (!field2.EndsWith(_conn.Pool.CorrectName(ifm.FieldName)) && (cntr < tmpFields2.Count))
+                                        while (!field2.EndsWith(str) && (cntr < tmpFields2.Count))
                                         {
                                             field2 = tmpFields2[cntr];
                                             cntr++;
                                         }
                                     }
                                     else
-                                        field2 = origParam + "_" + tm.GetClassFieldName(ifm);
+                                        field2 = origParam + "_" + tm.GetPropertyNameForField(str); ;
                                     if (changedIndexes[0] == fields[0])
                                         addition += "( " + string.Format(conditionTemplate, field1, field2) + " )" + joint;
                                     else
@@ -857,23 +857,23 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             Type t = LocateTableType(tableName);
             if (t != null)
             {
-                TableMap map = ClassMapper.GetTableMap(t);
+                PropertyInfo pi = null;
                 if (fieldName.Contains("."))
                 {
                     while (fieldName.Contains("."))
                     {
-                        ExternalFieldMap efm = (ExternalFieldMap)map[fieldName.Substring(0, fieldName.IndexOf("."))];
-                        map = ClassMapper.GetTableMap(efm.Type);
+                        pi = t.GetProperty(fieldName.Substring(0, fieldName.IndexOf(".")), Utility._BINDING_FLAGS);
+                        t = (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType);
                         fieldName = fieldName.Substring(fieldName.IndexOf(".") + 1);
-                        t=efm.Type;
                     }
-                    if (map[fieldName] is ExternalFieldMap)
-                        return ((ExternalFieldMap)map[fieldName]).Type;
+                    t = (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) 
+                        ? (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType) : t);
                 }
                 else
                 {
-                    if (map[fieldName] is ExternalFieldMap)
-                        return ((ExternalFieldMap)map[fieldName]).Type;
+                    pi = t.GetProperty(fieldName.Substring(0, fieldName.IndexOf(".")), Utility._BINDING_FLAGS);
+                    t = (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType))
+                        ? (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType) : t);
                 }
             }
             return t;
@@ -905,23 +905,24 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 				return true;
 			if (t != null)
 			{
-				TableMap map = ClassMapper.GetTableMap(t);
+                PropertyInfo pi = null;
 				if (fieldName.Contains("."))
 				{
 					while (fieldName.Contains("."))
 					{
-						ExternalFieldMap efm = (ExternalFieldMap)map[fieldName.Substring(0, fieldName.IndexOf("."))];
-						map = ClassMapper.GetTableMap(efm.Type);
+                        pi = t.GetProperty(fieldName.Substring(0, fieldName.IndexOf(".")), Utility._BINDING_FLAGS);
+                        t = (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType);
 						fieldName = fieldName.Substring(fieldName.IndexOf(".") + 1);
 					}
-					if (map[fieldName] is ExternalFieldMap)
+					if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)))
 						return true;
 					else
 						return false;
 				}
 				else
 				{
-					if (map[fieldName] is ExternalFieldMap)
+                    pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS);
+                    if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)))
 						return true;
 					else
 						return false;
@@ -959,18 +960,20 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 			Type t = LocateTableType(tableName);
 			if (t != null)
 			{
-				TableMap map = ClassMapper.GetTableMap(t);
+                sTable map = _conn.Pool.Mapping[t];
 				if (fieldName.Contains("."))
 				{
+                    PropertyInfo pi = null;
 					while (fieldName.Contains("."))
 					{
-						ExternalFieldMap efm = (ExternalFieldMap)map[fieldName.Substring(0, fieldName.IndexOf("."))];
-						map = ClassMapper.GetTableMap(efm.Type);
+                        pi = t.GetProperty(fieldName.Substring(0, fieldName.IndexOf(".")), Utility._BINDING_FLAGS);
+                        map = _conn.Pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
 						fieldName = fieldName.Substring(fieldName.IndexOf(".") + 1);
+                        t = (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType);
 					}
 					if (fieldName != "*")
 					{
-						if (map[fieldName] is ExternalFieldMap)
+						if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)))
 						{
 							ret.RemoveAt(0);
 							foreach (string str in fieldList[field.Value])
@@ -980,7 +983,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 						}else
 						{
 							ret.RemoveAt(0);
-                            ret.Add(TranslateParentFieldName(field.Value.Substring(0, field.Value.LastIndexOf(".")).Replace(".", "_"),fieldName,map,-1));
+                            ret.Add(TranslateParentFieldName(field.Value.Substring(0, field.Value.LastIndexOf(".")).Replace(".", "_"),fieldName,t,-1));
 						}
 					}
 					else
@@ -1004,9 +1007,9 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 					}
 					else
 					{
-						if (map[fieldName] is ExternalFieldMap)
+                        PropertyInfo pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS);
+                        if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)))
 						{
-							TableMap extMap = ClassMapper.GetTableMap(((ExternalFieldMap)map[fieldName]).Type);
 							ret.RemoveAt(0);
 							foreach (string str in fieldList[field.Value])
 							{
@@ -1014,7 +1017,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 							}
 						}else{
 							ret.RemoveAt(0);
-                            ret.Add(TranslateParentFieldName(tableAlias,fieldName,map,-1));
+                            ret.Add(TranslateParentFieldName(tableAlias,fieldName,t,-1));
 						}
 					}
 				}
@@ -1089,7 +1092,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 				{
 					if (_conn == null)
 						_conn = ConnectionPoolManager.GetConnection(t).getConnection();
-					TableMap map = ClassMapper.GetTableMap(t);
+					sTable map = _conn.Pool.Mapping[t];
 					ret += map.Name + " ";
 					string alias = _tokenizer.Tokens[x].Value;
                     if ((x + 1 < _tokenizer.Tokens.Count) && (_tokenizer.Tokens[x + 1].Value != ",") && (_tokenizer.Tokens[x + 1].Value.ToUpper() != "WHERE")
@@ -1102,16 +1105,16 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 					foreach (int index in fieldIndexes)
 					{
 						if (_tokenizer.Tokens[index].Value.StartsWith(alias))
-							tmpJoins = TraceJoins(tmpJoins,  map, _tokenizer.Tokens[index].Value.Substring(alias.Length + 1), alias,ref fieldLists);
+							tmpJoins = TraceJoins(tmpJoins,  t, _tokenizer.Tokens[index].Value.Substring(alias.Length + 1), alias,ref fieldLists);
 					}
 					foreach (int index in whereFieldIndexes){
 						if (_tokenizer.Tokens[index].Value.StartsWith(alias))
-							tmpJoins=TraceJoins(tmpJoins,map,_tokenizer.Tokens[index].Value.Substring(alias.Length+1),alias,ref fieldLists);
+							tmpJoins=TraceJoins(tmpJoins,t,_tokenizer.Tokens[index].Value.Substring(alias.Length+1),alias,ref fieldLists);
 					}
                     foreach (int index in joinConditionIndexes)
                     {
                         if (_tokenizer.Tokens[index].Value.StartsWith(alias))
-                            tmpJoins=TraceJoins(tmpJoins, map, _tokenizer.Tokens[index].Value.Substring(alias.Length + 1), alias, ref fieldLists);
+                            tmpJoins=TraceJoins(tmpJoins, t, _tokenizer.Tokens[index].Value.Substring(alias.Length + 1), alias, ref fieldLists);
                     }
 					if (alias != _tokenizer.Tokens[x].Value)
 					{
@@ -1161,205 +1164,246 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 			return ret;
 		}
 
-		private List<string> TraceJoins(List<string> joins, TableMap baseMap, string field, string alias,ref Dictionary<string,List<string>> fieldLists)
+		private List<string> TraceJoins(List<string> joins, Type baseType, string field, string alias,ref Dictionary<string,List<string>> fieldLists)
 		{
 			string origField = field;
 			string origAlias = alias;
-			TableMap map = baseMap;
+            Type cur = baseType;
             bool parentIsLeftJoin = false;
+            sTable map;
+            PropertyInfo pi;
+            IField fld = null;
 			if (field.Contains("."))
 			{
 				while (field.Contains("."))
 				{
-					ExternalFieldMap efm = (ExternalFieldMap)map[field.Substring(0, field.IndexOf("."))];
+                    pi = cur.GetProperty(field.Substring(0, field.IndexOf(".")), Utility._BINDING_FLAGS);
                     string talias = alias;
-                    if (map.IsParentClassField(field.Substring(0, field.IndexOf("."))))
+                    if (!pi.DeclaringType.Equals(cur))
                     {
-                        TableMap parentMap = map;
-                        while (map.IsParentClassField(field.Substring(0, field.IndexOf(".")))&&map.ParentType!=null)
+                        Type pType = cur;
+                        while (!pi.DeclaringType.Equals(pType))
                         {
-                            parentMap = ClassMapper.GetTableMap(map.ParentType);
-                            string iJoin = " "+(parentIsLeftJoin ? "LEFT JOIN" : "INNER JOIN")+" " + _conn.Pool.CorrectName(parentMap.Name) + " " + talias + "_prnt ON ";
-                            foreach (InternalFieldMap ifm in parentMap.PrimaryKeys)
-                                iJoin += talias + "." + _conn.Pool.CorrectName(ifm.FieldName) + " = " + talias + "_prnt." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
+                            pType = pType.BaseType;
+                            sTable parentMap = _conn.Pool.Mapping[pType];
+                            string iJoin = " " + (parentIsLeftJoin ? "LEFT JOIN" : "INNER JOIN") + " " + parentMap.Name + " " + talias + "_prnt ON ";
+                            foreach (string key in parentMap.PrimaryKeyFields)
+                                iJoin += talias + "." + key + " = " + talias + "_prnt." + key + " AND ";
                             iJoin = iJoin.Substring(0, iJoin.Length - 4);
                             if (!joins.Contains(iJoin))
                                 joins.Add(iJoin);
                             talias += "_prnt";
-                            map = parentMap;
+                            cur = pType;
                         }
                     }
-					TableMap eMap = ClassMapper.GetTableMap(efm.Type);
+                    foreach (object obj in pi.GetCustomAttributes(false))
+                    {
+                        if (obj is IField)
+                        {
+                            fld = (IField)obj;
+                            break;
+                        }
+                    }
+                    sTable eMap = _conn.Pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
+                    map = _conn.Pool.Mapping[cur];
 					string className = field.Substring(0, field.IndexOf("."));
 					string innerJoin = " "+(parentIsLeftJoin ? "LEFT JOIN" : "INNER JOIN")+" ";
-                    if (efm.Nullable)
+                    if (fld.Nullable)
                         innerJoin = " LEFT JOIN ";
-                    string tbl = _conn.queryBuilder.SelectAll(efm.Type,null);
-					if (efm.IsArray)
+                    string tbl = _conn.queryBuilder.SelectAll((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType), null);
+					if (pi.PropertyType.IsArray)
 					{
-						innerJoin += _conn.Pool.CorrectName(map.Name + "_" + eMap.Name+"_"+efm.AddOnName) + " " + alias + "_intermediate_" + className + " ON ";
-						foreach (InternalFieldMap ifm in map.PrimaryKeys)
-							innerJoin += " " + talias + "." + _conn.Pool.CorrectName(ifm.FieldName) + " = " + alias + "_intermediate_" + className + "." + _conn.Pool.CorrectName("PARENT_" + ifm.FieldName) + " AND ";
+                        sTable iMap = _conn.Pool.Mapping[cur, pi.Name];
+						innerJoin += iMap + " " + alias + "_intermediate_" + className + " ON ";
+                        foreach (sTableField f in iMap.Fields)
+                        {
+                            if (f.ClassProperty!=null)
+                                innerJoin += " " + talias + "." + f.ExternalField + " = " + alias + "_intermediate_" + className + "." + f.Name + " AND ";
+                        }
 						innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
                         if (!joins.Contains(innerJoin))
                             joins.Add(innerJoin);
-                        if (efm.Nullable)
+                        if (fld.Nullable)
                             innerJoin = " LEFT JOIN (" + tbl + ") " + alias + "_" + className + " ON ";
                         else
                             innerJoin = " "+(parentIsLeftJoin ? "LEFT JOIN" : "INNER JOIN")+" (" + tbl + ") " + alias + "_" + className + " ON ";
-						foreach (InternalFieldMap ifm in eMap.PrimaryKeys)
-							innerJoin += " " + alias + "_intermediate_" + className + "." + _conn.Pool.CorrectName("CHILD_" + ifm.FieldName) + " = " + alias + "_" + className + "." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
+                        List<string> pkeys = new List<string>(eMap.PrimaryKeyFields);
+                        foreach (sTableField f in iMap.Fields)
+                        {
+                            if (f.ClassProperty==null && f.ExternalField!=null && pkeys.Contains(f.ExternalField))
+                                innerJoin += " " + alias + "_intermediate_" + className + "." + f.Name + " = " + alias + "_" + className + "." + f.ExternalField + " AND ";
+                        }
 						innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
 					}
 					else
 					{
                         innerJoin += "(" + tbl + ") " + alias + "_" + className + " ON ";
-						foreach (InternalFieldMap ifm in eMap.PrimaryKeys)
-							innerJoin += " " + talias + "." + _conn.Pool.CorrectName(efm.AddOnName + "_" + ifm.FieldName) + " = " + alias + "_" + className + "." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
+						foreach (sTableField f in map[pi.Name])
+							innerJoin += " " + talias + "." + f.Name + " = " + alias + "_" + className + "." + f.ExternalField + " AND ";
 						innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
 					}
 					alias += "_" + field.Substring(0, field.IndexOf("."));
 					field = field.Substring(field.IndexOf(".") + 1);
 					if (!joins.Contains(innerJoin))
 						joins.Add(innerJoin);
-                    map = eMap;
-                    parentIsLeftJoin |= efm.Nullable;
+                    cur = (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType);
+                    parentIsLeftJoin |= fld.Nullable;
 				}
-				
 			}
+            map = _conn.Pool.Mapping[cur];
             if (field == "*")
             {
-                foreach (Org.Reddragonit.Dbpro.Structure.Mapping.TableMap.FieldNamePair fnp in map.FieldNamePairs)
+                foreach (string prop in map.PrimaryKeyProperties)
                 {
-                    if (map[fnp] is ExternalFieldMap)
+                    pi = cur.GetProperty(prop, Utility._BINDING_FLAGS);
+                    foreach (object obj in pi.GetCustomAttributes(false))
                     {
-                        ExternalFieldMap efm = (ExternalFieldMap)baseMap[fnp];
-                        TableMap eMap = ClassMapper.GetTableMap(efm.Type);
-                        string className = fnp.ClassFieldName;
-                        string innerJoin = " INNER JOIN ";
-                        if (efm.Nullable)
-                            innerJoin = " LEFT JOIN ";
-                        string tbl = _conn.queryBuilder.SelectAll(efm.Type, null);
-                        string fieldString = tbl.Substring(tbl.IndexOf("SELECT") + "SELECT".Length);
-                        if (efm.IsArray)
+                        if (obj is IField)
                         {
-                            innerJoin += _conn.Pool.CorrectName(map.Name + "_" + eMap.Name+"_"+efm.AddOnName) + " " + alias + "_intermediate_" + className + " ON ";
-                            foreach (InternalFieldMap ifm in baseMap.PrimaryKeys)
-                                innerJoin += " " + alias + "." + _conn.Pool.CorrectName(ifm.FieldName) + " = " + alias + "_intermediate_" + className + "." + _conn.Pool.CorrectName("PARENT_" + ifm.FieldName) + " AND ";
+                            fld = (IField)obj;
+                            break;
+                        }
+                    }
+                    if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray? pi.PropertyType.GetElementType() : pi.PropertyType)))
+                    {
+                        sTable eMap = _conn.Pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
+                        string innerJoin = " INNER JOIN ";
+                        if (fld.Nullable)
+                            innerJoin = " LEFT JOIN ";
+                        string tbl = _conn.queryBuilder.SelectAll((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType), null);
+                        string fieldString = tbl.Substring(tbl.IndexOf("SELECT") + "SELECT".Length);
+                        if (pi.PropertyType.IsArray)
+                        {
+                            sTable iMap = _conn.Pool.Mapping[cur, pi.Name];
+                            innerJoin += iMap.Name + " " + alias + "_intermediate_" + prop+ " ON ";
+                            foreach (sTableField f in iMap.Fields)
+                            {
+                                if (f.ClassProperty != null)
+                                    innerJoin += " " + alias + "." + f.ExternalField + " = " + alias + "_intermediate_" + prop + "." + f.Name + " AND ";
+                            }
                             innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
                             if (!joins.Contains(innerJoin))
                                 joins.Add(innerJoin);
-                            if (efm.Nullable)
-                                innerJoin = " LEFT JOIN (" + tbl + ") " + alias + "_" + className + " ON ";
+                            if (fld.Nullable)
+                                innerJoin = " LEFT JOIN (" + tbl + ") " + alias + "_" + prop+ " ON ";
                             else
-                                innerJoin = " INNER JOIN (" + tbl + ") " + alias + "_" + className + " ON ";
-                            foreach (InternalFieldMap ifm in eMap.PrimaryKeys)
-                                innerJoin += " " + alias + "_intermediate_" + className + "." + _conn.Pool.CorrectName("CHILD_" + ifm.FieldName) + " = " + alias + "_" + className + "." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
+                                innerJoin = " " + (parentIsLeftJoin ? "LEFT JOIN" : "INNER JOIN") + " (" + tbl + ") " + alias + "_" + prop + " ON ";
+                            List<string> pkeys = new List<string>(eMap.PrimaryKeyFields);
+                            foreach (sTableField f in iMap.Fields)
+                            {
+                                if (f.ClassProperty == null && f.ExternalField != null && pkeys.Contains(f.ExternalField))
+                                    innerJoin += " " + alias + "_intermediate_" + prop + "." + f.Name + " = " + alias + "_" + prop+ "." + f.ExternalField + " AND ";
+                            }
                             innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
                         }
                         else
                         {
-                            innerJoin += "(" + tbl + ") " + alias + "_" + className + " ON ";
-                            foreach (InternalFieldMap ifm in eMap.PrimaryKeys)
-                                innerJoin += " " + alias + "." + _conn.Pool.CorrectName(efm.AddOnName + "_" + ifm.FieldName) + " = " + alias + "_" + className + "." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
+                            innerJoin += "(" + tbl + ") " + alias + "_" + prop + " ON ";
+                            foreach (sTableField f in map[prop])
+                                innerJoin += " " + alias + "." + f.Name + " = " + alias + "_" + prop + "." + f.ExternalField + " AND ";
                             innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
                         }
                         if (!joins.Contains(innerJoin))
                             joins.Add(innerJoin);
                     }
-                    else if (map.IsParentClassField(fnp.ClassFieldName))
+                    else if (!pi.DeclaringType.Equals(cur))
                     {
-                        TableMap parentMap = map;
-                        while (parentMap.ParentType != null)
+                        Type pType = cur;
+                        while (!pi.DeclaringType.Equals(pType))
                         {
-                            parentMap = ClassMapper.GetTableMap(map.ParentType);
-                            string innerJoin = " INNER JOIN " + _conn.Pool.CorrectName(parentMap.Name) + " " + alias + "_prnt ON ";
-                            foreach (InternalFieldMap ifm in parentMap.PrimaryKeys)
-                                innerJoin += alias + "." + _conn.Pool.CorrectName(ifm.FieldName) + " = " + alias + "_prnt." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
-                            innerJoin = innerJoin.Substring(0, innerJoin.Length - 4);
-                            if (!joins.Contains(innerJoin))
-                                joins.Add(innerJoin);
+                            pType = pType.BaseType;
+                            sTable parentMap = _conn.Pool.Mapping[pType];
+                            string iJoin = " " + (parentIsLeftJoin ? "LEFT JOIN" : "INNER JOIN") + " " + parentMap.Name + " " + alias + "_prnt ON ";
+                            foreach (string key in parentMap.PrimaryKeyFields)
+                                iJoin += alias + "." + key + " = " + alias + "_prnt." + key + " AND ";
+                            iJoin = iJoin.Substring(0, iJoin.Length - 4);
+                            if (!joins.Contains(iJoin))
+                                joins.Add(iJoin);
                             alias += "_prnt";
+                            cur = pType;
                         }
                     }
                 }
             }
             else
             {
-                if (map[field] is ExternalFieldMap)
+                pi = cur.GetProperty(field, Utility._BINDING_FLAGS);
+                foreach (object obj in pi.GetCustomAttributes(false))
                 {
-                    ExternalFieldMap efm = (ExternalFieldMap)map[field];
-                    TableMap eMap = ClassMapper.GetTableMap(efm.Type);
-                    string className = field;
-                    string innerJoin = " INNER JOIN ";
-                    if (efm.Nullable || parentIsLeftJoin)
-                        innerJoin = " LEFT JOIN ";
-                    string tbl = _conn.queryBuilder.SelectAll(efm.Type, null);
-                    List<string> fields = new List<string>();
-                    string fieldString = tbl.Substring(tbl.IndexOf("SELECT") + "SELECT".Length);
-                    fieldString = fieldString.Substring(0, fieldString.IndexOf("FROM"));
-                    foreach (string str in fieldString.Split(','))
+                    if (obj is IField)
                     {
-                        if (str.Length > 0)
-                            fields.Add(str.Substring(str.LastIndexOf(".") + 1));
+                        fld = (IField)obj;
+                        break;
                     }
-                    if (!fieldLists.ContainsKey(origAlias + "." + origField))
-                        fieldLists.Add(origAlias + "." + origField, fields);
-                    if (efm.IsArray)
+                }
+                if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)))
+                {
+                    sTable eMap = _conn.Pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
+                    string innerJoin = " INNER JOIN ";
+                    if (fld.Nullable)
+                        innerJoin = " LEFT JOIN ";
+                    string tbl = _conn.queryBuilder.SelectAll((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType), null);
+                    string fieldString = tbl.Substring(tbl.IndexOf("SELECT") + "SELECT".Length);
+                    if (pi.PropertyType.IsArray)
                     {
-                        innerJoin += _conn.Pool.CorrectName(map.Name + "_" + eMap.Name+"_"+efm.AddOnName) + " " + alias + "_intermediate_" + className + " ON ";
-                        foreach (InternalFieldMap ifm in baseMap.PrimaryKeys)
-                            innerJoin += " " + alias + "." + _conn.Pool.CorrectName(ifm.FieldName) + " = " + alias + "_intermediate_" + className + "." + _conn.Pool.CorrectName("PARENT_" + ifm.FieldName) + " AND ";
+                        sTable iMap = _conn.Pool.Mapping[cur, pi.Name];
+                        innerJoin += iMap.Name + " " + alias + "_intermediate_" + field + " ON ";
+                        foreach (sTableField f in iMap.Fields)
+                        {
+                            if (f.ClassProperty != null)
+                                innerJoin += " " + alias + "." + f.ExternalField + " = " + alias + "_intermediate_" + field + "." + f.Name + " AND ";
+                        }
                         innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
                         if (!joins.Contains(innerJoin))
                             joins.Add(innerJoin);
-                        if (efm.Nullable || parentIsLeftJoin)
-                            innerJoin = " LEFT JOIN (" + tbl + ") " + alias + "_" + className + " ON ";
+                        if (fld.Nullable)
+                            innerJoin = " LEFT JOIN (" + tbl + ") " + alias + "_" + field + " ON ";
                         else
-                            innerJoin = " INNER JOIN (" + tbl + ") " + alias + "_" + className + " ON ";
-                        foreach (InternalFieldMap ifm in eMap.PrimaryKeys)
-                            innerJoin += " " + alias + "_intermediate_" + className + "." + _conn.Pool.CorrectName("CHILD_" + ifm.FieldName) + " = " + alias + "_" + className + "." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
+                            innerJoin = " " + (parentIsLeftJoin ? "LEFT JOIN" : "INNER JOIN") + " (" + tbl + ") " + alias + "_" + field + " ON ";
+                        List<string> pkeys = new List<string>(eMap.PrimaryKeyFields);
+                        foreach (sTableField f in iMap.Fields)
+                        {
+                            if (f.ClassProperty == null && f.ExternalField != null && pkeys.Contains(f.ExternalField))
+                                innerJoin += " " + alias + "_intermediate_" + field + "." + f.Name + " = " + alias + "_" + field + "." + f.ExternalField + " AND ";
+                        }
                         innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
                     }
                     else
                     {
-                        innerJoin += "(" + tbl + ") " + alias + "_" + className + " ON ";
-                        foreach (InternalFieldMap ifm in eMap.PrimaryKeys)
-                            innerJoin += " " + alias + "." + _conn.Pool.CorrectName(efm.AddOnName + "_" + ifm.FieldName) + " = " + alias + "_" + className + "." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
+                        innerJoin += "(" + tbl + ") " + alias + "_" + field + " ON ";
+                        foreach (sTableField f in map[field])
+                            innerJoin += " " + alias + "." + f.Name + " = " + alias + "_" + field + "." + f.ExternalField + " AND ";
                         innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
                     }
                     if (!joins.Contains(innerJoin))
                         joins.Add(innerJoin);
                 }
-                if (map.IsParentClassField(field))
+                else if (!pi.DeclaringType.Equals(cur))
                 {
-                    TableMap parentMap = map;
-                    while ((parentMap.ParentType != null)&&(parentMap.IsParentClassField(field)))
+                    Type pType = cur;
+                    while (!pi.DeclaringType.Equals(pType))
                     {
-                        parentMap = ClassMapper.GetTableMap(parentMap.ParentType);
-                        string innerJoin = " INNER JOIN " + _conn.Pool.CorrectName(parentMap.Name) + " " + alias + "_prnt ON ";
-                        foreach (InternalFieldMap ifm in parentMap.PrimaryKeys)
-                            innerJoin += alias + "." + _conn.Pool.CorrectName(ifm.FieldName) + " = " + alias + "_prnt." + _conn.Pool.CorrectName(ifm.FieldName) + " AND ";
-                        innerJoin = innerJoin.Substring(0, innerJoin.Length - 4);
-                        if (!joins.Contains(innerJoin))
-                            joins.Add(innerJoin);
+                        pType = pType.BaseType;
+                        sTable parentMap = _conn.Pool.Mapping[pType];
+                        string iJoin = " " + (parentIsLeftJoin ? "LEFT JOIN" : "INNER JOIN") + " " + parentMap.Name + " " + alias + "_prnt ON ";
+                        foreach (string key in parentMap.PrimaryKeyFields)
+                            iJoin += alias + "." + key + " = " + alias + "_prnt." + key + " AND ";
+                        iJoin = iJoin.Substring(0, iJoin.Length - 4);
+                        if (!joins.Contains(iJoin))
+                            joins.Add(iJoin);
                         alias += "_prnt";
-                    }
-                    if (parentMap[field].IsArray)
-                    {
-                        string innerJoin = (parentMap[field].Nullable || parentIsLeftJoin ? " LEFT JOIN " : " INNER JOIN ") + _conn.Pool.CorrectName(parentMap.Name + "_" + ((InternalFieldMap)parentMap[field]).FieldName) + " " + alias + "_" + field + " ON ";
-                        foreach (InternalFieldMap ifm in parentMap.PrimaryKeys)
-                            innerJoin += " " + alias + "." + _conn.Pool.CorrectName(ifm.FieldName) + " = " + alias + "_" + field + "." + _conn.Pool.CorrectName(parentMap.Name+"_" + ifm.FieldName) + " AND ";
-                        innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
-                        if (!joins.Contains(innerJoin))
-                            joins.Add(innerJoin);
+                        cur = pType;
                     }
                 }
-                else if (map[field].IsArray)
+                else if (pi.PropertyType.IsArray)
                 {
-                    string innerJoin = (map[field].Nullable || parentIsLeftJoin ? " LEFT JOIN " : " INNER JOIN ")+_conn.Pool.CorrectName(map.Name + "_" + ((InternalFieldMap)map[field]).FieldName) + " " + alias + "_" + field + " ON ";
-                    foreach (InternalFieldMap ifm in map.PrimaryKeys)
-                        innerJoin += " " + alias + "." + _conn.Pool.CorrectName(ifm.FieldName) + " = " + alias + "_" + field + "." + _conn.Pool.CorrectName(map.Name + "_" + ifm.FieldName) + " AND ";
+                    sTable iMap = _conn.Pool.Mapping[cur, pi.Name];
+                    string innerJoin = (fld.Nullable || parentIsLeftJoin ? " LEFT JOIN " : " INNER JOIN ")+iMap.Name + " " + alias + "_" + pi.Name+ " ON ";
+                    foreach (sTableField f in iMap.Fields)
+                    {
+                        if (f.ExternalField!=null)
+                            innerJoin += " " + alias + "." + f.ExternalField + " = " + alias + "_" + pi.Name + "." + f.Name + " AND ";
+                    }
                     innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
                     if (!joins.Contains(innerJoin))
                         joins.Add(innerJoin);
@@ -1368,48 +1412,36 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 			return joins;
 		}
 
-        private string TranslateParentFieldName(string alias,string field, TableMap map,int ordinal)
+        private string TranslateParentFieldName(string alias,string field, Type table,int ordinal)
         {
-            if (!map.IsParentClassField(field))
+            string ret = null;
+            PropertyInfo pi = table.GetProperty(field, Utility._BINDING_FLAGS);
+            if (pi == null)
             {
-                if ((ordinal != -1) && (((InternalFieldMap)map[field]).FieldType==Org.Reddragonit.Dbpro.Structure.Attributes.FieldType.ENUM))
+                if (alias == "")
+                    return field;
+                return alias + "." + field;
+            }
+            while (!pi.DeclaringType.Equals(table))
+            {
+                table = table.BaseType;
+                alias += "_prnt";
+            }
+            if (pi.DeclaringType.Equals(table))
+            {
+                if ((ordinal != -1) && pi.PropertyType.IsEnum)
                 {
                     if (_enumFields.ContainsKey(ordinal))
                         _enumFields.Remove(ordinal);
-                    Logger.LogLine("Assigning field at ordinal: " + ordinal.ToString() + " as an enumeration type: " + map[field].ObjectType.FullName);
-                    _enumFields.Add(ordinal, map[field].ObjectType);
+                    Logger.LogLine("Assigning field at ordinal: " + ordinal.ToString() + " as an enumeration type: " + pi.PropertyType.FullName);
+                    _enumFields.Add(ordinal, pi.PropertyType);
                 }
-                if (map.GetTableFieldName(field) == null)
-                {
-                    if (alias == "")
-                        return field;
-                    return alias + "." + field;
-                }
-                else if (map[field].IsArray)
-                {
-                    return alias + "_" + field + "." + _conn.Pool.CorrectName(((InternalFieldMap)map[field]).FieldName + "_VALUE");
-                }
+                if (pi.PropertyType.IsArray)
+                    ret = alias + "_" + field + "." + _conn.Pool.CorrectName("VALUE");
                 else
-                    return alias + "." + _conn.Pool.CorrectName(map.GetTableFieldName(field));
+                    ret = alias + "." + _conn.Pool.Mapping[table][pi.Name][0].Name;
             }
-            TableMap parentMap = map;
-            while (parentMap.ParentType != null)
-            {
-                parentMap = ClassMapper.GetTableMap(parentMap.ParentType);
-                alias += "_prnt";
-                if (!parentMap.IsParentClassField(field))
-                    break;
-            }
-            if ((ordinal != -1) && (((InternalFieldMap)parentMap[field]).FieldType == Org.Reddragonit.Dbpro.Structure.Attributes.FieldType.ENUM))
-            {
-                if (_enumFields.ContainsKey(ordinal))
-                    _enumFields.Remove(ordinal);
-                Logger.LogLine("Assigning field at ordinal: " + ordinal.ToString() + " as an enumeration type: " + parentMap[field].ObjectType.FullName);
-                _enumFields.Add(ordinal, parentMap[field].ObjectType);
-            }
-            if (parentMap[field].IsArray)
-                return alias + "_" + field + "." + _conn.Pool.CorrectName(((InternalFieldMap)parentMap[field]).FieldName + "_VALUE");
-            return alias+"."+parentMap.GetTableFieldName(field);
+            return ret;
         }
 
 		private Type LocateTableType(string tablename)
@@ -1613,23 +1645,25 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 			Type t = LocateTableType(tableName);
 			if (t != null)
 			{
-				TableMap map = ClassMapper.GetTableMap(t);
+				sTable map = _conn.Pool.Mapping[t];
+                PropertyInfo pi = null;
 				if (fieldName.Contains("."))
 				{
 					while (fieldName.Contains("."))
 					{
-						ExternalFieldMap efm = (ExternalFieldMap)map[fieldName.Substring(0, fieldName.IndexOf("."))];
-						map = ClassMapper.GetTableMap(efm.Type);
+                        pi = t.GetProperty(fieldName.Substring(0, fieldName.IndexOf(".")), Utility._BINDING_FLAGS);
+                        t = (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType);
+                        map = _conn.Pool.Mapping[t];
 						fieldName = fieldName.Substring(fieldName.IndexOf(".") + 1);
 					}
 					if (fieldName != "*")
 					{
-                        if (map[fieldName] is ExternalFieldMap)
+                        if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)))
                         {
                             if (ordinal != -1)
                             {
                                 _tableFieldCounts.Add(ordinal, fieldList[field.Value].Count);
-                                _tableFields.Add(fieldAlias, ((ExternalFieldMap)map[fieldName]).Type);
+                                _tableFields.Add(fieldAlias, (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType));
                             }
                             ret = "";
                             foreach (string str in fieldList[field.Value])
@@ -1638,7 +1672,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                             }
                         }
                         else
-                            ret = TranslateParentFieldName(field.Value.Substring(0, field.Value.LastIndexOf(".")).Replace(".", "_"), fieldName, map,ordinal);
+                            ret = TranslateParentFieldName(field.Value.Substring(0, field.Value.LastIndexOf(".")).Replace(".", "_"), fieldName,t,ordinal);
 					}
 					else
 					{
@@ -1655,14 +1689,14 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 					}
 					else
 					{
-                        if (map[fieldName] is ExternalFieldMap)
+                        pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS);
+                        if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)))
                         {
-                            TableMap extMap = ClassMapper.GetTableMap(((ExternalFieldMap)map[fieldName]).Type);
                             ret = "";
                             if (ordinal != -1)
                             {
                                 _tableFieldCounts.Add(ordinal, fieldList[field.Value].Count);
-                                _tableFields.Add(fieldAlias, ((ExternalFieldMap)map[fieldName]).Type);
+                                _tableFields.Add(fieldAlias, (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType));
                             }
                             foreach (string str in fieldList[field.Value])
                             {
@@ -1671,7 +1705,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         }
                         else
                         {
-                            ret = TranslateParentFieldName(tableAlias, fieldName, map,ordinal);
+                            ret = TranslateParentFieldName(tableAlias, fieldName, t,ordinal);
                         }
 					}
 				}
@@ -1848,7 +1882,35 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             if (_tableFieldCounts.ContainsKey(i))
             {
                 Table t = (Table)LazyProxy.Instance(_tableFields[_fieldNames[i]].GetConstructor(System.Type.EmptyTypes).Invoke(new object[0]));
-                t.SetValues(_conn,_fieldNames[i]);
+                sTableField[] flds = _conn.Pool.Mapping[_tableFields[_fieldNames[i]]].Fields;
+                int index = 0;
+                foreach (sTableField fld in flds)
+                {
+                    PropertyInfo pi = t.GetType().GetProperty(fld.Name, Utility._BINDING_FLAGS);
+                    if (!pi.PropertyType.IsArray)
+                    {
+                        if (_conn.Pool.Mapping.IsMappableType(pi.PropertyType))
+                        {
+                            if (t.GetField(pi.Name) == null)
+                                t.SetField(fld.Name, (Table)LazyProxy.Instance(pi.PropertyType.GetConstructor(Type.EmptyTypes).Invoke(new object[0])));
+                            Table tbl = (Table)t.GetField(pi.Name);
+                            foreach (sTableField f in _conn.Pool.Mapping[tbl.GetType()].Fields)
+                            {
+                                if (fld.ExternalField == f.Name)
+                                {
+                                    t.RecurSetPropertyValue(f.Name, _conn, _conn.GetName(i + index), tbl);
+                                    index++;
+                                    break;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            t.SetField(fld.ClassProperty, _conn[i + index]);
+                            index++;
+                        }
+                    }
+                }
                 t.LoadStatus = LoadStatus.Complete;
                 return t;
             }
