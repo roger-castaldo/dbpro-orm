@@ -15,9 +15,8 @@ using System.Runtime.Remoting.Proxies;
 using Org.Reddragonit.Dbpro.Connections;
 using Org.Reddragonit.Dbpro.Exceptions;
 using Org.Reddragonit.Dbpro.Structure;
-using Org.Reddragonit.Dbpro.Structure.Mapping;
-using FieldNamePair = Org.Reddragonit.Dbpro.Structure.Mapping.TableMap.FieldNamePair;
 using Org.Reddragonit.Dbpro.Validation;
+using Org.Reddragonit.Dbpro.Connections.PoolComponents;
 
 namespace Org.Reddragonit.Dbpro
 {
@@ -33,10 +32,11 @@ namespace Org.Reddragonit.Dbpro
 	/// </summary>
 	internal class LazyProxy : RealProxy, IDisposable
 	{
-		
-		private TableMap _map;
+
+        private ConnectionPool _pool;
+		private sTable _map;
 		private bool _allowPrimaryChange=true;
-		private FieldMap _mainPrimary=null;
+		private sTableField? _mainPrimary=null;
 		private List<string> _changedFields = new List<string>();
 		
 		public void Dispose()
@@ -46,10 +46,11 @@ namespace Org.Reddragonit.Dbpro
 		
 		public LazyProxy(object subject):base(subject.GetType())
 		{
-			_map = ClassMapper.GetTableMap(subject.GetType());
-			_allowPrimaryChange=ConnectionPoolManager.GetConnection(_map.ConnectionName).AllowChangingBasicAutogenField;
-			if ((_map.PrimaryKeys.Count==1)&&(_map.PrimaryKeys[0].AutoGen))
-				_mainPrimary=_map.PrimaryKeys[0];
+            _pool = ConnectionPoolManager.GetConnection(subject.GetType());
+            _map = _pool.Mapping[subject.GetType()];
+            _allowPrimaryChange = _pool.AllowChangingBasicAutogenField;
+            if ((_map.PrimaryKeyFields.Length == 1) && (_map.AutoGenProperty != null))
+                _mainPrimary = _map[_map.AutoGenProperty][0];
 			AttachServer((MarshalByRefObject)subject);
 		}
 		
@@ -61,13 +62,9 @@ namespace Org.Reddragonit.Dbpro
         //this function is called to convert the called method into a propertyinfo
         //object if it is in fact a property, otherwise it returns a null.  It also
         //inidicates if the function is a get or a set call.
-		protected static PropertyInfo GetMethodProperty(MethodInfo methodInfo, object owner, out bool IsGet,TableMap map)
+		protected static PropertyInfo GetMethodProperty(MethodInfo methodInfo, object owner, out bool IsGet,Type tableType,ConnectionPool pool)
 		{
-			foreach(PropertyInfo aProp in owner.GetType().GetProperties(BindingFlags.Public |      //Get public members
-			                                                            BindingFlags.NonPublic |   //Get private/protected/internal members
-			                                                            BindingFlags.Static |      //Get static members
-			                                                            BindingFlags.Instance |    //Get instance members
-			                                                            BindingFlags.DeclaredOnly))
+            foreach (PropertyInfo aProp in owner.GetType().GetProperties(Utility._BINDING_FLAGS))
 			{
 				MethodInfo mi = null;
 				mi = aProp.GetGetMethod(true);
@@ -83,9 +80,9 @@ namespace Org.Reddragonit.Dbpro
 					return aProp;
 				}
 			}
-            if (map.ParentType != null)
+            if (pool.Mapping.IsMappableType(tableType.BaseType))
             {
-                PropertyInfo ret = GetMethodProperty(methodInfo, Convert.ChangeType(owner, map.ParentType), out IsGet, ClassMapper.GetTableMap(map.ParentType));
+                PropertyInfo ret = GetMethodProperty(methodInfo, Convert.ChangeType(owner, tableType.BaseType), out IsGet, tableType.BaseType,pool);
                 if (ret != null)
                     return ret;
             }
@@ -140,19 +137,15 @@ namespace Org.Reddragonit.Dbpro
                     if ((((Table)owner).LoadStatus == LoadStatus.Partial) && !((mi.Name == "SetField") || (mi.Name == "SetValues")))
                     {
                         List<SelectParameter> pars = new List<SelectParameter>();
-                        foreach (InternalFieldMap ifm in _map.PrimaryKeys)
-                        {
-                            if (_map.GetClassFieldName(ifm.FieldName) == null)
-                                pars.Add(new EqualParameter(_map.GetExternalClassFieldName(ifm.FieldName), ((Table)owner).GetField(_map.GetExternalClassFieldName(ifm.FieldName))));
-                            else
-                                pars.Add(new EqualParameter(_map.GetClassFieldName(ifm.FieldName), ((Table)owner).GetField(_map.GetClassFieldName(ifm.FieldName))));
-                        }
-                        Connection conn = ConnectionPoolManager.GetConnection(_map.ConnectionName).getConnection();
+                        foreach (string prop in _map.PrimaryKeyProperties)
+                            pars.Add(new EqualParameter(prop, ((Table)owner).GetField(prop)));
+                        Connection conn = ConnectionPoolManager.GetConnection(owner.GetType()).getConnection();
                         Table tmp = conn.Select(owner.GetType(), pars)[0];
-                        foreach (FieldNamePair fnp in _map.FieldNamePairs)
+                        List<string> pkeys = new List<string>(_map.PrimaryKeyProperties);
+                        foreach (string prop in _map.Properties)
                         {
-                            if ((!_map[fnp].PrimaryKey) && (!tmp.IsFieldNull(fnp.ClassFieldName)))
-                                ((Table)owner).SetField(fnp.ClassFieldName, tmp.GetField(fnp.ClassFieldName));
+                            if ((!pkeys.Contains(prop)) && (!tmp.IsFieldNull(prop)))
+                                ((Table)owner).SetField(prop, tmp.GetField(prop));
                         }
                         conn.CloseConnection();
                         ((Table)owner).LoadStatus = LoadStatus.Complete;
@@ -169,7 +162,7 @@ namespace Org.Reddragonit.Dbpro
 			if (owner!=null)
 			{
 				bool isGet=false;
-				PropertyInfo pi = GetMethodProperty(mi,owner, out isGet,_map);
+				PropertyInfo pi = GetMethodProperty(mi,owner, out isGet,owner.GetType(),_pool);
                 if (pi != null)
                 {
                     foreach (object obj in pi.GetCustomAttributes(true))
@@ -190,12 +183,11 @@ namespace Org.Reddragonit.Dbpro
                     }
                 }
 
-				if ((pi!=null)&&(_map[pi.Name]!=null))
+				if ((pi!=null)&&(_map[pi.Name].Length>0))
 				{
-                    FieldMap fm = _map[pi.Name];
 					if (pi.Name!="LoadStatus")
 					{
-						if ((((Table)owner).LoadStatus== LoadStatus.Partial)&&(!fm.PrimaryKey))
+						if ((((Table)owner).LoadStatus== LoadStatus.Partial)&&(!new List<string>(_map.PrimaryKeyProperties).Contains(pi.Name)))
 						{
                             CompleteLazyLoad(owner);
 						}
@@ -203,25 +195,19 @@ namespace Org.Reddragonit.Dbpro
 					if (isGet)
 					{
 						outVal = mi.Invoke(owner, mc.Args);
-						if ((fm is ExternalFieldMap)&&(outVal!=null))
+						if ((new List<string>(_map.ForeignTableProperties).Contains(pi.Name))&&(outVal!=null))
 						{
-							ExternalFieldMap efm = (ExternalFieldMap)fm;
-							if (efm.IsArray)
+							if (pi.PropertyType.IsArray)
 							{
 								Table[] vals = (Table[])outVal;
-								TableMap map = ClassMapper.GetTableMap(efm.Type);
-								Connection conn = ConnectionPoolManager.GetConnection(_map.ConnectionName).getConnection();
+                                sTable map = _pool.Mapping[pi.PropertyType.GetElementType()];
+								Connection conn = ConnectionPoolManager.GetConnection(pi.PropertyType.GetElementType()).getConnection();
 								for (int x=0;x<vals.Length;x++)
 								{
 									List<SelectParameter> pars = new List<SelectParameter>();
-                                    foreach (InternalFieldMap ifm in map.PrimaryKeys)
-                                    {
-                                        if (map.GetClassFieldName(ifm.FieldName) == null)
-                                            pars.Add(new EqualParameter(map.GetExternalClassFieldName(ifm.FieldName), ((Table)vals[x]).GetField(map.GetExternalClassFieldName(ifm.FieldName))));
-                                        else
-                                            pars.Add(new EqualParameter(map.GetClassFieldName(ifm.FieldName), ((Table)vals[x]).GetField(map.GetClassFieldName(ifm.FieldName))));
-                                    }
-									vals[x]=conn.Select(efm.Type,pars)[0];
+                                    foreach (string prop in map.PrimaryKeyProperties)
+                                        pars.Add(new EqualParameter(prop, ((Table)vals[x]).GetField(prop)));
+									vals[x]=conn.Select(pi.PropertyType.GetElementType(),pars)[0];
 								}
 								pi.SetValue(owner,vals,new object[0]);
 								outVal=vals;
@@ -231,15 +217,10 @@ namespace Org.Reddragonit.Dbpro
 								if (t.LoadStatus== LoadStatus.Partial)
 								{
 									List<SelectParameter> pars = new List<SelectParameter>();
-									TableMap map = ClassMapper.GetTableMap(t.GetType());
-                                    foreach (InternalFieldMap ifm in map.PrimaryKeys)
-                                    {
-                                        if (map.GetClassFieldName(ifm.FieldName) == null)
-                                            pars.Add(new EqualParameter(map.GetExternalClassFieldName(ifm.FieldName), t.GetField(map.GetExternalClassFieldName(ifm.FieldName))));
-                                        else
-                                            pars.Add(new EqualParameter(map.GetClassFieldName(ifm.FieldName), t.GetField(map.GetClassFieldName(ifm.FieldName))));
-                                    }
-									Connection conn = ConnectionPoolManager.GetConnection(_map.ConnectionName).getConnection();
+                                    sTable map = _pool.Mapping[pi.PropertyType];
+                                    foreach (string prop in map.PrimaryKeyProperties)
+                                        pars.Add(new EqualParameter(prop,t.GetField(prop)));
+									Connection conn = ConnectionPoolManager.GetConnection(pi.PropertyType).getConnection();
 									t = conn.Select(outVal.GetType(),pars)[0];
 									pi.SetValue(owner,t,new object[0]);
 									outVal=t;
@@ -249,7 +230,8 @@ namespace Org.Reddragonit.Dbpro
 						}
 					}else
 					{
-						if (((Table)owner).IsSaved&&fm.PrimaryKey&&fm.AutoGen)
+                        sTable map = ConnectionPoolManager.GetConnection(owner.GetType()).Mapping[owner.GetType()];
+						if (((Table)owner).IsSaved&&new List<string>(map.PrimaryKeyProperties).Contains(pi.Name)&&Utility.StringsEqual(pi.Name,map.AutoGenProperty))
 							throw new AlterPrimaryKeyException(owner.GetType().ToString(),pi.Name);
 						if (((Table)owner)._isSaved)
 						{
@@ -349,19 +331,15 @@ namespace Org.Reddragonit.Dbpro
         private void CompleteLazyLoad(object owner)
         {
             List<SelectParameter> pars = new List<SelectParameter>();
-            foreach (InternalFieldMap ifm in _map.PrimaryKeys)
-            {
-                if (_map.GetClassFieldName(ifm.FieldName) == null)
-                    pars.Add(new EqualParameter(_map.GetExternalClassFieldName(ifm.FieldName), ((Table)owner).GetField(_map.GetExternalClassFieldName(ifm.FieldName))));
-                else
-                    pars.Add(new EqualParameter(_map.GetClassFieldName(ifm.FieldName), ((Table)owner).GetField(_map.GetClassFieldName(ifm.FieldName))));
-            }
-            Connection conn = ConnectionPoolManager.GetConnection(_map.ConnectionName).getConnection();
+            foreach (string prop in _map.PrimaryKeyProperties)
+                pars.Add(new EqualParameter(prop, ((Table)owner).GetField(prop)));
+            Connection conn = ConnectionPoolManager.GetConnection(owner.GetType()).getConnection();
             Table tmp = conn.Select(owner.GetType(), pars)[0];
-            foreach (FieldNamePair fnp in _map.FieldNamePairs)
+            List<string> pkeys = new List<string>(_map.PrimaryKeyProperties);
+            foreach (string prop in _map.Properties)
             {
-                if ((!_map[fnp].PrimaryKey) && (!tmp.IsFieldNull(fnp.ClassFieldName)))
-                    ((Table)owner).SetField(fnp.ClassFieldName, tmp.GetField(fnp.ClassFieldName));
+                if ((!pkeys.Contains(prop)) && (!tmp.IsFieldNull(prop)))
+                    ((Table)owner).SetField(prop, tmp.GetField(prop));
             }
             conn.CloseConnection();
             ((Table)owner).LoadStatus = LoadStatus.Complete;

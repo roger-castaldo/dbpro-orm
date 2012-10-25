@@ -171,7 +171,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 			}
 		}
 		
-		protected override int MaxFieldNameLength {
+		public override int MaxFieldNameLength {
 			get { return 31; }
 		}
 		

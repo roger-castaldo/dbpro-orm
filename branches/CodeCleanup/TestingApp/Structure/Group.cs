@@ -20,7 +20,7 @@ namespace TestingApp.Structure
 	public class Group : Org.Reddragonit.Dbpro.Structure.Table
 	{
 		private long _Id;
-		[PrimaryKeyField(true,false)]
+		[PrimaryKeyField(true)]
 		public long ID
 		{
 			get{return _Id;}

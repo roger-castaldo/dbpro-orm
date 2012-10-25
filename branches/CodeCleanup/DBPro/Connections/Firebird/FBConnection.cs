@@ -10,7 +10,6 @@
 using System;
 using System.Collections.Generic;
 using Org.Reddragonit.Dbpro.Connections;
-using Org.Reddragonit.Dbpro.Structure.Mapping;
 using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.FieldType;
 using VersionTypes = Org.Reddragonit.Dbpro.Structure.Attributes.VersionField.VersionTypes;
 using System.Text;
@@ -18,6 +17,7 @@ using System.Data;
 using System.Reflection;
 using System.Xml;
 using System.IO;
+using Org.Reddragonit.Dbpro.Connections.PoolComponents;
 
 namespace Org.Reddragonit.Dbpro.Connections.Firebird
 {
@@ -385,26 +385,27 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
                 query += "ALTER TRIGGER " + this[0].ToString() + " ACTIVE;\n";
             }
             this.Close();
-            foreach (Type t in ClassMapper.TableTypesForConnection(Pool.ConnectionName))
+            foreach (Type t in Pool.Mapping.Types)
             {
-                TableMap tm = ClassMapper.GetTableMap(t);
-                if (tm.ContainsAutogenField)
+                sTable tm = Pool.Mapping[t];
+                if (tm.AutoGenField!=null)
                 {
-                    if ((tm.PrimaryKeys.Count == 1) && (tm.PrimaryKeys[0].FieldType == FieldType.INTEGER || tm.PrimaryKeys[0].FieldType == FieldType.LONG || tm.PrimaryKeys[0].FieldType == FieldType.SHORT))
+                    if ((tm.PrimaryKeyFields.Length == 1) && (tm[tm.AutoGenProperty][0].Type == FieldType.INTEGER || tm[tm.AutoGenProperty][0].Type == FieldType.LONG || tm[tm.AutoGenProperty][0].Type == FieldType.SHORT))
                     {
-                        this.ExecuteQuery("SELECT (CASE WHEN MAX(" + Pool.CorrectName(tm.PrimaryKeys[0].FieldName) + ") IS NULL THEN 0 ELSE MAX(" + Pool.CorrectName(tm.PrimaryKeys[0].FieldName) + ") END)+1 FROM " + Pool.CorrectName(tm.Name));
+                        this.ExecuteQuery("SELECT (CASE WHEN MAX(" + tm.AutoGenField + ") IS NULL THEN 0 ELSE MAX(" + tm.AutoGenField + ") END)+1 FROM " + tm.Name);
                         this.Read();
-                        query += queryBuilder.SetGeneratorValue(Pool.CorrectName("GEN_" + tm.Name + "_" + tm.PrimaryKeys[0].FieldName), long.Parse(this[0].ToString())) + "\n";
+                        query += queryBuilder.SetGeneratorValue(Pool.CorrectName("GEN_" + tm.Name + "_" + tm.AutoGenField), long.Parse(this[0].ToString())) + "\n";
                         this.Close();
                     }
                 }
-                foreach (InternalFieldMap ifm in tm.Fields)
+                foreach (string prop in tm.Properties)
                 {
-                    if (ifm.FieldType == FieldType.ENUM)
+                    PropertyInfo pi = t.GetProperty(prop, Utility._BINDING_FLAGS);
+                    if (pi.PropertyType.IsEnum)
                     {
-                        this.ExecuteQuery("SELECT (CASE WHEN MAX(ID) IS NULL THEN 0 ELSE MAX(ID) END)+1 FROM " + Pool._enumTableMaps[ifm.ObjectType]);
+                        this.ExecuteQuery("SELECT (CASE WHEN MAX(ID) IS NULL THEN 0 ELSE MAX(ID) END)+1 FROM " + Pool.Enums[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)]);
                         this.Read();
-                        query += queryBuilder.SetGeneratorValue(Pool.CorrectName("GEN_" + Pool._enumTableMaps[ifm.ObjectType]+"_ID"), long.Parse(this[0].ToString())) + "\n";
+                        query += queryBuilder.SetGeneratorValue(Pool.CorrectName("GEN_" + Pool.Enums[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)] + "_ID"), long.Parse(this[0].ToString())) + "\n";
                         this.Close();
                     }
                 }

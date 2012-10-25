@@ -103,6 +103,10 @@
     <Compile Include="Connections\PgSql\PgSqlConnectionPool.cs" />
     <Compile Include="Connections\PgSql\PgSqlQueryBuilder.cs" />
     <Compile Include="Connections\ClassSQL\QueryTokenizer.cs" />
+    <Compile Include="Connections\PoolComponents\ClassMapping.cs" />
+    <Compile Include="Connections\PoolComponents\EnumsHandler.cs" />
+    <Compile Include="Connections\PoolComponents\NameTranslator.cs" />
+    <Compile Include="Connections\PoolComponents\Structures.cs" />
     <Compile Include="Connections\Structures.cs" />
     <Compile Include="Connections\Firebird\FBConnection.cs" />
     <Compile Include="Connections\Firebird\FBConnectionPool.cs" />
@@ -123,11 +127,6 @@
     <Compile Include="Structure\Attributes\TableIndex.cs" />
     <Compile Include="Structure\Attributes\VersionField.cs" />
     <Compile Include="Structure\Attributes\VersionForiegnField.cs" />
-    <Compile Include="Structure\Mapping\ClassMapper.cs" />
-    <Compile Include="Structure\Mapping\ExternalFieldMap.cs" />
-    <Compile Include="Structure\Mapping\FieldMap.cs" />
-    <Compile Include="Structure\Mapping\InternalFieldMap.cs" />
-    <Compile Include="Structure\Mapping\TableMap.cs" />
     <Compile Include="Structure\PagedTableListEnumerator.cs" />
     <Compile Include="Structure\PagedTableList.cs" />
     <Compile Include="Structure\Table.cs" />

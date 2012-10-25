@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Text;
 using System.Data;
 using Org.Reddragonit.Dbpro.Connections;
-using Org.Reddragonit.Dbpro.Structure.Mapping;
 using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.FieldType;
 using VersionTypes = Org.Reddragonit.Dbpro.Structure.Attributes.VersionField.VersionTypes;
 using System.Reflection;
@@ -69,7 +68,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 			    &&((fieldLength == -1)||(fieldLength>8000)))
 			{
                 Type t = Utility.LocateType(_PARAMETER_TYPE_NAME);
-                PropertyInfo pi = t.GetProperty("SqlDbType");
+                PropertyInfo pi = t.GetProperty("SqlDbType", Utility._BINDING_FLAGS);
                 pi.SetValue(ret, SqlDbType.Text, new object[] { });
 			}
 			return ret;

@@ -8,8 +8,8 @@
  */
 using System;
 using System.Collections.Generic;
-using Org.Reddragonit.Dbpro.Structure.Mapping;
 using System.Data;
+using Org.Reddragonit.Dbpro.Connections.PoolComponents;
 
 namespace Org.Reddragonit.Dbpro.Connections.Parameters
 {
@@ -19,6 +19,6 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
         {
             get;
         }
-		internal abstract string ConstructString(TableMap map,Connection conn,QueryBuilder builder,ref List<IDbDataParameter> queryParameters,ref int parCount);
+		internal abstract string ConstructString(Type tableType,Connection conn,QueryBuilder builder,ref List<IDbDataParameter> queryParameters,ref int parCount);
 	}
 }

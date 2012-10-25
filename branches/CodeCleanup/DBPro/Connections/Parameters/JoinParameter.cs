@@ -7,9 +7,9 @@
  * To change this template use Tools | Options | Coding | Edit Standard Headers.
  */
 using System;
-using Org.Reddragonit.Dbpro.Structure.Mapping;
 using System.Collections.Generic;
 using System.Data;
+using Org.Reddragonit.Dbpro.Connections.PoolComponents;
 
 namespace Org.Reddragonit.Dbpro.Connections.Parameters
 {
@@ -33,12 +33,12 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
 			get;
 		}
 		
-		internal sealed override string ConstructString(TableMap map, Connection conn, QueryBuilder builder, ref List<IDbDataParameter> queryParameters, ref int parCount)
+		internal sealed override string ConstructString(Type tableType, Connection conn, QueryBuilder builder, ref List<IDbDataParameter> queryParameters, ref int parCount)
 		{
             string ret = "( ";
             foreach (SelectParameter par in _parameters)
             {
-                ret += " (" + par.ConstructString(map, conn, builder, ref queryParameters, ref parCount) + ") " + JoinString;
+                ret += " (" + par.ConstructString(tableType, conn, builder, ref queryParameters, ref parCount) + ") " + JoinString;
             }
             if (_parameters.Length > 0)
                 return ret.Substring(0, ret.Length - JoinString.Length) + ")";

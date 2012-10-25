@@ -1,4 +1,3 @@
-using Org.Reddragonit.Dbpro.Structure.Mapping;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -85,20 +84,6 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
 			string[] tmp = new string[_connectionPools.Count];
 			_connectionPools.Keys.CopyTo(tmp,0);
-			ClassMapper.CorrectConnectionNames(tmp);
-			foreach (ConnectionPool pool in _connectionPools.Values)
-			{
-				pool.Init(_translations);
-			}
-			Utility.Release(_connectionPools);
-		}
-		
-		public static void ReloadClasses(){
-			Utility.WaitOne(_connectionPools);
-			ClassMapper.ReInit();
-			string[] tmp = new string[_connectionPools.Count];
-			_connectionPools.Keys.CopyTo(tmp,0);
-			ClassMapper.CorrectConnectionNames(tmp);
 			foreach (ConnectionPool pool in _connectionPools.Values)
 			{
 				pool.Init(_translations);
@@ -313,9 +298,12 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		public static ConnectionPool GetConnection(Type type)
 		{
-			TableMap tmp = ClassMapper.GetTableMap(type);
-			if (tmp!=null)
-				return GetConnection(tmp.ConnectionName);
+            if (type.GetCustomAttributes(typeof(Org.Reddragonit.Dbpro.Structure.Attributes.Table), false).Length > 0)
+            {
+                Org.Reddragonit.Dbpro.Structure.Attributes.Table t = (Org.Reddragonit.Dbpro.Structure.Attributes.Table)type.GetCustomAttributes(typeof(Org.Reddragonit.Dbpro.Structure.Attributes.Table), false)[0];
+                if (_connectionPools.ContainsKey(t.ConnectionName))
+                    return _connectionPools[t.ConnectionName];
+            }
 			return null;
 		}
 

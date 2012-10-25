@@ -4,8 +4,9 @@ using System.Text;
 using Org.Reddragonit.Dbpro.Virtual.Attributes;
 using Org.Reddragonit.Dbpro.Connections;
 using System.Reflection;
-using Org.Reddragonit.Dbpro.Structure.Mapping;
 using System.Data;
+using Org.Reddragonit.Dbpro.Connections.PoolComponents;
+using Org.Reddragonit.Dbpro.Structure.Attributes;
 
 namespace Org.Reddragonit.Dbpro.Virtual
 {
@@ -98,41 +99,54 @@ namespace Org.Reddragonit.Dbpro.Virtual
             if (type.GetCustomAttributes(typeof(VirtualTableAttribute), true).Length == 0)
                 throw new Exception("Unable to execute a Virtual Table Query from a class that does not have a VirtualTableAttribute attached to it.");
             Type mainTable = VirtualTableAttribute.GetMainTableTypeForVirtualTable(type);
-            TableMap mainMap = ClassMapper.GetTableMap(mainTable);
+            sTable mainMap = conn.Pool.Mapping[mainTable];
             string originalQuery = conn.queryBuilder.SelectAll(mainTable,null);
             string fieldString = "";
             List<ExtractedVirtualField> fields = ExtractFieldFromType(type);
             List<ExtractedVirtualField> fieldsUsed = new List<ExtractedVirtualField>();
             List<TablePath> paths = new List<TablePath>();
-            foreach (TableMap.FieldNamePair fnp in mainMap.FieldNamePairs)
+            foreach (string prop in mainMap.ForeignTableProperties)
             {
-                if (mainMap[fnp] is ExternalFieldMap)
+                PropertyInfo pi = mainTable.GetProperty(prop, Utility._BINDING_FLAGS);
+                sTable extMap = conn.Pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
+                bool nullable = false;
+                foreach (object obj in pi.GetCustomAttributes(false))
                 {
-                    ExternalFieldMap efm = (ExternalFieldMap)mainMap[fnp];
-                    TableMap extMap = ClassMapper.GetTableMap(efm.Type);
-                    string innerJoin = " INNER JOIN ";
-                    if (efm.Nullable)
-                        innerJoin = " LEFT JOIN ";
-                    if (efm.IsArray)
+                    if (obj is INullable)
                     {
-                        innerJoin += conn.Pool.CorrectName(mainMap.Name + "_" + extMap.Name+"_"+efm.AddOnName) + " main_intermediate_" + fnp.ClassFieldName + " ON ";
-                        foreach (InternalFieldMap ifm in mainMap.PrimaryKeys)
-                            innerJoin += " virtualTable." + conn.Pool.CorrectName(ifm.FieldName) + " = main_intermediate_" + fnp.ClassFieldName + "." + conn.Pool.CorrectName("PARENT_" + ifm.FieldName) + " AND ";
-                        innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
-                        innerJoin += " INNER JOIN " + conn.Pool.CorrectName(extMap.Name) + " main_" + fnp.ClassFieldName + " ON ";
-                        foreach (InternalFieldMap ifm in extMap.PrimaryKeys)
-                            innerJoin += " main_intermediate_" + fnp.ClassFieldName + "." + conn.Pool.CorrectName("CHILD_" + ifm.FieldName) + " = main_" + fnp.ClassFieldName + "." + conn.Pool.CorrectName(ifm.FieldName) + " AND ";
-                        innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
+                        nullable = ((INullable)obj).Nullable;
+                        break;
                     }
-                    else
-                    {
-                        innerJoin += conn.Pool.CorrectName(extMap.Name) + " main_" + fnp.ClassFieldName + " ON ";
-                        foreach (InternalFieldMap ifm in extMap.PrimaryKeys)
-                            innerJoin += " virtualTable." + conn.Pool.CorrectName(efm.AddOnName + "_" + ifm.FieldName) + " = main_" + fnp.ClassFieldName + "." + conn.Pool.CorrectName(ifm.FieldName) + " AND ";
-                        innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
-                    }
-                    paths.Add(new TablePath("main_" + fnp.ClassFieldName, innerJoin, efm.Type));
                 }
+                string innerJoin = " INNER JOIN ";
+                if (nullable)
+                    innerJoin = " LEFT JOIN ";
+                if (pi.PropertyType.IsArray)
+                {
+                    sTable iMap = conn.Pool.Mapping[mainTable, prop];
+                    innerJoin += iMap.Name + " main_intermediate_" + prop + " ON ";
+                    foreach (sTableField f in iMap.Fields)
+                    {
+                        if (f.ClassProperty != null)
+                            innerJoin += " virtualTable." + f.ExternalField + " = main_intermediate_" + prop + "." + f.Name + " AND ";
+                    }
+                    innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
+                    innerJoin += " INNER JOIN " + extMap.Name + " main_" + prop + " ON ";
+                    foreach (sTableField f in iMap.Fields)
+                    {
+                        if (f.ClassProperty == null && f.ExternalField != null)
+                            innerJoin += " main_intermediate_" + prop + "." + f.Name + " = main_" + prop + "." + f.ExternalField + " AND ";
+                    }
+                    innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
+                }
+                else
+                {
+                    innerJoin += extMap.Name + " main_" + prop + " ON ";
+                    foreach (sTableField f in mainMap[prop])
+                        innerJoin += " virtualTable." + f.Name + " = main_" + prop + "." + f.ExternalField + " AND ";
+                    innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
+                }
+                paths.Add(new TablePath("main_" + prop, innerJoin, (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)));
             }
             RecurExtractPaths(ref paths, conn);
             string appendedJoins = "";
@@ -140,7 +154,7 @@ namespace Org.Reddragonit.Dbpro.Virtual
             {
                 if (field.IsInternal)
                 {
-                    fieldString += ", virtualTable." + mainMap.GetTableFieldName(field.FieldName) + " AS " + conn.Pool.CorrectName(field.ClassFieldName);
+                    fieldString += ", virtualTable." + mainMap[field.ClassFieldName][0].Name + " AS " + conn.Pool.CorrectName(field.ClassFieldName);
                     fieldsUsed.Add(field);
                 }
                 else
@@ -151,7 +165,7 @@ namespace Org.Reddragonit.Dbpro.Virtual
                         {
                             if (!appendedJoins.Contains(tp.Path))
                                 appendedJoins += " " + tp.Path;
-                            fieldString += ", " + field.TablePath + "." + conn.Pool.CorrectName(ClassMapper.GetTableMap(tp.EndType).GetTableFieldName(field.FieldName)) + " AS " + conn.Pool.CorrectName(field.ClassFieldName);
+                            fieldString += ", " + field.TablePath + "." + conn.Pool.Mapping[tp.EndType][field.FieldName][0].Name + " AS " + conn.Pool.CorrectName(field.ClassFieldName);
                             break;
                         }
                     }
@@ -168,18 +182,22 @@ namespace Org.Reddragonit.Dbpro.Virtual
 				changed=false;
 				for (int x=0;x<paths.Count;x++){
 					TablePath tp = paths[x];
-					TableMap extMap = ClassMapper.GetTableMap(tp.EndType);
+					sTable extMap = conn.Pool.Mapping[tp.EndType];
 					bool contains=false;
-					foreach (TableMap.FieldNamePair fnp in extMap.FieldNamePairs){
-						if (extMap[fnp] is ExternalFieldMap){
-							if (((ExternalFieldMap)extMap[fnp]).IsSelfRelated){
-								if (tp.EndTable.EndsWith("_"+fnp.ClassFieldName))
-								{
-									contains=true;
-									break;
-								}else{
+                    foreach (string prop in extMap.ForeignTableProperties){
+                        PropertyInfo pi = tp.EndType.GetProperty(prop, Utility._BINDING_FLAGS);
+						if (conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType))){
+                            sTableRelation rel = extMap.GetRelationForProperty(prop).Value;
+                            if ((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType).Equals(tp.EndType))
+                            {
+                                if (tp.EndTable.EndsWith("_" + prop))
+                                {
+                                    contains = true;
+                                    break;
+                                }else{
 									foreach (TablePath t in paths){
-										if (t.EndTable.StartsWith(tp.EndTable)&&t.EndTable.EndsWith("_"+fnp.ClassFieldName)){
+                                        if (t.EndTable.StartsWith(tp.EndTable) && t.EndTable.EndsWith("_" + prop))
+                                        {
 											contains=true;
 											break;
 										}
@@ -187,7 +205,8 @@ namespace Org.Reddragonit.Dbpro.Virtual
 								}
 							}else{
 								foreach (TablePath t in paths){
-									if (t.EndTable==tp.EndTable+"_"+fnp.ClassFieldName){
+                                    if (t.EndTable == tp.EndTable + "_" + prop)
+                                    {
 										contains=true;
 										break;
 									}
@@ -197,34 +216,53 @@ namespace Org.Reddragonit.Dbpro.Virtual
 					}
 					if (contains)
 						break;
-					else if (extMap.ExternalFieldMaps.Count>0){
-						changed=true;
-						foreach (TableMap.FieldNamePair fnp in extMap.FieldNamePairs){
-							if (extMap[fnp] is ExternalFieldMap){
-								ExternalFieldMap efm = (ExternalFieldMap)extMap[fnp];
-								TableMap eMap = ClassMapper.GetTableMap(efm.Type);
-								string innerJoin = " INNER JOIN ";
-								if (efm.Nullable)
-									innerJoin=" LEFT JOIN ";
-								if (efm.IsArray){
-									innerJoin+=conn.Pool.CorrectName(eMap.Name+"_"+eMap.Name+"_"+efm.AddOnName)+" "+tp.EndTable+"_intermediate_"+fnp.ClassFieldName +" ON ";
-									foreach (InternalFieldMap ifm in extMap.PrimaryKeys)
-										innerJoin+=" "+tp.EndTable+"."+conn.Pool.CorrectName(ifm.FieldName)+" = "+tp.EndTable+"_intermediate_"+fnp.ClassFieldName +"."+conn.Pool.CorrectName("PARENT_"+ifm.FieldName)+" AND ";
-									innerJoin=innerJoin.Substring(0,innerJoin.Length-5);
-									innerJoin+=" INNER JOIN "+conn.Pool.CorrectName(eMap.Name)+" "+tp.EndTable+"_"+fnp.ClassFieldName+" ON ";
-									foreach (InternalFieldMap ifm in eMap.PrimaryKeys)
-										innerJoin+=" "+tp.EndTable+"_intermediate_"+fnp.ClassFieldName+"."+conn.Pool.CorrectName("CHILD_"+ifm.FieldName)+" = "+tp.EndTable+"_"+fnp.ClassFieldName+"."+conn.Pool.CorrectName(ifm.FieldName)+" AND ";
-									innerJoin=innerJoin.Substring(0,innerJoin.Length-5);
-								}else{
-									innerJoin+=conn.Pool.CorrectName(eMap.Name)+" "+tp.EndTable+"_"+fnp.ClassFieldName+" ON ";
-									foreach (InternalFieldMap ifm in eMap.PrimaryKeys)
-										innerJoin+=" "+tp.EndTable+"."+conn.Pool.CorrectName(efm.AddOnName+"_"+ifm.FieldName)+" = "+tp.EndTable+"_"+fnp.ClassFieldName+"."+conn.Pool.CorrectName(ifm.FieldName)+" AND ";
-									innerJoin=innerJoin.Substring(0,innerJoin.Length-5);
-								}
-								paths.Add(new TablePath(tp.EndTable+"_"+fnp.ClassFieldName,tp.Path+innerJoin,efm.Type));
-							}
-						}
-					}
+                    else if (extMap.ForeignTableProperties.Length > 0)
+                    {
+                        changed = true;
+                        foreach (string prop in extMap.ForeignTableProperties)
+                        {
+                            PropertyInfo pi = tp.EndType.GetProperty(prop, Utility._BINDING_FLAGS);
+                            sTable pMap = conn.Pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
+                            bool nullable = false;
+                            foreach (object obj in pi.GetCustomAttributes(false))
+                            {
+                                if (obj is INullable)
+                                {
+                                    nullable = ((INullable)obj).Nullable;
+                                    break;
+                                }
+                            }
+                            string innerJoin = " INNER JOIN ";
+                            if (nullable)
+                                innerJoin = " LEFT JOIN ";
+                            if (pi.PropertyType.IsArray)
+                            {
+                                sTable iMap = conn.Pool.Mapping[tp.EndType, prop];
+                                innerJoin += iMap.Name + " " + tp.EndTable + "_intermediate_" + prop + " ON ";
+                                foreach (sTableField f in iMap.Fields)
+                                {
+                                    if (f.ClassProperty != null)
+                                        innerJoin += " " + tp.EndTable + "." + f.ExternalField + " = " + tp.EndTable + "_intermediate_" + prop + "." + f.Name + " AND ";
+                                }
+                                innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
+                                innerJoin += " INNER JOIN " + pMap.Name + " " + tp.EndTable + "_" + prop + " ON ";
+                                foreach (sTableField f in iMap.Fields)
+                                {
+                                    if (f.ClassProperty == null && f.ExternalField != null)
+                                        innerJoin += " " + tp.EndTable + "_intermediate_" + prop + "." + f.Name + " = " + tp.EndTable + "_" + prop + "." + f.ExternalField + " AND ";
+                                }
+                                innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
+                            }
+                            else
+                            {
+                                innerJoin += pMap.Name + " " + tp.EndTable + "_" + prop + " ON ";
+                                foreach (sTableField f in extMap[prop])
+                                    innerJoin += " " + tp.EndTable + "." + f.Name + " = " + tp.EndTable + "_" + prop + "." + f.ExternalField + " AND ";
+                                innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
+                            }
+                            paths.Add(new TablePath(tp.EndTable + "_" + prop, tp.Path + innerJoin,(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)));
+                        }
+                    }
 				}
 			}
 		}
