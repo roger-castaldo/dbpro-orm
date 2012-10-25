@@ -10,16 +10,16 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 
 		private bool _autogen=false;
 
-        public PrimaryKeyField(): base()
+        public PrimaryKeyField(): this(false)
         { }
 
-        public PrimaryKeyField(bool autogen): base()
+        public PrimaryKeyField(bool autogen): base(false)
         {
             _autogen = autogen;
         }
 
         public PrimaryKeyField(int fieldLength)
-            : this(fieldLength, true)
+            : this(fieldLength, false)
         {
         }
 
@@ -28,35 +28,18 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
         }
 
         public PrimaryKeyField(bool autogen,int fieldLength)
-            : this(autogen,fieldLength, true)
-        {
-        }
-
-        public PrimaryKeyField(bool autogen, bool nullable)
-            : this(autogen,int.MinValue, nullable)
-        {
-        }
-
-        public PrimaryKeyField(bool autogen, int fieldLength, bool Nullable) : base(fieldLength,Nullable)
+            : base(fieldLength,false)
         {
             _autogen = autogen;
         }
 		
-		public PrimaryKeyField(string FieldName,FieldType type):this(FieldName,type,false,0,false)
-		{}
-
-		public PrimaryKeyField(string FieldName,FieldType type,bool Nullable) : this(FieldName,type,Nullable,0,false)
-		{
-			_autogen=AutoGen;
-		}
-		
-		public PrimaryKeyField(string FieldName,FieldType type,bool Nullable,int FieldLength) : this (FieldName,type,Nullable,FieldLength,false)
+		public PrimaryKeyField(string FieldName,FieldType type):this(FieldName,type,0,false)
 		{}
 		
-		public PrimaryKeyField(string FieldName,FieldType type,bool Nullable,bool AutoGen) : this(FieldName,type,Nullable,0,AutoGen)
+		public PrimaryKeyField(string FieldName,FieldType type,int FieldLength) : this (FieldName,type,FieldLength,false)
 		{}
 
-		public PrimaryKeyField(string FieldName,FieldType type,bool Nullable,int FieldLength,bool AutoGen) : base(FieldName,type,Nullable,FieldLength)
+		public PrimaryKeyField(string FieldName,FieldType type,int FieldLength,bool AutoGen) : base(FieldName,type,false,FieldLength)
 		{
 			_autogen=AutoGen;
 		}

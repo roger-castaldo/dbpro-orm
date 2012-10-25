@@ -11,7 +11,6 @@ using System;
 using System.Text.RegularExpressions;
 using System.Collections.Generic;
 using System.Threading;
-using Org.Reddragonit.Dbpro.Structure.Mapping;
 using ExtractedTableMap = Org.Reddragonit.Dbpro.Connections.ExtractedTableMap;
 using ExtractedFieldMap = Org.Reddragonit.Dbpro.Connections.ExtractedFieldMap;
 using ForeignRelationMap = Org.Reddragonit.Dbpro.Connections.ForeignRelationMap;
@@ -21,6 +20,9 @@ using UpdateDeleteAction =  Org.Reddragonit.Dbpro.Structure.Attributes.ForeignFi
 using Org.Reddragonit.Dbpro.Connections.Interfaces;
 using Org.Reddragonit.Dbpro.Virtual.Attributes;
 using Org.Reddragonit.Dbpro.Virtual;
+using Org.Reddragonit.Dbpro.Connections.PoolComponents;
+using Org.Reddragonit.Dbpro.Structure.Attributes;
+using System.Reflection;
 
 namespace Org.Reddragonit.Dbpro.Connections
 {
@@ -131,7 +133,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
 		}
 		
-		protected virtual int MaxFieldNameLength{
+		public virtual int MaxFieldNameLength{
 			get{
 				return int.MaxValue;
 			}
@@ -142,10 +144,17 @@ namespace Org.Reddragonit.Dbpro.Connections
 		}
 		
 		private string[] _reservedWords=null;
-		private Dictionary<string, string> _nameTranslations = new Dictionary<string, string>();
-		internal Dictionary<Type, string> _enumTableMaps = new Dictionary<Type, string>();
-		internal Dictionary<Type,Dictionary<string, int>> _enumValuesMap = new Dictionary<Type, Dictionary<string, int>>();
-		internal Dictionary<Type, Dictionary<int,string>> _enumReverseValuesMap = new Dictionary<Type, Dictionary<int, string>>();
+        private EnumsHandler _enums;
+        internal EnumsHandler Enums
+        {
+            get { return _enums; }
+        }
+		private NameTranslator _translator;
+        private ClassMapping _mapping;
+        internal ClassMapping Mapping
+        {
+            get { return _mapping; }
+        }
 		
 		internal string[] ReservedWords{
 			get{
@@ -157,108 +166,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		internal string CorrectName(string currentName)
 		{
-            if (_nameTranslations.ContainsValue(currentName.ToUpper()))
-            {
-                foreach (string str in _nameTranslations.Keys)
-                {
-                    if (_nameTranslations[str] == currentName.ToUpper())
-                        return str.ToUpper();
-                }
-                return null;
-            }
-            else if (_nameTranslations.ContainsKey(currentName))
-                return currentName;
-            else
-            {
-                string ret = currentName;
-                bool reserved = false;
-                foreach (string str in ReservedWords)
-                {
-                    if (Utility.StringsEqualIgnoreCaseWhitespace(str, currentName))
-                    {
-                        reserved = true;
-                        break;
-                    }
-                }
-                if (reserved)
-                    ret = "RES_" + ret;
-                ret = ShortenName(ret);
-                if (_nameTranslations.ContainsKey(ret))
-                {
-                    int _nameCounter = 0;
-                    while (_nameTranslations.ContainsKey(ret.Substring(0, MaxFieldNameLength - 1 - (_nameCounter.ToString().Length)) + "_" + _nameCounter.ToString()))
-                    {
-                        _nameCounter++;
-                    }
-                    ret = ret.Substring(0, MaxFieldNameLength - 1 - (_nameCounter.ToString().Length));
-                    ret += "_" + _nameCounter.ToString();
-                }
-                if (!_nameTranslations.ContainsKey(ret))
-                    _nameTranslations.Add(ret, currentName.ToUpper());
-                return ret.ToUpper();
-            }
+            return _translator.CorrectName(currentName);
 		}
-
-        private string ShortenName(string name)
-        {
-            if (name.Length <= MaxFieldNameLength)
-                return name;
-            string ret = "";
-            if (name.Contains("_"))
-            {
-                string[] tmp = name.Split('_');
-                int len = (int)Math.Floor((double)MaxFieldNameLength / (double)tmp.Length);
-                if (len == 1)
-                {
-                    if ((tmp[0].Length + (tmp.Length - 2) + tmp[tmp.Length - 1].Length) <= MaxFieldNameLength)
-                    {
-                        ret = tmp[0];
-                        for (int x = 1; x <= tmp.Length - 1; x++)
-                        {
-                            ret += "_";
-                        }
-                        ret += tmp[tmp.Length - 1];
-                    }
-                    else
-                    {
-                        len = (int)Math.Floor((decimal)((tmp[0].Length + (tmp.Length - 2) + tmp[tmp.Length - 1].Length)-MaxFieldNameLength)/(decimal)2);
-                        if (tmp[0].Length > len)
-                            ret = tmp[0].Substring(0, len);
-                        else
-                            ret = tmp[0];
-                        for (int x = 1; x <= tmp.Length - 1; x++)
-                        {
-                            ret += "_";
-                        }
-                        if (tmp[tmp.Length - 1].Length > len)
-                            ret += tmp[tmp.Length - 1].Substring(0, len);
-                        else
-                            ret += tmp[tmp.Length - 1];
-                    }
-                }
-                else
-                {
-                    foreach (string str in tmp)
-                    {
-                        if (str.Length != 0)
-                        {
-                            if (str.Length > len - 1)
-                                ret += str.Substring(0, len - 1) + "_";
-                            else
-                                ret += str + "_";
-                        }
-                    }
-                    ret = ret.Substring(0, ret.Length - 1);
-                }
-            }
-            else
-            {
-                int diff = name.Length - MaxFieldNameLength - 1;
-                int len = (int)Math.Floor((double)(name.Length - diff) / (double)2);
-                ret = name.Substring(0, len) + "_" + name.Substring(name.Length - len);
-            }
-            return ret;
-        }
 		
 		internal string ConnectionName
 		{
@@ -282,12 +191,12 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		internal object GetEnumValue(Type enumType,int ID)
 		{
-			return Enum.Parse(enumType,_enumReverseValuesMap[enumType][ID]);
+            return _enums.GetEnumValue(enumType, ID);
 		}
 		
 		internal int GetEnumID(Type enumType,string enumName)
 		{
-			return _enumValuesMap[enumType][enumName];
+            return _enums.GetEnumID(enumType, enumName);
 		}
 
         protected ConnectionPool(string connectionString, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions)
@@ -315,12 +224,28 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		internal void Init(Dictionary<Type,List<EnumTranslationPair>> translations)
 		{
-            _nameTranslations = new Dictionary<string, string>();
+            _translator = new NameTranslator(this);
+            _enums = new EnumsHandler();
+            List<Type> tables = new List<Type>();
+            List<Type> virtualTables = new List<Type>();
             _InitClass();
             if (!_debugMode)
-			    PreInit();
-			ClassMapper.CorrectNamesForConnection(this);
-            if (!(_debugMode&&(ClassMapper.TableTypesForConnection(this.ConnectionName).Count==0)))
+            {
+                foreach (Type t in Utility.LocateAllTypesWithAttribute(typeof(Table)))
+                {
+                    Table tbl = (Table)t.GetCustomAttributes(typeof(Table), false)[0];
+                    if (Utility.StringsEqual(tbl.ConnectionName, ConnectionName))
+                        tables.Add(t);
+                }
+                foreach (Type t in Utility.LocateAllTypesWithAttribute(typeof(VirtualTableAttribute)))
+                {
+                    if (tables.Contains(VirtualTableAttribute.GetMainTableTypeForVirtualTable(t)))
+                        virtualTables.Add(t);
+                }
+                _mapping = new ClassMapping(this, tables, virtualTables);
+                PreInit();
+            }
+            if (!(_debugMode&&(tables.Count==0)&&(virtualTables.Count==0)))
 			    UpdateStructure(_debugMode,_allowTableDeletions,translations);
             for (int x=0;x<minPoolSize;x++){
             	if (unlocked.Count>=minPoolSize)
@@ -414,7 +339,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         private View _CreateViewForVirtualTable(Type virtualTable,Connection conn)
         {
-            return new View(CorrectName("VW_" + virtualTable.Name), VirtualTableQueryBuilder.ConstructQuery(virtualTable, conn));
+            return new View(_mapping.GetVirtualTable(virtualTable).Name, VirtualTableQueryBuilder.ConstructQuery(virtualTable, conn));
         }
 		
 		private void ExtractExpectedStructure(out List<ExtractedTableMap> tables,out List<Trigger> triggers,out List<Generator> generators,out List<IdentityField> identities,out List<View> views,out List<StoredProcedure> procedures,Connection conn)
@@ -444,196 +369,95 @@ namespace Org.Reddragonit.Dbpro.Connections
                     procedures.AddRange(tmpProcedures);
             }
 
-            foreach (Type t in Utility.LocateAllTypesWithAttribute(typeof(VirtualTableAttribute)))
+            foreach (Type t in _mapping.VirtualTypes)
                 views.Add(_CreateViewForVirtualTable(t,conn));
 
-			foreach (System.Type type in ClassMapper.TableTypesForConnection(ConnectionName))
+            Dictionary<string, string> AutoDeleteParentTables = new Dictionary<string, string>();
+
+			foreach (System.Type type in _mapping.Types)
 			{
-				TableMap tm = ClassMapper.GetTableMap(type);
+                sTable tm = _mapping[type];
 				ExtractedTableMap etm = new ExtractedTableMap(tm.Name);
-                foreach (Index ind in tm.Indices)
+                if (type.IsEnum)
                 {
-                    List<string> tfields = new List<string>();
-                    foreach (string str in ind.Fields)
-                        tfields.Add(CorrectName(str));
-                    etm.Indices.Add(new Index(CorrectName(ind.Name), tfields.ToArray(), ind.Unique, ind.Ascending));
+                    foreach (sTableField f in tm.Fields)
+                        etm.Fields.Add(new ExtractedFieldMap(f.Name, conn.TranslateFieldType(f.Type, f.Length), f.Length, tm.AutoGenField == f.Name, false, tm.AutoGenField == f.Name));
                 }
-				foreach (InternalFieldMap ifm in tm.Fields)
-				{
-                    if (ifm.FieldType == FieldType.ENUM)
+                else
+                {
+                    Table tbl = (Table)type.GetCustomAttributes(typeof(Table), false)[0];
+                    foreach (TableIndex ti in type.GetCustomAttributes(typeof(TableIndex), false))
                     {
-                        if (!_enumTableMaps.ContainsKey(ifm.ObjectType))
+                        List<string> tfields = new List<string>();
+                        foreach (string str in ti.Fields)
                         {
-                            string[] split = ifm.ObjectType.FullName.Replace("+", ".").Split(".".ToCharArray());
-                            string name = "";
-                            if (split.Length > 1)
-                                name += split[split.Length - 2] + "_" + split[split.Length - 1];
+                            sTableField[] flds = tm[str];
+                            if (flds.Length == 0)
+                                tfields.Add(str);
                             else
-                                name += split[0];
-                            string newName = "";
-                            foreach (char c in name.ToCharArray())
                             {
-                                if (c.ToString().ToUpper() == c.ToString())
-                                {
-                                    newName += "_" + c.ToString().ToLower();
-                                }
-                                else
-                                {
-                                    newName += c;
-                                }
+                                foreach (sTableField f in flds)
+                                    tfields.Add(f.Name);
                             }
-                            if (newName[0] == '_')
+                        }
+                        etm.Indices.Add(new Index(CorrectName(ti.Name), tfields.ToArray(), ti.Unique, ti.Ascending));
+                    }
+                    List<string> pProps = new List<string>(tm.PrimaryKeyProperties);
+                    foreach (string prop in tm.Properties)
+                    {
+                        PropertyInfo pi = type.GetProperty(prop, Utility._BINDING_FLAGS_WITH_INHERITANCE);
+                        if (!pi.PropertyType.IsArray)
+                        {
+                            sTableRelation? rel = tm.GetRelationForProperty(prop);
+                            foreach (sTableField f in tm[prop])
                             {
-                                newName = newName[1].ToString().ToUpper() + newName.Substring(2);
+                                etm.Fields.Add(new ExtractedFieldMap(f.Name, conn.TranslateFieldType(f.Type, f.Length), f.Length, pProps.Contains(prop), (rel.HasValue ? rel.Value.Nullable : f.Nullable), (tm.AutoGenField != null ? f.Name == tm.AutoGenField : false)));
+                                if (rel.HasValue)
+                                    etm.ForeignFields.Add(new ForeignRelationMap(type.Name + "_" + prop, f.Name, rel.Value.ExternalTable, f.ExternalField, rel.Value.OnDelete.ToString(), rel.Value.OnUpdate.ToString()));
                             }
-                            newName = "ENUM_" + newName;
-                            newName = newName.Replace("__", "_").Replace("__", "_");
-                            name = CorrectName(newName.ToUpper());
-                            ExtractedTableMap enumMap = new ExtractedTableMap(name);
-                            enumMap.Fields.Add(new ExtractedFieldMap("ID", conn.TranslateFieldType(FieldType.INTEGER, 4),
-                                                                     4, true, false, true));
-                            enumMap.Fields.Add(new ExtractedFieldMap(CorrectName("VALUE"), conn.TranslateFieldType(FieldType.STRING, 500),
-                                                                     500, false, false, false));
-                            tables.Add(enumMap);
-                            conn.GetAddAutogen(enumMap, this, out tmpIdentities, out tmpGenerators, out tmpTriggers,out tmpProcedures);
-                            if (tmpGenerators != null)
+                        }
+                        else
+                        {
+                            sTable iMap = _mapping[type, prop];
+                            ExtractedTableMap ietm = new ExtractedTableMap(iMap.Name);
+                            List<string> ipKeys = new List<string>(iMap.PrimaryKeyFields);
+                            string extTable = (_mapping.IsMappableType(pi.PropertyType.GetElementType()) ? _mapping[pi.PropertyType.GetElementType()].Name : null);
+                            foreach (sTableField f in iMap.Fields)
                             {
-                                generators.AddRange(tmpGenerators);
-                                tmpGenerators.Clear();
+                                ietm.Fields.Add(new ExtractedFieldMap(f.Name, conn.TranslateFieldType(f.Type, f.Length), f.Length, ipKeys.Contains(f.Name), false, (iMap.AutoGenField != null ? iMap.AutoGenField == f.Name : false)));
+                                if (f.ExternalField != null && ipKeys.Contains(f.Name))
+                                    ietm.ForeignFields.Add(new ForeignRelationMap(type.Name + "_" + prop + (_mapping.IsMappableType(pi.PropertyType.GetElementType()) ? "_intermediate" : ""), f.Name, etm.TableName, f.ExternalField, ForeignField.UpdateDeleteAction.CASCADE.ToString(), ForeignField.UpdateDeleteAction.CASCADE.ToString()));
+                                if (f.ExternalField != null && f.ClassProperty == null && extTable != null)
+                                    ietm.ForeignFields.Add(new ForeignRelationMap(type.Name + "_" + prop, f.Name, extTable, f.ExternalField, ForeignField.UpdateDeleteAction.CASCADE.ToString(), ForeignField.UpdateDeleteAction.CASCADE.ToString()));
                             }
-                            if (tmpTriggers != null)
-                            {
-                                triggers.AddRange(tmpTriggers);
-                                tmpTriggers.Clear();
-                            }
-                            if (tmpIdentities != null)
-                            {
-                                identities.AddRange(tmpIdentities);
-                                tmpIdentities.Clear();
-                            }
-                            if (tmpProcedures != null)
-                            {
-                                procedures.AddRange(tmpProcedures);
-                                tmpProcedures.Clear();
-                            }
-                            _enumTableMaps.Add(ifm.ObjectType, name);
+                            tables.Add(ietm);
                         }
                     }
-					if (!ifm.IsArray)
-					{
-						if (ifm.FieldType==FieldType.ENUM)
-						{
-							etm.Fields.Add(new ExtractedFieldMap(ifm.FieldName,conn.TranslateFieldType(FieldType.INTEGER,4),4,ifm.PrimaryKey,ifm.Nullable,false));
-							etm.ForeignFields.Add(new ForeignRelationMap(ifm.FieldName+"_ENUM",ifm.FieldName,CorrectName(_enumTableMaps[ifm.ObjectType]),
-							                                             "ID",UpdateDeleteAction.SET_NULL.ToString(),UpdateDeleteAction.SET_NULL.ToString()));
-						}
-						else
-							etm.Fields.Add(new ExtractedFieldMap(ifm.FieldName,conn.TranslateFieldType(ifm.FieldType,ifm.FieldLength),
-							                                     ifm.FieldLength,ifm.PrimaryKey,ifm.Nullable,ifm.AutoGen));
-					}
-					else
-					{
-						ExtractedTableMap etmField = new ExtractedTableMap(CorrectName(tm.Name+"_"+ifm.FieldName));
-						foreach (InternalFieldMap ifmField in tm.PrimaryKeys)
-						{
-							etmField.Fields.Add(new ExtractedFieldMap(CorrectName(tm.Name+"_"+ifmField.FieldName),conn.TranslateFieldType(ifmField.FieldType,ifmField.FieldLength),
-							                                          ifmField.FieldLength,true,false,false));
-							etmField.ForeignFields.Add(new ForeignRelationMap(ifm.FieldName,CorrectName(tm.Name+"_"+ifmField.FieldName),tm.Name,
-							                                                  ifmField.FieldName,UpdateDeleteAction.CASCADE.ToString(),UpdateDeleteAction.CASCADE.ToString()));
-						}
-						etmField.Fields.Add(new ExtractedFieldMap(CorrectName(tm.Name+"_"+ifm.FieldName+"_ID"),conn.TranslateFieldType(FieldType.LONG,0),8,
-						                                          true,false,true));
-                        if (ifm.FieldType == FieldType.ENUM)
-                        {
-                            etmField.Fields.Add(new ExtractedFieldMap(CorrectName(ifm.FieldName + "_VALUE"), conn.TranslateFieldType(FieldType.INTEGER, 4), 4, ifm.PrimaryKey, ifm.Nullable, false));
-                            etmField.ForeignFields.Add(new ForeignRelationMap(ifm.FieldName + "_ENUM", CorrectName(ifm.FieldName + "_VALUE"), CorrectName(_enumTableMaps[ifm.ObjectType]),
-                                                                         "ID", UpdateDeleteAction.CASCADE.ToString(), UpdateDeleteAction.CASCADE.ToString()));
-                        }else
-						    etmField.Fields.Add(new ExtractedFieldMap(CorrectName(ifm.FieldName+"_VALUE"),conn.TranslateFieldType(ifm.FieldType,ifm.FieldLength),ifm.FieldLength,
-						                                              false,ifm.Nullable,false));
-						tables.Add(etmField);
-						conn.GetAddAutogen(etmField,this,out tmpIdentities,out tmpGenerators,out tmpTriggers,out tmpProcedures);
-						if (tmpGenerators!=null)
-							generators.AddRange(tmpGenerators);
-						if (tmpTriggers!=null)
-							triggers.AddRange(tmpTriggers);
-						if (tmpIdentities!=null)
-							identities.AddRange(tmpIdentities);
-                        if (tmpProcedures != null)
-                            procedures.AddRange(tmpProcedures);
-					}
-				}
-				foreach (Type t in tm.ForeignTables)
-				{
-					TableMap ftm = ClassMapper.GetTableMap(t);
-					foreach (ExternalFieldMap efm in tm.GetFieldInfoForForeignTable(t,false)){
-						foreach (InternalFieldMap ifm in ftm.PrimaryKeys)
-						{
-							etm.ForeignFields.Add(new ForeignRelationMap(efm.AddOnName,CorrectName(efm.AddOnName+"_"+ifm.FieldName),ftm.Name,
-							                                             ifm.FieldName,efm.OnUpdate.ToString(),efm.OnDelete.ToString()));
-						}
-					}
-				}
-                if (tm.ParentType != null)
-                {
-                    TableMap parentMap = ClassMapper.GetTableMap(tm.ParentType);
-                    foreach (InternalFieldMap ifm in parentMap.PrimaryKeys)
+                    if (_mapping.IsMappableType(type.BaseType))
                     {
-                        etm.ForeignFields.Add(new ForeignRelationMap(parentMap.Name,CorrectName(ifm.FieldName), CorrectName(parentMap.Name), CorrectName(ifm.FieldName), UpdateDeleteAction.CASCADE.ToString(), UpdateDeleteAction.CASCADE.ToString()));
+                        sTable pMap = _mapping[type.BaseType];
+                        foreach (string str in pMap.PrimaryKeyFields)
+                            etm.ForeignFields.Add(new ForeignRelationMap(type.Name + "_parent", str, pMap.Name, str, ForeignField.UpdateDeleteAction.CASCADE.ToString(), ForeignField.UpdateDeleteAction.CASCADE.ToString()));
+                        if (tbl.AutoDeleteParent)
+                            AutoDeleteParentTables.Add(tm.Name, pMap.Name);
                     }
-                    if (tm.AutoDeleteParent)
+                    if (_mapping.HasVersionTable(type))
                     {
-                        ExtractedTableMap petm = tables[0];
-                        foreach (ExtractedTableMap setm in tables)
+                        VersionTypes vt;
+                        sTable vtm = _mapping.GetVersionTable(type, out vt);
+                        ExtractedTableMap vetm = new ExtractedTableMap(vtm.Name);
+                        List<string> vpkeys = new List<string>(vtm.PrimaryKeyFields);
+                        foreach (sTableField f in vtm.Fields)
                         {
-                            if (setm.TableName == parentMap.Name)
-                                petm = setm;
+                            vetm.Fields.Add(new ExtractedFieldMap(f.Name, conn.TranslateFieldType(f.Type, f.Length), f.Length, vpkeys.Contains(f.Name), !vpkeys.Contains(f.Name), vtm.AutoGenField == f.Name));
+                            if (vpkeys.Contains(f.Name))
+                                vetm.ForeignFields.Add(new ForeignRelationMap(type.Name + "_version", f.Name, tm.Name, f.Name, ForeignField.UpdateDeleteAction.CASCADE.ToString(), ForeignField.UpdateDeleteAction.CASCADE.ToString()));
                         }
-                        triggers.AddRange(conn.GetDeleteParentTrigger(etm, petm, this));
+                        triggers.AddRange(conn.GetVersionTableTriggers(vetm, vt, this));
+                        tables.Add(vetm);
                     }
                 }
-				tables.Add(etm);
-				foreach (ExternalFieldMap efm in tm.ExternalFieldMapArrays)
-				{
-					TableMap ftm = ClassMapper.GetTableMap(efm.Type);
-					ExtractedTableMap aetm = new ExtractedTableMap(CorrectName(tm.Name+"_"+ftm.Name+"_"+efm.AddOnName));
-					foreach (InternalFieldMap ifm in tm.PrimaryKeys)
-					{
-						aetm.Fields.Add(new ExtractedFieldMap(CorrectName("parent_"+ifm.FieldName),conn.TranslateFieldType(ifm.FieldType,ifm.FieldLength),
-						                                      ifm.FieldLength,true,false,false));
-                        aetm.ForeignFields.Add(new ForeignRelationMap(efm.AddOnName + "_parent", CorrectName("parent_" + ifm.FieldName), tm.Name, ifm.FieldName, efm.OnUpdate.ToString(), efm.OnDelete.ToString()));
-					}
-					foreach (InternalFieldMap ifm in ftm.PrimaryKeys)
-					{
-						aetm.Fields.Add(new ExtractedFieldMap(CorrectName("child_"+ifm.FieldName),conn.TranslateFieldType(ifm.FieldType,ifm.FieldLength),
-						                                      ifm.FieldLength,false,false,false));
-						aetm.ForeignFields.Add(new ForeignRelationMap(efm.AddOnName+"_child",CorrectName("child_"+ifm.FieldName),ftm.Name,ifm.FieldName,efm.OnUpdate.ToString(),efm.OnDelete.ToString()));
-					}
-                    aetm.Fields.Add(new ExtractedFieldMap(CorrectName("index"),conn.TranslateFieldType(FieldType.INTEGER,0),4,true,false,true));
-					tables.Add(aetm);
-				}
-				if (tm.VersionType!=null)
-				{
-					ExtractedTableMap vetm = new ExtractedTableMap(CorrectName(conn.queryBuilder.VersionTableName(tm.Name)));
-					if (tm.VersionType.Value==VersionTypes.DATESTAMP)
-						vetm.Fields.Add(new ExtractedFieldMap(CorrectName(conn.queryBuilder.VersionFieldName(tm.Name)),conn.TranslateFieldType(FieldType.DATETIME,0),8,
-						                                      true,false,true));
-					else
-						vetm.Fields.Add(new ExtractedFieldMap(CorrectName(conn.queryBuilder.VersionFieldName(tm.Name)),conn.TranslateFieldType(FieldType.LONG,0),8,
-						                                      true,false,true));
-					foreach (InternalFieldMap ifm in tm.Fields)
-					{
-						if (ifm.Versionable||ifm.PrimaryKey)
-						{
-							vetm.Fields.Add(new ExtractedFieldMap(ifm.FieldName,conn.TranslateFieldType(ifm.FieldType,ifm.FieldLength),
-							                                      ifm.FieldLength,ifm.PrimaryKey,ifm.Nullable,false));
-							if (ifm.PrimaryKey)
-								vetm.ForeignFields.Add(new ForeignRelationMap(vetm.TableName,ifm.FieldName,etm.TableName,ifm.FieldName,"CASCADE","CASCADE"));
-						}
-					}
-					triggers.AddRange(conn.GetVersionTableTriggers(vetm,tm.VersionType.Value,this));
-					tables.Add(vetm);
-				}
+                tables.Add(etm);
 			}
 			foreach(ExtractedTableMap etm in tables)
 			{
@@ -655,6 +479,18 @@ namespace Org.Reddragonit.Dbpro.Connections
                             procedures.AddRange(tmpProcedures);
 					}
 				}
+                if (AutoDeleteParentTables.ContainsKey(etm.TableName))
+                {
+                    ExtractedTableMap ptm=new ExtractedTableMap();
+                    foreach (ExtractedTableMap m in tables)
+                    {
+                        if (AutoDeleteParentTables[etm.TableName] == m.TableName){
+                            ptm = m;
+                            break;
+                        }
+                    }
+                    triggers.AddRange(conn.GetDeleteParentTrigger(etm, ptm, this));
+                }
 			}
 		}
 		
@@ -1688,9 +1524,9 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
 			conn.Commit();
 			
-			if (!Debug&&(_enumTableMaps.Count>0))
+			if (!Debug&&(_enums.Count>0))
 			{
-				foreach (Type t in _enumTableMaps.Keys)
+				foreach (Type t in _enums.Keys)
 				{
                     if (translations.ContainsKey(t))
                     {
@@ -1699,7 +1535,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                             conn.ExecuteNonQuery(String.Format(
                                 "UPDATE {0} SET {1} = '{3}' WHERE {1} = '{2}'",
                                 new object[]{
-                                _enumTableMaps[t],
+                                _enums[t],
                                 CorrectName("VALUE"),
                                 etp.OriginalName,
                                 etp.NewName}
@@ -1707,18 +1543,18 @@ namespace Org.Reddragonit.Dbpro.Connections
                             conn.Close();
                         }
                     }
-					_enumValuesMap.Add(t,new Dictionary<string, int>());
-					_enumReverseValuesMap.Add(t,new Dictionary<int, string>());
+                    Dictionary<string, int> enumValuesMap = new Dictionary<string, int>();
+					Dictionary< int,string> enumReverseValuesMap = new Dictionary<int, string>();
                     List<string> enumNames = new List<string>(Enum.GetNames(t));
                     List<int> deletes = new List<int>();
                     conn.ExecuteQuery(String.Format("SELECT ID,{1} FROM {0}",
-                        _enumTableMaps[t],
+                        _enums[t],
                         CorrectName("VALUE")));
                     while (conn.Read()) {
                         if (enumNames.Contains(conn[1].ToString()))
                         {
-                            _enumValuesMap[t].Add(conn[1].ToString(), (int)conn[0]);
-                            _enumReverseValuesMap[t].Add((int)conn[0], conn[1].ToString());
+                            enumValuesMap.Add(conn[1].ToString(), (int)conn[0]);
+                            enumReverseValuesMap.Add((int)conn[0], conn[1].ToString());
                             enumNames.Remove(conn[1].ToString());
                         }
                         else
@@ -1730,7 +1566,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                         foreach (int i in deletes)
                         {
                             conn.ExecuteNonQuery(String.Format("DELETE FROM {0} WHERE ID = {1}",
-                                _enumTableMaps[t],
+                                _enums[t],
                                 i));
                             conn.Close();
                         }
@@ -1740,21 +1576,22 @@ namespace Org.Reddragonit.Dbpro.Connections
                         foreach (string str in enumNames)
                         {
                             conn.ExecuteNonQuery(String.Format("INSERT INTO {0}({1}) VALUES('{2}')",
-                                _enumTableMaps[t],
+                                _enums[t],
                                 CorrectName("VALUE"),
                                 str));
                             conn.Close();
                             conn.ExecuteQuery(String.Format("SELECT ID FROM {0} WHERE {1}='{2}'",
-                                _enumTableMaps[t],
+                                _enums[t],
                                 CorrectName("VALUE"),
                                 str));
                             conn.Read();
-                            _enumValuesMap[t].Add(str, (int)conn[0]);
-                            _enumReverseValuesMap[t].Add((int)conn[0], str);
+                            enumValuesMap.Add(str, (int)conn[0]);
+                            enumReverseValuesMap.Add((int)conn[0], str);
                             conn.Close();
                         }
                     }
                     conn.Commit();
+                    _enums.AssignMapValues(t, enumValuesMap, enumReverseValuesMap);
 				}
 			}
 			
@@ -2135,5 +1972,5 @@ namespace Org.Reddragonit.Dbpro.Connections
                 System.Threading.Thread.Sleep(50);
             }
         }
-	}
+    }
 }
