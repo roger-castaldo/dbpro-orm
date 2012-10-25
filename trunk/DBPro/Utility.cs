@@ -11,7 +11,6 @@ using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Reflection;
-using Org.Reddragonit.Dbpro.Structure.Mapping;
 using System.Threading;
 using System.Data;
 
@@ -23,6 +22,17 @@ namespace Org.Reddragonit.Dbpro
 	/// </summary>
 	internal class Utility
 	{
+
+        public static readonly BindingFlags _BINDING_FLAGS = BindingFlags.Public |      //Get public members
+                                                                             BindingFlags.NonPublic |   //Get private/protected/internal members
+                                                                             BindingFlags.Static |      //Get static members
+                                                                             BindingFlags.Instance |    //Get instance members
+                                                                             BindingFlags.DeclaredOnly;
+
+        public static readonly BindingFlags _BINDING_FLAGS_WITH_INHERITANCE = BindingFlags.Public |      //Get public members
+                                                                             BindingFlags.NonPublic |   //Get private/protected/internal members
+                                                                             BindingFlags.Static |      //Get static members
+                                                                             BindingFlags.Instance;
 		
         //Called to locate a system type by running through all assemblies within the current
         //domain until it is able to locate the requested Type.
@@ -223,15 +233,6 @@ namespace Org.Reddragonit.Dbpro
             int[] tmp = new int[keys.Count];
             keys.CopyTo(tmp, 0);
             List<int> ret = new List<int>(tmp);
-            ret.Sort();
-            return ret;
-        }
-
-        internal static List<string> SortDictionaryKeys(Dictionary<string, FieldMap>.KeyCollection keys)
-        {
-            string[] tmp = new string[keys.Count];
-            keys.CopyTo(tmp, 0);
-            List<string> ret = new List<string>(tmp);
             ret.Sort();
             return ret;
         }

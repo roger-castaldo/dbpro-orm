@@ -7,7 +7,8 @@ using System.Xml;
 using System.Xml.Serialization;
 using Org.Reddragonit.Dbpro.Connections;
 using Org.Reddragonit.Dbpro.Structure;
-using Org.Reddragonit.Dbpro.Structure.Mapping;
+using Org.Reddragonit.Dbpro.Connections.PoolComponents;
+using System.Reflection;
 
 namespace Org.Reddragonit.Dbpro.Backup
 {
@@ -21,29 +22,28 @@ namespace Org.Reddragonit.Dbpro.Backup
             System.Threading.Thread.Sleep(500);
             c.StartTransaction();
             Logger.LogLine("Database locked down for backing up");
-            List<Type> types = ClassMapper.TableTypesForConnection(pool.ConnectionName);
+            List<Type> types = pool.Mapping.Types;
             List<Type> enums = new List<Type>();
             List<Type> basicTypes = new List<Type>();
             List<Type> complexTypes = new List<Type>();
-            TableMap map;
+            sTable tbl;
             Logger.LogLine("Loading all required types...");
             foreach (Type t in types)
             {
-                map = ClassMapper.GetTableMap(t);
-                foreach (InternalFieldMap ifm in map.Fields)
+                tbl = pool.Mapping[t];
+                foreach(sTableField fld in tbl.Fields)
                 {
-                    if (ifm.FieldType == Org.Reddragonit.Dbpro.Structure.Attributes.FieldType.ENUM)
+                    if (fld.Type == Org.Reddragonit.Dbpro.Structure.Attributes.FieldType.ENUM)
                     {
-                        if (!enums.Contains(ifm.ObjectType))
-                            enums.Add(ifm.ObjectType);
+                        PropertyInfo pi = t.GetProperty(fld.ClassProperty, Utility._BINDING_FLAGS);
+                        if (!enums.Contains((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)))
+                            enums.Add((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType));
                     }
                 }
-                if (map.ForeignTablesBackup.Count > 0)
+                if (tbl.ForeignTableProperties.Length > 0)
                 {
                     if (!complexTypes.Contains(t))
-                    {
-                        recurAddRelatedTypes(ref basicTypes, ref complexTypes, map, t);
-                    }
+                        recurAddRelatedTypes(ref basicTypes, ref complexTypes, tbl, t,pool);
                 }
                 else
                 {
@@ -88,16 +88,16 @@ namespace Org.Reddragonit.Dbpro.Backup
                 doc = new XmlDocument();
                 elem = doc.CreateElement("entries");
                 doc.AppendChild(elem);
-                map = ClassMapper.GetTableMap(t);
+                tbl = pool.Mapping[t];
                 Logger.LogLine("Extracting basic type: " + t.FullName + " from the database and writing it to the xml document.");
                 foreach (Table table in c.SelectAll(t))
                 {
                     elem = doc.CreateElement("entry");
-                    foreach (TableMap.FieldNamePair fnp in map.FieldNamePairs)
+                    foreach (string str in tbl.Properties)
                     {
-                        obj = table.GetField(fnp.ClassFieldName);
+                        obj = table.GetField(str);
                         if (obj != null)
-                            elem.AppendChild(CreateElementWithValue(doc, fnp.ClassFieldName, obj));
+                            elem.AppendChild(CreateElementWithValue(doc, str, obj));
                     }
                     doc.DocumentElement.AppendChild(elem);
                 }
@@ -115,29 +115,30 @@ namespace Org.Reddragonit.Dbpro.Backup
                 doc = new XmlDocument();
                 elem = doc.CreateElement("entries");
                 doc.AppendChild(elem);
-                map = ClassMapper.GetTableMap(t);
+                tbl = pool.Mapping[t];
                 Logger.LogLine("Extracting complex type: " + t.FullName + " from the database and writing it to the xml document.");
                 foreach (Table table in c.SelectAll(t))
                 {
                     elem = doc.CreateElement("entry");
-                    foreach (TableMap.FieldNamePair fnp in map.FieldNamePairs)
+                    foreach (string str in tbl.Properties)
                     {
-                        obj = table.GetField(fnp.ClassFieldName);
+                        obj = table.GetField(str);
                         if (obj != null)
                         {
-                            if (map[fnp] is ExternalFieldMap)
+                            if (tbl.GetRelationForProperty(str).HasValue)
                             {
-                                if (map[fnp].IsArray)
+                                PropertyInfo pi = t.GetProperty(str, Utility._BINDING_FLAGS);
+                                if (pi.PropertyType.IsArray)
                                 {
-                                    elem.AppendChild(doc.CreateElement(fnp.ClassFieldName));
+                                    elem.AppendChild(doc.CreateElement(str));
                                     foreach (object o in (Array)obj)
                                     {
-                                        elem.ChildNodes[elem.ChildNodes.Count - 1].AppendChild(CreateRealtedXMLElement((Table)o, doc, "child"));
+                                        elem.ChildNodes[elem.ChildNodes.Count - 1].AppendChild(CreateRealtedXMLElement((Table)o, doc, "child",pool));
                                     }
                                 }else
-                                    elem.AppendChild(CreateRealtedXMLElement((Table)obj, doc,fnp.ClassFieldName));
+                                    elem.AppendChild(CreateRealtedXMLElement((Table)obj, doc,str,pool));
                             }else
-                                elem.AppendChild(CreateElementWithValue(doc, fnp.ClassFieldName, obj));
+                                elem.AppendChild(CreateElementWithValue(doc, str, obj));
                         }
                     }
                     doc.DocumentElement.AppendChild(elem);
@@ -157,23 +158,20 @@ namespace Org.Reddragonit.Dbpro.Backup
             return true;
         }
 
-        private static XmlElement CreateRealtedXMLElement(Table val,XmlDocument doc,string name)
+        private static XmlElement CreateRealtedXMLElement(Table val,XmlDocument doc,string name,ConnectionPool pool)
         {
             XmlElement ret = doc.CreateElement(name);
-            TableMap map = ClassMapper.GetTableMap(val.GetType());
+            sTable map = pool.Mapping[val.GetType()];
             object obj;
-            foreach (TableMap.FieldNamePair fnp in map.FieldNamePairs)
+            foreach (string str in map.PrimaryKeyProperties)
             {
-                if (map[fnp].PrimaryKey)
+                obj = val.GetField(str);
+                if (obj != null)
                 {
-                    obj = val.GetField(fnp.ClassFieldName);
-                    if (obj != null)
-                    {
-                        if (map[fnp] is ExternalFieldMap)
-                            ret.AppendChild(CreateRealtedXMLElement((Table)obj, doc, fnp.ClassFieldName));
-                        else
-                            ret.AppendChild(CreateElementWithValue(doc, fnp.ClassFieldName, obj));
-                    }
+                    if (pool.Mapping.IsMappableType(obj.GetType()))
+                        ret.AppendChild(CreateRealtedXMLElement((Table)obj, doc, str,pool));
+                    else
+                        ret.AppendChild(CreateElementWithValue(doc, str, obj));
                 }
             }
             return ret;
@@ -196,17 +194,19 @@ namespace Org.Reddragonit.Dbpro.Backup
             return ret;
         }
 
-        private static void recurAddRelatedTypes(ref List<Type> basicTypes, ref List<Type> complexTypes,TableMap map,Type type)
+        private static void recurAddRelatedTypes(ref List<Type> basicTypes, ref List<Type> complexTypes,sTable map,Type type,ConnectionPool pool)
         {
             if (complexTypes.Contains(type))
                 return;
-            foreach (Type t in map.ForeignTablesBackup)
+            foreach (string str in map.ForeignTableProperties)
             {
+                PropertyInfo pi = type.GetProperty(str, Utility._BINDING_FLAGS);
+                Type t = (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType);
                 if (!t.Equals(type))
                 {
-                    TableMap tm = ClassMapper.GetTableMap(t);
-                    if (tm.ForeignTablesBackup.Count > 0)
-                        recurAddRelatedTypes(ref basicTypes, ref complexTypes, tm, t);
+                    sTable tm = pool.Mapping[t];
+                    if (tm.ForeignTableProperties.Length > 0)
+                        recurAddRelatedTypes(ref basicTypes, ref complexTypes, tm, t,pool);
                     else
                     {
                         if (!basicTypes.Contains(t))
@@ -256,50 +256,41 @@ namespace Org.Reddragonit.Dbpro.Backup
                 if (t.IsEnum)
                 {
                     Logger.LogLine("Processing enum data into database...");
-                    c.ExecuteNonQuery("DELETE FROM " + pool._enumTableMaps[t]);
+                    pool.Enums.WipeOutEnums(c);
                     enumMap = new Dictionary<string, int>();
                     reverseMap = new Dictionary<int, string>();
                     foreach (XmlNode node in doc.DocumentElement.ChildNodes)
                     {
-                        c.ExecuteNonQuery("INSERT INTO " + pool._enumTableMaps[t] + " VALUES(" + c.CreateParameterName("id") + "," + c.CreateParameterName("value") + ");",
-                            new System.Data.IDbDataParameter[]{
-                                c.CreateParameter(c.CreateParameterName("id"),int.Parse(node.Attributes["Value"].Value)),
-                                c.CreateParameter(c.CreateParameterName("value"),node.Attributes["Name"].Value)
-                            });
+                        pool.Enums.InsertToDB(t, int.Parse(node.Attributes["Value"].Value), node.Attributes["Name"].Value, c);
                         enumMap.Add(node.Attributes["Name"].Value, int.Parse(node.Attributes["Value"].Value));
                         reverseMap.Add(int.Parse(node.Attributes["Value"].Value), node.Attributes["Name"].Value);
                     }
-                    pool._enumReverseValuesMap.Remove(t);
-                    pool._enumValuesMap.Remove(t);
-                    pool._enumReverseValuesMap.Add(t, reverseMap);
-                    pool._enumValuesMap.Add(t, enumMap);
+                    pool.Enums.AssignMapValues(t, enumMap, reverseMap);
                     Logger.LogLine("Enum data has been imported.");
                 }
                 else
                 {
                     Logger.LogLine("Processing object data into database...");
                     c.DeleteAll(t);
-                    TableMap map = ClassMapper.GetTableMap(t);
+                    sTable map = pool.Mapping[t];
+                    List<string> extProps = new List<string>(map.ForeignTableProperties);
                     foreach (XmlNode node in doc.DocumentElement.ChildNodes)
                     {
                         tbl = (Table)t.GetConstructor(Type.EmptyTypes).Invoke(new object[] { });
                         foreach (XmlNode n in node.ChildNodes)
                         {
                             Logger.LogLine("Inner Field Value ("+n.Name+"): " + n.InnerXml);
-                            if (map[n.Name] is ExternalFieldMap){
+                            PropertyInfo pi = t.GetProperty(n.Name, Utility._BINDING_FLAGS);
+                            if (extProps.Contains(n.Name)){
                                 Logger.LogLine("Processing external field...");
-                                tbl.SetField(n.Name, ExtractTableValue(n,map[n.Name].ObjectType,map[n.Name].IsArray));
+                                tbl.SetField(n.Name, ExtractTableValue(n,pi.PropertyType,pool));
                             }else{
                                 try
                                 {
-                                    if (map[n.Name].ObjectType == null)
-                                        Logger.LogLine("Object type for field " + n.Name + " is null");
-                                    if (map[n.Name] == null)
-                                        Logger.LogLine("The field: " + n.Name + " was not locating in the table map.");
-                                    Logger.LogLine("Processing internal field of the type "+map[n.Name].ObjectType.FullName+" ...");
-                                    if (XmlSerializer.FromTypes(new Type[] { map[n.Name].ObjectType }).Length == 0)
+                                    Logger.LogLine("Processing internal field of the type "+(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType).FullName+" ...");
+                                    if (XmlSerializer.FromTypes(new Type[] { (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType) }).Length == 0)
                                         Logger.LogLine("The field: " + n.Name + " has no xml seriliazer available.");
-                                    object obj = XmlSerializer.FromTypes(new Type[] { map[n.Name].ObjectType })[0].Deserialize(new MemoryStream(System.Text.ASCIIEncoding.ASCII.GetBytes(n.InnerXml)));
+                                    object obj = XmlSerializer.FromTypes(new Type[] { (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType) })[0].Deserialize(new MemoryStream(System.Text.ASCIIEncoding.ASCII.GetBytes(n.InnerXml)));
                                     if (obj == null)
                                         Logger.LogLine("The field: " + n.Name + " is being delivered a null value.");
                                     Logger.LogLine("Setting the field value for the field: " + n.Name);
@@ -336,38 +327,40 @@ namespace Org.Reddragonit.Dbpro.Backup
             return true;
         }
 
-        private static object ExtractTableValue(XmlNode node, Type t,bool isArray)
+        private static object ExtractTableValue(XmlNode node, Type t,ConnectionPool pool)
         {
+            bool isArray = t.IsArray;
             if (isArray)
             {
+                t = t.GetElementType();
                 if (node.ChildNodes.Count == 0)
                     return null;
-                Type ty = Utility.LocateType(t.FullName.Replace("[]", ""));
                 ArrayList tmp = new ArrayList();
                 foreach (XmlNode n in node.ChildNodes)
                 {
-                    tmp.Add(ExtractTableValue(n, ty, false));
+                    tmp.Add(ExtractTableValue(n, t,pool));
                 }
-                Array ret = Array.CreateInstance(ty, node.ChildNodes.Count);
+                Array ret = Array.CreateInstance(t, node.ChildNodes.Count);
                 tmp.CopyTo(ret);
                 return ret;
             }
             else
             {
                 Table ret = (Table)t.GetConstructor(Type.EmptyTypes).Invoke(new object[] { });
-                TableMap map = ClassMapper.GetTableMap(t);
+                sTable map = pool.Mapping[t];
+                List<string> fProps = new List<string>(map.ForeignTableProperties);
                 foreach (XmlNode n in node.ChildNodes)
                 {
-                    Logger.LogLine((map[n.Name] is ExternalFieldMap).ToString());
-                    if (map[n.Name] is ExternalFieldMap)
+                    PropertyInfo pi = t.GetProperty(n.Name, Utility._BINDING_FLAGS);
+                    if (fProps.Contains(n.Name))
                     {
                         Logger.LogLine("Processing external field...");
-                        ret.SetField(n.Name, ExtractTableValue(n, map[n.Name].ObjectType, map[n.Name].IsArray));
+                        ret.SetField(n.Name, ExtractTableValue(n, pi.PropertyType,pool));
                     }
                     else
                     {
                         Logger.LogLine("Processing internal field...");
-                        ret.SetField(n.Name, XmlSerializer.FromTypes(new Type[] { map[n.Name].ObjectType })[0].Deserialize(new MemoryStream(System.Text.ASCIIEncoding.ASCII.GetBytes(n.InnerXml))));
+                        ret.SetField(n.Name, XmlSerializer.FromTypes(new Type[] { (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType) })[0].Deserialize(new MemoryStream(System.Text.ASCIIEncoding.ASCII.GetBytes(n.InnerXml))));
                     }
                 }
                 return ret;

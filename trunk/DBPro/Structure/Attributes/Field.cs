@@ -1,4 +1,3 @@
-using Org.Reddragonit.Dbpro.Structure.Mapping;
 using System;
 using System.Reflection;
 
@@ -98,7 +97,6 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 		{
 			get
 			{
-				string t = Name;
 				return _fieldType.Value;
 			}
 		}
@@ -108,9 +106,6 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 			get
 			{
 				return _fieldName;
-			}
-			set{
-				_fieldName=value;
 			}
 		}
 		

@@ -2,7 +2,8 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Reflection;
-using Org.Reddragonit.Dbpro.Structure.Mapping;
+using Org.Reddragonit.Dbpro.Connections;
+using Org.Reddragonit.Dbpro.Connections.PoolComponents;
 
 namespace Org.Reddragonit.Dbpro.Virtual.Attributes
 {
@@ -68,19 +69,20 @@ namespace Org.Reddragonit.Dbpro.Virtual.Attributes
         internal static void ValidateLinksInTable(Type type)
         {
             bool isValid = true;
-            string connectionName = ClassMapper.GetTableMap(GetMainTableTypeForVirtualTable(type)).ConnectionName;
+            ConnectionPool pool = ConnectionPoolManager.GetConnection(GetMainTableTypeForVirtualTable(type));
+            string connectionName = pool.ConnectionName;
             foreach (PropertyInfo pi in type.GetProperties())
             {
                 if (pi.GetCustomAttributes(typeof(VirtualField), true).Length > 0)
                 {
-                    TableMap tm = ClassMapper.GetTableMap(((VirtualField)pi.GetCustomAttributes(typeof(VirtualField), true)[0]).ReferencingTable);
-                    if (connectionName != tm.ConnectionName)
+                    if (!pool.Mapping.IsMappableType(((VirtualField)pi.GetCustomAttributes(typeof(VirtualField), true)[0]).ReferencingTable))
                     {
                         isValid = false;
                         break;
                     }
                     string fieldName = ((VirtualField)pi.GetCustomAttributes(typeof(VirtualField), true)[0]).FieldName;
-                    if (tm.GetTableFieldName(fieldName)==null)
+                    sTable tm = pool.Mapping[((VirtualField)pi.GetCustomAttributes(typeof(VirtualField), true)[0]).ReferencingTable];
+                    if (tm[fieldName].Length==0)
                         throw new Exception("The Virtual table of type "+type.FullName+" is invalid because the referenced table "+((VirtualField)pi.GetCustomAttributes(typeof(VirtualField), true)[0]).ReferencingTable.FullName+" does not contain a field "+fieldName);
                 }
             }

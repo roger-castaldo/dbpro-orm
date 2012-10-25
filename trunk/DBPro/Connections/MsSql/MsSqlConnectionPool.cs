@@ -156,7 +156,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 			}
 		}
 		
-		protected override int MaxFieldNameLength {
+		public override int MaxFieldNameLength {
 			get { return 128; }
 		}
 		

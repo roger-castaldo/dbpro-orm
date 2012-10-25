@@ -106,7 +106,7 @@ namespace TestingApp.Structure
 		}
 		
 		private long _id;
-		[PrimaryKeyField(true,false)]
+		[PrimaryKeyField(true)]
 		public long ID
 		{
 			get{return _id;}
