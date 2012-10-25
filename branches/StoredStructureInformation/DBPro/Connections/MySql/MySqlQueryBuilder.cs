@@ -280,5 +280,58 @@ AND rtns.ROUTINE_NAME = prc.`NAME`";
                 return "DROP FUNCTION {0}";
             }
         }
+
+        #region Description
+        internal override string GetTableDescription(string tableName)
+        {
+            return string.Format("SELECT TABLE_COMMENT FROM information_schema.TABLES WHERE TABLE_NAME = '{0}' AND TABLE_SCHEMA='"+((MySqlConnectionPool)pool).DbName+"'", tableName);
+        }
+
+        internal override string SetTableDescription(string tableName, string description)
+        {
+            return string.Format("UPDATE information_schema.TABLES SET TABLE_COMMENT = '{1}' WHERE TABLE_NAME = '{0}' AND TABLE_SCHEMA='" + ((MySqlConnectionPool)pool).DbName + "'", tableName, description.Replace("'", "''"));
+        }
+
+        internal override string GetFieldDescription(string tableName, string fieldName)
+        {
+            return string.Format("SELECT COLUMN_COMMENT FROM information_schema.COLUMNS WHERE TABLE_NAME = '{0}' AND COLUMN_NAME = '{1}' AND COLUMN_SCHEMA='" + ((MySqlConnectionPool)pool).DbName + "'", tableName, fieldName);
+        }
+
+        internal override string SetFieldDescription(string tableName, string fieldName, string description)
+        {
+            return string.Format("UPDATE information_schema.COLUMNS SET COLUMN_COMMENT = '{1}' WHERE TABLE_NAME = '{0}' AND COLUMN_NAME = '{1}' AND COLUMN_SCHEMA='" + ((MySqlConnectionPool)pool).DbName + "'", new object[] { tableName, fieldName, description.Replace("'", "''") });
+        }
+
+        internal override string GetTriggerDescription(string triggerName)
+        {
+            return string.Format(@"SELECT
+  SUBSTRING(b.body, b.start, (b.eind - b.start)) as comment 
+FROM (
+  SELECT
+    a.body 
+    ,locate('/**@DESCRIPTION:',a.body) as start
+    ,locate('**/',a.body,locate('/**@DESCRIPTION:',a.body)) as eind
+  FROM (
+    SELECT t.ACTION_STATEMENT as body FROM information_schema.triggers t 
+    WHERE t.TRIGGER_NAME = '{0}'
+    AND t.TRIGGER_SCHEMA='{1}'
+    AND t.TRIGGER_NAME LIKE '%/**@DESCRIPTION:%'
+  ) a
+) b", triggerName, ((MySqlConnectionPool)pool).DbName);
+        }
+
+        internal override string SetTriggerDescription(string triggerName, string description)
+        {
+            return string.Format(@"SELECT 
+					CONCAT('ALTER TRIGGER ',TRIGGER_NAME,' ',CONCAT(ACTION_TIMING,' ',EVENT_MANIPULATION,' ON ',EVENT_OBJECT_TABLE),
+                    ' FOR EACH ROW /**@DESCRIPTION:{1}**/ ',(CASE WHEN ACTION_STATEMENT LIKE '%/**@DESCRIPTION:%' 
+                    THEN SUBSTRING(ACTION_STATEMENT,locate('**/',ACTION_STATEMENT,locate('/**@DESCRIPTION:',a.body))+3)
+                    ELSE ACTION_STATEMENT END))
+					from information_schema.TRIGGERS 
+					WHERE TRIGGER_SCHEMA='{2}' 
+                    AND TRIGGER_NAME = '{0}'"
+                , new object[]{triggerName, description.Replace("'", "''"),((MySqlConnectionPool)pool).DbName});
+        }
+        #endregion
     }
 }

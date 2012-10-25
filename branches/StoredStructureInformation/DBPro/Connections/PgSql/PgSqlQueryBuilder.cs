@@ -283,5 +283,47 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
                 return "DROP FUNCTION {0}";
             }
         }
+
+        #region Description
+        internal override string GetTableDescription(string tableName)
+        {
+            return string.Format("SELECT obj_description((SELECT oid FROM pg_class WHERE relname = '{0}'))", tableName);
+        }
+
+        internal override string SetTableDescription(string tableName, string description)
+        {
+            return string.Format("COMMENT ON TABLE {0} IS '{1}'", tableName, description.Replace("'", "''"));
+        }
+
+        internal override string GetFieldDescription(string tableName, string fieldName)
+        {
+            return string.Format("SELECT col_description((SELECT oid FROM pg_class WHERE relname = '{0}'),(SELECT addnum FROM pg_attribute WHERE oid in (SELECT oid FROM pg_class WHERE relname = '{0}')))", tableName, fieldName);
+        }
+
+        internal override string SetFieldDescription(string tableName, string fieldName, string description)
+        {
+            return string.Format("COMMENT ON COLUMN {0}.{1} IS '{2}'", new object[] { tableName, fieldName, description.Replace("'", "''") });
+        }
+
+        internal override string GetGeneratorDescription(string generatorName)
+        {
+            return string.Format("SELECT obj_description((SELECT oid FROM pg_class WHERE relname = '{0}'))", generatorName);
+        }
+
+        internal override string SetGeneratorDescription(string generatorName, string description)
+        {
+            return string.Format("COMMENT ON SEQUENCE {0} IS '{1}'", generatorName, description.Replace("'", "''"));
+        }
+
+        internal override string GetTriggerDescription(string triggerName)
+        {
+            return string.Format("SELECT obj_description((SELECT oid FROM pg_class WHERE relname = '{0}'))", triggerName);
+        }
+
+        internal override string SetTriggerDescription(string triggerName, string description)
+        {
+            return string.Format("COMMENT ON TRIGGER {0} IS '{1}'", triggerName, description.Replace("'", "''"));
+        }
+        #endregion
 	}
 }

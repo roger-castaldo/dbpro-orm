@@ -364,5 +364,58 @@ SUBSTRING(vws.VIEW_DEFINITION,CHARINDEX('AS',vws.VIEW_DEFINITION)+3,LEN(vws.VIEW
 FROM INFORMATION_SCHEMA.VIEWS vws";
             }
         }
+
+        #region Description
+        internal override string GetTableDescription(string tableName)
+        {
+            return string.Format(@"select p.value
+from sys.extended_properties p
+inner join sys.tables t on p.major_id = t.object_id
+where p.name='Description'
+AND t.name = '{0}'
+And t.type = 'U'
+AND t.type_desc = 'USER_TABLE'", tableName);
+        }
+
+        internal override string SetTableDescription(string tableName, string description)
+        {
+            return string.Format("EXEC sys.sp_addextendedproperty @name = N'DESCRIPTION', @value = N'{1}', @level0type = N'TABLE', @level0name = '{0}'", tableName, description.Replace("'", "''"));
+        }
+
+        internal override string GetFieldDescription(string tableName, string fieldName)
+        {
+            return string.Format(@"select p.value
+from sys.extended_properties p
+inner join sys.columns c on p.major_id = c.object_id
+AND p.minor_id = c.column_id
+inner join sys.tables t on p.major_id = t.object_id
+AND c.object_id = t.object_id
+where p.name='Description'
+AND c.name = '{1}'
+AND t.type_desc = 'USER_TABLE'
+AND t.type = 'U'
+AND t.name = '{0}'", tableName, fieldName);
+        }
+
+        internal override string SetFieldDescription(string tableName, string fieldName, string description)
+        {
+            return string.Format("EXEC sys.sp_addextendedproperty @name = N'DESCRIPTION', @value = N'{2}', @level0type = N'TABLE', @level0name = '{0}', @level1type = N'COLUMN', @level1name = N'{1}'", new object[] { tableName, fieldName, description.Replace("'", "''") });
+        }
+
+        internal override string GetTriggerDescription(string triggerName)
+        {
+            return string.Format(@"select p.value
+from sys.extended_properties p
+inner join sys.triggers t on p.major_id = t.object_id
+where p.name='Description'
+AND t.type = 'U'
+AND t.name = '{0}'", triggerName);
+        }
+
+        internal override string SetTriggerDescription(string triggerName, string description)
+        {
+            return string.Format("EXEC sys.sp_addextendedproperty @name = N'DESCRIPTION', @value = N'{1}', @level0type = N'TRIGGER', @level0name = '{0}'", triggerName, description.Replace("'", "''"));
+        }
+        #endregion
 	}
 }

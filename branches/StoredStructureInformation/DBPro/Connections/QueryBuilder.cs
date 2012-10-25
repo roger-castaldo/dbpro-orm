@@ -440,6 +440,45 @@ namespace Org.Reddragonit.Dbpro.Connections
         {
             return string.Format(DropViewString, view);
         }
+
+        internal virtual string GetTableDescription(string tableName)
+        {
+            throw new Exception("Method Not Implemented");
+        }
+
+        internal virtual string SetTableDescription(string tableName, string description)
+        {
+            throw new Exception("Method Not Implemented");
+        }
+
+        internal virtual string GetFieldDescription(string tableName, string fieldName)
+        {
+            throw new Exception("Method Not Implemented");
+        }
+
+        internal virtual string SetFieldDescription(string tableName, string fieldName, string description)
+        {
+            throw new Exception("Method Not Implemented");
+        }
+
+        internal virtual string GetGeneratorDescription(string generatorName){
+            throw new Exception("Method Not Implemented");
+        }
+
+        internal virtual string SetGeneratorDescription(string generatorName, string description)
+        {
+            throw new Exception("Method Not Implemented");
+        }
+
+        internal virtual string GetTriggerDescription(string triggerName)
+        {
+            throw new Exception("Method Not Implemented");
+        }
+
+        internal virtual string SetTriggerDescription(string triggerName, string description)
+        {
+            throw new Exception("Method Not Implemented");
+        }
 		#endregion
 		
 		#region TableAlterations
