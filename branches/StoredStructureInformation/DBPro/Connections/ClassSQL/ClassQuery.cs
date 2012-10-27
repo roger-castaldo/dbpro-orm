@@ -1437,7 +1437,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     _enumFields.Add(ordinal, pi.PropertyType);
                 }
                 if (pi.PropertyType.IsArray)
-                    ret = alias + "_" + field + "." + _conn.Pool.CorrectName("VALUE");
+                    ret = alias + "_" + field + "." + _conn.Pool.Translator.GetIntermediateValueFieldName(table,pi,_conn);
                 else
                     ret = alias + "." + _conn.Pool.Mapping[table][pi.Name][0].Name;
             }

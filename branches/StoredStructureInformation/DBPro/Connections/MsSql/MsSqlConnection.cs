@@ -106,8 +106,9 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
             return (IDbDataParameter)Utility.LocateType(_PARAMETER_TYPE_NAME).GetConstructor(new Type[] { typeof(string), typeof(object) }).Invoke(new object[] { parameterName, parameterValue });
 		}
 
-		internal override void GetAddAutogen(ExtractedTableMap map,ConnectionPool pool, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers,out List<StoredProcedure> procedures)
+		internal override void GetAddAutogen(ExtractedTableMap map, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers,out List<StoredProcedure> procedures)
 		{
+            Type t = Pool.Mapping[map.TableName];
 			identities=new List<IdentityField>();
 			generators=null;
 			triggers = new List<Trigger>();
@@ -136,11 +137,11 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 			primarys = primarys.Substring(0,primarys.Length-4);
 			if (field.Type.ToUpper().Contains("DATE")||field.Type.ToUpper().Contains("TIME"))
 			{
-				triggers.Add(new Trigger(pool.CorrectName("TRIG_INSERT_"+map.TableName),
+				triggers.Add(new Trigger(Pool.Translator.GetInsertTriggerName(t,this),
 				                         "ON "+map.TableName+" INSTEAD OF INSERT\n",
 				                         "AS "+
 				                         "BEGIN SET NOCOUNT ON;\n"+
-                                         "INSERT INTO " + map.TableName + "(" + pool.CorrectName(field.FieldName) + fields + ") SELECT GETDATE()" + fields.Replace(",", ",tbl.") + " from INSERTED ins;\n" +
+                                         "INSERT INTO " + map.TableName + "(" + field.FieldName + fields + ") SELECT GETDATE()" + fields.Replace(",", ",tbl.") + " from INSERTED ins;\n" +
 				                         "END"));
 			}else if (field.Type.ToUpper().Contains("INT")){
 				if (map.PrimaryKeys.Count==1)
@@ -153,23 +154,23 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 					string queryFields="";
 					foreach (ExtractedFieldMap efm in map.PrimaryKeys)
 					{
-						declares+="DECLARE "+pool.CorrectName(queryBuilder.CreateParameterName(efm.FieldName))+" "+efm.Type+";\n";
+						declares+="DECLARE "+queryBuilder.CreateParameterName(efm.FieldName)+" "+efm.Type+";\n";
 						if (!efm.AutoGen)
 						{
-							sets+=" SET "+pool.CorrectName(queryBuilder.CreateParameterName(efm.FieldName))+" = (SELECT "+efm.FieldName+" FROM INSERTED);\n";
-							queryFields+=" AND "+efm.FieldName+" = "+pool.CorrectName(queryBuilder.CreateParameterName(efm.FieldName));
+							sets+=" SET "+queryBuilder.CreateParameterName(efm.FieldName)+" = (SELECT "+efm.FieldName+" FROM INSERTED);\n";
+							queryFields+=" AND "+efm.FieldName+" = "+queryBuilder.CreateParameterName(efm.FieldName);
 						}
 					}
 					code+=declares;
 					code+="BEGIN \n";
 					code+=sets;
-					code+="SET "+pool.CorrectName(queryBuilder.CreateParameterName(field.FieldName))+" = (SELECT MAX("+field.FieldName+") FROM "+map.TableName+" WHERE ";
+					code+="SET "+queryBuilder.CreateParameterName(field.FieldName)+" = (SELECT MAX("+field.FieldName+") FROM "+map.TableName+" WHERE ";
 					code+=queryFields.Substring(4)+");\n";
-					code+="IF ("+pool.CorrectName(queryBuilder.CreateParameterName(field.FieldName))+" is NULL)\n";
-					code+="\tSET "+pool.CorrectName(queryBuilder.CreateParameterName(field.FieldName))+" = -1;\n";
-					code+="INSERT INTO "+map.TableName+"("+pool.CorrectName(field.FieldName)+fields+") SELECT "+pool.CorrectName(queryBuilder.CreateParameterName(field.FieldName))+"+1"+fields.Replace(",",",tbl.")+" from INSERTED ins,"+map.TableName+" tbl WHERE "+primarys+";\n";
+					code+="IF ("+queryBuilder.CreateParameterName(field.FieldName)+" is NULL)\n";
+					code+="\tSET "+queryBuilder.CreateParameterName(field.FieldName)+" = -1;\n";
+					code+="INSERT INTO "+map.TableName+"("+field.FieldName+fields+") SELECT "+queryBuilder.CreateParameterName(field.FieldName)+"+1"+fields.Replace(",",",tbl.")+" from INSERTED ins,"+map.TableName+" tbl WHERE "+primarys+";\n";
 					code+="END";
-					triggers.Add(new Trigger(pool.CorrectName("TRIG_INSERT_"+map.TableName),"ON "+map.TableName+" INSTEAD OF INSERT\n",code));
+					triggers.Add(new Trigger(Pool.Translator.GetInsertTriggerName(t,this),"ON "+map.TableName+" INSTEAD OF INSERT\n",code));
 				}
             }
             else if (field.Type.ToUpper().Contains("VARCHAR")){
@@ -193,19 +194,20 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
                 "		  ,CEILING(RAND( (DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()) )*((DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()))*(Year(GetDate())*Month(GetDate())*Day(GetDate())*RAND()))\n" +
                 "		  ,CEILING(RAND( (DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()) )*((DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()))*(Year(GetDate())*Month(GetDate())*Day(GetDate())*RAND()))\n" +
                 "		  ,CEILING(RAND( (DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()) )*((DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()))*(Year(GetDate())*Month(GetDate())*Day(GetDate())*RAND()))));\n" +
-                "	SET @cnt = (SELECT COUNT(*) FROM " + map.TableName + " WHERE " + pool.CorrectName(field.FieldName) + " = @IDVAL);\n" +
+                "	SET @cnt = (SELECT COUNT(*) FROM " + map.TableName + " WHERE " + field.FieldName + " = @IDVAL);\n" +
                 "END\n" +
-                "INSERT INTO " + map.TableName + "(" + pool.CorrectName(field.FieldName) + fields + ") SELECT @IDVAL" + fields.Replace(",", ",tbl.") + " from INSERTED ins;\n" +
+                "INSERT INTO " + map.TableName + "(" + field.FieldName + fields + ") SELECT @IDVAL" + fields.Replace(",", ",tbl.") + " from INSERTED ins;\n" +
                 "END";
-                triggers.Add(new Trigger(pool.CorrectName("TRIG_INSERT_" + map.TableName),
+                triggers.Add(new Trigger(Pool.Translator.GetInsertTriggerName(t,this),
                                          "ON " + map.TableName + " INSTEAD OF INSERT\n",
                                          code));
             }else
                 throw new Exception("Unable to create autogenerator for non date or digit type.");
 		}
 		
-		internal override void GetDropAutogenStrings(ExtractedTableMap map,ConnectionPool pool, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers)
+		internal override void GetDropAutogenStrings(ExtractedTableMap map, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers)
 		{
+            Type t = Pool.Mapping[map.TableName];
 			identities=new List<IdentityField>();
 			generators=null;
 			triggers = new List<Trigger>();
@@ -223,7 +225,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 			}
             if (field.Type.ToUpper().Contains("DATE") || field.Type.ToUpper().Contains("TIME") || (map.PrimaryKeys.Count > 0) || (field.Type.ToUpper().Contains("VARCHAR")))
 			{
-				triggers.Add(new Trigger(pool.CorrectName("TRIG_INSERT_"+map.TableName),"",""));
+				triggers.Add(new Trigger(Pool.Translator.GetInsertTriggerName(t,this),"",""));
 			}
 			else if (field.Type.ToUpper().Contains("INT"))
 			{
@@ -245,17 +247,18 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
             return (IDbConnection)Utility.LocateType(_CONNECTION_TYPE_NAME).GetConstructor(new Type[] { typeof(String) }).Invoke(new object[] { connectionString });
         }
 		
-		internal override List<Trigger> GetVersionTableTriggers(ExtractedTableMap table,VersionTypes versionType,ConnectionPool pool)
+		internal override List<Trigger> GetVersionTableTriggers(ExtractedTableMap table,VersionTypes versionType)
 		{
+            Type t = Pool.Mapping.GetTypeForVersionTable(table.TableName);
 			List<Trigger> ret = new List<Trigger>();
 			string tmp = "AS \n BEGIN\n";
-			tmp+="\tINSERT INTO "+pool.CorrectName(table.TableName)+" SELECT null";
+			tmp+="\tINSERT INTO "+table.TableName+" SELECT null";
 			for(int x=1;x<table.Fields.Count;x++)
 			{
 				ExtractedFieldMap efm = table.Fields[x];
 				tmp+=",tbl."+efm.FieldName;
 			}
-			tmp+=" FROM INSERTED ins, "+queryBuilder.RemoveVersionName(table.TableName)+" tbl WHERE ";
+			tmp+=" FROM INSERTED ins, "+Pool.Mapping[t].Name+" tbl WHERE ";
 			for (int x=1;x<table.Fields.Count;x++)
 			{
 				ExtractedFieldMap efm = table.Fields[x];
@@ -266,13 +269,13 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 			}
 			tmp=tmp.Substring(0,tmp.Length-4)+";";
 			tmp+="\nEND\n\n";
-			ret.Add(new Trigger(pool.CorrectName(queryBuilder.VersionTableInsertTriggerName(queryBuilder.RemoveVersionName(table.TableName))),
-			                    "ON "+queryBuilder.RemoveVersionName(table.TableName)+" AFTER INSERT,UPDATE ",
+			ret.Add(new Trigger(Pool.Translator.GetVersionInsertTriggerName(t,this),
+			                    "ON "+Pool.Mapping[t].Name+" AFTER INSERT,UPDATE ",
 			                                     tmp));
 			return ret;
 		}
 
-        internal override List<Trigger> GetDeleteParentTrigger(ExtractedTableMap table, ExtractedTableMap parent, ConnectionPool pool)
+        internal override List<Trigger> GetDeleteParentTrigger(ExtractedTableMap table, ExtractedTableMap parent)
         {
             List<Trigger> ret = new List<Trigger>();
             string tmp = "AS \n BEGIN \n DELETE FROM " + parent.TableName + " WHERE ";
@@ -281,7 +284,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
                 fields += efm.FieldName + ",";
             fields = fields.Substring(0, fields.Length - 1) + ")";
             tmp += fields + " IN (SELECT " + fields + " FROM DELETED);\nEND\n\n";
-            ret.Add(new Trigger(pool.CorrectName(table.TableName + "_" + parent.TableName + "_AUTO_DELETE"),
+            ret.Add(new Trigger(Pool.Translator.GetDeleteParentTriggerName(Pool.Mapping[table.TableName],this),
                 "ON " + table.TableName + " AFTER DELETE",
                 tmp));
             return ret;

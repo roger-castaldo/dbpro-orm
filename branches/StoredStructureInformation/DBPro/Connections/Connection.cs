@@ -92,10 +92,10 @@ namespace Org.Reddragonit.Dbpro.Connections
 		internal abstract IDbDataParameter CreateParameter(string parameterName,object parameterValue,Org.Reddragonit.Dbpro.Structure.Attributes.FieldType type, int fieldLength);
 		public abstract IDbDataParameter CreateParameter(string parameterName,object parameterValue);
 		internal abstract string TranslateFieldType(Org.Reddragonit.Dbpro.Structure.Attributes.FieldType type,int fieldLength);
-		internal abstract void GetDropAutogenStrings(ExtractedTableMap map,ConnectionPool pool,out List<IdentityField> identities,out List<Generator> generators,out List<Trigger> triggers);
-		internal abstract void GetAddAutogen(ExtractedTableMap map,ConnectionPool pool, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers,out List<StoredProcedure> procedures);
-		internal abstract List<Trigger> GetVersionTableTriggers(ExtractedTableMap table,VersionTypes versionType,ConnectionPool pool);
-        internal abstract List<Trigger> GetDeleteParentTrigger(ExtractedTableMap table, ExtractedTableMap parent, ConnectionPool pool);
+		internal abstract void GetDropAutogenStrings(ExtractedTableMap map,out List<IdentityField> identities,out List<Generator> generators,out List<Trigger> triggers);
+		internal abstract void GetAddAutogen(ExtractedTableMap map, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers,out List<StoredProcedure> procedures);
+		internal abstract List<Trigger> GetVersionTableTriggers(ExtractedTableMap table,VersionTypes versionType);
+        internal abstract List<Trigger> GetDeleteParentTrigger(ExtractedTableMap table, ExtractedTableMap parent);
         internal abstract void DisableAutogens();
         internal abstract void EnableAndResetAutogens();
         internal abstract IDbTransaction EstablishExclusiveTransaction();
@@ -105,9 +105,10 @@ namespace Org.Reddragonit.Dbpro.Connections
 			List<string> ret = new List<string>();
 			if (isVersioned)
 			{
-				ret.Add(queryBuilder.DropTrigger(queryBuilder.VersionTableInsertTriggerName(table)));
-				ret.Add(queryBuilder.DropTrigger(queryBuilder.VersionTableUpdateTriggerName(table)));
-				ret.Add(queryBuilder.DropTable(queryBuilder.VersionTableName(table)));
+                Type t = Pool.Mapping[table];
+				ret.Add(queryBuilder.DropTrigger(Pool.Translator.GetVersionInsertTriggerName(t,this)));
+				ret.Add(queryBuilder.DropTrigger(Pool.Translator.GetVersionUpdateTriggerName(t,this)));
+				ret.Add(queryBuilder.DropTable(Pool.Translator.GetVersionTableName(t,this)));
 			}
 			ret.Add(queryBuilder.DropTable(table));
 			return ret;
@@ -677,7 +678,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 				pars.Add(CreateParameter(queryBuilder.CreateParameterName("VALUE"),null));
                 if (ignoreAutogen)
                     pars.Add(CreateParameter(CreateParameterName("index_id"), null));
-                fields += Pool.CorrectName("VALUE") + (ignoreAutogen ? ", " + Pool.CorrectName("VALUE_INDEX") : "");
+                fields += Pool.Translator.GetIntermediateValueFieldName(table.GetType(),table.GetType().GetProperty(prop,Utility._BINDING_FLAGS),this) + (ignoreAutogen ? ", " + Pool.Translator.GetIntermediateIndexFieldName(table.GetType(),table.GetType().GetProperty(prop,Utility._BINDING_FLAGS),this) : "");
 				paramString+=CreateParameterName("VALUE")+(ignoreAutogen ? ", "+CreateParameterName("index_id") : "");
 				query = queryBuilder.Insert(arMap.Name,fields,paramString);
                 long index = 0;
@@ -743,7 +744,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                                 }
                                 fields = fields.Substring(0, fields.Length - 2);
                                 conditions = conditions.Substring(0, conditions.Length - 4);
-                                query = String.Format(queryBuilder.OrderBy, string.Format(queryBuilder.SelectWithConditions, fields, arMap.Name, conditions), pool.CorrectName("VALUE_INDEX"));
+                                query = String.Format(queryBuilder.OrderBy, string.Format(queryBuilder.SelectWithConditions, fields, arMap.Name, conditions), Pool.Translator.GetIntermediateIndexFieldName(type,pi,this));
                                 ArrayList values = new ArrayList();
                                 ExecuteQuery(query, pars);
                                 while (Read())
@@ -776,7 +777,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                                     }
                                 }
                             }
-                            query = "SELECT " + Pool.CorrectName("VALUE") + " FROM " + arMap.Name + " WHERE " + conditions.Substring(0, conditions.Length - 4) + " ORDER BY " + Pool.CorrectName("VALUE_INDEX") + " ASC";
+                            query = "SELECT " + Pool.Translator.GetIntermediateValueFieldName(type,pi,this) + " FROM " + arMap.Name + " WHERE " + conditions.Substring(0, conditions.Length - 4) + " ORDER BY " + Pool.Translator.GetIntermediateIndexFieldName(type,pi,this) + " ASC";
                             foreach (Table t in ret)
                             {
                                 List<IDbDataParameter> pars = new List<IDbDataParameter>();

@@ -285,9 +285,11 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
         }
 
         #region Description
-        internal override string GetTableDescription(string tableName)
+        internal override string GetAllObjectDescriptions()
         {
-            return string.Format("SELECT obj_description((SELECT oid FROM pg_class WHERE relname = '{0}'))", tableName);
+            return @"SELECT obj_description(oid),relname FROM pg_class
+                    UNION
+                    SELECT col_description(oid,addnum),attname FROM pg_attribute";
         }
 
         internal override string SetTableDescription(string tableName, string description)
@@ -295,19 +297,9 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
             return string.Format("COMMENT ON TABLE {0} IS '{1}'", tableName, description.Replace("'", "''"));
         }
 
-        internal override string GetFieldDescription(string tableName, string fieldName)
-        {
-            return string.Format("SELECT col_description((SELECT oid FROM pg_class WHERE relname = '{0}'),(SELECT addnum FROM pg_attribute WHERE oid in (SELECT oid FROM pg_class WHERE relname = '{0}')))", tableName, fieldName);
-        }
-
         internal override string SetFieldDescription(string tableName, string fieldName, string description)
         {
             return string.Format("COMMENT ON COLUMN {0}.{1} IS '{2}'", new object[] { tableName, fieldName, description.Replace("'", "''") });
-        }
-
-        internal override string GetGeneratorDescription(string generatorName)
-        {
-            return string.Format("SELECT obj_description((SELECT oid FROM pg_class WHERE relname = '{0}'))", generatorName);
         }
 
         internal override string SetGeneratorDescription(string generatorName, string description)
@@ -315,14 +307,19 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
             return string.Format("COMMENT ON SEQUENCE {0} IS '{1}'", generatorName, description.Replace("'", "''"));
         }
 
-        internal override string GetTriggerDescription(string triggerName)
-        {
-            return string.Format("SELECT obj_description((SELECT oid FROM pg_class WHERE relname = '{0}'))", triggerName);
-        }
-
         internal override string SetTriggerDescription(string triggerName, string description)
         {
             return string.Format("COMMENT ON TRIGGER {0} IS '{1}'", triggerName, description.Replace("'", "''"));
+        }
+
+        internal override string SetViewDescription(string viewName, string description)
+        {
+            return string.Format("COMMENT ON VIEW {0} IS '{1}'", viewName, description.Replace("'", "''"));
+        }
+
+        internal override string SetIndexDescription(string indexName, string description)
+        {
+            return string.Format("COMMENT ON INDEX {0} IS '{1}'", indexName, description.Replace("'", "''"));
         }
         #endregion
 	}

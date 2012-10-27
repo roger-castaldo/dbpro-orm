@@ -94,7 +94,7 @@ namespace Org.Reddragonit.Dbpro.Virtual
 			return ret;
 		}
 
-        public static string ConstructQuery(Type type, Connection conn)
+        public static string ConstructQuery(Type type, Connection conn,out string viewName)
         {
             if (type.GetCustomAttributes(typeof(VirtualTableAttribute), true).Length == 0)
                 throw new Exception("Unable to execute a Virtual Table Query from a class that does not have a VirtualTableAttribute attached to it.");
@@ -105,6 +105,11 @@ namespace Org.Reddragonit.Dbpro.Virtual
             List<ExtractedVirtualField> fields = ExtractFieldFromType(type);
             List<ExtractedVirtualField> fieldsUsed = new List<ExtractedVirtualField>();
             List<TablePath> paths = new List<TablePath>();
+            List<string> props = new List<string>();
+            foreach (ExtractedVirtualField evf in fields)
+                props.Add(evf.ClassFieldName);
+            Dictionary<string, string> translatedProperties;
+            viewName = conn.Pool.Translator.GetViewName(type, props, out translatedProperties, conn);
             foreach (string prop in mainMap.ForeignTableProperties)
             {
                 PropertyInfo pi = mainTable.GetProperty(prop, Utility._BINDING_FLAGS);
@@ -154,7 +159,7 @@ namespace Org.Reddragonit.Dbpro.Virtual
             {
                 if (field.IsInternal)
                 {
-                    fieldString += ", virtualTable." + mainMap[field.ClassFieldName][0].Name + " AS " + conn.Pool.CorrectName(field.ClassFieldName);
+                    fieldString += ", virtualTable." + mainMap[field.ClassFieldName][0].Name + " AS " + translatedProperties[field.ClassFieldName];
                     fieldsUsed.Add(field);
                 }
                 else
@@ -165,7 +170,7 @@ namespace Org.Reddragonit.Dbpro.Virtual
                         {
                             if (!appendedJoins.Contains(tp.Path))
                                 appendedJoins += " " + tp.Path;
-                            fieldString += ", " + field.TablePath + "." + conn.Pool.Mapping[tp.EndType][field.FieldName][0].Name + " AS " + conn.Pool.CorrectName(field.ClassFieldName);
+                            fieldString += ", " + field.TablePath + "." + conn.Pool.Mapping[tp.EndType][field.FieldName][0].Name + " AS " + translatedProperties[field.ClassFieldName];
                             break;
                         }
                     }

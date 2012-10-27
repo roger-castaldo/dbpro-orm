@@ -282,9 +282,15 @@ AND rtns.ROUTINE_NAME = prc.`NAME`";
         }
 
         #region Description
-        internal override string GetTableDescription(string tableName)
+        internal override string GetAllObjectDescriptions()
         {
-            return string.Format("SELECT TABLE_COMMENT FROM information_schema.TABLES WHERE TABLE_NAME = '{0}' AND TABLE_SCHEMA='"+((MySqlConnectionPool)pool).DbName+"'", tableName);
+            return string.Format(@"SELECT TABLE_COMMENT,TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA='{0}'
+                                    UNION
+                                    SELECT COLUMN_COMMENT,COLUMN_NAME FROM information_schema.COLUMNS WHERE COLUMN_SCHEMA='{0}'
+                                    UNION 
+                                    SELECT SUBSTRING(b.body, b.start, (b.eind - b.start)),b.TRIGGER_NAME FROM (SELECT a.body,locate('/**@DESCRIPTION:',a.body) as start,locate('**/',a.body,locate('/**@DESCRIPTION:',a.body)) as eind,a.TRIGGER_NAME FROM (SELECT t.ACTION_STATEMENT as body,t.TRIGGER_NAME FROM information_schema.triggers t WHERE t.TRIGGER_SCHEMA='{0}' AND t.ACTION_STATEMENT LIKE '%/**@DESCRIPTION:%') a ) b 
+                                    UNION
+                                    SELECT COMMENT,INDEX_NAME FROM information_schema.statistics WHERE INDEX_SCHEMA='{0}'", ((MySqlConnectionPool)pool).DbName);
         }
 
         internal override string SetTableDescription(string tableName, string description)
@@ -292,32 +298,9 @@ AND rtns.ROUTINE_NAME = prc.`NAME`";
             return string.Format("UPDATE information_schema.TABLES SET TABLE_COMMENT = '{1}' WHERE TABLE_NAME = '{0}' AND TABLE_SCHEMA='" + ((MySqlConnectionPool)pool).DbName + "'", tableName, description.Replace("'", "''"));
         }
 
-        internal override string GetFieldDescription(string tableName, string fieldName)
-        {
-            return string.Format("SELECT COLUMN_COMMENT FROM information_schema.COLUMNS WHERE TABLE_NAME = '{0}' AND COLUMN_NAME = '{1}' AND COLUMN_SCHEMA='" + ((MySqlConnectionPool)pool).DbName + "'", tableName, fieldName);
-        }
-
         internal override string SetFieldDescription(string tableName, string fieldName, string description)
         {
             return string.Format("UPDATE information_schema.COLUMNS SET COLUMN_COMMENT = '{1}' WHERE TABLE_NAME = '{0}' AND COLUMN_NAME = '{1}' AND COLUMN_SCHEMA='" + ((MySqlConnectionPool)pool).DbName + "'", new object[] { tableName, fieldName, description.Replace("'", "''") });
-        }
-
-        internal override string GetTriggerDescription(string triggerName)
-        {
-            return string.Format(@"SELECT
-  SUBSTRING(b.body, b.start, (b.eind - b.start)) as comment 
-FROM (
-  SELECT
-    a.body 
-    ,locate('/**@DESCRIPTION:',a.body) as start
-    ,locate('**/',a.body,locate('/**@DESCRIPTION:',a.body)) as eind
-  FROM (
-    SELECT t.ACTION_STATEMENT as body FROM information_schema.triggers t 
-    WHERE t.TRIGGER_NAME = '{0}'
-    AND t.TRIGGER_SCHEMA='{1}'
-    AND t.TRIGGER_NAME LIKE '%/**@DESCRIPTION:%'
-  ) a
-) b", triggerName, ((MySqlConnectionPool)pool).DbName);
         }
 
         internal override string SetTriggerDescription(string triggerName, string description)
@@ -331,6 +314,16 @@ FROM (
 					WHERE TRIGGER_SCHEMA='{2}' 
                     AND TRIGGER_NAME = '{0}'"
                 , new object[]{triggerName, description.Replace("'", "''"),((MySqlConnectionPool)pool).DbName});
+        }
+
+        internal override string SetViewDescription(string viewName, string description)
+        {
+            return SetTableDescription(viewName, description);
+        }
+
+        internal override string SetIndexDescription(string indexName, string description)
+        {
+            return string.Format("UPDATE information_schema.statistics SET COMMENT = '{1}' WHERE INDEX_NAME = '{0}' AND INDEX_SCHEMA='" + ((MySqlConnectionPool)pool).DbName + "'", indexName, description.Replace("'", "''"));
         }
         #endregion
     }

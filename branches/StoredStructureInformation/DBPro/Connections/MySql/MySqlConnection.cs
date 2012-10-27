@@ -114,8 +114,9 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 			return (IDbConnection)Utility.LocateType(_CONNECTION_TYPE_NAME).GetConstructor(new Type[]{typeof(string)}).Invoke(new object[]{connectionString});
 		}
 
-        internal override void GetAddAutogen(ExtractedTableMap map, ConnectionPool pool, out System.Collections.Generic.List<IdentityField> identities, out System.Collections.Generic.List<Generator> generators, out System.Collections.Generic.List<Trigger> triggers, out List<StoredProcedure> procedures)
+        internal override void GetAddAutogen(ExtractedTableMap map, out System.Collections.Generic.List<IdentityField> identities, out System.Collections.Generic.List<Generator> generators, out System.Collections.Generic.List<Trigger> triggers, out List<StoredProcedure> procedures)
 		{
+            Type t = Pool.Mapping[map.TableName];
 			identities=new List<IdentityField>();
 			generators=null;
 			triggers=new List<Trigger>();
@@ -134,7 +135,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 			}
 			if (field.Type.ToUpper().Contains("DATE")||field.Type.ToUpper().Contains("TIME"))
 			{
-				triggers.Add(new Trigger(pool.CorrectName(map.TableName+"_"+field.FieldName+"_GEN"),"BEFORE INSERT ON "+map.TableName,
+				triggers.Add(new Trigger(Pool.Translator.GetInsertTriggerName(t,this),"BEFORE INSERT ON "+map.TableName,
 				                         "FOR EACH ROW BEGIN\n SET NEW."+field.FieldName+" = CURRENT_DATE();\n END"));
 			}else if (field.Type.ToUpper().Contains("INT"))
 			{
@@ -152,14 +153,15 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 					code+="SET NEW."+field.FieldName+" = (SELECT (CASE WHEN MAX("+field.FieldName+") IS NULL THEN 0 ELSE MAX("+field.FieldName+")+1 END) FROM "+map.TableName+" WHERE ";
 					code+=queryFields.Substring(4)+");\n";
 					code+="END";
-					triggers.Add(new Trigger(pool.CorrectName(map.TableName + "_" + field.FieldName + "_GEN"), "BEFORE INSERT ON " + map.TableName, code));
+					triggers.Add(new Trigger(Pool.Translator.GetInsertTriggerName(t,this), "BEFORE INSERT ON " + map.TableName, code));
 				}
 			}else
 				throw new Exception("Unable to create autogenerator for non date or digit type.");
 		}
 		
-		internal override void GetDropAutogenStrings(ExtractedTableMap map, ConnectionPool pool, out System.Collections.Generic.List<IdentityField> identities, out System.Collections.Generic.List<Generator> generators, out System.Collections.Generic.List<Trigger> triggers)
+		internal override void GetDropAutogenStrings(ExtractedTableMap map, out System.Collections.Generic.List<IdentityField> identities, out System.Collections.Generic.List<Generator> generators, out System.Collections.Generic.List<Trigger> triggers)
 		{
+            Type t = Pool.Mapping[map.TableName];
 			identities=new List<IdentityField>();
 			triggers = new List<Trigger>();
 			generators = null;
@@ -177,12 +179,12 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 			}
 			if (field.Type.ToUpper().Contains("DATE") || field.Type.ToUpper().Contains("TIME"))
 			{
-				triggers.Add(new Trigger(pool.CorrectName(map.TableName + "_" + field.FieldName + "_GEN"), "", ""));
+				triggers.Add(new Trigger(Pool.Translator.GetInsertTriggerName(t,this), "", ""));
 			}
 			else if (field.Type.ToUpper().Contains("INT"))
 			{
 				if (map.PrimaryKeys.Count>1)
-					triggers.Add(new Trigger(pool.CorrectName(map.TableName + "_" + field.FieldName + "_GEN"), "", ""));
+					triggers.Add(new Trigger(Pool.Translator.GetInsertTriggerName(t,this), "", ""));
 				else
 					identities.Add(new IdentityField(map.TableName, field.FieldName, field.FullFieldType,""));
 			}
@@ -192,7 +194,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 			}
 		}
 		
-		internal override List<Trigger> GetVersionTableTriggers(ExtractedTableMap table, VersionField.VersionTypes versionType, ConnectionPool pool)
+		internal override List<Trigger> GetVersionTableTriggers(ExtractedTableMap table, VersionField.VersionTypes versionType)
 		{
 			List<Trigger> ret = new List<Trigger>();
 			string tmp = "FOR EACH ROW\nBEGIN\n";
@@ -213,23 +215,24 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 				tmp += ",NEW." + efm.FieldName;
 			}
 			tmp += ");\nEND\n\n";
-			ret.Add(new Trigger(pool.CorrectName(queryBuilder.VersionTableInsertTriggerName(queryBuilder.RemoveVersionName(table.TableName))),
-			                    "AFTER INSERT ON " + queryBuilder.RemoveVersionName(table.TableName),
+            Type t = Pool.Mapping.GetTypeForVersionTable(table.TableName);
+			ret.Add(new Trigger(Pool.Translator.GetVersionInsertTriggerName(t,this),
+			                    "AFTER INSERT ON " + Pool.Mapping[t].Name,
 			                    tmp));
-			ret.Add(new Trigger(pool.CorrectName(queryBuilder.VersionTableUpdateTriggerName(table.TableName)),
-			                    "AFTER UPDATE ON " + table.TableName,
+			ret.Add(new Trigger(Pool.Translator.GetVersionUpdateTriggerName(t,this),
+			                    "AFTER UPDATE ON " + Pool.Mapping[t].Name,
 			                    tmp));
 			return ret;
 		}
 
-        internal override List<Trigger> GetDeleteParentTrigger(ExtractedTableMap table, ExtractedTableMap parent, ConnectionPool pool)
+        internal override List<Trigger> GetDeleteParentTrigger(ExtractedTableMap table, ExtractedTableMap parent)
         {
             List<Trigger> ret = new List<Trigger>();
             string tmp = "FOR EACH ROW\nBEGIN\n";
             tmp += "\tDELETE FROM " + parent.TableName + " WHERE ";
             foreach (ExtractedFieldMap efm in parent.PrimaryKeys)
                 tmp += efm.FieldName + " = old." + efm.FieldName + " AND ";
-            ret.Add(new Trigger(pool.CorrectName(table.TableName + "_" + parent.TableName + "_AUTO_DELETE"),
+            ret.Add(new Trigger(Pool.Translator.GetDeleteParentTriggerName(Pool.Mapping[table.TableName],this),
                 "AFTER DELETE ON " + parent.TableName,
                 tmp.Substring(0, tmp.Length - 4) + ";"));
             return ret;

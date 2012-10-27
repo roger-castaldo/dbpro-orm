@@ -48,33 +48,6 @@ namespace Org.Reddragonit.Dbpro.Connections
 			return "@"+parameter;
 		}
 		
-		#region VersionTableNaming
-		internal string VersionTableInsertTriggerName(string table)
-		{
-			return table+"_VERSION_INSERT";
-		}
-		
-		internal string VersionTableUpdateTriggerName(string table)
-		{
-			return table+"_VERSION_UPDATE";
-		}
-		
-		internal string VersionTableName(string table)
-		{
-			return table+"_VERSION";
-		}
-		
-		internal string VersionFieldName(string table)
-		{
-			return table+"_VERSION_ID";
-		}
-		
-		internal string RemoveVersionName(string table)
-		{
-			return table.Substring(0,table.Length-8);
-		}
-		#endregion
-		
 		#region abstracts
 		#region Triggers
 		protected virtual string SelectTriggersString{
@@ -441,7 +414,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             return string.Format(DropViewString, view);
         }
 
-        internal virtual string GetTableDescription(string tableName)
+        internal virtual string GetAllObjectDescriptions()
         {
             throw new Exception("Method Not Implemented");
         }
@@ -451,17 +424,8 @@ namespace Org.Reddragonit.Dbpro.Connections
             throw new Exception("Method Not Implemented");
         }
 
-        internal virtual string GetFieldDescription(string tableName, string fieldName)
-        {
-            throw new Exception("Method Not Implemented");
-        }
-
         internal virtual string SetFieldDescription(string tableName, string fieldName, string description)
         {
-            throw new Exception("Method Not Implemented");
-        }
-
-        internal virtual string GetGeneratorDescription(string generatorName){
             throw new Exception("Method Not Implemented");
         }
 
@@ -470,12 +434,17 @@ namespace Org.Reddragonit.Dbpro.Connections
             throw new Exception("Method Not Implemented");
         }
 
-        internal virtual string GetTriggerDescription(string triggerName)
+        internal virtual string SetTriggerDescription(string triggerName, string description)
         {
             throw new Exception("Method Not Implemented");
         }
 
-        internal virtual string SetTriggerDescription(string triggerName, string description)
+        internal virtual string SetViewDescription(string viewName,string description)
+        {
+            throw new Exception("Method Not Implemented");
+        }
+
+        internal virtual string SetIndexDescription(string indexName, string description)
         {
             throw new Exception("Method Not Implemented");
         }
@@ -929,7 +898,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                             }
                         }
                     }
-                    insertString = insertString.Substring(0, delString.Length - 1) + (ignoreautogen ? "," + pool.CorrectName("INDEX") : "") + ") " + valueString.Substring(0, valueString.Length - 1) + (ignoreautogen ? "," + CreateParameterName("index") : "") + ")";
+                    insertString = insertString.Substring(0, delString.Length - 1) + (ignoreautogen ? "," + pool.Translator.GetIntermediateIndexFieldName(table.GetType(),table.GetType().GetProperty(property,Utility._BINDING_FLAGS),conn) : "") + ") " + valueString.Substring(0, valueString.Length - 1) + (ignoreautogen ? "," + CreateParameterName("index") : "") + ")";
                     ret.Add(insertString, new List<List<IDbDataParameter>>());
                     int index = 0;
                     pkeys.Clear();

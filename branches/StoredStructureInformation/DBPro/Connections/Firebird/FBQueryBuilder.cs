@@ -371,9 +371,20 @@ WHERE vw.RDB$VIEW_SOURCE IS NOT NULL";
         }
 
         #region Description
-        internal override string GetTableDescription(string tableName)
+        internal override string  GetAllObjectDescriptions()
         {
-            return string.Format("SELECT RDB$DESCRIPTION FROM RDB$RELATIONS WHERE RDB$RELATION_NAME = '{0}'", tableName);
+            return @"SELECT * FROM 
+(SELECT RDB$DESCRIPTION,RDB$RELATION_NAME FROM RDB$RELATIONS
+                    UNION 
+                    SELECT RDB$DESCRIPTION,RDB$FIELD_NAME FROM RDB$RELATION_FIELDS 
+                    UNION
+                    SELECT RDB$DESCRIPTION,RDB$GENERATOR_NAME FROM RDB$GENERATORS 
+                    UNION
+                    SELECT RDB$DESCRIPTION,RDB$TRIGGER_NAME FROM RDB$TRIGGERS
+                    UNION
+                    SELECT RDB$DESCRIPTION,RDB$INDEX_NAME FROM RDB$INDICES) 
+                    t WHERE t.RDB$DESCRIPTION IS NOT NULL
+                    AND RDB$RELATION_NAME NOT LIKE 'RDB$%'";
         }
 
         internal override string SetTableDescription(string tableName, string description)
@@ -381,19 +392,9 @@ WHERE vw.RDB$VIEW_SOURCE IS NOT NULL";
             return string.Format("UPDATE RDB$RELATIONS SET RDB$DESCRIPTION='{1}' WHERE RDB$RELATION_NAME = '{0}'", tableName,description.Replace("'","''"));
         }
 
-        internal override string GetFieldDescription(string tableName, string fieldName)
-        {
-            return string.Format("SELECT RDB$DESCRIPTION FROM RDB$RELATION_FIELDS WHERE RDB$RELATION_NAME = '{0}' AND RDB$FIELD_NAME = '{1}'", tableName,fieldName);
-        }
-
         internal override string SetFieldDescription(string tableName, string fieldName, string description)
         {
             return string.Format("UPDATE RDB$RELATION_FIELDS SET RDB$DESCRIPTION='{1}' WHERE RDB$RELATION_NAME = '{0}' AND RDB$FIELD_NAME = '{1}'", new object[] { tableName, fieldName, description.Replace("'", "''") });
-        }
-
-        internal override string GetGeneratorDescription(string generatorName)
-        {
-            return string.Format("SELECT RDB$DESCRIPTION FROM RDB$GENERATORS WHERE RDB$GENERATOR_NAME = '{0}'", generatorName);
         }
 
         internal override string SetGeneratorDescription(string generatorName, string description)
@@ -401,14 +402,19 @@ WHERE vw.RDB$VIEW_SOURCE IS NOT NULL";
             return string.Format("UPDATE RDB$GENERATORS SET RDB$DESCRIPTION = '{1}' WHERE RDB$GENERATOR_NAME = '{0}'", generatorName,description.Replace("'","''"));
         }
 
-        internal override string GetTriggerDescription(string triggerName)
-        {
-            return string.Format("SELECT RDB$DESCRIPTION FROM RDB$TRIGGERS WHERE RDB$TRIGGER_NAME = '{0}'", triggerName);
-        }
-
         internal override string SetTriggerDescription(string triggerName, string description)
         {
             return string.Format("UPDATE RDB$TRIGGERS SET RDB$DESCRIPTION = '{1}' WHERE RDB$TRIGGER_NAME = '{0}'", triggerName, description.Replace("'", "''"));
+        }
+
+        internal override string SetViewDescription(string viewName, string description)
+        {
+            return SetTableDescription(viewName, description);
+        }
+
+        internal override string SetIndexDescription(string indexName, string description)
+        {
+            return string.Format("UPDATE RDB$INDICES SET RDB$DESCRIPTION = '{1}' WHERE RDB$INDEX_NAME = '{0}'", indexName, description.Replace("'", "''"));
         }
         #endregion
     }

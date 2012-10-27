@@ -84,8 +84,13 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
             return (IDbConnection)Utility.LocateType(_CONNECTION_TYPE_NAME).GetConstructor(new Type[] { typeof(String) }).Invoke(new object[] { connectionString });
 		}
 
-        internal override void GetAddAutogen(ExtractedTableMap map, ConnectionPool pool, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers, out List<StoredProcedure> procedures)
+        internal override void GetAddAutogen(ExtractedTableMap map, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers, out List<StoredProcedure> procedures)
 		{
+            Type t = Pool.Mapping[map.TableName];
+            PropertyInfo pi = Pool.Mapping[map.TableName, map.PrimaryKeys[0].FieldName];
+            bool imediate = t == null;
+            if (imediate)
+                t = Pool.Mapping.GetTypeForIntermediateTable(map.TableName, out pi);
 			identities=null;
 			generators = new List<Generator>();
 			triggers=new List<Trigger>();
@@ -104,17 +109,17 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 			}
 			if (field.Type.ToUpper().Contains("DATE")||field.Type.ToUpper().Contains("TIME"))
 			{
-				triggers.Add(new Trigger(pool.CorrectName(map.TableName+"_"+field.FieldName+"_GEN"),"BEFORE INSERT ON "+map.TableName+" FOR EACH ROW",
+                triggers.Add(new Trigger((imediate ? Pool.Translator.GetInsertIntermediateTriggerName(t, pi, this) : Pool.Translator.GetInsertTriggerName(t, this)), "BEFORE INSERT ON " + map.TableName + " FOR EACH ROW",
 				                         "    NEW." + field.FieldName + " := CURRENT_TIMESTAMP;\n"));
 			}else if (field.Type.ToUpper().Contains("INT"))
 			{
 				if (map.PrimaryKeys.Count==1)
 				{
-					Generator gen = new Generator(pool.CorrectName("GEN_"+map.TableName+"_"+field.FieldName));
+                    Generator gen = new Generator((imediate ? Pool.Translator.GetIntermediateGeneratorName(t, pi, this) : Pool.Translator.GetGeneratorName(t, pi, this)));
 					gen.Value=1;
 					generators.Add(gen);
-					triggers.Add(new Trigger(pool.CorrectName(map.TableName+"_"+field.FieldName+"_GEN"),"BEFORE INSERT ON "+map.TableName+" FOR EACH ROW",
-					                         "    NEW." + field.FieldName + " := nextval('"+pool.CorrectName("GEN_" + map.TableName + "_" + field.FieldName) + "');\n"));
+                    triggers.Add(new Trigger((imediate ? Pool.Translator.GetInsertIntermediateTriggerName(t, pi, this) : Pool.Translator.GetInsertTriggerName(t, this)), "BEFORE INSERT ON " + map.TableName + " FOR EACH ROW",
+					                         "    NEW." + field.FieldName + " := nextval('"+gen.Name + "');\n"));
 				}else{
 					string code="";
 					string queryFields="";
@@ -127,14 +132,19 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 					}
 					code+="NEW."+field.FieldName+" := (SELECT COALESCE(MAX("+field.FieldName+"),-1)+1 FROM "+map.TableName+" WHERE ";
 					code+=queryFields.Substring(4)+");";
-					triggers.Add(new Trigger(pool.CorrectName(map.TableName+"_"+field.FieldName+"_GEN"),"BEFORE INSERT ON "+map.TableName+" FOR EACH ROW",code));
+                    triggers.Add(new Trigger((imediate ? Pool.Translator.GetInsertIntermediateTriggerName(t, pi, this) : Pool.Translator.GetInsertTriggerName(t, this)), "BEFORE INSERT ON " + map.TableName + " FOR EACH ROW", code));
 				}
 			}else
 				throw new Exception("Unable to create autogenerator for non date or digit type.");
 		}
 		
-		internal override void GetDropAutogenStrings(ExtractedTableMap map, ConnectionPool pool, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers)
+		internal override void GetDropAutogenStrings(ExtractedTableMap map, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers)
 		{
+            Type t = Pool.Mapping[map.TableName];
+            PropertyInfo pi = Pool.Mapping[map.TableName, map.PrimaryKeys[0].FieldName];
+            bool imediate = t == null;
+            if (imediate)
+                t = Pool.Mapping.GetTypeForIntermediateTable(map.TableName, out pi);
 			identities=null;
 			triggers=new List<Trigger>();
 			generators=new List<Generator>();
@@ -152,12 +162,12 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 			}
 			if (field.Type.ToUpper().Contains("DATE") || field.Type.ToUpper().Contains("TIME"))
 			{
-				triggers.Add(new Trigger(pool.CorrectName(map.TableName+"_"+field.FieldName+"_GEN"),"",""));
+                triggers.Add(new Trigger((imediate ? Pool.Translator.GetInsertIntermediateTriggerName(t, pi, this) : Pool.Translator.GetInsertTriggerName(t, this)), "", ""));
 			}
 			else if (field.Type.ToUpper().Contains("INT"))
 			{
-				triggers.Add(new Trigger(pool.CorrectName(map.TableName+"_"+field.FieldName+"_GEN"),"",""));
-				generators.Add(new Generator(pool.CorrectName("GEN_"+map.TableName+"_"+field.FieldName)));
+                triggers.Add(new Trigger((imediate ? Pool.Translator.GetInsertIntermediateTriggerName(t, pi, this) : Pool.Translator.GetInsertTriggerName(t, this)), "", ""));
+                generators.Add(new Generator((imediate ? Pool.Translator.GetIntermediateGeneratorName(t, pi, this) : Pool.Translator.GetGeneratorName(t, pi, this))));
 			}
 			else
 			{
@@ -165,8 +175,9 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 			}
 		}
 		
-		internal override List<Trigger> GetVersionTableTriggers(ExtractedTableMap table, VersionField.VersionTypes versionType, ConnectionPool pool)
+		internal override List<Trigger> GetVersionTableTriggers(ExtractedTableMap table, VersionField.VersionTypes versionType)
 		{
+            Type t = Pool.Mapping.GetTypeForVersionTable(table.TableName);
 			List<Trigger> ret = new List<Trigger>();
 			string tmp = "";
 			tmp += "\tINSERT INTO " + table.TableName + "(" + table.Fields[0].FieldName;
@@ -186,22 +197,22 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 				tmp += ",NEW." + efm.FieldName;
 			}
 			tmp += ");";
-			ret.Add(new Trigger(pool.CorrectName(queryBuilder.VersionTableInsertTriggerName(queryBuilder.RemoveVersionName(table.TableName))),
-			                    "AFTER INSERT ON " + queryBuilder.RemoveVersionName(table.TableName)+ " FOR EACH ROW",
+			ret.Add(new Trigger(Pool.Translator.GetVersionInsertTriggerName(t,this),
+			                    "AFTER INSERT ON " + Pool.Mapping[t].Name+ " FOR EACH ROW",
 			                    tmp));
-			ret.Add(new Trigger(pool.CorrectName(queryBuilder.VersionTableUpdateTriggerName(table.TableName)),
-			                    "AFTER UPDATE ON " + table.TableName+" FOR EACH ROW",
+			ret.Add(new Trigger(Pool.Translator.GetVersionUpdateTriggerName(t,this),
+			                    "AFTER UPDATE ON " + Pool.Mapping[t].Name+" FOR EACH ROW",
 			                    tmp));
 			return ret;
 		}
 
-        internal override List<Trigger> GetDeleteParentTrigger(ExtractedTableMap table, ExtractedTableMap parent, ConnectionPool pool)
+        internal override List<Trigger> GetDeleteParentTrigger(ExtractedTableMap table, ExtractedTableMap parent)
         {
             List<Trigger> ret = new List<Trigger>();
             string tmp = "\tDELETE FROM " + parent.TableName + " WHERE ";
             foreach (ExtractedFieldMap efm in parent.PrimaryKeys)
                 tmp += efm.FieldName + " =OLD." + efm.FieldName + " AND ";
-            ret.Add(new Trigger(pool.CorrectName(table.TableName + "_" + parent.TableName + "_AUTO_DELETE"),
+            ret.Add(new Trigger(Pool.Translator.GetDeleteParentTriggerName(Pool.Mapping[table.TableName],this),
                 "AFTER DELETE ON " + parent.TableName + " FOR EACH ROW",
                 tmp.Substring(0, tmp.Length - 4) + ";"));
             return ret;
@@ -330,7 +341,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
                     {
                         this.ExecuteQuery("SELECT (CASE WHEN MAX(" + tm.AutoGenField + ") IS NULL THEN 0 ELSE MAX(" + tm.AutoGenField + ") END)+1 FROM " + tm.Name);
                         this.Read();
-                        query += queryBuilder.SetGeneratorValue(Pool.CorrectName("GEN_" + tm.Name + "_" + tm.AutoGenField), long.Parse(this[0].ToString())) + "\n";
+                        query += queryBuilder.SetGeneratorValue(Pool.Translator.GetGeneratorName(t,Pool.Mapping[tm.Name,tm.AutoGenProperty],this), long.Parse(this[0].ToString())) + "\n";
                         this.Close();
                     }
                 }
@@ -341,7 +352,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
                     {
                         this.ExecuteQuery("SELECT (CASE WHEN MAX(ID) IS NULL THEN 0 ELSE MAX(ID) END)+1 FROM " + Pool.Enums[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)]);
                         this.Read();
-                        query += queryBuilder.SetGeneratorValue(Pool.CorrectName("GEN_" + Pool.Enums[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)] + "_ID"), long.Parse(this[0].ToString())) + "\n";
+                        query += queryBuilder.SetGeneratorValue(Pool.Translator.GetEnumGeneratorName((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType),this), long.Parse(this[0].ToString())) + "\n";
                         this.Close();
                     }
                 }
