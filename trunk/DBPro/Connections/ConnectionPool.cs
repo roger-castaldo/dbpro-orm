@@ -150,6 +150,10 @@ namespace Org.Reddragonit.Dbpro.Connections
             get { return _enums; }
         }
 		private NameTranslator _translator;
+        internal NameTranslator Translator
+        {
+            get { return _translator; }
+        }
         private ClassMapping _mapping;
         internal ClassMapping Mapping
         {
@@ -162,11 +166,6 @@ namespace Org.Reddragonit.Dbpro.Connections
 					_reservedWords=_ReservedWords;
 				return _reservedWords;
 			}
-		}
-		
-		internal string CorrectName(string currentName)
-		{
-            return _translator.CorrectName(currentName);
 		}
 		
 		internal string ConnectionName
@@ -224,11 +223,13 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		internal void Init(Dictionary<Type,List<EnumTranslationPair>> translations)
 		{
-            _translator = new NameTranslator(this);
+            _InitClass();
+            Connection conn = CreateConnection();
+            _translator = new NameTranslator(this, conn);
             _enums = new EnumsHandler();
             List<Type> tables = new List<Type>();
             List<Type> virtualTables = new List<Type>();
-            _InitClass();
+            
             if (!_debugMode)
             {
                 foreach (Type t in Utility.LocateAllTypesWithAttribute(typeof(Table)))
@@ -242,9 +243,10 @@ namespace Org.Reddragonit.Dbpro.Connections
                     if (tables.Contains(VirtualTableAttribute.GetMainTableTypeForVirtualTable(t)))
                         virtualTables.Add(t);
                 }
-                _mapping = new ClassMapping(this, tables, virtualTables);
+                _mapping = new ClassMapping(conn, tables, virtualTables);
                 PreInit();
             }
+            conn.CloseConnection();
             if (!(_debugMode&&(tables.Count==0)&&(virtualTables.Count==0)))
 			    UpdateStructure(_debugMode,_allowTableDeletions,translations);
             for (int x=0;x<minPoolSize;x++){
@@ -339,7 +341,9 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         private View _CreateViewForVirtualTable(Type virtualTable,Connection conn)
         {
-            return new View(_mapping.GetVirtualTable(virtualTable).Name, VirtualTableQueryBuilder.ConstructQuery(virtualTable, conn));
+            string viewName;
+            string viewQuery = VirtualTableQueryBuilder.ConstructQuery(virtualTable, conn, out viewName);
+            return new View(viewName,viewQuery);
         }
 		
 		private void ExtractExpectedStructure(out List<ExtractedTableMap> tables,out List<Trigger> triggers,out List<Generator> generators,out List<IdentityField> identities,out List<View> views,out List<StoredProcedure> procedures,Connection conn)
@@ -400,7 +404,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                                     tfields.Add(f.Name);
                             }
                         }
-                        etm.Indices.Add(new Index(CorrectName(ti.Name), tfields.ToArray(), ti.Unique, ti.Ascending));
+                        etm.Indices.Add(new Index(Translator.GetIndexName(type,ti.Name,conn), tfields.ToArray(), ti.Unique, ti.Ascending));
                     }
                     List<string> pProps = new List<string>(tm.PrimaryKeyProperties);
                     foreach (string prop in tm.Properties)
@@ -453,7 +457,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                             if (vpkeys.Contains(f.Name))
                                 vetm.ForeignFields.Add(new ForeignRelationMap(type.Name + "_version", f.Name, tm.Name, f.Name, ForeignField.UpdateDeleteAction.CASCADE.ToString(), ForeignField.UpdateDeleteAction.CASCADE.ToString()));
                         }
-                        triggers.AddRange(conn.GetVersionTableTriggers(vetm, vt, this));
+                        triggers.AddRange(conn.GetVersionTableTriggers(vetm, vt));
                         tables.Add(vetm);
                     }
                 }
@@ -468,7 +472,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 				{
 					if (efm.AutoGen)
 					{
-						conn.GetAddAutogen(etm,this,out tmpIdentities,out tmpGenerators,out tmpTriggers,out tmpProcedures);
+						conn.GetAddAutogen(etm,out tmpIdentities,out tmpGenerators,out tmpTriggers,out tmpProcedures);
 						if (tmpGenerators!=null)
 							generators.AddRange(tmpGenerators);
 						if (tmpTriggers!=null)
@@ -489,7 +493,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                             break;
                         }
                     }
-                    triggers.AddRange(conn.GetDeleteParentTrigger(etm, ptm, this));
+                    triggers.AddRange(conn.GetDeleteParentTrigger(etm, ptm));
                 }
 			}
 		}
@@ -903,7 +907,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                                             foundField = false;
                                             foreach (ForeignRelationMap curfrm in curfrms)
                                             {
-                                                if ((CorrectName(exfrm.InternalField) == CorrectName(curfrm.InternalField)) && (CorrectName(exfrm.ExternalField) == CorrectName(curfrm.ExternalField)))
+                                                if ((exfrm.InternalField == curfrm.InternalField) && (exfrm.ExternalField == curfrm.ExternalField))
                                                 {
                                                     foundField = ((etm.GetField(exfrm.InternalField).Type == e.GetField(curfrm.InternalField).Type) && (etm.GetField(exfrm.InternalField).Size == e.GetField(curfrm.InternalField).Size) && (etm.GetField(exfrm.InternalField).Nullable == e.GetField(curfrm.InternalField).Nullable) && (etm.GetField(exfrm.InternalField).PrimaryKey == e.GetField(curfrm.InternalField).PrimaryKey));
                                                     break;
@@ -961,7 +965,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                                             foundField = false;
                                             foreach (ForeignRelationMap curfrm in curfrms)
                                             {
-                                                if ((CorrectName(exfrm.InternalField) == CorrectName(curfrm.InternalField)) && (CorrectName(exfrm.ExternalField) == CorrectName(curfrm.ExternalField)))
+                                                if ((exfrm.InternalField == curfrm.InternalField) && (exfrm.ExternalField == curfrm.ExternalField))
                                                 {
                                                     foundField = ((etm.GetField(exfrm.InternalField).Type == e.GetField(curfrm.InternalField).Type) && (etm.GetField(exfrm.InternalField).Size == e.GetField(curfrm.InternalField).Size) && (etm.GetField(exfrm.InternalField).Nullable == e.GetField(curfrm.InternalField).Nullable) && (etm.GetField(exfrm.InternalField).PrimaryKey == e.GetField(curfrm.InternalField).PrimaryKey));
                                                     break;
@@ -1536,7 +1540,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                                 "UPDATE {0} SET {1} = '{3}' WHERE {1} = '{2}'",
                                 new object[]{
                                 _enums[t],
-                                CorrectName("VALUE"),
+                                Translator.GetEnumValueFieldName(t,conn),
                                 etp.OriginalName,
                                 etp.NewName}
                             ));
@@ -1549,7 +1553,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                     List<int> deletes = new List<int>();
                     conn.ExecuteQuery(String.Format("SELECT ID,{1} FROM {0}",
                         _enums[t],
-                        CorrectName("VALUE")));
+                        Translator.GetEnumValueFieldName(t,conn)));
                     while (conn.Read()) {
                         if (enumNames.Contains(conn[1].ToString()))
                         {
@@ -1577,12 +1581,12 @@ namespace Org.Reddragonit.Dbpro.Connections
                         {
                             conn.ExecuteNonQuery(String.Format("INSERT INTO {0}({1}) VALUES('{2}')",
                                 _enums[t],
-                                CorrectName("VALUE"),
+                                Translator.GetEnumValueFieldName(t, conn),
                                 str));
                             conn.Close();
                             conn.ExecuteQuery(String.Format("SELECT ID FROM {0} WHERE {1}='{2}'",
                                 _enums[t],
-                                CorrectName("VALUE"),
+                                Translator.GetEnumValueFieldName(t, conn),
                                 str));
                             conn.Read();
                             enumValuesMap.Add(str, (int)conn[0]);
@@ -1594,7 +1598,10 @@ namespace Org.Reddragonit.Dbpro.Connections
                     _enums.AssignMapValues(t, enumValuesMap, enumReverseValuesMap);
 				}
 			}
-			
+
+            Translator.ApplyAllDescriptions(conn);
+            conn.Commit();
+
 			conn.CloseConnection();
 		}
 		

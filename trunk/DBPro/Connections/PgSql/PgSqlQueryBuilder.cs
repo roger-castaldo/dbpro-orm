@@ -283,5 +283,44 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
                 return "DROP FUNCTION {0}";
             }
         }
+
+        #region Description
+        internal override string GetAllObjectDescriptions()
+        {
+            return @"SELECT obj_description(oid),relname FROM pg_class
+                    UNION
+                    SELECT col_description(oid,addnum),attname FROM pg_attribute";
+        }
+
+        internal override string SetTableDescription(string tableName, string description)
+        {
+            return string.Format("COMMENT ON TABLE {0} IS '{1}'", tableName, description.Replace("'", "''"));
+        }
+
+        internal override string SetFieldDescription(string tableName, string fieldName, string description)
+        {
+            return string.Format("COMMENT ON COLUMN {0}.{1} IS '{2}'", new object[] { tableName, fieldName, description.Replace("'", "''") });
+        }
+
+        internal override string SetGeneratorDescription(string generatorName, string description)
+        {
+            return string.Format("COMMENT ON SEQUENCE {0} IS '{1}'", generatorName, description.Replace("'", "''"));
+        }
+
+        internal override string SetTriggerDescription(string triggerName, string description)
+        {
+            return string.Format("COMMENT ON TRIGGER {0} IS '{1}'", triggerName, description.Replace("'", "''"));
+        }
+
+        internal override string SetViewDescription(string viewName, string description)
+        {
+            return string.Format("COMMENT ON VIEW {0} IS '{1}'", viewName, description.Replace("'", "''"));
+        }
+
+        internal override string SetIndexDescription(string indexName, string description)
+        {
+            return string.Format("COMMENT ON INDEX {0} IS '{1}'", indexName, description.Replace("'", "''"));
+        }
+        #endregion
 	}
 }

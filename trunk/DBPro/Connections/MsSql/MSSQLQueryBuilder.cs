@@ -364,5 +364,45 @@ SUBSTRING(vws.VIEW_DEFINITION,CHARINDEX('AS',vws.VIEW_DEFINITION)+3,LEN(vws.VIEW
 FROM INFORMATION_SCHEMA.VIEWS vws";
             }
         }
+
+        #region Description
+        internal override string GetAllObjectDescriptions()
+        {
+            return @"SELECT p.value,t.name FROM sys.extended_properties p inner join sys.tables t on p.major_id = t.object_id where p.name='Description' And t.type = 'U' AND t.type_desc = 'USER_TABLE'
+                    UNION
+                    SELECT p.value,c.name FROM sys.extended_properties p inner join sys.columns c on p.major_id = c.object_id AND p.minor_id = c.column_id inner join sys.tables t on p.major_id = t.object_id AND c.object_id = t.object_id where p.name='Description' AND t.type_desc = 'USER_TABLE' AND t.type = 'U'
+                    UNION 
+                    SELECT p.value,t.name FROM sys.extended_properties p inner join sys.triggers t on p.major_id = t.object_id where p.name='Description' AND t.type = 'U'
+                    UNION
+                    SELECT p.value,v.name FROM sys.extended_properties p inner join sys.views v on p.major_id = v.object_id where p.name='Description' AND v.type = 'U'
+                    UNION
+                    SELECT p.value,i.name FROM sys.extended_properties p inner join sys.indexes i on p.major_id = i.object_id where p.name='Description'"; 
+        }
+
+        internal override string SetTableDescription(string tableName, string description)
+        {
+            return string.Format("EXEC sys.sp_addextendedproperty @name = N'DESCRIPTION', @value = N'{1}', @level0type = N'TABLE', @level0name = '{0}'", tableName, description.Replace("'", "''"));
+        }
+
+        internal override string SetFieldDescription(string tableName, string fieldName, string description)
+        {
+            return string.Format("EXEC sys.sp_addextendedproperty @name = N'DESCRIPTION', @value = N'{2}', @level0type = N'TABLE', @level0name = '{0}', @level1type = N'COLUMN', @level1name = N'{1}'", new object[] { tableName, fieldName, description.Replace("'", "''") });
+        }
+
+        internal override string SetTriggerDescription(string triggerName, string description)
+        {
+            return string.Format("EXEC sys.sp_addextendedproperty @name = N'DESCRIPTION', @value = N'{1}', @level0type = N'TRIGGER', @level0name = '{0}'", triggerName, description.Replace("'", "''"));
+        }
+
+        internal override string SetViewDescription(string viewName, string description)
+        {
+            return string.Format("EXEC sys.sp_addextendedproperty @name = N'DESCRIPTION', @value = N'{1}', @level0type = N'VIEW', @level0name = '{0}'", viewName, description.Replace("'", "''"));
+        }
+
+        internal override string SetIndexDescription(string indexName, string description)
+        {
+            return string.Format("EXEC sys.sp_addextendedproperty @name = N'DESCRIPTION', @value = N'{1}', @level0type = N'INDEX', @level0name = '{0}'", indexName, description.Replace("'", "''"));
+        }
+        #endregion
 	}
 }
