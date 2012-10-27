@@ -1,62 +1,538 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Org.Reddragonit.Dbpro.Structure.Attributes;
+using System.Reflection;
 
 namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 {
     internal class NameTranslator
     {
-        private ConnectionPool _pool;
-        private Dictionary<string, string> _nameTranslations = new Dictionary<string, string>();
+        private const string _INTERMEDIATE_INDEX_FIELD_NAME = "VALUE_INDEX";
+        private const string _INTERMEDIATE_VALUE_FIELD_NAME = "VALUE";
+        private const string _ENUM_ID_FIELD_NAME = "ID";
+        private const string _ENUM_VALUE_FIELD_NAME = "VALUE";
 
-        public NameTranslator(ConnectionPool pool)
+        private const string _ENUM_TABLE_DESCRIPTION = "ENUM:{0}";
+        private const string _TABLE_DESCRIPTION = "TBL:{0}";
+        private const string _INTERMEDIATE_TABLE_DESCRIPTION = "ITMD:{0}\t{1}";
+        private const string _FIELD_DESCRIPTION = "FLD:{0}.{1}";
+        private const string _INTERMEDIATE_FIELD_DESCRIPTION = "ITMD_FLD:{0}.{1}.{2}_{3}";
+        private const string _GENERATOR_DESCRIPTION = "GEN:{0}.{1}";
+        private const string _TRIGGER_DESCRIPTION = "TRIG:{0}.{1}";
+        private const string _VIEW_DESCRIPTION = "VIEW:{0}\t[{1}]";
+        private const string _VIEW_FIELD_FORMAT = "{0}:{1}";
+        private const string _INDEX_DESCRIPTION = "IND:{0}.{1}";
+
+        private ConnectionPool _pool;
+        private Dictionary<string, string> _nameTranslations;
+        private Queue<string> _descriptionQueries;
+
+        public void ApplyAllDescriptions(Connection conn)
+        {
+            while (_descriptionQueries.Count > 0)
+                conn.ExecuteNonQuery(_descriptionQueries.Dequeue());
+        }
+
+        public NameTranslator(ConnectionPool pool, Connection conn)
         {
             _pool = pool;
             _nameTranslations = new Dictionary<string, string>();
+            conn.ExecuteQuery(conn.queryBuilder.GetAllObjectDescriptions());
+            while (conn.Read())
+                _nameTranslations.Add(conn[0].ToString(), conn[1].ToString());
+            conn.Close();
+            _descriptionQueries = new Queue<string>();
         }
 
-        public string CorrectName(string currentName)
+        private string _ConvertCamelCaseName(string name)
         {
-            if (_nameTranslations.ContainsValue(currentName.ToUpper()))
+            if (name.ToUpper() == name)
+                return name;
+            string ret = "";
+            foreach (char c in name.ToCharArray())
             {
+                if (c.ToString().ToUpper() == c.ToString())
+                {
+                    ret += "_" + c.ToString().ToLower();
+                }
+                else
+                {
+                    ret += c;
+                }
+            }
+            if (ret[0] == '_')
+            {
+                ret = ret[1].ToString().ToUpper() + ret.Substring(2);
+            }
+            ret = ret.ToUpper();
+            ret = ret.Replace("__", "_");
+            return ret;
+        }
+
+        private string _ExtractTableName(Type tbl)
+        {
+            string ret = null;
+            if (tbl.GetCustomAttributes(typeof(Org.Reddragonit.Dbpro.Structure.Attributes.Table), false).Length > 0)
+                ret = ((Org.Reddragonit.Dbpro.Structure.Attributes.Table)tbl.GetCustomAttributes(typeof(Org.Reddragonit.Dbpro.Structure.Attributes.Table), false)[0]).TableName;
+            if (ret == null)
+                ret = _ConvertCamelCaseName(tbl.Name);
+            return ret;
+        }
+
+        private List<string> TableNames
+        {
+            get
+            {
+                List<string> ret = new List<string>();
                 foreach (string str in _nameTranslations.Keys)
                 {
-                    if (_nameTranslations[str] == currentName.ToUpper())
-                        return str.ToUpper();
+                    if (str.StartsWith(string.Format(_ENUM_TABLE_DESCRIPTION,"")) ||
+                        str.StartsWith(string.Format(_TABLE_DESCRIPTION,"")) ||
+                        str.StartsWith(string.Format(_INTERMEDIATE_TABLE_DESCRIPTION,"","").Trim('\t')))
+                        ret.Add(_nameTranslations[str]);
                 }
-                return null;
+                return ret;
             }
-            else if (_nameTranslations.ContainsKey(currentName))
-                return currentName;
+        }
+
+        private List<string> GetTableFields(Type t)
+        {
+            List<string> ret = new List<string>();
+            foreach (string str in _nameTranslations.Keys)
+            {
+                if (str.StartsWith(string.Format(_FIELD_DESCRIPTION, t.FullName, "")))
+                    ret.Add(_nameTranslations[str]);
+            }
+            return ret;
+        }
+
+        private List<string> GetTableFields(Type t, PropertyInfo pi)
+        {
+            List<string> ret = new List<string>();
+            foreach (string str in _nameTranslations.Keys)
+            {
+                if (str.StartsWith(string.Format(_INTERMEDIATE_FIELD_DESCRIPTION,new object[]{t.FullName,pi.Name,"",""}).Trim('.')))
+                    ret.Add(_nameTranslations[str]);
+            }
+            return ret;
+        }
+
+        private List<string> GeneratorNames
+        {
+            get
+            {
+                List<string> ret = new List<string>();
+                foreach (string str in _nameTranslations.Keys)
+                {
+                    if (str.StartsWith(string.Format(_GENERATOR_DESCRIPTION, "", "").Trim('.')))
+                        ret.Add(_nameTranslations[str]);
+                }
+                return ret;
+            }
+        }
+
+        private List<string> TriggerNames
+        {
+            get
+            {
+                List<string> ret = new List<string>();
+                foreach (string str in _nameTranslations.Keys)
+                {
+                    if (str.StartsWith(string.Format(_TRIGGER_DESCRIPTION, "", "").Trim('.')))
+                        ret.Add(_nameTranslations[str]);
+                }
+                return ret;
+            }
+        }
+
+        private List<string> ViewNames
+        {
+            get
+            {
+                List<string> ret = new List<string>();
+                foreach (string str in _nameTranslations.Keys)
+                {
+                    if (str.StartsWith("VIEW:"))
+                        ret.Add(_nameTranslations[str]);
+                }
+                return ret;
+            }
+        }
+
+        private List<string> GetIndexNames(Type t)
+        {
+            List<string> ret = new List<string>();
+            foreach (string str in _nameTranslations.Keys)
+            {
+                if (str.StartsWith(string.Format(_INDEX_DESCRIPTION, t.FullName, "")))
+                    ret.Add(_nameTranslations[str]);
+            }
+            return ret;
+        }
+
+        internal string GetTableName(Type t,Connection conn)
+        {
+            string ret = "";
+            if (t.IsEnum)
+            {
+                if (_nameTranslations.ContainsKey(string.Format(_ENUM_TABLE_DESCRIPTION, t.FullName)))
+                    ret = _nameTranslations[string.Format(_ENUM_TABLE_DESCRIPTION, t.FullName)];
+                else
+                {
+                    ret = CorrectName("ENUM_" + _ConvertCamelCaseName(t.FullName.Substring(t.FullName.LastIndexOf(".") + 1).Replace("+", "")), TableNames);
+                    _nameTranslations.Add(string.Format(_ENUM_TABLE_DESCRIPTION, t.FullName), ret);
+                    _descriptionQueries.Enqueue(conn.queryBuilder.SetTableDescription(ret, string.Format(_ENUM_TABLE_DESCRIPTION, t.FullName)));
+                }
+            }
             else
             {
-                string ret = currentName;
-                bool reserved = false;
-                foreach (string str in _pool.ReservedWords)
+                if (_nameTranslations.ContainsKey(string.Format(_TABLE_DESCRIPTION, t.FullName)))
+                    ret = _nameTranslations[string.Format(_TABLE_DESCRIPTION, t.FullName)];
+                else
                 {
-                    if (Utility.StringsEqualIgnoreCaseWhitespace(str, currentName))
+                    ret = CorrectName(_ExtractTableName(t), TableNames);
+                    _nameTranslations.Add(string.Format(_TABLE_DESCRIPTION, t.FullName), ret);
+                    _descriptionQueries.Enqueue(conn.queryBuilder.SetTableDescription(ret, string.Format(_TABLE_DESCRIPTION, t.FullName)));
+                }
+            }
+            return ret;
+        }
+
+        internal string GetVersionTableName(Type t, Connection conn)
+        {
+            string ret = "";
+            if (_nameTranslations.ContainsKey(string.Format(_TABLE_DESCRIPTION, t.FullName+"_VERSION")))
+                ret = _nameTranslations[string.Format(_TABLE_DESCRIPTION, t.FullName + "_VERSION")];
+            else
+            {
+                ret = CorrectName(_ExtractTableName(t) + "_VERSION", TableNames);
+                _nameTranslations.Add(string.Format(_TABLE_DESCRIPTION, t.FullName + "_VERSION"), ret);
+                _descriptionQueries.Enqueue(conn.queryBuilder.SetTableDescription(ret, string.Format(_TABLE_DESCRIPTION, t.FullName + "_VERSION")));
+            }
+            return ret;
+        }
+
+        internal string GetIntermediateTableName(Type t, PropertyInfo pi, Connection conn)
+        {
+            string ret = "";
+            if (_nameTranslations.ContainsKey(string.Format(_INTERMEDIATE_TABLE_DESCRIPTION, t.FullName, pi.Name)))
+                ret = _nameTranslations[string.Format(_INTERMEDIATE_TABLE_DESCRIPTION, t.FullName, pi.Name)];
+            else
+            {
+                ret = CorrectName(GetTableName(t, conn) + "_" + _ConvertCamelCaseName(pi.Name),TableNames);
+                _nameTranslations.Add(string.Format(_INTERMEDIATE_TABLE_DESCRIPTION,t.FullName,pi.Name),ret);
+                _descriptionQueries.Enqueue(conn.queryBuilder.SetTableDescription(ret, string.Format(_INTERMEDIATE_TABLE_DESCRIPTION, t.FullName, pi.Name)));
+            }
+            return ret;
+        }
+
+        internal string GetFieldName(Type t, PropertyInfo pi, Connection conn)
+        {
+            string ret = "";
+            if (_nameTranslations.ContainsKey(string.Format(_FIELD_DESCRIPTION, t.FullName, pi.Name)))
+                ret = _nameTranslations[string.Format(_FIELD_DESCRIPTION, t.FullName, pi.Name)];
+            else
+            {
+                string fldName = _ConvertCamelCaseName(pi.Name);
+                foreach (object obj in pi.GetCustomAttributes(false))
+                {
+                    if (obj is IField)
                     {
-                        reserved = true;
+                        if (((IField)obj).Name != null)
+                            fldName = ((IField)obj).Name;
+                        else if (obj is Field)
+                        {
+                            ((Field)obj).InitFieldName(pi);
+                            fldName = ((Field)obj).Name;
+                        }
                         break;
                     }
                 }
-                if (reserved)
-                    ret = "RES_" + ret;
-                ret = ShortenName(ret);
-                if (_nameTranslations.ContainsKey(ret))
-                {
-                    int _nameCounter = 0;
-                    while (_nameTranslations.ContainsKey(ret.Substring(0, _pool.MaxFieldNameLength - 1 - (_nameCounter.ToString().Length)) + "_" + _nameCounter.ToString()))
-                    {
-                        _nameCounter++;
-                    }
-                    ret = ret.Substring(0, _pool.MaxFieldNameLength - 1 - (_nameCounter.ToString().Length));
-                    ret += "_" + _nameCounter.ToString();
-                }
-                if (!_nameTranslations.ContainsKey(ret))
-                    _nameTranslations.Add(ret, currentName.ToUpper());
-                return ret.ToUpper();
+                ret = CorrectName(fldName, GetTableFields(t));
+                _nameTranslations.Add(string.Format(_FIELD_DESCRIPTION, t.FullName, pi.Name), ret);
+                _descriptionQueries.Enqueue(conn.queryBuilder.SetFieldDescription(GetTableName(t, conn), ret, string.Format(_FIELD_DESCRIPTION, t.FullName, pi.Name)));
             }
+            return ret;
+        }
+
+        internal string GetFieldName(Type t, PropertyInfo pi, string fieldName, Connection conn)
+        {
+            string ret = "";
+            if (_nameTranslations.ContainsKey(string.Format(_FIELD_DESCRIPTION, t.FullName, pi.Name+"."+fieldName)))
+                ret = _nameTranslations[string.Format(_FIELD_DESCRIPTION, t.FullName, pi.Name + "." + fieldName)];
+            else
+            {
+                string fldName = _ConvertCamelCaseName(pi.Name)+"_"+fieldName;
+                ret = CorrectName(fldName, GetTableFields(t));
+                _nameTranslations.Add(string.Format(_FIELD_DESCRIPTION, t.FullName, pi.Name + "." + fieldName), ret);
+                _descriptionQueries.Enqueue(conn.queryBuilder.SetFieldDescription(GetTableName(t, conn), ret, string.Format(_FIELD_DESCRIPTION, t.FullName, pi.Name + "." + fieldName)));
+            }
+            return ret;
+        }
+
+        internal string GetVersionFieldIDName(Type t, Connection conn)
+        {
+            return CorrectName(GetTableName(t, conn) + "_VERSION_ID",new List<string>());
+        }
+
+        internal string GetEnumIDFieldName(Type t, Connection conn)
+        {
+            string ret = "";
+            if (_nameTranslations.ContainsKey(string.Format(_FIELD_DESCRIPTION, t.FullName, _ENUM_ID_FIELD_NAME)))
+                ret = _nameTranslations[string.Format(_FIELD_DESCRIPTION, t.FullName, _ENUM_ID_FIELD_NAME)];
+            else
+            {
+                ret = CorrectName(_ENUM_ID_FIELD_NAME, GetTableFields(t));
+                _nameTranslations.Add(string.Format(_FIELD_DESCRIPTION, t.FullName, _ENUM_ID_FIELD_NAME), ret);
+                _descriptionQueries.Enqueue(conn.queryBuilder.SetFieldDescription(GetTableName(t, conn), ret, string.Format(_FIELD_DESCRIPTION, t.FullName, _ENUM_ID_FIELD_NAME)));
+            }
+            return ret;
+        }
+
+        internal string GetEnumValueFieldName(Type t, Connection conn)
+        {
+            string ret = "";
+            if (_nameTranslations.ContainsKey(string.Format(_FIELD_DESCRIPTION, t.FullName, _ENUM_VALUE_FIELD_NAME)))
+                ret = _nameTranslations[string.Format(_FIELD_DESCRIPTION, t.FullName, _ENUM_VALUE_FIELD_NAME)];
+            else
+            {
+                ret = CorrectName(_ENUM_VALUE_FIELD_NAME, GetTableFields(t));
+                _nameTranslations.Add(string.Format(_FIELD_DESCRIPTION, t.FullName, _ENUM_VALUE_FIELD_NAME), ret);
+                _descriptionQueries.Enqueue(conn.queryBuilder.SetFieldDescription(GetTableName(t, conn), ret, string.Format(_FIELD_DESCRIPTION, t.FullName, _ENUM_VALUE_FIELD_NAME)));
+            }
+            return ret;
+        }
+
+        internal string GetIntermediateFieldName(Type t, PropertyInfo pi,string fieldName, bool isParent, Connection conn)
+        {
+            string ret = "";
+            if (_nameTranslations.ContainsKey(string.Format(_INTERMEDIATE_FIELD_DESCRIPTION, new object[] { t.FullName, pi.Name, (isParent ? "PARENT" : "CHILD"), fieldName })))
+                ret = _nameTranslations[string.Format(_INTERMEDIATE_FIELD_DESCRIPTION, new object[] { t.FullName, pi.Name, (isParent ? "PARENT" : "CHILD"), fieldName })];
+            else
+            {
+                ret = CorrectName((isParent ? "PARENT" : "CHILD") + "_" + fieldName, GetTableFields(t, pi));
+                _nameTranslations.Add(string.Format(_INTERMEDIATE_FIELD_DESCRIPTION, new object[] { t.FullName, pi.Name, (isParent ? "PARENT" : "CHILD"), fieldName }), ret);
+                _descriptionQueries.Enqueue(conn.queryBuilder.SetFieldDescription(GetIntermediateTableName(t,pi,conn),ret,string.Format(_INTERMEDIATE_FIELD_DESCRIPTION,new object[]{t.FullName,pi.Name,(isParent ? "PARENT" : "CHILD"),fieldName})));
+            }
+            return ret;
+        }
+
+        internal string GetIntermediateValueFieldName(Type t, PropertyInfo pi, Connection conn)
+        {
+            string ret = "";
+            if (_nameTranslations.ContainsKey(string.Format(_INTERMEDIATE_FIELD_DESCRIPTION, new object[] { t.FullName, pi.Name, _INTERMEDIATE_VALUE_FIELD_NAME, "" }).Trim('_')))
+                ret = _nameTranslations[string.Format(_INTERMEDIATE_FIELD_DESCRIPTION, new object[] { t.FullName, pi.Name, _INTERMEDIATE_VALUE_FIELD_NAME, "" }).Trim('_')];
+            else
+            {
+                ret = CorrectName(_INTERMEDIATE_VALUE_FIELD_NAME, GetTableFields(t, pi));
+                _nameTranslations.Add(string.Format(_INTERMEDIATE_FIELD_DESCRIPTION, new object[] { t.FullName, pi.Name, _INTERMEDIATE_VALUE_FIELD_NAME, "" }).Trim('_'), ret);
+                _descriptionQueries.Enqueue(conn.queryBuilder.SetFieldDescription(GetIntermediateTableName(t, pi, conn), ret, string.Format(_INTERMEDIATE_FIELD_DESCRIPTION, new object[] { t.FullName, pi.Name, _INTERMEDIATE_VALUE_FIELD_NAME, "" }).Trim('_')));
+            }
+            return ret;
+        }
+
+        internal string GetIntermediateIndexFieldName(Type t, PropertyInfo pi, Connection conn)
+        {
+            string ret = "";
+            if (_nameTranslations.ContainsKey(string.Format(_INTERMEDIATE_FIELD_DESCRIPTION, new object[] { t.FullName, pi.Name, _INTERMEDIATE_INDEX_FIELD_NAME, "" }).Trim('_')))
+                ret = _nameTranslations[string.Format(_INTERMEDIATE_FIELD_DESCRIPTION, new object[] { t.FullName, pi.Name, _INTERMEDIATE_INDEX_FIELD_NAME, "" }).Trim('_')];
+            else
+            {
+                ret = CorrectName(_INTERMEDIATE_INDEX_FIELD_NAME, GetTableFields(t, pi));
+                _nameTranslations.Add(string.Format(_INTERMEDIATE_FIELD_DESCRIPTION, new object[] { t.FullName, pi.Name, _INTERMEDIATE_INDEX_FIELD_NAME, "" }).Trim('_'), ret);
+                _descriptionQueries.Enqueue(conn.queryBuilder.SetFieldDescription(GetIntermediateTableName(t, pi, conn), ret, string.Format(_INTERMEDIATE_FIELD_DESCRIPTION, new object[] { t.FullName, pi.Name, _INTERMEDIATE_INDEX_FIELD_NAME, "" }).Trim('_')));
+            }
+            return ret;
+        }
+
+        internal string GetGeneratorName(Type t, PropertyInfo pi, Connection conn)
+        {
+            string fieldName = "";
+            string pName = "";
+            if (t.IsEnum && pi == null){
+                fieldName = "ID";
+                pName = "ID";
+            }else{
+                fieldName = GetFieldName(t, pi, conn);
+                pName = pi.Name;
+            }
+            string ret = "";
+            if (_nameTranslations.ContainsKey(string.Format(_GENERATOR_DESCRIPTION, t.FullName, pName)))
+                ret = _nameTranslations[string.Format(_GENERATOR_DESCRIPTION, t.FullName, pName)];
+            else
+            {
+                ret = CorrectName("GEN_" + GetTableName(t, conn) + "_" + fieldName, GeneratorNames);
+                _nameTranslations.Add(string.Format(_GENERATOR_DESCRIPTION, t.FullName, pName), ret);
+                _descriptionQueries.Enqueue(conn.queryBuilder.SetGeneratorDescription(ret,string.Format(_GENERATOR_DESCRIPTION,t.FullName,pName)));
+            }
+            return ret;
+        }
+
+        internal string GetIntermediateGeneratorName(Type t, PropertyInfo pi, Connection conn)
+        {
+            string ret = "";
+            if (_nameTranslations.ContainsKey(string.Format(_GENERATOR_DESCRIPTION, t.FullName, pi.Name)))
+                ret = _nameTranslations[string.Format(_GENERATOR_DESCRIPTION, t.FullName, pi.Name)];
+            else
+            {
+                ret = CorrectName("GEN_" + GetIntermediateTableName(t, pi, conn) + "_" + GetIntermediateIndexFieldName(t, pi, conn), GeneratorNames);
+                _nameTranslations.Add(string.Format(_GENERATOR_DESCRIPTION, t.FullName, pi.Name),ret);
+                _descriptionQueries.Enqueue(conn.queryBuilder.SetGeneratorDescription(ret, string.Format(_GENERATOR_DESCRIPTION, t.FullName, pi.Name)));
+            }
+            return ret;
+        }
+
+        internal string GetEnumGeneratorName(Type t, Connection conn)
+        {
+            string ret = "";
+            if (_nameTranslations.ContainsKey(string.Format(_GENERATOR_DESCRIPTION, t.FullName, "ID")))
+                ret = _nameTranslations[string.Format(_GENERATOR_DESCRIPTION, t.FullName, "ID")];
+            else
+            {
+                ret = CorrectName("GEN_" + GetTableName(t, conn) + "_" + GetEnumIDFieldName(t,conn), GeneratorNames);
+                _nameTranslations.Add(string.Format(_GENERATOR_DESCRIPTION, t.FullName, "ID"), ret);
+                _descriptionQueries.Enqueue(conn.queryBuilder.SetGeneratorDescription(ret, string.Format(_GENERATOR_DESCRIPTION, t.FullName, "ID")));
+            }
+            return ret;
+        }
+
+        internal string GetInsertTriggerName(Type t, Connection conn)
+        {
+            string ret = "";
+            if (_nameTranslations.ContainsKey(string.Format(_TRIGGER_DESCRIPTION, t.FullName, "INSERT")))
+                ret = _nameTranslations[string.Format(_TRIGGER_DESCRIPTION, t.FullName, "INSERT")];
+            else
+            {
+                ret = CorrectName(GetTableName(t,conn) + "_GEN",TriggerNames);
+                _nameTranslations.Add(string.Format(_TRIGGER_DESCRIPTION, t.FullName, "INSERT"), ret);
+                _descriptionQueries.Enqueue(conn.queryBuilder.SetTriggerDescription(ret, string.Format(_TRIGGER_DESCRIPTION, t.FullName, "INSERT")));
+            }
+            return ret;
+        }
+
+        internal string GetVersionInsertTriggerName(Type t, Connection conn)
+        {
+            string ret = "";
+            if (_nameTranslations.ContainsKey(string.Format(_TRIGGER_DESCRIPTION, t.FullName, "INSERT_VERSION")))
+                return _nameTranslations[string.Format(_TRIGGER_DESCRIPTION, t.FullName, "INSERT_VERSION")];
+            else
+            {
+                ret = CorrectName(GetTableName(t, conn) + "_VERSION_INSERT", TriggerNames);
+                _nameTranslations.Add(string.Format(_TRIGGER_DESCRIPTION, t.FullName, "INSERT_VERSION"), ret);
+                _descriptionQueries.Enqueue(conn.queryBuilder.SetTriggerDescription(ret, string.Format(_TRIGGER_DESCRIPTION, t.FullName, "INSERT_VERSION")));
+            }
+            return ret;
+        }
+
+        internal string GetVersionUpdateTriggerName(Type t, Connection conn)
+        {
+            string ret = "";
+            if (_nameTranslations.ContainsKey(string.Format(_TRIGGER_DESCRIPTION, t.FullName, "UPDATE_VERSION")))
+                return _nameTranslations[string.Format(_TRIGGER_DESCRIPTION, t.FullName, "UPDATE_VERSION")];
+            else
+            {
+                ret = CorrectName(GetTableName(t, conn) + "_VERSION_UPDATE", TriggerNames);
+                _nameTranslations.Add(string.Format(_TRIGGER_DESCRIPTION, t.FullName, "UPDATE_VERSION"), ret);
+                _descriptionQueries.Enqueue(conn.queryBuilder.SetTriggerDescription(ret, string.Format(_TRIGGER_DESCRIPTION, t.FullName, "UPDATE_VERSION")));
+            }
+            return ret;
+        }
+
+        internal string GetInsertIntermediateTriggerName(Type t,PropertyInfo pi, Connection conn)
+        {
+            string ret = "";
+            if (_nameTranslations.ContainsKey(string.Format(_TRIGGER_DESCRIPTION, t.FullName+"."+pi.Name, "INSERT")))
+                ret = _nameTranslations[string.Format(_TRIGGER_DESCRIPTION, t.FullName + "." + pi.Name, "INSERT")];
+            else
+            {
+                ret = CorrectName(GetIntermediateTableName(t,pi, conn) + "_GEN", TriggerNames);
+                _nameTranslations.Add(string.Format(_TRIGGER_DESCRIPTION, t.FullName + "." + pi.Name, "INSERT"), ret);
+                _descriptionQueries.Enqueue(conn.queryBuilder.SetTriggerDescription(ret, string.Format(_TRIGGER_DESCRIPTION, t.FullName + "." + pi.Name, "INSERT")));
+            }
+            return ret;
+        }
+
+        internal string GetDeleteParentTriggerName(Type t, Connection conn)
+        {
+            string ret = "";
+            if (_nameTranslations.ContainsKey(string.Format(_TRIGGER_DESCRIPTION, t.FullName, "DELETE")))
+                ret = _nameTranslations[string.Format(_TRIGGER_DESCRIPTION, t.FullName, "DELETE")];
+            else
+            {
+                ret = CorrectName(GetTableName(t, conn) + "_DEL", TriggerNames);
+                _nameTranslations.Add(string.Format(_TRIGGER_DESCRIPTION, t.FullName, "DELETE"), ret);
+                _descriptionQueries.Enqueue(conn.queryBuilder.SetTriggerDescription(ret, string.Format(_TRIGGER_DESCRIPTION, t.FullName, "DELETE")));
+            }
+            return ret;
+        }
+
+        internal string GetViewName(Type t, List<string> properties, out Dictionary<string, string> translatedProperties, Connection conn)
+        {
+            string ret = "";
+            translatedProperties = new Dictionary<string, string>();
+            string flds = "";
+            List<string> tlist = new List<string>();
+            foreach (string prop in properties){
+                string tmp = CorrectName(_ConvertCamelCaseName(prop),tlist);
+                tlist.Add(tmp);
+                translatedProperties.Add(prop, tmp);
+                flds += string.Format(_VIEW_FIELD_FORMAT, prop, tmp) + ",";
+            }
+            if (flds.Length > 0)
+                flds = flds.Substring(0, flds.Length - 1);
+            if (_nameTranslations.ContainsKey(string.Format(_VIEW_DESCRIPTION, t.FullName, flds)))
+                ret = _nameTranslations[string.Format(_VIEW_DESCRIPTION, t.FullName, flds)];
+            else
+            {
+                ret = CorrectName(_ConvertCamelCaseName(t.Name), ViewNames);
+                _nameTranslations.Add(string.Format(_VIEW_DESCRIPTION, t.FullName, flds), ret);
+                _descriptionQueries.Enqueue(conn.queryBuilder.SetViewDescription(ret,string.Format(_VIEW_DESCRIPTION,t.FullName,flds)));
+            }
+            return ret;
+        }
+
+        internal string GetIndexName(Type t, string indexName, Connection conn)
+        {
+            string ret = "";
+            if (_nameTranslations.ContainsKey(string.Format(_INDEX_DESCRIPTION, t.FullName, indexName)))
+                ret = _nameTranslations[string.Format(_INDEX_DESCRIPTION, t.FullName, indexName)];
+            else
+            {
+                ret = CorrectName(indexName,GetIndexNames(t));
+                _nameTranslations.Add(string.Format(_INDEX_DESCRIPTION, t.FullName, indexName), ret);
+                _descriptionQueries.Enqueue(conn.queryBuilder.SetIndexDescription(ret, string.Format(_INDEX_DESCRIPTION, t.FullName, indexName)));
+                return ret;
+            }
+            return ret;
+        }
+
+        private string CorrectName(string currentName, List<string> existingNames)
+        {
+            string ret = currentName;
+            bool reserved = false;
+            foreach (string str in _pool.ReservedWords)
+            {
+                if (Utility.StringsEqualIgnoreCaseWhitespace(str, currentName))
+                {
+                    reserved = true;
+                    break;
+                }
+            }
+            if (reserved)
+                ret = "RES_" + ret;
+            ret = ShortenName(ret).ToUpper();
+            if (existingNames.Contains(ret))
+            {
+                int _nameCounter = 0;
+                while (existingNames.Contains(ret.Substring(0, _pool.MaxFieldNameLength - 1 - (_nameCounter.ToString().Length)) + "_" + _nameCounter.ToString()))
+                {
+                    _nameCounter++;
+                }
+                ret = ret.Substring(0, _pool.MaxFieldNameLength - 1 - (_nameCounter.ToString().Length));
+                ret += "_" + _nameCounter.ToString();
+            }
+            return ret.ToUpper();
         }
 
         private string ShortenName(string name)

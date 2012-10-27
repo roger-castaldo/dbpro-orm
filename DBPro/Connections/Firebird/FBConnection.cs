@@ -59,7 +59,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		{
 		}
 		
-		internal override void GetAddAutogen(ExtractedTableMap map,ConnectionPool pool, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers,out List<StoredProcedure> procedures)
+		internal override void GetAddAutogen(ExtractedTableMap map, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers,out List<StoredProcedure> procedures)
 		{
 			identities=null;
 			generators = new List<Generator>();
@@ -77,9 +77,14 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 					}
 				}
 			}
+            Type t = Pool.Mapping[map.TableName];
+            PropertyInfo pi = Pool.Mapping[map.TableName, map.PrimaryKeys[0].FieldName];
+            bool imediate = t == null;
+            if (imediate)
+                t = Pool.Mapping.GetTypeForIntermediateTable(map.TableName, out pi);
 			if (field.Type.ToUpper().Contains("DATE")||field.Type.ToUpper().Contains("TIME"))
 			{
-				triggers.Add(new Trigger(pool.CorrectName(map.TableName+"_"+field.FieldName+"_GEN"),"FOR "+map.TableName+" ACTIVE BEFORE INSERT POSITION 0",
+				triggers.Add(new Trigger((imediate ? Pool.Translator.GetInsertIntermediateTriggerName(t,pi,this) : Pool.Translator.GetInsertTriggerName(t,this)),"FOR "+map.TableName+" ACTIVE BEFORE INSERT POSITION 0",
 				                         "AS \n" +
 				                         "BEGIN \n" +
 				                         "    NEW." + field.FieldName + " = CURRENT_TIMESTAMP;\n" +
@@ -88,11 +93,11 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 			{
 				if (map.PrimaryKeys.Count==1)
 				{
-					generators.Add(new Generator(pool.CorrectName("GEN_"+map.TableName+"_"+field.FieldName)));
-					triggers.Add(new Trigger(pool.CorrectName(map.TableName+"_"+field.FieldName+"_GEN"),"FOR "+map.TableName+" ACTIVE BEFORE INSERT POSITION 0",
+					generators.Add(new Generator((imediate ? Pool.Translator.GetIntermediateGeneratorName(t,pi,this) : Pool.Translator.GetGeneratorName(t,pi,this))));
+                    triggers.Add(new Trigger((imediate ? Pool.Translator.GetInsertIntermediateTriggerName(t, pi, this) : Pool.Translator.GetInsertTriggerName(t, this)), "FOR " + map.TableName + " ACTIVE BEFORE INSERT POSITION 0",
 					                         "AS \n" +
 					                         "BEGIN \n" +
-					                         "    NEW." + field.FieldName + " = GEN_ID("+pool.CorrectName("GEN_" + map.TableName + "_" + field.FieldName) + ",1);\n" +
+					                         "    NEW." + field.FieldName + " = GEN_ID("+generators[generators.Count-1].Name + ",1);\n" +
 					                         "END"));
 				}else{
 					string code = "AS \n";
@@ -117,7 +122,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 					code+="\tTHEN "+field.FieldName+" = -1;\n";
 					code+="NEW."+field.FieldName+" = "+field.FieldName+"+1;\n";
 					code+="END";
-					triggers.Add(new Trigger(pool.CorrectName(map.TableName+"_"+field.FieldName+"_GEN"),"FOR "+map.TableName+" ACTIVE BEFORE INSERT POSITION 0",code));
+                    triggers.Add(new Trigger((imediate ? Pool.Translator.GetInsertIntermediateTriggerName(t, pi, this) : Pool.Translator.GetInsertTriggerName(t, this)), "FOR " + map.TableName + " ACTIVE BEFORE INSERT POSITION 0", code));
 				}
             }else if (field.Type.ToUpper().Contains("VARCHAR"))
             {
@@ -142,14 +147,19 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
                 code += "END\n";
                 code += "NEW." + field.FieldName + " = IDVAL;\n";
                 code += "END";
-                triggers.Add(new Trigger(pool.CorrectName(map.TableName + "_" + field.FieldName + "_GEN"), "FOR " + map.TableName + " ACTIVE BEFORE INSERT POSITION 0", code));
+                triggers.Add(new Trigger((imediate ? Pool.Translator.GetInsertIntermediateTriggerName(t, pi, this) : Pool.Translator.GetInsertTriggerName(t, this)), "FOR " + map.TableName + " ACTIVE BEFORE INSERT POSITION 0", code));
             }
             else
                 throw new Exception("Unable to create autogenerator for non date or digit type.");
 		}
 
-		internal override void GetDropAutogenStrings(ExtractedTableMap map,ConnectionPool pool, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers)
+		internal override void GetDropAutogenStrings(ExtractedTableMap map, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers)
 		{
+            Type t = Pool.Mapping[map.TableName];
+            PropertyInfo pi = Pool.Mapping[map.TableName,map.PrimaryKeys[0].FieldName];
+            bool imediate = t == null;
+            if (imediate)
+                t = Pool.Mapping.GetTypeForIntermediateTable(map.TableName, out pi);
 			identities=null;
 			triggers=new List<Trigger>();
 			generators=new List<Generator>();
@@ -167,12 +177,12 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 			}
             if (field.Type.ToUpper().Contains("DATE") || field.Type.ToUpper().Contains("TIME") || field.Type.ToUpper().Contains("VARCHAR"))
 			{
-				triggers.Add(new Trigger(pool.CorrectName(map.TableName+"_"+field.FieldName+"_GEN"),"",""));
+				triggers.Add(new Trigger(Pool.Translator.GetInsertTriggerName(t,this),"",""));
 			}
 			else if (field.Type.ToUpper().Contains("INT"))
 			{
-				triggers.Add(new Trigger(pool.CorrectName(map.TableName+"_"+field.FieldName+"_GEN"),"",""));
-				generators.Add(new Generator(pool.CorrectName("GEN_"+map.TableName+"_"+field.FieldName)));
+				triggers.Add(new Trigger(Pool.Translator.GetInsertTriggerName(t,this),"",""));
+				generators.Add(new Generator((imediate ? Pool.Translator.GetIntermediateGeneratorName(t,pi,this) : Pool.Translator.GetGeneratorName(t,pi,this))));
 			}
 			else
 			{
@@ -180,8 +190,9 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 			}
 		}
 		
-		internal override List<Trigger> GetVersionTableTriggers(ExtractedTableMap table,VersionTypes versionType,ConnectionPool pool)
+		internal override List<Trigger> GetVersionTableTriggers(ExtractedTableMap table,VersionTypes versionType)
 		{
+            Type t = Pool.Mapping.GetTypeForVersionTable(table.TableName);
 			List<Trigger> ret = new List<Trigger>();
 			string tmp = "AS \n";
 			for (int x=1;x<table.Fields.Count;x++)
@@ -208,23 +219,23 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 				tmp+=",:"+efm.FieldName;
 			}
 			tmp+=");\nEND\n\n";
-			ret.Add(new Trigger(pool.CorrectName(queryBuilder.VersionTableInsertTriggerName(queryBuilder.RemoveVersionName(table.TableName))),
-			                    "FOR "+queryBuilder.RemoveVersionName(table.TableName)+" ACTIVE AFTER INSERT POSITION 0",
+			ret.Add(new Trigger(Pool.Translator.GetVersionInsertTriggerName(t,this),
+			                    "FOR "+Pool.Mapping[t].Name+" ACTIVE AFTER INSERT POSITION 0",
 			                    tmp));
-			ret.Add(new Trigger(pool.CorrectName(queryBuilder.VersionTableUpdateTriggerName(table.TableName)),
-			                    "FOR "+table.TableName+" ACTIVE AFTER UPDATE POSITION 0",
+			ret.Add(new Trigger(Pool.Translator.GetVersionUpdateTriggerName(t,this),
+			                    "FOR "+Pool.Mapping[t].Name+" ACTIVE AFTER UPDATE POSITION 0",
 			                    tmp));
 			return ret;
 		}
 
-        internal override List<Trigger> GetDeleteParentTrigger(ExtractedTableMap table, ExtractedTableMap parent, ConnectionPool pool)
+        internal override List<Trigger> GetDeleteParentTrigger(ExtractedTableMap table, ExtractedTableMap parent)
         {
             List<Trigger> ret = new List<Trigger>();
             string tmp = "AS \nBEGIN\n";
             tmp += "DELETE FROM " + parent.TableName + " WHERE ";
             foreach (ExtractedFieldMap efm in parent.PrimaryKeys)
-                tmp += pool.CorrectName(efm.FieldName) + " = old." + pool.CorrectName(efm.FieldName)+" AND ";
-            ret.Add(new Trigger(pool.CorrectName(table.TableName + "_" + parent.TableName + "_AUTO_DELETE"),
+                tmp += efm.FieldName + " = old." + efm.FieldName+" AND ";
+            ret.Add(new Trigger(Pool.Translator.GetDeleteParentTriggerName(Pool.Mapping[table.TableName],this),
                 "FOR " + table.TableName + " ACTIVE AFTER DELETE POSITION 0",
                 tmp.Substring(0,tmp.Length-4)+";\nEND\n\n"));
             return ret;
@@ -394,7 +405,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
                     {
                         this.ExecuteQuery("SELECT (CASE WHEN MAX(" + tm.AutoGenField + ") IS NULL THEN 0 ELSE MAX(" + tm.AutoGenField + ") END)+1 FROM " + tm.Name);
                         this.Read();
-                        query += queryBuilder.SetGeneratorValue(Pool.CorrectName("GEN_" + tm.Name + "_" + tm.AutoGenField), long.Parse(this[0].ToString())) + "\n";
+                        query += queryBuilder.SetGeneratorValue(Pool.Translator.GetGeneratorName(t,Pool.Mapping[tm.Name,tm.AutoGenProperty],this), long.Parse(this[0].ToString())) + "\n";
                         this.Close();
                     }
                 }
@@ -405,7 +416,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
                     {
                         this.ExecuteQuery("SELECT (CASE WHEN MAX(ID) IS NULL THEN 0 ELSE MAX(ID) END)+1 FROM " + Pool.Enums[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)]);
                         this.Read();
-                        query += queryBuilder.SetGeneratorValue(Pool.CorrectName("GEN_" + Pool.Enums[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)] + "_ID"), long.Parse(this[0].ToString())) + "\n";
+                        query += queryBuilder.SetGeneratorValue(Pool.Translator.GetEnumGeneratorName((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType),this), long.Parse(this[0].ToString())) + "\n";
                         this.Close();
                     }
                 }

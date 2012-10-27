@@ -90,7 +90,7 @@ namespace Org.Reddragonit.Dbpro
                     {
                         foreach (Type t in ass.GetTypes())
                         {
-                            if (t.GetCustomAttributes(attributeType,false).Length>0)
+                            if (t.GetCustomAttributes(attributeType, false).Length > 0)
                                 ret.Add(t);
                         }
                     }
@@ -105,16 +105,6 @@ namespace Org.Reddragonit.Dbpro
             }
             return ret;
         }
-		
-        //Called to access the Connection Pool Correct name function
-        //while checking for a null pool so clean up common code.
-		public static string CorrectName(ConnectionPool pool,string name)
-		{
-			if (pool==null)
-				return name;
-			else
-				return pool.CorrectName(name);
-		}
 		
         //Merges to string arrays into one, commonly called for the keywords
         //declarations within a connection
