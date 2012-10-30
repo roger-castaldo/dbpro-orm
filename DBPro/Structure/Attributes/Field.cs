@@ -88,7 +88,6 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 		{
 			get
 			{
-				string t = Name;
 				return _fieldLength;
 			}
 		}
@@ -166,6 +165,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 			{
 				case "INT64":
 				case "LONG":
+                    _fieldLength = 8;
 					return FieldType.LONG;
                 case "UINT64":
                 case "ULONG":
@@ -173,27 +173,35 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
                     return FieldType.UNSIGNED_LONG;
 				case "INT16":
                 case "SHORT":
+                    _fieldLength = 2;
 					return FieldType.SHORT;
                 case "UINT16":
                 case "USHORT":
                     _fieldLength = 2;
                     return FieldType.UNSIGNED_SHORT;
 				case "DATETIME":
+                    _fieldLength = 8;
 					return FieldType.DATETIME;
 				case "BOOLEAN":
+                    _fieldLength = 1;
 					return FieldType.BOOLEAN;
 				case "CHAR":
 					return FieldType.CHAR;
 				case "BYTE":
+                    _fieldLength = 1;
 					return FieldType.BYTE;
 				case "DECIMAL":
+                    _fieldLength = 8;
 					return FieldType.DECIMAL;
 				case "DOUBLE":
+                    _fieldLength = 8;
 					return FieldType.DOUBLE;
 				case "FLOAT":
+                    _fieldLength = 8;
 					return FieldType.FLOAT;
 				case "INT":
 				case "INT32":
+                    _fieldLength = 4;
 					return FieldType.INTEGER;
                 case "UINT":
                 case "UINT32":

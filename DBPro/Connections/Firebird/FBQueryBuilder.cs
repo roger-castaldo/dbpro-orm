@@ -394,7 +394,7 @@ WHERE vw.RDB$VIEW_SOURCE IS NOT NULL";
 
         internal override string SetFieldDescription(string tableName, string fieldName, string description)
         {
-            return string.Format("UPDATE RDB$RELATION_FIELDS SET RDB$DESCRIPTION='{1}' WHERE RDB$RELATION_NAME = '{0}' AND RDB$FIELD_NAME = '{1}'", new object[] { tableName, fieldName, description.Replace("'", "''") });
+            return string.Format("UPDATE RDB$RELATION_FIELDS SET RDB$DESCRIPTION='{2}' WHERE RDB$RELATION_NAME = '{0}' AND RDB$FIELD_NAME = '{1}'", new object[] { tableName, fieldName, description.Replace("'", "''") });
         }
 
         internal override string SetGeneratorDescription(string generatorName, string description)
