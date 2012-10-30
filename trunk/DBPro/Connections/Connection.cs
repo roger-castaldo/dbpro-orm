@@ -327,6 +327,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 throw new Exception("Unable to delete to a readonly database.");
             if (!Pool.Mapping.IsMappableType(tableType))
                 throw new Exception("Unable to delete type " + tableType.FullName + " no matching Table Map found for the connection pool "+Pool.ConnectionName+".");
+            pool.Updater.InitType(tableType, this);
             List<IDbDataParameter> parameters = new List<IDbDataParameter>();
             string del = queryBuilder.Delete(tableType, pars, out parameters);
             if (del != null)
@@ -351,6 +352,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 throw new Exception("Unable to delete an object from the database that is not saved.");
             if (table.ConnectionName != ConnectionName)
                 throw new Exception("Unable to delete an object from a database connection it is not part of.");
+            pool.Updater.InitType(table.GetType(), this);
             bool abort = false;
             ConnectionPoolManager.RunTriggers(this, null, table, ConnectionPoolManager.TriggerTypes.PRE_DELETE, out abort);
             if (!abort)
@@ -366,6 +368,7 @@ namespace Org.Reddragonit.Dbpro.Connections
         {
             if (_readonly)
                 throw new Exception("Unable to delete from a readonly database.");
+            pool.Updater.InitType(tableType, this);
             bool abort = false;
             ConnectionPoolManager.RunTriggers(this, tableType, ConnectionPoolManager.TriggerTypes.PRE_DELETE_ALL, out abort);
             if (!abort)
@@ -381,6 +384,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 throw new Exception("Unable to update to a readonly database.");
             if (!Pool.Mapping.IsMappableType(tableType))
                 throw new Exception("Unable to update type " + tableType.FullName + " no matching Table Map found for the connection pool " + Pool.ConnectionName + ".");
+            pool.Updater.InitType(tableType, this);
             List<IDbDataParameter> pars = new List<IDbDataParameter>();
             string query = queryBuilder.Update(tableType, updateFields, parameters, out pars);
             if (query != null)
@@ -403,6 +407,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 				throw new Exception("Cannot update an entry into a table into the database connection that it was not specified for.");
 			if ((table.ChangedFields==null)||(table.ChangedFields.Count==0))
 				return table;
+            pool.Updater.InitType(table.GetType(), this);
             sTable map = Pool.Mapping[table.GetType()];
             table._changedFields = table.ChangedFields;
 			if (Pool.Mapping.IsMappableType(table.GetType().BaseType)!=null)
@@ -533,6 +538,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		{
             if (_readonly)
                 throw new Exception("Unable to insert into a readonly database.");
+            pool.Updater.InitType(table.GetType(), this);
             sTable map = pool.Mapping[table.GetType()];
             if (!ignoreAutogen)
             {
@@ -716,31 +722,13 @@ namespace Org.Reddragonit.Dbpro.Connections
                                 sTable arMap = pool.Mapping[type, pi.Name];
                                 string fields = "";
                                 string conditions = "";
-                                foreach (sTableField fld in arMap.Fields)
+                                foreach (sTableField fld in arMap["PARENT"])
                                 {
-                                    if (fld.ClassProperty == null)
-                                    {
-                                        foreach (sTableField f in external.Fields)
-                                        {
-                                            if (fld.ExternalField == f.Name)
-                                            {
-                                                fields += fld.Name + " AS " + f.Name + ", ";
-                                                break;
-                                            }
-                                        }
-                                    }
-                                    else
-                                    {
-                                        foreach (sTableField f in map.Fields)
-                                        {
-                                            if (fld.ExternalField == f.Name)
-                                            {
-                                                conditions += fld.Name + " = " + queryBuilder.CreateParameterName(fld.Name) + " AND ";
-                                                pars.Add(CreateParameter(queryBuilder.CreateParameterName(fld.Name), QueryBuilder.LocateFieldValue(t, f, pool)));
-                                                break;
-                                            }
-                                        }
-                                    }
+                                    conditions += fld.Name+" = "+queryBuilder.CreateParameterName(fld.Name)+" AND ";
+                                    pars.Add(CreateParameter(queryBuilder.CreateParameterName(fld.Name),QueryBuilder.LocateFieldValue(t,fld,pool)));
+                                }
+                                foreach (sTableField fld in arMap["CHILD"]){
+                                    fields += fld.Name+" AS "+fld.ExternalField+", ";
                                 }
                                 fields = fields.Substring(0, fields.Length - 2);
                                 conditions = conditions.Substring(0, conditions.Length - 4);
@@ -813,6 +801,7 @@ namespace Org.Reddragonit.Dbpro.Connections
         {
             if (type.GetCustomAttributes(typeof(VirtualTableAttribute), true).Length == 0)
                 throw new Exception("Unable to execute a Virtual Table Query from a class that does not have a VirtualTableAttribute attached to it.");
+            pool.Updater.InitType(type, this);
             List<Object> ret = new List<object>();
             sTable tbl = pool.Mapping.GetVirtualTable(type);
             this.ExecuteQuery("SELECT * FROM " + tbl.Name);
@@ -850,6 +839,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             {
                 throw new Exception("Cannot select from a table from the database connection that it was not specified for.");
             }
+            pool.Updater.InitType(type, this);
             List<Table> ret = new List<Table>();
             ExecuteQuery(queryBuilder.SelectAll(type,OrderByFields));
             while (Read())
@@ -882,6 +872,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         public object SelectMax(string fieldName, System.Type type, SelectParameter[] parameters)
         {
+            pool.Updater.InitType(type, this);
             object ret = null;
             List<IDbDataParameter> pars = new List<IDbDataParameter>();
             string query = queryBuilder.SelectMax(type, fieldName, parameters, out pars);
@@ -904,6 +895,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         public object SelectMin(string fieldName, System.Type type, SelectParameter[] parameters)
         {
+            pool.Updater.InitType(type, this);
             object ret = null;
             List<IDbDataParameter> pars = new List<IDbDataParameter>();
             string query = queryBuilder.SelectMin(type, fieldName, parameters, out pars);
@@ -931,6 +923,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			{
 				throw new Exception("Cannot select from a table from the database connection that it was not specified for.");
 			}
+            pool.Updater.InitType(type, this);
 			List<Table> ret = new List<Table>();
 			List<IDbDataParameter> pars = new List<IDbDataParameter>();
 			string query = queryBuilder.Select(type,parameters,out pars,OrderByFields);
@@ -969,6 +962,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			{
 				throw new Exception("Cannot select from a table from the database connection that it was not specified for.");
 			}
+            pool.Updater.InitType(type, this);
 			long ret=0;
 			List<IDbDataParameter> pars = new List<IDbDataParameter>();
 			string query = queryBuilder.SelectCount(type,parameters,out pars);
@@ -997,6 +991,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			{
 				throw new Exception("Cannot select from a table from the database connection that it was not specified for.");
 			}
+            pool.Updater.InitType(type, this);
 			List<Table> ret = new List<Table>();
 			List<IDbDataParameter> pars = new List<IDbDataParameter>();
 			string query = queryBuilder.SelectPaged(type,parameters,out pars,StartIndex,RowCount,null);

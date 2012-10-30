@@ -30,6 +30,10 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 		private string _namespace;
 		private QueryTokenizer _tokenizer;
 		private string _outputQuery;
+        internal string QueryString
+        {
+            get { return _outputQuery; }
+        }
 		private Dictionary<int, int> _subQueryIndexes;
         private Dictionary<string, Type> _tableFields;
         private Dictionary<int, string> _fieldNames;
@@ -1172,7 +1176,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             bool parentIsLeftJoin = false;
             sTable map;
             PropertyInfo pi;
-            IField fld = null;
+            INullable nlb = null;
 			if (field.Contains("."))
 			{
 				while (field.Contains("."))
@@ -1198,9 +1202,9 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     }
                     foreach (object obj in pi.GetCustomAttributes(false))
                     {
-                        if (obj is IField)
+                        if (obj is INullable)
                         {
-                            fld = (IField)obj;
+                            nlb = (INullable)obj;
                             break;
                         }
                     }
@@ -1208,7 +1212,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     map = _conn.Pool.Mapping[cur];
 					string className = field.Substring(0, field.IndexOf("."));
 					string innerJoin = " "+(parentIsLeftJoin ? "LEFT JOIN" : "INNER JOIN")+" ";
-                    if (fld.Nullable)
+                    if (nlb.Nullable)
                         innerJoin = " LEFT JOIN ";
                     string tbl = _conn.queryBuilder.SelectAll((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType), null);
 					if (pi.PropertyType.IsArray)
@@ -1223,7 +1227,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 						innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
                         if (!joins.Contains(innerJoin))
                             joins.Add(innerJoin);
-                        if (fld.Nullable)
+                        if (nlb.Nullable)
                             innerJoin = " LEFT JOIN (" + tbl + ") " + alias + "_" + className + " ON ";
                         else
                             innerJoin = " "+(parentIsLeftJoin ? "LEFT JOIN" : "INNER JOIN")+" (" + tbl + ") " + alias + "_" + className + " ON ";
@@ -1247,7 +1251,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 					if (!joins.Contains(innerJoin))
 						joins.Add(innerJoin);
                     cur = (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType);
-                    parentIsLeftJoin |= fld.Nullable;
+                    parentIsLeftJoin |= nlb.Nullable;
 				}
 			}
             map = _conn.Pool.Mapping[cur];
@@ -1258,9 +1262,9 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     pi = cur.GetProperty(prop, Utility._BINDING_FLAGS);
                     foreach (object obj in pi.GetCustomAttributes(false))
                     {
-                        if (obj is IField)
+                        if (obj is INullable)
                         {
-                            fld = (IField)obj;
+                            nlb = (INullable)obj;
                             break;
                         }
                     }
@@ -1268,7 +1272,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     {
                         sTable eMap = _conn.Pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
                         string innerJoin = " INNER JOIN ";
-                        if (fld.Nullable)
+                        if (nlb.Nullable)
                             innerJoin = " LEFT JOIN ";
                         string tbl = _conn.queryBuilder.SelectAll((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType), null);
                         string fieldString = tbl.Substring(tbl.IndexOf("SELECT") + "SELECT".Length);
@@ -1284,7 +1288,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                             innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
                             if (!joins.Contains(innerJoin))
                                 joins.Add(innerJoin);
-                            if (fld.Nullable)
+                            if (nlb.Nullable)
                                 innerJoin = " LEFT JOIN (" + tbl + ") " + alias + "_" + prop+ " ON ";
                             else
                                 innerJoin = " " + (parentIsLeftJoin ? "LEFT JOIN" : "INNER JOIN") + " (" + tbl + ") " + alias + "_" + prop + " ON ";
@@ -1330,9 +1334,9 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 pi = cur.GetProperty(field, Utility._BINDING_FLAGS);
                 foreach (object obj in pi.GetCustomAttributes(false))
                 {
-                    if (obj is IField)
+                    if (obj is INullable)
                     {
-                        fld = (IField)obj;
+                        nlb = (INullable)obj;
                         break;
                     }
                 }
@@ -1340,7 +1344,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 {
                     sTable eMap = _conn.Pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
                     string innerJoin = " INNER JOIN ";
-                    if (fld.Nullable)
+                    if (nlb.Nullable)
                         innerJoin = " LEFT JOIN ";
                     string tbl = _conn.queryBuilder.SelectAll((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType), null);
                     string fieldString = tbl.Substring(tbl.IndexOf("SELECT") + "SELECT".Length);
@@ -1356,7 +1360,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
                         if (!joins.Contains(innerJoin))
                             joins.Add(innerJoin);
-                        if (fld.Nullable)
+                        if (nlb.Nullable)
                             innerJoin = " LEFT JOIN (" + tbl + ") " + alias + "_" + field + " ON ";
                         else
                             innerJoin = " " + (parentIsLeftJoin ? "LEFT JOIN" : "INNER JOIN") + " (" + tbl + ") " + alias + "_" + field + " ON ";
@@ -1398,7 +1402,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 else if (pi.PropertyType.IsArray)
                 {
                     sTable iMap = _conn.Pool.Mapping[cur, pi.Name];
-                    string innerJoin = (fld.Nullable || parentIsLeftJoin ? " LEFT JOIN " : " INNER JOIN ")+iMap.Name + " " + alias + "_" + pi.Name+ " ON ";
+                    string innerJoin = (nlb.Nullable || parentIsLeftJoin ? " LEFT JOIN " : " INNER JOIN ")+iMap.Name + " " + alias + "_" + pi.Name+ " ON ";
                     foreach (sTableField f in iMap.Fields)
                     {
                         if (f.ExternalField!=null)
@@ -1658,6 +1662,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 					}
 					if (fieldName != "*")
 					{
+                        pi = t.GetProperty(fieldName,Utility._BINDING_FLAGS);
                         if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)))
                         {
                             if (ordinal != -1)
