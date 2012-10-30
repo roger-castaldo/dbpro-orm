@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using Org.Reddragonit.Dbpro.Structure.Attributes;
+using System.Reflection;
 
 namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 {
@@ -67,12 +68,6 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             get { return _classProperty; }
         }
 
-        private string _intermediateTable;
-        public string IntermediateTable
-        {
-            get { return _intermediateTable; }
-        }
-
         private ForeignField.UpdateDeleteAction _onUpdate;
         public ForeignField.UpdateDeleteAction OnUpdate
         {
@@ -91,11 +86,10 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             get { return _nullable; }
         }
 
-        public sTableRelation(string externalTable, string classProperty, string intermediateTable, ForeignField.UpdateDeleteAction onUpdate, ForeignField.UpdateDeleteAction onDelete,bool nullable)
+        public sTableRelation(string externalTable, string classProperty, ForeignField.UpdateDeleteAction onUpdate, ForeignField.UpdateDeleteAction onDelete,bool nullable)
         {
             _externalTable = externalTable;
             _classProperty = classProperty;
-            _intermediateTable = intermediateTable;
             _onUpdate = onUpdate;
             _onDelete = onDelete;
             _nullable = nullable;
@@ -134,6 +128,12 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             get { return _autoGenField; }
         }
 
+        private string[] _arrayProperties;
+        public string[] ArrayProperties
+        {
+            get{return _arrayProperties;}
+        }
+
         public string AutoGenProperty
         {
             get {
@@ -153,13 +153,18 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             }
         }
 
-        public sTable(string name, sTableField[] fields, sTableRelation[] relations, string[] primaryKeyFields,string autoGenField)
+        public sTable(string name, sTableField[] fields, List<PropertyInfo> arrayProperties, sTableRelation[] relations, string[] primaryKeyFields, string autoGenField)
         {
             _name = name;
             _fields = fields;
             _relations = relations;
             _primaryKeyFields = primaryKeyFields;
             _autoGenField = autoGenField;
+            _arrayProperties = new string[(arrayProperties == null ? 0 : arrayProperties.Count)];
+            for (int x = 0; x < _arrayProperties.Length; x++)
+            {
+                _arrayProperties[x] = arrayProperties[x].Name;
+            }
         }
 
         public sTableField[] this[string property]
@@ -207,6 +212,8 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                             ret.Add(rel.ClassProperty);
                     }
                 }
+                foreach (string str in _arrayProperties)
+                    ret.Add(str);
                 return ret.ToArray();
             }
         }

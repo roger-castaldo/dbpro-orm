@@ -39,7 +39,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             {
                 Dictionary<string, string> flds = new Dictionary<string, string>();
                 List<string> properties = new List<string>();
-                foreach (PropertyInfo pi in vt.GetProperties())
+                foreach (PropertyInfo pi in vt.GetProperties(Utility._BINDING_FLAGS))
                 {
                     if (pi.GetCustomAttributes(typeof(VirtualField), true).Length > 0)
                         properties.Add(pi.Name);
@@ -48,7 +48,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                 List<sTableField> fields = new List<sTableField>();
                 foreach (string p in properties)
                     fields.Add(new sTableField(flds[p],p,null,FieldType.STRING,-1,false));
-                _virtualTables.Add(vt, new sTable(name, fields.ToArray(), new sTableRelation[0], new string[0], null));
+                _virtualTables.Add(vt, new sTable(name, fields.ToArray(),null, new sTableRelation[0], new string[0], null));
             }
         }
 
@@ -88,6 +88,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                                         new sTableField(_pool.Translator.GetEnumIDFieldName(etype,conn),null,null,FieldType.INTEGER,4,false),
                                         new sTableField(_pool.Translator.GetEnumValueFieldName(etype,conn),null,null,FieldType.STRING,500,false)
                                     },
+                                    null,
                                     new sTableRelation[0],
                                     new string[] { _pool.Translator.GetEnumIDFieldName(etype, conn) },
                                     _pool.Translator.GetEnumIDFieldName(etype, conn));
@@ -106,7 +107,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                                     autogenField = fields[fields.Count - 1].Name;
                             }
                             if (pi.PropertyType.IsEnum)
-                                relations.Add(new sTableRelation(_pool.Enums[pi.PropertyType], pi.Name, null, ForeignField.UpdateDeleteAction.CASCADE, ForeignField.UpdateDeleteAction.CASCADE,((IField)obj).Nullable));
+                                relations.Add(new sTableRelation(_pool.Enums[pi.PropertyType], pi.Name, ForeignField.UpdateDeleteAction.CASCADE, ForeignField.UpdateDeleteAction.CASCADE,((IField)obj).Nullable));
                         }
                         else
                             arrayProperties.Add(pi);
@@ -139,7 +140,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                                             primaryKeyFields.Add(fields[fields.Count - 1].Name);
                                     }
                                 }
-                                relations.Add(new sTableRelation(ext.Name, pi.Name, null, ((IForeignField)obj).OnDelete, ((IForeignField)obj).OnUpdate,((IForeignField)obj).Nullable));
+                                relations.Add(new sTableRelation(ext.Name, pi.Name, ((IForeignField)obj).OnDelete, ((IForeignField)obj).OnUpdate,((IForeignField)obj).Nullable));
                             }
                             else
                                 selfReferenceProperties.Add(pi);
@@ -172,7 +173,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                 {
                     if (obj is IForeignField)
                     {
-                        relations.Add(new sTableRelation(tblName, pi.Name, null, ((IForeignField)obj).OnDelete, ((IForeignField)obj).OnUpdate,((IForeignField)obj).Nullable));
+                        relations.Add(new sTableRelation(tblName, pi.Name, ((IForeignField)obj).OnDelete, ((IForeignField)obj).OnUpdate,((IForeignField)obj).Nullable));
                         break;
                     }
                 }
@@ -187,7 +188,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                     foreach (sTableField sf in fields)
                     {
                         if (primaryKeyFields.Contains(sf.Name))
-                            afields.Add(new sTableField(_pool.Translator.GetIntermediateFieldName(tbl,pi,sf.Name,true,conn), sf.ClassProperty, sf.Name, sf.Type, sf.Length, sf.Nullable));
+                            afields.Add(new sTableField(_pool.Translator.GetIntermediateFieldName(tbl,pi,sf.Name,true,conn),"PARENT", sf.Name, sf.Type, sf.Length, sf.Nullable));
                     }
                     afields.Add(new sTableField(_pool.Translator.GetIntermediateIndexFieldName(tbl,pi,conn), null, null, FieldType.INTEGER, 4, false));
                     List<string> apKeys = new List<string>();
@@ -208,16 +209,15 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                         }
                         if (pi.PropertyType.IsEnum)
                         {
-                            afields.Add(new sTableField(_pool.Translator.GetIntermediateValueFieldName(tbl,pi,conn), null, _classMaps[pi.PropertyType.GetElementType()].Fields[0].Name, fld.Type, fld.Length, fld.Nullable));
-                            intermediates.Add(pi.Name, new sTable(itblName, afields.ToArray(),
-                                new sTableRelation[] { new sTableRelation(_pool.Enums[pi.PropertyType.GetElementType()], null, null, ForeignField.UpdateDeleteAction.CASCADE, ForeignField.UpdateDeleteAction.CASCADE, fld.Nullable) }, apKeys.ToArray(), afields[afields.Count - 2].Name));
+                            afields.Add(new sTableField(_pool.Translator.GetIntermediateValueFieldName(tbl,pi,conn), "CHILD", _classMaps[pi.PropertyType.GetElementType()].Fields[0].Name, fld.Type, fld.Length, fld.Nullable));
+                            intermediates.Add(pi.Name, new sTable(itblName, afields.ToArray(),null,
+                                new sTableRelation[] { new sTableRelation(_pool.Enums[pi.PropertyType.GetElementType()], null, ForeignField.UpdateDeleteAction.CASCADE, ForeignField.UpdateDeleteAction.CASCADE, fld.Nullable) }, apKeys.ToArray(), afields[afields.Count - 2].Name));
                         }
                         else
                         {
                             afields.Add(new sTableField(_pool.Translator.GetIntermediateValueFieldName(tbl, pi, conn), null, null, fld.Type, fld.Length, fld.Nullable));
-                            intermediates.Add(pi.Name, new sTable(itblName, afields.ToArray(), null, apKeys.ToArray(), afields[afields.Count - 2].Name));
+                            intermediates.Add(pi.Name, new sTable(itblName, afields.ToArray(),null, null, apKeys.ToArray(), afields[afields.Count - 2].Name));
                         }
-                        relations.Add(new sTableRelation(intermediates[pi.Name].Name, pi.Name, null, ForeignField.UpdateDeleteAction.CASCADE, ForeignField.UpdateDeleteAction.CASCADE,fld.Nullable));
                         afields.RemoveAt(afields.Count - 1);
                     }
                     else
@@ -244,11 +244,14 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                         foreach (string str in sExt.PrimaryKeyProperties)
                         {
                             foreach (sTableField f in sExt[str])
-                                extFields.Add(new sTableField(_pool.Translator.GetIntermediateFieldName(tbl,pi,f.Name,false,conn),null,f.Name,f.Type,f.Length,f.Nullable));
+                                extFields.Add(new sTableField(_pool.Translator.GetIntermediateFieldName(tbl,pi,f.Name,false,conn),"CHILD",f.Name,f.Type,f.Length,f.Nullable));
                         }
-                        intermediates.Add(pi.Name, new sTable(itblName, extFields.ToArray(),
-                            null, apKeys.ToArray(),afields[afields.Count-1].Name));
-                        relations.Add(new sTableRelation(sExt.Name, pi.Name, intermediates[pi.Name].Name, ForeignField.UpdateDeleteAction.CASCADE, ForeignField.UpdateDeleteAction.CASCADE,iff.Nullable));
+                        intermediates.Add(pi.Name, new sTable(itblName, extFields.ToArray(),null,
+                            new sTableRelation[]{
+                                new sTableRelation(tblName,"PARENT",iff.OnUpdate,iff.OnDelete,iff.Nullable),
+                                new sTableRelation(sExt.Name,"CHILD",iff.OnUpdate,iff.OnDelete,iff.Nullable)
+                            }, 
+                            apKeys.ToArray(),afields[afields.Count-1].Name));
                     }
                 }
             }
@@ -286,7 +289,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                     if (vpkeys.Contains(f.Name))
                         vfields.Add(new sTableField(f.Name,"PARENT",f.Name,f.Type,f.Length,f.Nullable));
                 }
-                _versionMaps.Add(tbl, new sTable(vtblName, vfields.ToArray(),new sTableRelation[]{new sTableRelation(tblName,"PARENT",null,ForeignField.UpdateDeleteAction.CASCADE,ForeignField.UpdateDeleteAction.CASCADE,false)}, vpkeys.ToArray(), vfields[vfields.Count - 1].Name));
+                _versionMaps.Add(tbl, new sTable(vtblName, vfields.ToArray(),null,new sTableRelation[]{new sTableRelation(tblName,"PARENT",ForeignField.UpdateDeleteAction.CASCADE,ForeignField.UpdateDeleteAction.CASCADE,false)}, vpkeys.ToArray(), vfields[vfields.Count - 1].Name));
             }
 
             if (!tbl.BaseType.Equals(typeof(Org.Reddragonit.Dbpro.Structure.Table)))
@@ -312,7 +315,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                     }
                 }
             }
-            return new sTable(tblName, fields.ToArray(), relations.ToArray(), primaryKeyFields.ToArray(), autogenField);
+            return new sTable(tblName, fields.ToArray(),arrayProperties, relations.ToArray(), primaryKeyFields.ToArray(), autogenField);
         }
 
         public sTable this[Type table]
@@ -372,12 +375,12 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
         public bool HasVersionTable(Type table)
         {
-            return _virtualTables.ContainsKey(table);
+            return _versionMaps.ContainsKey(table);
         }
 
         public sTable GetVersionTable(Type table,out VersionField.VersionTypes versionType){
             versionType = _versionTypes[table];
-            return _virtualTables[table];
+            return _versionMaps[table];
         }
 
         public bool PropertyHasIntermediateTable(Type table, string property)
@@ -387,6 +390,11 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                 return _intermediateTables[table].ContainsKey(property);
             }
             return false;
+        }
+
+        public bool IsVirtualTable(Type type)
+        {
+            return _virtualTables.ContainsKey(type);
         }
 
         public sTable GetVirtualTable(Type type)
@@ -431,6 +439,16 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                 }
             }
             return null;
+        }
+
+        internal bool IsVersionTable(string tableName)
+        {
+            foreach (Type t in _versionMaps.Keys)
+            {
+                if (_versionMaps[t].Name == tableName)
+                    return true;
+            }
+            return false;
         }
     }
 }

@@ -26,12 +26,134 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
         private ConnectionPool _pool;
         private Dictionary<string, string> _nameTranslations;
-        private Queue<string> _descriptionQueries;
+        private List<string> _createDescriptions;
 
-        public void ApplyAllDescriptions(Connection conn)
+        public void ApplyAllDescriptions(List<ExtractedTableMap> tables, List<Trigger> triggers, List<Generator> generators, List<IdentityField> identities, List<View> views, List<StoredProcedure> procedures, Connection conn)
         {
-            while (_descriptionQueries.Count > 0)
-                conn.ExecuteNonQuery(_descriptionQueries.Dequeue());
+            Type t;
+            PropertyInfo pi;
+            for(int x=0;x<_createDescriptions.Count;x++)
+            {
+                string str = _createDescriptions[x];
+                bool remove = false;
+                switch (str.Split(':')[0])
+                {
+                    case "ENUM":
+                    case "TBL":
+                    case "ITMD":
+                        foreach (ExtractedTableMap etm in tables)
+                        {
+                            if (etm.TableName == _nameTranslations[str])
+                            {
+                                conn.ExecuteNonQuery(conn.queryBuilder.SetTableDescription(etm.TableName, str));
+                                remove = true;
+                                break;
+                            }
+                        }
+                        break;
+                    case "FLD":
+                        foreach (ExtractedTableMap etm in tables)
+                        {
+                            t = _pool.Mapping[etm.TableName];
+                            if (t != null)
+                            {
+                                if (str.StartsWith(string.Format(_FIELD_DESCRIPTION, t.FullName, "")))
+                                {
+                                    foreach (ExtractedFieldMap efm in etm.Fields)
+                                    {
+                                        if (_nameTranslations[str] == efm.FieldName)
+                                        {
+                                            conn.ExecuteNonQuery(conn.queryBuilder.SetFieldDescription(etm.TableName, efm.FieldName, str));
+                                            remove = true;
+                                            break;
+                                        }
+                                    }
+                                    if (remove)
+                                        break;
+                                }
+                            }
+                        }
+                        break;
+                    case "ITMD_FLD":
+                        foreach (ExtractedTableMap etm in tables)
+                        {
+                            t = _pool.Mapping.GetTypeForIntermediateTable(etm.TableName, out pi);
+                            if (t != null)
+                            {
+                                if (str.StartsWith(string.Format(_INTERMEDIATE_FIELD_DESCRIPTION, new object[] { t.FullName, pi.Name, "",""}).Trim('.')))
+                                {
+                                    foreach (ExtractedFieldMap efm in etm.Fields)
+                                    {
+                                        if (_nameTranslations[str] == efm.FieldName)
+                                        {
+                                            conn.ExecuteNonQuery(conn.queryBuilder.SetFieldDescription(etm.TableName, efm.FieldName, str));
+                                            remove = true;
+                                            break;
+                                        }
+                                    }
+                                    if (remove)
+                                        break;
+                                }
+                            }
+                        }
+                        break;
+                    case "GEN":
+                        foreach (Generator gen in generators)
+                        {
+                            if (gen.Name == _nameTranslations[str])
+                            {
+                                conn.ExecuteNonQuery(conn.queryBuilder.SetGeneratorDescription(gen.Name, str));
+                                remove = true;
+                                break;
+                            }
+                        }
+                        break;
+                    case "TRIG":
+                        foreach (Trigger trig in triggers)
+                        {
+                            if (trig.Name == _nameTranslations[str])
+                            {
+                                conn.ExecuteNonQuery(conn.queryBuilder.SetTriggerDescription(trig.Name, str));
+                                remove = true;
+                                break;
+                            }
+                        }
+                        break;
+                    case "VIEW":
+                        foreach (View vw in views)
+                        {
+                            if (vw.Name == _nameTranslations[str])
+                            {
+                                conn.ExecuteNonQuery(conn.queryBuilder.SetViewDescription(vw.Name, str));
+                                remove = true;
+                                break;
+
+                            }
+                        }
+                        break;
+                    case "IND":
+                        foreach (ExtractedTableMap etm in tables)
+                        {
+                            foreach (Index ind in etm.Indices)
+                            {
+                                if (_nameTranslations[str] == ind.Name)
+                                {
+                                    conn.ExecuteNonQuery(conn.queryBuilder.SetIndexDescription(ind.Name, str));
+                                    remove = true;
+                                    break;
+                                }
+                            }
+                            if (remove)
+                                break;
+                        }
+                        break;
+                }
+                if (remove)
+                {
+                    _createDescriptions.RemoveAt(x);
+                    x--;
+                }
+            }
         }
 
         public NameTranslator(ConnectionPool pool, Connection conn)
@@ -40,9 +162,9 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             _nameTranslations = new Dictionary<string, string>();
             conn.ExecuteQuery(conn.queryBuilder.GetAllObjectDescriptions());
             while (conn.Read())
-                _nameTranslations.Add(conn[0].ToString(), conn[1].ToString());
+                _nameTranslations.Add(conn[0].ToString().Trim(), conn[1].ToString().Trim());
             conn.Close();
-            _descriptionQueries = new Queue<string>();
+            _createDescriptions = new List<string>();
         }
 
         private string _ConvertCamelCaseName(string name)
@@ -182,7 +304,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                 {
                     ret = CorrectName("ENUM_" + _ConvertCamelCaseName(t.FullName.Substring(t.FullName.LastIndexOf(".") + 1).Replace("+", "")), TableNames);
                     _nameTranslations.Add(string.Format(_ENUM_TABLE_DESCRIPTION, t.FullName), ret);
-                    _descriptionQueries.Enqueue(conn.queryBuilder.SetTableDescription(ret, string.Format(_ENUM_TABLE_DESCRIPTION, t.FullName)));
+                    _createDescriptions.Add(string.Format(_ENUM_TABLE_DESCRIPTION, t.FullName));
                 }
             }
             else
@@ -193,7 +315,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                 {
                     ret = CorrectName(_ExtractTableName(t), TableNames);
                     _nameTranslations.Add(string.Format(_TABLE_DESCRIPTION, t.FullName), ret);
-                    _descriptionQueries.Enqueue(conn.queryBuilder.SetTableDescription(ret, string.Format(_TABLE_DESCRIPTION, t.FullName)));
+                    _createDescriptions.Add(string.Format(_TABLE_DESCRIPTION, t.FullName));
                 }
             }
             return ret;
@@ -208,7 +330,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             {
                 ret = CorrectName(_ExtractTableName(t) + "_VERSION", TableNames);
                 _nameTranslations.Add(string.Format(_TABLE_DESCRIPTION, t.FullName + "_VERSION"), ret);
-                _descriptionQueries.Enqueue(conn.queryBuilder.SetTableDescription(ret, string.Format(_TABLE_DESCRIPTION, t.FullName + "_VERSION")));
+                _createDescriptions.Add(string.Format(_TABLE_DESCRIPTION, t.FullName + "_VERSION"));
             }
             return ret;
         }
@@ -222,7 +344,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             {
                 ret = CorrectName(GetTableName(t, conn) + "_" + _ConvertCamelCaseName(pi.Name),TableNames);
                 _nameTranslations.Add(string.Format(_INTERMEDIATE_TABLE_DESCRIPTION,t.FullName,pi.Name),ret);
-                _descriptionQueries.Enqueue(conn.queryBuilder.SetTableDescription(ret, string.Format(_INTERMEDIATE_TABLE_DESCRIPTION, t.FullName, pi.Name)));
+                _createDescriptions.Add(string.Format(_INTERMEDIATE_TABLE_DESCRIPTION, t.FullName, pi.Name));
             }
             return ret;
         }
@@ -251,7 +373,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                 }
                 ret = CorrectName(fldName, GetTableFields(t));
                 _nameTranslations.Add(string.Format(_FIELD_DESCRIPTION, t.FullName, pi.Name), ret);
-                _descriptionQueries.Enqueue(conn.queryBuilder.SetFieldDescription(GetTableName(t, conn), ret, string.Format(_FIELD_DESCRIPTION, t.FullName, pi.Name)));
+                _createDescriptions.Add(string.Format(_FIELD_DESCRIPTION, t.FullName, pi.Name));
             }
             return ret;
         }
@@ -266,7 +388,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                 string fldName = _ConvertCamelCaseName(pi.Name)+"_"+fieldName;
                 ret = CorrectName(fldName, GetTableFields(t));
                 _nameTranslations.Add(string.Format(_FIELD_DESCRIPTION, t.FullName, pi.Name + "." + fieldName), ret);
-                _descriptionQueries.Enqueue(conn.queryBuilder.SetFieldDescription(GetTableName(t, conn), ret, string.Format(_FIELD_DESCRIPTION, t.FullName, pi.Name + "." + fieldName)));
+                _createDescriptions.Add(string.Format(_FIELD_DESCRIPTION, t.FullName, pi.Name + "." + fieldName));
             }
             return ret;
         }
@@ -285,7 +407,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             {
                 ret = CorrectName(_ENUM_ID_FIELD_NAME, GetTableFields(t));
                 _nameTranslations.Add(string.Format(_FIELD_DESCRIPTION, t.FullName, _ENUM_ID_FIELD_NAME), ret);
-                _descriptionQueries.Enqueue(conn.queryBuilder.SetFieldDescription(GetTableName(t, conn), ret, string.Format(_FIELD_DESCRIPTION, t.FullName, _ENUM_ID_FIELD_NAME)));
+                _createDescriptions.Add(string.Format(_FIELD_DESCRIPTION, t.FullName, _ENUM_ID_FIELD_NAME));
             }
             return ret;
         }
@@ -299,7 +421,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             {
                 ret = CorrectName(_ENUM_VALUE_FIELD_NAME, GetTableFields(t));
                 _nameTranslations.Add(string.Format(_FIELD_DESCRIPTION, t.FullName, _ENUM_VALUE_FIELD_NAME), ret);
-                _descriptionQueries.Enqueue(conn.queryBuilder.SetFieldDescription(GetTableName(t, conn), ret, string.Format(_FIELD_DESCRIPTION, t.FullName, _ENUM_VALUE_FIELD_NAME)));
+                _createDescriptions.Add(string.Format(_FIELD_DESCRIPTION, t.FullName, _ENUM_VALUE_FIELD_NAME));
             }
             return ret;
         }
@@ -313,7 +435,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             {
                 ret = CorrectName((isParent ? "PARENT" : "CHILD") + "_" + fieldName, GetTableFields(t, pi));
                 _nameTranslations.Add(string.Format(_INTERMEDIATE_FIELD_DESCRIPTION, new object[] { t.FullName, pi.Name, (isParent ? "PARENT" : "CHILD"), fieldName }), ret);
-                _descriptionQueries.Enqueue(conn.queryBuilder.SetFieldDescription(GetIntermediateTableName(t,pi,conn),ret,string.Format(_INTERMEDIATE_FIELD_DESCRIPTION,new object[]{t.FullName,pi.Name,(isParent ? "PARENT" : "CHILD"),fieldName})));
+                _createDescriptions.Add(string.Format(_INTERMEDIATE_FIELD_DESCRIPTION, new object[] { t.FullName, pi.Name, (isParent ? "PARENT" : "CHILD"), fieldName }));
             }
             return ret;
         }
@@ -327,7 +449,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             {
                 ret = CorrectName(_INTERMEDIATE_VALUE_FIELD_NAME, GetTableFields(t, pi));
                 _nameTranslations.Add(string.Format(_INTERMEDIATE_FIELD_DESCRIPTION, new object[] { t.FullName, pi.Name, _INTERMEDIATE_VALUE_FIELD_NAME, "" }).Trim('_'), ret);
-                _descriptionQueries.Enqueue(conn.queryBuilder.SetFieldDescription(GetIntermediateTableName(t, pi, conn), ret, string.Format(_INTERMEDIATE_FIELD_DESCRIPTION, new object[] { t.FullName, pi.Name, _INTERMEDIATE_VALUE_FIELD_NAME, "" }).Trim('_')));
+                _createDescriptions.Add(string.Format(_INTERMEDIATE_FIELD_DESCRIPTION, new object[] { t.FullName, pi.Name, _INTERMEDIATE_VALUE_FIELD_NAME, "" }).Trim('_'));
             }
             return ret;
         }
@@ -341,7 +463,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             {
                 ret = CorrectName(_INTERMEDIATE_INDEX_FIELD_NAME, GetTableFields(t, pi));
                 _nameTranslations.Add(string.Format(_INTERMEDIATE_FIELD_DESCRIPTION, new object[] { t.FullName, pi.Name, _INTERMEDIATE_INDEX_FIELD_NAME, "" }).Trim('_'), ret);
-                _descriptionQueries.Enqueue(conn.queryBuilder.SetFieldDescription(GetIntermediateTableName(t, pi, conn), ret, string.Format(_INTERMEDIATE_FIELD_DESCRIPTION, new object[] { t.FullName, pi.Name, _INTERMEDIATE_INDEX_FIELD_NAME, "" }).Trim('_')));
+                _createDescriptions.Add(string.Format(_INTERMEDIATE_FIELD_DESCRIPTION, new object[] { t.FullName, pi.Name, _INTERMEDIATE_INDEX_FIELD_NAME, "" }).Trim('_'));
             }
             return ret;
         }
@@ -364,7 +486,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             {
                 ret = CorrectName("GEN_" + GetTableName(t, conn) + "_" + fieldName, GeneratorNames);
                 _nameTranslations.Add(string.Format(_GENERATOR_DESCRIPTION, t.FullName, pName), ret);
-                _descriptionQueries.Enqueue(conn.queryBuilder.SetGeneratorDescription(ret,string.Format(_GENERATOR_DESCRIPTION,t.FullName,pName)));
+                _createDescriptions.Add(string.Format(_GENERATOR_DESCRIPTION, t.FullName, pName));
             }
             return ret;
         }
@@ -378,7 +500,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             {
                 ret = CorrectName("GEN_" + GetIntermediateTableName(t, pi, conn) + "_" + GetIntermediateIndexFieldName(t, pi, conn), GeneratorNames);
                 _nameTranslations.Add(string.Format(_GENERATOR_DESCRIPTION, t.FullName, pi.Name),ret);
-                _descriptionQueries.Enqueue(conn.queryBuilder.SetGeneratorDescription(ret, string.Format(_GENERATOR_DESCRIPTION, t.FullName, pi.Name)));
+                _createDescriptions.Add(string.Format(_GENERATOR_DESCRIPTION, t.FullName, pi.Name));
             }
             return ret;
         }
@@ -392,7 +514,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             {
                 ret = CorrectName("GEN_" + GetTableName(t, conn) + "_" + GetEnumIDFieldName(t,conn), GeneratorNames);
                 _nameTranslations.Add(string.Format(_GENERATOR_DESCRIPTION, t.FullName, "ID"), ret);
-                _descriptionQueries.Enqueue(conn.queryBuilder.SetGeneratorDescription(ret, string.Format(_GENERATOR_DESCRIPTION, t.FullName, "ID")));
+                _createDescriptions.Add(string.Format(_GENERATOR_DESCRIPTION, t.FullName, "ID"));
             }
             return ret;
         }
@@ -406,7 +528,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             {
                 ret = CorrectName(GetTableName(t,conn) + "_GEN",TriggerNames);
                 _nameTranslations.Add(string.Format(_TRIGGER_DESCRIPTION, t.FullName, "INSERT"), ret);
-                _descriptionQueries.Enqueue(conn.queryBuilder.SetTriggerDescription(ret, string.Format(_TRIGGER_DESCRIPTION, t.FullName, "INSERT")));
+                _createDescriptions.Add(string.Format(_TRIGGER_DESCRIPTION, t.FullName, "INSERT"));
             }
             return ret;
         }
@@ -420,7 +542,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             {
                 ret = CorrectName(GetTableName(t, conn) + "_VERSION_INSERT", TriggerNames);
                 _nameTranslations.Add(string.Format(_TRIGGER_DESCRIPTION, t.FullName, "INSERT_VERSION"), ret);
-                _descriptionQueries.Enqueue(conn.queryBuilder.SetTriggerDescription(ret, string.Format(_TRIGGER_DESCRIPTION, t.FullName, "INSERT_VERSION")));
+                _createDescriptions.Add(string.Format(_TRIGGER_DESCRIPTION, t.FullName, "INSERT_VERSION"));
             }
             return ret;
         }
@@ -434,7 +556,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             {
                 ret = CorrectName(GetTableName(t, conn) + "_VERSION_UPDATE", TriggerNames);
                 _nameTranslations.Add(string.Format(_TRIGGER_DESCRIPTION, t.FullName, "UPDATE_VERSION"), ret);
-                _descriptionQueries.Enqueue(conn.queryBuilder.SetTriggerDescription(ret, string.Format(_TRIGGER_DESCRIPTION, t.FullName, "UPDATE_VERSION")));
+                _createDescriptions.Add(string.Format(_TRIGGER_DESCRIPTION, t.FullName, "UPDATE_VERSION"));
             }
             return ret;
         }
@@ -448,7 +570,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             {
                 ret = CorrectName(GetIntermediateTableName(t,pi, conn) + "_GEN", TriggerNames);
                 _nameTranslations.Add(string.Format(_TRIGGER_DESCRIPTION, t.FullName + "." + pi.Name, "INSERT"), ret);
-                _descriptionQueries.Enqueue(conn.queryBuilder.SetTriggerDescription(ret, string.Format(_TRIGGER_DESCRIPTION, t.FullName + "." + pi.Name, "INSERT")));
+                _createDescriptions.Add(string.Format(_TRIGGER_DESCRIPTION, t.FullName + "." + pi.Name, "INSERT"));
             }
             return ret;
         }
@@ -462,7 +584,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             {
                 ret = CorrectName(GetTableName(t, conn) + "_DEL", TriggerNames);
                 _nameTranslations.Add(string.Format(_TRIGGER_DESCRIPTION, t.FullName, "DELETE"), ret);
-                _descriptionQueries.Enqueue(conn.queryBuilder.SetTriggerDescription(ret, string.Format(_TRIGGER_DESCRIPTION, t.FullName, "DELETE")));
+                _createDescriptions.Add(string.Format(_TRIGGER_DESCRIPTION, t.FullName, "DELETE"));
             }
             return ret;
         }
@@ -487,7 +609,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             {
                 ret = CorrectName(_ConvertCamelCaseName(t.Name), ViewNames);
                 _nameTranslations.Add(string.Format(_VIEW_DESCRIPTION, t.FullName, flds), ret);
-                _descriptionQueries.Enqueue(conn.queryBuilder.SetViewDescription(ret,string.Format(_VIEW_DESCRIPTION,t.FullName,flds)));
+                _createDescriptions.Add(string.Format(_VIEW_DESCRIPTION, t.FullName, flds));
             }
             return ret;
         }
@@ -501,7 +623,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             {
                 ret = CorrectName(indexName,GetIndexNames(t));
                 _nameTranslations.Add(string.Format(_INDEX_DESCRIPTION, t.FullName, indexName), ret);
-                _descriptionQueries.Enqueue(conn.queryBuilder.SetIndexDescription(ret, string.Format(_INDEX_DESCRIPTION, t.FullName, indexName)));
+                _createDescriptions.Add(string.Format(_INDEX_DESCRIPTION, t.FullName, indexName));
                 return ret;
             }
             return ret;
