@@ -918,6 +918,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         t = (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType);
 						fieldName = fieldName.Substring(fieldName.IndexOf(".") + 1);
 					}
+                    pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS);
 					if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)))
 						return true;
 					else
