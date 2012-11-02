@@ -175,7 +175,17 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             ExtractExpectedStructure(types, out tables, out triggers, out generators, out identities, out tviews, out tprocs, conn);
             views.AddRange(tviews);
             procedures.AddRange(tprocs);
-            _UpdateStructure(tables, triggers, generators, identities, views, procedures,conn);
+            List<string> createdTables = _UpdateStructure(tables, triggers, generators, identities, views, procedures,conn);
+            foreach (Type t in types)
+            {
+                if (t.IsEnum)
+                {
+                    if (createdTables.Contains(_pool.Enums[t]))
+                        _pool.Enums.InsertEnumIntoTable(t, conn);
+                    else
+                        _pool.Enums.LoadEnumsFromTable(t, conn);
+                }
+            }
             _createdTypes.AddRange(types);
             if (!_pool.DebugMode && (_translations.Count > 0))
             {
@@ -437,8 +447,10 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             return new View(tbl.Name,cq.QueryString);
         }
 
-        private void _UpdateStructure(List<ExtractedTableMap> tables, List<Trigger> triggers, List<Generator> generators, List<IdentityField> identities, List<View> views, List<StoredProcedure> procedures,Connection conn)
+        private List<string> _UpdateStructure(List<ExtractedTableMap> tables, List<Trigger> triggers, List<Generator> generators, List<IdentityField> identities, List<View> views, List<StoredProcedure> procedures,Connection conn)
         {
+            List<string> ret = new List<string>();
+
             List<Trigger> dropTriggers = new List<Trigger>();
             List<Trigger> createTriggers = new List<Trigger>();
 
@@ -588,7 +600,10 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                     }
                 }
                 if (!foundTable)
+                {
+                    ret.Add(map.TableName);
                     tableCreations.Add(conn.queryBuilder.CreateTable(map));
+                }
             }
 
             foreach (PrimaryKey pk in primaryKeyDrops)
@@ -765,6 +780,8 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
             _pool.Translator.ApplyAllDescriptions(tables, triggers, generators, identities, views, procedures,conn);
             conn.Commit();
+
+            return ret;
         }
 
         private void _CleanUpForeignKeys(ref List<ForeignKey> foreignKeys)

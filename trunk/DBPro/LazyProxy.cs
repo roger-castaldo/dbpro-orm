@@ -195,7 +195,7 @@ namespace Org.Reddragonit.Dbpro
 					if (isGet)
 					{
 						outVal = mi.Invoke(owner, mc.Args);
-						if ((new List<string>(_map.ForeignTableProperties).Contains(pi.Name))&&(outVal!=null))
+						if ((new List<string>(_map.ForeignTableProperties).Contains(pi.Name))&&(outVal!=null)&&!pi.PropertyType.IsEnum)
 						{
 							if (pi.PropertyType.IsArray)
 							{
