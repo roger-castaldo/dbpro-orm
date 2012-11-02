@@ -695,6 +695,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			selectParameters=new List<IDbDataParameter>();
 			string whereConditions = "";
 			select=null;
+            List<string> fprops = new List<string>(tbl.ForeignTableProperties);
 			try{
 				string values="";
 				string parameters="";
@@ -704,7 +705,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                     if (flds.Length > 0)
                     {
                         PropertyInfo pi = table.GetType().GetProperty(prop, Utility._BINDING_FLAGS);
-                        if (pi.GetCustomAttributes(false)[0] is Org.Reddragonit.Dbpro.Structure.Attributes.IForeignField)
+                        if (fprops.Contains(prop) && !pi.PropertyType.IsEnum)
                         {
                             Table eTable = (Table)table.GetField(prop);
                             if (eTable == null)
