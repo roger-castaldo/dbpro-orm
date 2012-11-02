@@ -234,7 +234,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             _InitClass();
             Connection conn = CreateConnection();
             _translator = new NameTranslator(this, conn);
-            _enums = new EnumsHandler();
+            _enums = new EnumsHandler(this);
             _updater = new StructureUpdater(this,translations);
             List<Type> tables = new List<Type>();
             List<Type> virtualTables = new List<Type>();

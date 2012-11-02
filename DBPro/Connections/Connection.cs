@@ -586,22 +586,25 @@ namespace Org.Reddragonit.Dbpro.Connections
                 foreach (string prop in map.ForeignTableProperties)
                 {
                     PropertyInfo pi = table.GetType().GetProperty(prop, Utility._BINDING_FLAGS);
-                    if (pi.PropertyType.IsArray)
+                    if (!pi.PropertyType.IsEnum)
                     {
-                        Table[] vals = (Table[])table.GetField(prop);
-                        if (vals != null)
+                        if (pi.PropertyType.IsArray)
                         {
-                            foreach (Table t in vals)
-                                this.Save(t);
+                            Table[] vals = (Table[])table.GetField(prop);
+                            if (vals != null)
+                            {
+                                foreach (Table t in vals)
+                                    this.Save(t);
+                            }
                         }
-                    }
-                    else
-                    {
-                        Table ext = (Table)table.GetField(prop);
-                        if (ext != null)
+                        else
                         {
-                            ext = Save(ext);
-                            table.SetField(prop, ext);
+                            Table ext = (Table)table.GetField(prop);
+                            if (ext != null)
+                            {
+                                ext = Save(ext);
+                                table.SetField(prop, ext);
+                            }
                         }
                     }
                 }
