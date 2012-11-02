@@ -647,11 +647,13 @@ namespace Org.Reddragonit.Dbpro.Structure
                 throw new Exception("Cannot Save an object to the database when it already exists.");
             Connection conn = ConnectionPoolManager.GetConnection(this.GetType()).getConnection();
             Table tmp = conn.Save(this);
+            sTable tbl = conn.Pool.Mapping[this.GetType()];
             conn.CloseConnection();
             if (tmp == null)
                 throw new Exception("An error occured attempting to save the table.");
-            foreach (PropertyInfo pi in this.GetType().GetProperties(Utility._BINDING_FLAGS))
+            foreach (string prop in tbl.Properties)
             {
+                PropertyInfo pi = this.GetType().GetProperty(prop, Utility._BINDING_FLAGS);
                 if (pi.CanWrite)
                     pi.SetValue(this, pi.GetValue(tmp, new object[0]), new object[0]);
             }

@@ -131,7 +131,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                                         _intermediateTables.Add(ty, imediates);
                                 }
                                 sTable ext = _classMaps[ty];
-                                foreach (string prop in ext.PrimaryKeyFields)
+                                foreach (string prop in ext.PrimaryKeyProperties)
                                 {
                                     foreach (sTableField fld in ext[prop])
                                     {

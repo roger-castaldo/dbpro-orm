@@ -208,10 +208,13 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
                     _fieldLength = 4;
                     return FieldType.UNSIGNED_INTEGER;
 				default:
-					if (propertyType.IsEnum)
-						return FieldType.ENUM;
-					else
-						return FieldType.STRING;
+                    if (propertyType.IsEnum)
+                    {
+                        _fieldLength = 4;
+                        return FieldType.ENUM;
+                    }
+                    else
+                        return FieldType.STRING;
 			}
 		}
 
