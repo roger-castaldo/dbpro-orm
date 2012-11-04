@@ -195,7 +195,7 @@ namespace Org.Reddragonit.Dbpro
 					if (isGet)
 					{
 						outVal = mi.Invoke(owner, mc.Args);
-						if ((new List<string>(_map.ForeignTableProperties).Contains(pi.Name))&&(outVal!=null)&&!pi.PropertyType.IsEnum)
+						/*if ((new List<string>(_map.ForeignTableProperties).Contains(pi.Name))&&(outVal!=null)&&!pi.PropertyType.IsEnum)
 						{
 							if (pi.PropertyType.IsArray)
 							{
@@ -227,7 +227,7 @@ namespace Org.Reddragonit.Dbpro
                                     conn.CloseConnection();
 								}
 							}
-						}
+						}*/
 					}else
 					{
                         sTable map = ConnectionPoolManager.GetConnection(owner.GetType()).Mapping[owner.GetType()];

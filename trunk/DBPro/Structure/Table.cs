@@ -7,6 +7,7 @@ using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.FieldType;
 using Org.Reddragonit.Dbpro.Connections.Parameters;
 using Org.Reddragonit.Dbpro.Connections.PoolComponents;
 using Org.Reddragonit.Dbpro.Structure.Attributes;
+using System.ComponentModel;
 
 namespace Org.Reddragonit.Dbpro.Structure
 {
@@ -207,7 +208,7 @@ namespace Org.Reddragonit.Dbpro.Structure
                         {
                             if (fld.ExternalField == f.Name)
                             {
-                                if (!conn.ContainsField(fld.Name)&&!conn.IsDBNull(conn.GetOrdinal(fld.Name))){
+                                if (conn.ContainsField(fld.Name)&&!conn.IsDBNull(conn.GetOrdinal(fld.Name))){
                                     table.SetField(f.ClassProperty, conn[fld.Name]);
                                     setValue = true;
                                 }
@@ -255,7 +256,9 @@ namespace Org.Reddragonit.Dbpro.Structure
 				{
 					if (!pi.PropertyType.IsArray)
 					{
-                        Table t = (Table)LazyProxy.Instance(pi.PropertyType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
+                        Table t = (Table)pi.PropertyType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
+                        t._loadStatus = LoadStatus.Partial;
+                        t = (Table)LazyProxy.Instance(t);
                         bool setValue = false;
                         t = SetExternalValues(map, prop, conn, out setValue, t);
 						if (!t.AllFieldsNull&&setValue)
@@ -417,17 +420,39 @@ namespace Org.Reddragonit.Dbpro.Structure
                 {
                     if (value.GetType().FullName != pi.PropertyType.FullName)
                     {
-                        try
+                        Type pt = pi.PropertyType;
+                                if (pt.IsGenericType && pt.GetGenericTypeDefinition().FullName.StartsWith("System.Nullable"))
+                                    pt = pt.GetGenericArguments()[0];
+                        if (pt.GetCustomAttributes(typeof(TypeConverterAttribute),false).Length > 0)
                         {
-                            Type pt = pi.PropertyType;
-                            if (pt.IsGenericType && pt.GetGenericTypeDefinition().FullName.StartsWith("System.Nullable"))
-                                pt = pt.GetGenericArguments()[0];
-                            object val = Convert.ChangeType(value, pt);
-                            value = val;
+                            if (TypeDescriptor.GetConverter(pt).CanConvertFrom(value.GetType()))
+                            {
+                                value = TypeDescriptor.GetConverter(pt).ConvertFrom(value);
+                            }
+                            else
+                            {
+                                try
+                                {
+                                    object val = Convert.ChangeType(value, pt);
+                                    value = val;
+                                }
+                                catch (Exception e)
+                                {
+                                    Logger.LogLine(e);
+                                }
+                            }
                         }
-                        catch (Exception e)
+                        else
                         {
-                            Logger.LogLine(e);
+                            try
+                            {
+                                object val = Convert.ChangeType(value, pt);
+                                value = val;
+                            }
+                            catch (Exception e)
+                            {
+                                Logger.LogLine(e);
+                            }
                         }
                     }
                 }
