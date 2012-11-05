@@ -237,80 +237,84 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
                 tmp.Substring(0, tmp.Length - 4) + ";"));
             return ret;
         }
-		
-		internal override string TranslateFieldType(Org.Reddragonit.Dbpro.Structure.Attributes.FieldType type, int fieldLength)
-		{
-			string ret=null;
-			switch(type)
-			{
-				case FieldType.BOOLEAN:
-					ret="BIT";
-					break;
-				case FieldType.BYTE:
-					if (fieldLength==1)
-						ret="TINYINT";
-					else if ((fieldLength==-1)||(fieldLength>6535))
-						ret="BLOB";
-					else
-						ret="VARCHAR("+fieldLength.ToString()+") CHARACTER SET BINARY";
-					break;
-				case FieldType.CHAR:
-					if ((fieldLength==-1)||(fieldLength>6535))
-						ret="TEXT";
-					else
-						ret="CHAR("+fieldLength.ToString()+")";
-					break;
-				case FieldType.DATE:
-					ret="DATE";
-					break;
-				case FieldType.DATETIME:
-					ret="DATETIME";
-					break;
-				case FieldType.TIME:
-					ret="TIME";
-					break;
-				case FieldType.DECIMAL:
-					ret="DECIMAL(18,9)";
-					break;
-				case FieldType.DOUBLE:
-					ret="DOUBLE";
-					break;
-				case FieldType.FLOAT:
-					ret="FLOAT";
-					break;
-				case FieldType.IMAGE:
-					ret="BLOB";
-					break;
-				case FieldType.INTEGER:
-				case FieldType.ENUM:
-					ret="INTEGER";
-					break;
+
+        internal static string _TranslateFieldType(Org.Reddragonit.Dbpro.Structure.Attributes.FieldType type, int fieldLength) {
+            string ret = null;
+            switch (type)
+            {
+                case FieldType.BOOLEAN:
+                    ret = "BIT";
+                    break;
+                case FieldType.BYTE:
+                    if (fieldLength == 1)
+                        ret = "TINYINT";
+                    else if ((fieldLength == -1) || (fieldLength > 6535))
+                        ret = "BLOB";
+                    else
+                        ret = "VARCHAR(" + fieldLength.ToString() + ") CHARACTER SET BINARY";
+                    break;
+                case FieldType.CHAR:
+                    if ((fieldLength == -1) || (fieldLength > 6535))
+                        ret = "TEXT";
+                    else
+                        ret = "CHAR(" + fieldLength.ToString() + ")";
+                    break;
+                case FieldType.DATE:
+                    ret = "DATE";
+                    break;
+                case FieldType.DATETIME:
+                    ret = "DATETIME";
+                    break;
+                case FieldType.TIME:
+                    ret = "TIME";
+                    break;
+                case FieldType.DECIMAL:
+                    ret = "DECIMAL(18,9)";
+                    break;
+                case FieldType.DOUBLE:
+                    ret = "DOUBLE";
+                    break;
+                case FieldType.FLOAT:
+                    ret = "FLOAT";
+                    break;
+                case FieldType.IMAGE:
+                    ret = "BLOB";
+                    break;
+                case FieldType.INTEGER:
+                case FieldType.ENUM:
+                    ret = "INTEGER";
+                    break;
                 case FieldType.UNSIGNED_INTEGER:
                     ret = "CHAR(4)";
                     break;
-				case FieldType.LONG:
-					ret="BIGINT";
-					break;
+                case FieldType.LONG:
+                    ret = "BIGINT";
+                    break;
                 case FieldType.UNSIGNED_LONG:
                     ret = "CHAR(8)";
                     break;
-				case FieldType.MONEY:
-					ret="DECIMAL(18,4)";
-					break;
-				case FieldType.SHORT:
-					ret = "SMALLINT";
-					break;
+                case FieldType.MONEY:
+                    ret = "DECIMAL(18,4)";
+                    break;
+                case FieldType.SHORT:
+                    ret = "SMALLINT";
+                    break;
                 case FieldType.UNSIGNED_SHORT:
                     ret = "CHAR(2)";
                     break;
-				case FieldType.STRING:
-					if ((fieldLength==-1)||(fieldLength>65535))
-						ret="TEXT";
-					else
-						ret="VARCHAR("+fieldLength.ToString()+")";
-					break;
-			}
-			return ret;
+                case FieldType.STRING:
+                    if ((fieldLength == -1) || (fieldLength > 65535))
+                        ret = "TEXT";
+                    else
+                        ret = "VARCHAR(" + fieldLength.ToString() + ")";
+                    break;
+            }
+            return ret;
+        }
+		
+		internal override string TranslateFieldType(Org.Reddragonit.Dbpro.Structure.Attributes.FieldType type, int fieldLength)
+		{
+            return _TranslateFieldType(type, fieldLength);
 		}
 
         internal override void DisableAutogens()
