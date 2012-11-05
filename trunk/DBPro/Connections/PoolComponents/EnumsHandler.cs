@@ -100,6 +100,8 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             conn.Close();
             if (_enumValuesMap.ContainsKey(t))
                 _enumValuesMap.Remove(t);
+            if (_enumReverseValuesMap.ContainsKey(t))
+                _enumReverseValuesMap.Remove(t);
             if (vals.Count == 0)
                 InsertEnumIntoTable(t, conn);
             else
@@ -113,6 +115,10 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                     }
                 }
                 _enumValuesMap.Add(t, vals);
+                Dictionary<int, string> revs = new Dictionary<int, string>();
+                foreach (string str in vals.Keys)
+                    revs.Add(vals[str], str);
+                _enumReverseValuesMap.Add(t, revs);
             }
         }
 

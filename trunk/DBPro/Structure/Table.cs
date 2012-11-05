@@ -252,7 +252,7 @@ namespace Org.Reddragonit.Dbpro.Structure
 			foreach (string prop in map.Properties)
 			{
                 PropertyInfo pi = this.GetType().GetProperty(prop, Utility._BINDING_FLAGS);
-				if (extFields.Contains(prop))
+				if (extFields.Contains(prop) && !pi.PropertyType.IsEnum)
 				{
 					if (!pi.PropertyType.IsArray)
 					{
