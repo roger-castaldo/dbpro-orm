@@ -331,7 +331,7 @@ AND rtns.ROUTINE_NAME = prc.`NAME`";
 
         internal override string SetViewDescription(string viewName, string description)
         {
-            return SetTableDescription(viewName, description);
+            throw new Exception("Method Not Implemented");
         }
 
         internal override string SetIndexDescription(string indexName, string description)
