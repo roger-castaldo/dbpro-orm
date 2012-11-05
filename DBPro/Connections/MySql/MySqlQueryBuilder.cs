@@ -8,6 +8,8 @@
  */
 using System;
 using System.Collections.Generic;
+using Org.Reddragonit.Dbpro.Connections.PoolComponents;
+using Org.Reddragonit.Dbpro.Structure.Attributes;
 
 namespace Org.Reddragonit.Dbpro.Connections.MySql
 {
@@ -295,12 +297,23 @@ AND rtns.ROUTINE_NAME = prc.`NAME`";
 
         internal override string SetTableDescription(string tableName, string description)
         {
-            return string.Format("UPDATE information_schema.TABLES SET TABLE_COMMENT = '{1}' WHERE TABLE_NAME = '{0}' AND TABLE_SCHEMA='" + ((MySqlConnectionPool)pool).DbName + "'", tableName, description.Replace("'", "''"));
+            return string.Format("ALTER TABLE {0} COMMENT '{1}'", tableName, description.Replace("'", "''"));
         }
 
         internal override string SetFieldDescription(string tableName, string fieldName, string description)
         {
-            return string.Format("UPDATE information_schema.COLUMNS SET COLUMN_COMMENT = '{1}' WHERE TABLE_NAME = '{0}' AND COLUMN_NAME = '{1}' AND COLUMN_SCHEMA='" + ((MySqlConnectionPool)pool).DbName + "'", new object[] { tableName, fieldName, description.Replace("'", "''") });
+            sTable tbl = pool.Mapping[pool.Mapping[tableName]];
+            List<string> pkeys = new List<string>(tbl.PrimaryKeyFields);
+            foreach (sTableField fld in tbl.Fields){
+                if (fld.Name == fieldName){
+                    ExtractedFieldMap efm = new ExtractedFieldMap(fieldName, MySqlConnection._TranslateFieldType(fld.Type, fld.Length), fld.Length, pkeys.Contains(fieldName), fld.Nullable);
+                    return string.Format(
+                            AlterFieldType(tableName,efm,efm)+" COMMENT '{0}'",
+                            description.Replace("'", "''")
+                    );
+                }
+            }
+            return null;
         }
 
         internal override string SetTriggerDescription(string triggerName, string description)
@@ -323,7 +336,31 @@ AND rtns.ROUTINE_NAME = prc.`NAME`";
 
         internal override string SetIndexDescription(string indexName, string description)
         {
-            return string.Format("UPDATE information_schema.statistics SET COMMENT = '{1}' WHERE INDEX_NAME = '{0}' AND INDEX_SCHEMA='" + ((MySqlConnectionPool)pool).DbName + "'", indexName, description.Replace("'", "''"));
+            string origName;
+            sTable tbl = pool.Translator.GetTableForIndex(indexName,out origName).Value;
+            string ret = DropTableIndex(tbl.Name, indexName);
+            Type type = pool.Mapping[tbl.Name];
+            foreach (TableIndex ti in type.GetCustomAttributes(typeof(TableIndex), false))
+            {
+                if (ti.Name == origName)
+                {
+                    List<string> tfields = new List<string>();
+                    foreach (string str in ti.Fields)
+                    {
+                        sTableField[] flds = tbl[str];
+                        if (flds.Length == 0)
+                            tfields.Add(str);
+                        else
+                        {
+                            foreach (sTableField f in flds)
+                                tfields.Add(f.Name);
+                        }
+                    }
+                    ret += CreateTableIndex(tbl.Name, tfields.ToArray(), indexName, ti.Unique, ti.Ascending) + " COMMENT '" + description.Replace("'", "''");
+                    break;
+                }
+            }
+            return ret;
         }
         #endregion
     }

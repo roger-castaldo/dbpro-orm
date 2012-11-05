@@ -717,5 +717,20 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             }
             return ret;
         }
+
+        internal sTable? GetTableForIndex(string indexName,out string origName)
+        {
+            origName = null;
+            foreach (string key in _nameTranslations.Keys)
+            {
+                if (key.StartsWith("IND:") && _nameTranslations[key] == indexName)
+                {
+                    string type = key.Split(':')[1];
+                    origName = type.Substring(type.LastIndexOf('.') + 1);
+                    return _pool.Mapping[Utility.LocateType(type.Substring(0, type.LastIndexOf(".")))];
+                }
+            }
+            return null;
+        }
     }
 }
