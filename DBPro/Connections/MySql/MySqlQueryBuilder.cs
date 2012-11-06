@@ -50,6 +50,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 					"       WHEN 'DOUBLE' THEN 8 " +
 					"       WHEN 'DECIMAL' THEN 8 " +
 					"       WHEN 'SMALLINT' THEN 2 " +
+                    "       WHEN 'DATETIME' THEN 8 "+
 					"     END) " +
 					" END) dataLength, " +
 					" (CASE WHEN COLUMN_KEY = 'PRI' THEN 'true' ELSE 'false' END) isPrimary, " +
@@ -247,7 +248,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
         {
             get
             {
-                return @"prc.param_list,
+                return @"SELECT prc.param_list,
 CONCAT(prc.returns,' ', 
 (CASE WHEN prc.is_deterministic = 'YES' THEN 'DETERMINISTIC' ELSE 'NOT DETERMINISTIC' END)
 ,' ',prc.sql_data_access), 
@@ -288,7 +289,7 @@ AND rtns.ROUTINE_NAME = prc.`NAME`";
         {
             return string.Format(@"SELECT TABLE_COMMENT,TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA='{0}'
                                     UNION
-                                    SELECT COLUMN_COMMENT,COLUMN_NAME FROM information_schema.COLUMNS WHERE COLUMN_SCHEMA='{0}'
+                                    SELECT COLUMN_COMMENT,COLUMN_NAME FROM information_schema.COLUMNS WHERE COLUMNS_SCHEMA='{0}'
                                     UNION 
                                     SELECT SUBSTRING(b.body, b.start, (b.eind - b.start)),b.TRIGGER_NAME FROM (SELECT a.body,locate('/**@DESCRIPTION:',a.body) as start,locate('**/',a.body,locate('/**@DESCRIPTION:',a.body)) as eind,a.TRIGGER_NAME FROM (SELECT t.ACTION_STATEMENT as body,t.TRIGGER_NAME FROM information_schema.triggers t WHERE t.TRIGGER_SCHEMA='{0}' AND t.ACTION_STATEMENT LIKE '%/**@DESCRIPTION:%') a ) b 
                                     UNION
@@ -308,7 +309,7 @@ AND rtns.ROUTINE_NAME = prc.`NAME`";
                 if (fld.Name == fieldName){
                     ExtractedFieldMap efm = new ExtractedFieldMap(fieldName, MySqlConnection._TranslateFieldType(fld.Type, fld.Length), fld.Length, pkeys.Contains(fieldName), fld.Nullable);
                     return string.Format(
-                            AlterFieldType(tableName,efm,efm)+" COMMENT '{0}'",
+                        AlterFieldType(tableName,efm,efm)+(tbl.AutoGenField==fld.Name && pkeys.Count==1 ? " AUTO_INCREMENT ":"")+" COMMENT '{0}'",
                             description.Replace("'", "''")
                     );
                 }
@@ -321,7 +322,7 @@ AND rtns.ROUTINE_NAME = prc.`NAME`";
             return string.Format(@"SELECT 
 					CONCAT('ALTER TRIGGER ',TRIGGER_NAME,' ',CONCAT(ACTION_TIMING,' ',EVENT_MANIPULATION,' ON ',EVENT_OBJECT_TABLE),
                     ' FOR EACH ROW /**@DESCRIPTION:{1}**/ ',(CASE WHEN ACTION_STATEMENT LIKE '%/**@DESCRIPTION:%' 
-                    THEN SUBSTRING(ACTION_STATEMENT,locate('**/',ACTION_STATEMENT,locate('/**@DESCRIPTION:',a.body))+3)
+                    THEN SUBSTRING(ACTION_STATEMENT,locate('**/',ACTION_STATEMENT,locate('/**@DESCRIPTION:',ACTION_STATEMENT))+3)
                     ELSE ACTION_STATEMENT END))
 					from information_schema.TRIGGERS 
 					WHERE TRIGGER_SCHEMA='{2}' 
