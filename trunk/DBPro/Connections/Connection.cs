@@ -627,28 +627,24 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
 			table._isSaved=true;
 			table.LoadStatus= LoadStatus.Complete;
-            List<string> fProps = new List<string>(map.ForeignTableProperties);
-            foreach (string prop in map.Properties)
+            foreach (string prop in map.ArrayProperties)
             {
                 PropertyInfo pi = table.GetType().GetProperty(prop, Utility._BINDING_FLAGS);
-                if (pi.PropertyType.IsArray)
+                if (pool.Mapping.IsMappableType(pi.PropertyType.GetElementType()))
                 {
-                    if (fProps.Contains(prop))
+                    Dictionary<string, List<List<IDbDataParameter>>> queries = queryBuilder.UpdateMapArray(table, prop, ignoreAutogen);
+                    if (queries != null)
                     {
-                        Dictionary<string, List<List<IDbDataParameter>>> queries = queryBuilder.UpdateMapArray(table, prop, ignoreAutogen);
-                        if (queries != null)
+                        foreach (string str in queries.Keys)
                         {
-                            foreach (string str in queries.Keys)
-                            {
-                                foreach (List<IDbDataParameter> p in queries[str])
-                                    ExecuteNonQuery(str, p);
-                            }
+                            foreach (List<IDbDataParameter> p in queries[str])
+                                ExecuteNonQuery(str, p);
                         }
                     }
-                    else
-                    {
-                        InsertArrayValue(table, map, (Array)table.GetField(prop), prop, ignoreAutogen);
-                    }
+                }
+                else
+                {
+                    InsertArrayValue(table, map, (Array)table.GetField(prop), prop, ignoreAutogen);
                 }
             }
 			return table;

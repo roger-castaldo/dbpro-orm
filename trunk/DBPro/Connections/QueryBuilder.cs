@@ -862,7 +862,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 				if (values!=null)
 				{
                     sTable iTable = _pool.Mapping[table.GetType(), property];
-					string delString = "DELETE FROM " + iTable + " WHERE ";
+					string delString = "DELETE FROM " + iTable.Name + " WHERE ";
                     string insertString = "INSERT INTO " + iTable.Name + "(";
                     string valueString = "VALUES(";
 					List<IDbDataParameter> pars = new List<IDbDataParameter>();
@@ -873,13 +873,16 @@ namespace Org.Reddragonit.Dbpro.Connections
                         {
                             foreach (sTableField fld in iTable.Fields)
                             {
-                                if (Utility.StringsEqual(fld.ExternalField, f.Name))
+                                if (Utility.StringsEqual(fld.ClassProperty, "PARENT"))
                                 {
-                                    delString += fld.Name + " = " + CreateParameterName(fld.Name) + " AND ";
-                                    pars.Add(conn.CreateParameter(conn.CreateParameterName(fld.Name), LocateFieldValue(table, f, _pool)));
-                                    insertString += f.Name + ",";
-                                    valueString += CreateParameterName(f.Name) + ",";
-                                    break;
+                                    if (Utility.StringsEqual(fld.ExternalField, f.Name))
+                                    {
+                                        delString += fld.Name + " = " + CreateParameterName(fld.Name) + " AND ";
+                                        pars.Add(conn.CreateParameter(conn.CreateParameterName(fld.Name), LocateFieldValue(table, f, _pool)));
+                                        insertString += fld.Name + ",";
+                                        valueString += CreateParameterName(fld.Name) + ",";
+                                        break;
+                                    }
                                 }
                             }
                         }
@@ -890,15 +893,18 @@ namespace Org.Reddragonit.Dbpro.Connections
                     {
                         foreach (sTableField fld in iTable.Fields)
                         {
-                            if (Utility.StringsEqual(fld.ExternalField, pkey))
+                            if (Utility.StringsEqual(fld.ClassProperty,"CHILD"))
                             {
-                                insertString += fld.Name + ",";
-                                valueString += CreateParameterName(fld.Name) + ",";
-                                break;
+                                if (Utility.StringsEqual(fld.ExternalField, pkey))
+                                {
+                                    insertString += fld.Name + ",";
+                                    valueString += CreateParameterName(fld.Name) + ",";
+                                    break;
+                                }
                             }
                         }
                     }
-                    insertString = insertString.Substring(0, delString.Length - 1) + (ignoreautogen ? "," + pool.Translator.GetIntermediateIndexFieldName(table.GetType(),table.GetType().GetProperty(property,Utility._BINDING_FLAGS),conn) : "") + ") " + valueString.Substring(0, valueString.Length - 1) + (ignoreautogen ? "," + CreateParameterName("index") : "") + ")";
+                    insertString = insertString.Substring(0, insertString.Length - 1) + (ignoreautogen ? "," + pool.Translator.GetIntermediateIndexFieldName(table.GetType(),table.GetType().GetProperty(property,Utility._BINDING_FLAGS),conn) : "") + ") " + valueString.Substring(0, valueString.Length - 1) + (ignoreautogen ? "," + CreateParameterName("index") : "") + ")";
                     ret.Add(insertString, new List<List<IDbDataParameter>>());
                     int index = 0;
                     pkeys.Clear();
@@ -910,22 +916,25 @@ namespace Org.Reddragonit.Dbpro.Connections
                             if (pkeys.Contains(fld.Name))
                             {
                                 foreach (sTableField f in iTable.Fields){
-                                    if (Utility.StringsEqual(f.ExternalField, fld.Name))
+                                    if (Utility.StringsEqual(f.ClassProperty, "CHILD"))
                                     {
-                                        for (int x = 0; x < pars.Count; x++)
+                                        if (Utility.StringsEqual(f.ExternalField, fld.Name))
                                         {
-                                            if (pars[x].ParameterName == CreateParameterName(f.Name))
+                                            for (int x = 0; x < pars.Count; x++)
                                             {
-                                                pars.RemoveAt(x);
-                                                break;
+                                                if (pars[x].ParameterName == CreateParameterName(f.Name))
+                                                {
+                                                    pars.RemoveAt(x);
+                                                    break;
+                                                }
                                             }
+                                            object val = LocateFieldValue(t, fld, pool);
+                                            if (val == null)
+                                                pars.Add(conn.CreateParameter(CreateParameterName(f.Name), null, f.Type, f.Length));
+                                            else
+                                                pars.Add(conn.CreateParameter(CreateParameterName(f.Name), val));
+                                            break;
                                         }
-                                        object val = LocateFieldValue(t, fld, pool);
-                                        if (val == null)
-                                            pars.Add(conn.CreateParameter(CreateParameterName(f.Name), null, f.Type, f.Length));
-                                        else
-                                            pars.Add(conn.CreateParameter(CreateParameterName(f.Name), val));
-                                        break;
                                     }
                                 }
                             }
