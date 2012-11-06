@@ -875,7 +875,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 }
                 else
                 {
-                    pi = t.GetProperty(fieldName.Substring(0, fieldName.IndexOf(".")), Utility._BINDING_FLAGS);
+                    pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS);
                     t = (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType))
                         ? (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType) : t);
                 }
@@ -1293,6 +1293,15 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                             innerJoin = " LEFT JOIN ";
                         string tbl = _conn.queryBuilder.SelectAll((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType), null);
                         string fieldString = tbl.Substring(tbl.IndexOf("SELECT") + "SELECT".Length);
+                        List<string> fields = new List<string>();
+                        fieldString = fieldString.Substring(0, fieldString.IndexOf("FROM"));
+                        foreach (string str in fieldString.Split(','))
+                        {
+                            if (str.Length > 0)
+                                fields.Add(str.Substring(str.LastIndexOf(".") + 1));
+                        }
+                        if (!fieldLists.ContainsKey(origAlias + "." + origField))
+                            fieldLists.Add(origAlias + "." + origField.Substring(0, origField.Length - field.Length) + "." + field.Substring(0, field.IndexOf(".")), fields);
                         if (pi.PropertyType.IsArray)
                         {
                             sTable iMap = _conn.Pool.Mapping[cur, pi.Name];
@@ -1350,6 +1359,26 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             else
             {
                 pi = cur.GetProperty(field, Utility._BINDING_FLAGS);
+                if (pi == null)
+                {
+                    Type pType = cur.BaseType;
+                    while (_conn.Pool.Mapping.IsMappableType(pType))
+                    {
+                        _conn.Pool.Updater.InitType(pType, _conn);
+                        sTable parentMap = _conn.Pool.Mapping[pType];
+                        string iJoin = " " + (parentIsLeftJoin ? "LEFT JOIN" : "INNER JOIN") + " " + parentMap.Name + " " + alias + "_prnt ON ";
+                        foreach (string key in parentMap.PrimaryKeyFields)
+                            iJoin += alias + "." + key + " = " + alias + "_prnt." + key + " AND ";
+                        iJoin = iJoin.Substring(0, iJoin.Length - 4);
+                        if (!joins.Contains(iJoin))
+                            joins.Add(iJoin);
+                        alias += "_prnt";
+                        pi = pType.GetProperty(field, Utility._BINDING_FLAGS);
+                        if (pi != null)
+                            break;
+                        cur = pType;
+                    }
+                }
                 foreach (object obj in pi.GetCustomAttributes(false))
                 {
                     if (obj is INullable)
@@ -1367,6 +1396,15 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         innerJoin = " LEFT JOIN ";
                     string tbl = _conn.queryBuilder.SelectAll((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType), null);
                     string fieldString = tbl.Substring(tbl.IndexOf("SELECT") + "SELECT".Length);
+                    List<string> fields = new List<string>();
+                    fieldString = fieldString.Substring(0, fieldString.IndexOf("FROM"));
+                    foreach (string str in fieldString.Split(','))
+                    {
+                        if (str.Length > 0)
+                            fields.Add(str.Substring(str.LastIndexOf(".") + 1));
+                    }
+                    if (!fieldLists.ContainsKey(origAlias + "." + origField))
+                        fieldLists.Add(origAlias + "." + origField, fields);
                     if (pi.PropertyType.IsArray)
                     {
                         sTable iMap = _conn.Pool.Mapping[cur, pi.Name];
@@ -1715,6 +1753,11 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 					else
 					{
                         pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS);
+                        while (pi == null)
+                        {
+                            t = t.BaseType;
+                            pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS);
+                        }
                         if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)))
                         {
                             ret = "";
