@@ -707,87 +707,92 @@ namespace Org.Reddragonit.Dbpro.Connections
             {
                 sTable map = pool.Mapping[type];
                 string query = "";
-                foreach (string prop in map.Properties)
+                foreach (string prop in map.ArrayProperties)
                 {
                     PropertyInfo pi = type.GetProperty(prop, Utility._BINDING_FLAGS);
-                    if (pi.PropertyType.IsArray)
+                    if (pool.Mapping.IsMappableType(pi.PropertyType.GetElementType()))
                     {
-                        if (pool.Mapping.IsMappableType(pi.PropertyType.GetElementType()))
+                        foreach (Table t in ret)
                         {
-                            foreach (Table t in ret)
-                            {
-                                List<IDbDataParameter> pars = new List<IDbDataParameter>();
-                                sTable external = pool.Mapping[pi.PropertyType.GetElementType()];
-                                sTable arMap = pool.Mapping[type, pi.Name];
-                                string fields = "";
-                                string conditions = "";
-                                foreach (sTableField fld in arMap["PARENT"])
-                                {
-                                    conditions += fld.Name+" = "+queryBuilder.CreateParameterName(fld.Name)+" AND ";
-                                    pars.Add(CreateParameter(queryBuilder.CreateParameterName(fld.Name),QueryBuilder.LocateFieldValue(t,fld,pool)));
-                                }
-                                foreach (sTableField fld in arMap["CHILD"]){
-                                    fields += fld.Name+" AS "+fld.ExternalField+", ";
-                                }
-                                fields = fields.Substring(0, fields.Length - 2);
-                                conditions = conditions.Substring(0, conditions.Length - 4);
-                                query = String.Format(queryBuilder.OrderBy, string.Format(queryBuilder.SelectWithConditions, fields, arMap.Name, conditions), Pool.Translator.GetIntermediateIndexFieldName(type,pi,this));
-                                ArrayList values = new ArrayList();
-                                ExecuteQuery(query, pars);
-                                while (Read())
-                                {
-                                    Table ta = (Table)LazyProxy.Instance(pi.PropertyType.GetElementType().GetConstructor(System.Type.EmptyTypes).Invoke(new object[0]));
-                                    ta.SetValues(this);
-                                    ta.LoadStatus = LoadStatus.Partial;
-                                    values.Add(ta);
-                                }
-                                Close();
-                                Array obj;
-                                obj = Array.CreateInstance(pi.PropertyType.GetElementType(), values.Count);
-                                for (int x = 0; x < values.Count; x++)
-                                    ((Array)obj).SetValue(values[x], x);
-                                t.SetField(pi.Name, obj);
-                            }
-                        }
-                        else
-                        {
-                            sTable arMap = Pool.Mapping[type, pi.Name];
+                            List<IDbDataParameter> pars = new List<IDbDataParameter>();
+                            sTable external = pool.Mapping[pi.PropertyType.GetElementType()];
+                            sTable arMap = pool.Mapping[type, pi.Name];
+                            string fields = "";
                             string conditions = "";
-                            foreach (sTableField fld in arMap.Fields)
+                            foreach (sTableField fld in arMap["PARENT"])
                             {
+                                conditions += fld.Name + " = " + queryBuilder.CreateParameterName(fld.Name) + " AND ";
                                 foreach (sTableField f in map.Fields)
                                 {
-                                    if (Utility.StringsEqual(fld.ExternalField, f.Name))
+                                    if (f.Name == fld.ExternalField)
                                     {
-                                        conditions += fld.Name + " = " + queryBuilder.CreateParameterName(f.Name)+" AND ";
+                                        pars.Add(CreateParameter(queryBuilder.CreateParameterName(fld.Name), QueryBuilder.LocateFieldValue(t, f, pool)));
                                         break;
                                     }
                                 }
                             }
-                            query = "SELECT " + Pool.Translator.GetIntermediateValueFieldName(type,pi,this) + " FROM " + arMap.Name + " WHERE " + conditions.Substring(0, conditions.Length - 4) + " ORDER BY " + Pool.Translator.GetIntermediateIndexFieldName(type,pi,this) + " ASC";
-                            foreach (Table t in ret)
+                            foreach (sTableField fld in arMap["CHILD"])
                             {
-                                List<IDbDataParameter> pars = new List<IDbDataParameter>();
-                                foreach (string str in map.PrimaryKeyProperties)
-                                {
-                                    foreach (sTableField fld in map[str])
-                                        pars.Add(CreateParameter(queryBuilder.CreateParameterName(fld.Name), QueryBuilder.LocateFieldValue(t,fld,pool)));
-                                }
-                                ArrayList values = new ArrayList();
-                                ExecuteQuery(query, pars);
-                                while (Read())
-                                {
-                                    if (pi.PropertyType.GetElementType().IsEnum)
-                                        values.Add(this.pool.GetEnumValue(pi.PropertyType.GetElementType(), this.GetInt32(0)));
-                                    else
-                                        values.Add(this[0]);
-                                }
-                                Close();
-                                Array obj = Array.CreateInstance(pi.PropertyType.GetElementType(), values.Count);
-                                for (int x = 0; x < values.Count; x++)
-                                    ((Array)obj).SetValue(values[x], x);
-                                t.SetField(prop, obj);
+                                fields += fld.Name + " AS " + fld.ExternalField + ", ";
                             }
+                            fields = fields.Substring(0, fields.Length - 2);
+                            conditions = conditions.Substring(0, conditions.Length - 4);
+                            query = String.Format(queryBuilder.OrderBy, string.Format(queryBuilder.SelectWithConditions, fields, arMap.Name, conditions), Pool.Translator.GetIntermediateIndexFieldName(type, pi, this));
+                            ArrayList values = new ArrayList();
+                            ExecuteQuery(query, pars);
+                            while (Read())
+                            {
+                                Table ta = (Table)LazyProxy.Instance(pi.PropertyType.GetElementType().GetConstructor(System.Type.EmptyTypes).Invoke(new object[0]));
+                                ta.SetValues(this);
+                                ta.LoadStatus = LoadStatus.Partial;
+                                values.Add(ta);
+                            }
+                            Close();
+                            Array obj;
+                            obj = Array.CreateInstance(pi.PropertyType.GetElementType(), values.Count);
+                            for (int x = 0; x < values.Count; x++)
+                                ((Array)obj).SetValue(values[x], x);
+                            t.SetField(pi.Name, obj);
+                        }
+                    }
+                    else
+                    {
+                        sTable arMap = Pool.Mapping[type, pi.Name];
+                        string conditions = "";
+                        foreach (sTableField fld in arMap.Fields)
+                        {
+                            foreach (sTableField f in map.Fields)
+                            {
+                                if (Utility.StringsEqual(fld.ExternalField, f.Name))
+                                {
+                                    conditions += fld.Name + " = " + queryBuilder.CreateParameterName(f.Name) + " AND ";
+                                    break;
+                                }
+                            }
+                        }
+                        query = "SELECT " + Pool.Translator.GetIntermediateValueFieldName(type, pi, this) + " FROM " + arMap.Name + " WHERE " + conditions.Substring(0, conditions.Length - 4) + " ORDER BY " + Pool.Translator.GetIntermediateIndexFieldName(type, pi, this) + " ASC";
+                        foreach (Table t in ret)
+                        {
+                            List<IDbDataParameter> pars = new List<IDbDataParameter>();
+                            foreach (string str in map.PrimaryKeyProperties)
+                            {
+                                foreach (sTableField fld in map[str])
+                                    pars.Add(CreateParameter(queryBuilder.CreateParameterName(fld.Name), QueryBuilder.LocateFieldValue(t, fld, pool)));
+                            }
+                            ArrayList values = new ArrayList();
+                            ExecuteQuery(query, pars);
+                            while (Read())
+                            {
+                                if (pi.PropertyType.GetElementType().IsEnum)
+                                    values.Add(this.pool.GetEnumValue(pi.PropertyType.GetElementType(), this.GetInt32(0)));
+                                else
+                                    values.Add(this[0]);
+                            }
+                            Close();
+                            Array obj = Array.CreateInstance(pi.PropertyType.GetElementType(), values.Count);
+                            for (int x = 0; x < values.Count; x++)
+                                ((Array)obj).SetValue(values[x], x);
+                            t.SetField(prop, obj);
                         }
                     }
                 }
