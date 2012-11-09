@@ -69,7 +69,11 @@ namespace Org.Reddragonit.Dbpro.Structure
             if (props.Count == 0)
                 props.AddRange(map.PrimaryKeyProperties);
             foreach (string prop in props)
-                _initialPrimaryKeys.Add(prop, this.GetType().GetProperty(prop, Utility._BINDING_FLAGS).GetValue(this, new object[0]));
+            {
+                object obj = GetField(prop);
+                if (obj!=null)
+                    _initialPrimaryKeys.Add(prop,obj);
+            }
         }
 
         //used to load the original data to be used for update triggers
