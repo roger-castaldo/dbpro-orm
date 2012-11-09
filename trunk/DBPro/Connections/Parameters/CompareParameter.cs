@@ -78,8 +78,14 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                     {
                         if (fld.ExternalField != null)
                         {
-                            alias = fieldName+(alias == null ? "" : "_" + alias);
+                            if (new List<string>(map.PrimaryKeyProperties).Contains(fieldName))
+                                alias = "";
+                            else
+                                alias = fieldName+(alias == null ? "" : "_" + alias);
                             ret = fieldName;
+                            newType = tableType.GetProperty(fieldName, Utility._BINDING_FLAGS_WITH_INHERITANCE).PropertyType;
+                            if (newType.IsArray)
+                                newType = newType.GetElementType();
                             isExternal = true;
                             ClassBased = true;
                             break;
@@ -141,7 +147,9 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                         sTableField[] flds = relatedMap[prop];
                         if (flds[0].ExternalField != null)
                         {
-                            Org.Reddragonit.Dbpro.Structure.Table tbl = (Org.Reddragonit.Dbpro.Structure.Table)QueryBuilder.LocateFieldValue((Org.Reddragonit.Dbpro.Structure.Table)FieldValue, flds[0], conn.Pool);
+                            Org.Reddragonit.Dbpro.Structure.Table tbl = null;
+                            if (FieldValue!=null)
+                                tbl = (Org.Reddragonit.Dbpro.Structure.Table)QueryBuilder.LocateFieldValue((Org.Reddragonit.Dbpro.Structure.Table)FieldValue, flds[0], conn.Pool);
                             if (tbl != null)
                             {
                                 sTable relMap = conn.Pool.Mapping[tbl.GetType()];
@@ -151,13 +159,22 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                                     {
                                         if (fld.Name == f.ExternalField)
                                         {
-                                            ret += " AND " + (this.CaseInsensitive ? "UPPER(" : "") + alias +  flds[0].Name + (this.CaseInsensitive ? ")" : "") + " " + ComparatorString + " " + builder.CreateParameterName("parameter_" + parCount.ToString());
+                                            ret += " AND " + (this.CaseInsensitive ? "UPPER(" : "") + alias + flds[0].Name + (this.CaseInsensitive ? ")" : "") + " " + ComparatorString + " " + builder.CreateParameterName("parameter_" + parCount.ToString());
                                             object val = QueryBuilder.LocateFieldValue(tbl, fld, conn.Pool);
                                             queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), val, fld.Type, fld.Length));
                                             parCount++;
                                             break;
                                         }
                                     }
+                                }
+                            }
+                            else
+                            {
+                                foreach (sTableField fld in flds)
+                                {
+                                    ret += " AND " + (this.CaseInsensitive ? "UPPER(" : "") + alias + flds[0].Name + (this.CaseInsensitive ? ")" : "") + " " + ComparatorString + " " + builder.CreateParameterName("parameter_" + parCount.ToString());
+                                    queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), null, fld.Type, fld.Length));
+                                    parCount++;
                                 }
                             }
                         }
