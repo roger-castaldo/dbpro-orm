@@ -1148,12 +1148,16 @@ namespace Org.Reddragonit.Dbpro.Connections
             while (_pool.Mapping.IsMappableType(btype))
             {
                 sTable t = _pool.Mapping[btype];
-                foreach (string prop in tbl.Properties)
+                List<string> pProps = new List<string>(t.PrimaryKeyProperties);
+                foreach (string prop in t.Properties)
                 {
-                    foreach (sTableField fld in t[prop])
+                    if (!pProps.Contains(prop))
                     {
-                        if (!fields.Contains("table_" + count.ToString() + "." + fld.Name + ","))
-                            fields += "table_" + origCount.ToString() + "." + fld.Name + ",";
+                        foreach (sTableField fld in t[prop])
+                        {
+                            if (!fields.Contains("table_" + count.ToString() + "." + fld.Name + ","))
+                                fields += "table_" + origCount.ToString() + "." + fld.Name + ",";
+                        }
                     }
                 }
                 btype = btype.BaseType;
