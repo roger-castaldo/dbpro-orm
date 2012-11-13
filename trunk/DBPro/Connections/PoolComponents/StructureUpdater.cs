@@ -424,6 +424,14 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                                 break;
                             }
                         }
+                        if (ptm.TableName == null)
+                        {
+                            sTable ptbl =  _pool.Mapping[_pool.Mapping[AutoDeleteParentTables[etm.TableName]]];
+                            ptm = new ExtractedTableMap(ptbl.Name);
+                            List<string> pkeys = new List<string>(ptbl.PrimaryKeyFields);
+                            foreach (sTableField f in ptbl.Fields)
+                                ptm.Fields.Add(new ExtractedFieldMap(f.Name, conn.TranslateFieldType(f.Type, f.Length), f.Length, pkeys.Contains(f.Name), f.Nullable));
+                        }
                         triggers.AddRange(conn.GetDeleteParentTrigger(etm, ptm));
                     }
                 }
