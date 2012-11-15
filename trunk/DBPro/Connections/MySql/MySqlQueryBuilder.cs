@@ -287,13 +287,13 @@ AND rtns.ROUTINE_NAME = prc.`NAME`";
         #region Description
         internal override string GetAllObjectDescriptions()
         {
-            return string.Format(@"SELECT TABLE_COMMENT,TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA='{0} AND TABLE_COMMENT IS NOT NULL'
+            return string.Format(@"SELECT * FROM ( SELECT TABLE_COMMENT,TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA='{0} '
                                     UNION
-                                    SELECT COLUMN_COMMENT,COLUMN_NAME FROM information_schema.COLUMNS WHERE COLUMNS_SCHEMA='{0} AND COLUMN_COMMENT IS NOT NULL'
+                                    SELECT COLUMN_COMMENT,COLUMN_NAME FROM information_schema.COLUMNS WHERE COLUMNS_SCHEMA='{0}'
                                     UNION 
                                     SELECT SUBSTRING(b.body, b.start, (b.eind - b.start)),b.TRIGGER_NAME FROM (SELECT a.body,locate('/**@DESCRIPTION:',a.body) as start,locate('**/',a.body,locate('/**@DESCRIPTION:',a.body)) as eind,a.TRIGGER_NAME FROM (SELECT t.ACTION_STATEMENT as body,t.TRIGGER_NAME FROM information_schema.triggers t WHERE t.TRIGGER_SCHEMA='{0}' AND t.ACTION_STATEMENT LIKE '%/**@DESCRIPTION:%') a ) b 
                                     UNION
-                                    SELECT COMMENT,INDEX_NAME FROM information_schema.statistics WHERE INDEX_SCHEMA='{0}' AND COMMENT IS NOT NULL", ((MySqlConnectionPool)pool).DbName);
+                                    SELECT COMMENT,INDEX_NAME FROM information_schema.statistics WHERE INDEX_SCHEMA='{0}') t WHERE t.TABLE_COMMENT IS NOT NULL AND t.TABLE_COMMENT<>''", ((MySqlConnectionPool)pool).DbName);
         }
 
         internal override string SetTableDescription(string tableName, string description)
