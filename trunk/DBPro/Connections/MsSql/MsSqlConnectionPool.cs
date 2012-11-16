@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Reflection;
+using System.Xml;
 
 namespace Org.Reddragonit.Dbpro.Connections.MsSql
 {
@@ -209,6 +210,22 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
         {
             if (Utility.LocateType(MsSqlConnection._CONNECTION_TYPE_NAME) == null)
                 Assembly.Load(MsSqlConnection._ASSEMBLY_NAME);
+        }
+
+        protected override bool _IsCoreStoredProcedure(StoredProcedure storedProcedure)
+        {
+            bool ret = false;
+            XmlDocument doc = new XmlDocument();
+            doc.LoadXml(new StreamReader(Assembly.GetAssembly(typeof(MsSqlConnection)).GetManifestResourceStream("Org.Reddragonit.Dbpro.Connections.MsSql.StringIDProcedures.xml")).ReadToEnd());
+            foreach (XmlElement proc in doc.GetElementsByTagName("Procedure"))
+            {
+                if (proc.ChildNodes[0].InnerText == storedProcedure.ProcedureName)
+                {
+                    ret = true;
+                    break;
+                }
+            }
+            return ret;
         }
 	}
 }

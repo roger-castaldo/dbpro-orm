@@ -1228,8 +1228,8 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         if (str.Length > 0)
                             fields.Add(str.Substring(str.LastIndexOf(".") + 1));
                     }
-                    if (!fieldLists.ContainsKey(origAlias + "." + origField))
-                        fieldLists.Add(origAlias + "." + origField.Substring(0,origField.Length - field.Length)+"."+field.Substring(0,field.IndexOf(".")), fields);
+                    if (!fieldLists.ContainsKey(origAlias + "." + pi.Name))
+                        fieldLists.Add(origAlias + "." + pi.Name, fields);
 					if (pi.PropertyType.IsArray)
 					{
                         sTable iMap = _conn.Pool.Mapping[cur, pi.Name];
