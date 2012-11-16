@@ -11,6 +11,7 @@ using System;
 using Org.Reddragonit.Dbpro.Connections;
 using System.IO;
 using System.Reflection;
+using System.Xml;
 
 namespace Org.Reddragonit.Dbpro.Connections.Firebird
 {
@@ -188,6 +189,22 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
         {
             if (Utility.LocateType(FBConnection._PARAMETER_CLASS_NAME) == null)
                 Assembly.Load(FBConnection._ASSEMBLY_NAME);
+        }
+
+        protected override bool _IsCoreStoredProcedure(StoredProcedure storedProcedure)
+        {
+            bool ret = false;
+            XmlDocument doc = new XmlDocument();
+            doc.LoadXml(new StreamReader(Assembly.GetAssembly(typeof(FBConnection)).GetManifestResourceStream("Org.Reddragonit.Dbpro.Connections.Firebird.StringIDProcedures.xml")).ReadToEnd());
+            foreach (XmlElement proc in doc.GetElementsByTagName("Procedure"))
+            {
+                if (proc.ChildNodes[0].InnerText == storedProcedure.ProcedureName)
+                {
+                    ret = true;
+                    break;
+                }
+            }
+            return ret;
         }
 	}
 }

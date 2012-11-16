@@ -1132,12 +1132,13 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                     if (Utility.StringsEqualIgnoreWhitespace(proc.ProcedureName, _procedures[x].ProcedureName))
                     {
                         create = false;
-                        if (!Utility.StringsEqual(proc.DeclareLines, _procedures[x].DeclareLines)
-                            || !Utility.StringsEqual(proc.ReturnLine, _procedures[x].ReturnLine)
-                            || !Utility.StringsEqual(proc.ParameterLines, _procedures[x].ParameterLines)
-                            || !Utility.StringsEqual(proc.Code, _procedures[x].Code))
+                        if (!Utility.StringsEqualIgnoreWhitespace(proc.DeclareLines, _procedures[x].DeclareLines)
+                            || !Utility.StringsEqualIgnoreWhitespace(proc.ReturnLine, _procedures[x].ReturnLine)
+                            || !Utility.StringsEqualIgnoreWhitespace(proc.ParameterLines, _procedures[x].ParameterLines)
+                            || !Utility.StringsEqualIgnoreWhitespace(proc.Code, _procedures[x].Code))
                             updateProcedures.Add(proc);
-                        _procedures.RemoveAt(x);
+                        if (!_pool.IsCoreStoredProcedure(_procedures[x]))
+                            _procedures.RemoveAt(x);
                     }
                 }
                 if (create)

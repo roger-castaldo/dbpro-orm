@@ -77,7 +77,10 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                     }
                     if (obj is IField)
                     {
-                        if (pi.PropertyType.IsEnum)
+                        bool isEnum = pi.PropertyType.IsEnum;
+                        if (!isEnum && pi.PropertyType.IsArray)
+                            isEnum = pi.PropertyType.GetElementType().IsEnum;
+                        if (isEnum)
                         {
                             if (_pool.Enums[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)] == null)
                             {
@@ -207,11 +210,14 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                                 break;
                             }
                         }
-                        if (pi.PropertyType.IsEnum)
+                        if (pi.PropertyType.GetElementType().IsEnum)
                         {
                             afields.Add(new sTableField(_pool.Translator.GetIntermediateValueFieldName(tbl,pi,conn), "CHILD", _classMaps[pi.PropertyType.GetElementType()].Fields[0].Name, fld.Type, fld.Length, fld.Nullable));
                             intermediates.Add(pi.Name, new sTable(itblName, afields.ToArray(),null,
-                                new sTableRelation[] { new sTableRelation(_pool.Enums[pi.PropertyType.GetElementType()], null, ForeignField.UpdateDeleteAction.CASCADE, ForeignField.UpdateDeleteAction.CASCADE, fld.Nullable) }, apKeys.ToArray(), afields[afields.Count - 2].Name));
+                                new sTableRelation[] { 
+                                    new sTableRelation(tbl.Name,"PARENT",ForeignField.UpdateDeleteAction.CASCADE,ForeignField.UpdateDeleteAction.CASCADE,false),
+                                    new sTableRelation(_pool.Enums[pi.PropertyType.GetElementType()], "CHILD", ForeignField.UpdateDeleteAction.CASCADE, ForeignField.UpdateDeleteAction.CASCADE, fld.Nullable) 
+                                }, apKeys.ToArray(), afields[afields.Count - 2].Name));
                         }
                         else
                         {

@@ -57,6 +57,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		protected abstract Connection CreateConnection(bool exclusiveLock);
         protected abstract void _InitClass();
+        protected abstract bool _IsCoreStoredProcedure(StoredProcedure storedProcedure);
 
         private Connection CreateConnection()
         {
@@ -658,6 +659,11 @@ namespace Org.Reddragonit.Dbpro.Connections
                 conn.ExecuteNonQuery(str);
                 System.Threading.Thread.Sleep(50);
             }
+        }
+
+        internal bool IsCoreStoredProcedure(StoredProcedure storedProcedure)
+        {
+            return _IsCoreStoredProcedure(storedProcedure);
         }
     }
 }

@@ -149,5 +149,10 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
             if (Utility.LocateType(PgSqlConnection._PARAMETER_TYPE_NAME) == null)
                 Assembly.Load(PgSqlConnection._ASSEMBLY_NAME);
         }
+
+        protected override bool _IsCoreStoredProcedure(StoredProcedure storedProcedure)
+        {
+            return false;
+        }
 	}
 }

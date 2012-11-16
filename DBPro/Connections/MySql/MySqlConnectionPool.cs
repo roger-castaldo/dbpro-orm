@@ -152,5 +152,10 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
             if (Utility.LocateType(MySqlConnection._PARAMETER_NAME) == null)
                 Assembly.Load(MySqlConnection._ASSEMBLY_NAME);
         }
+
+        protected override bool _IsCoreStoredProcedure(StoredProcedure storedProcedure)
+        {
+            return false;
+        }
 	}
 }
