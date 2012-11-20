@@ -1133,7 +1133,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                             pars+=param.ParameterName + ": NULL"+"\n";
                     }
                 }
-                throw new Exception("An error occured in executing the query: "+queryString+"\nwith the parameters: "+pars,e);
+                throw new Exception("An error occured in executing the query: "+comm.CommandText+"\nwith the parameters: "+pars,e);
             }
 		}
 
