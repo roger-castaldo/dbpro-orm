@@ -21,6 +21,24 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 		public MySqlQueryBuilder(ConnectionPool pool,Connection conn) : base(pool,conn)
 		{
 		}
+
+        public override string CreateParameterName(string parameter)
+        {
+            return string.Format((MySqlConnectionPool.AssemblyVersion.Major < 6 ? "?" : "@") + "{0}", parameter);
+        }
+
+        protected override string CreateTableString
+        {
+            get
+            {
+                return base.CreateTableString +" ENGINE=InnoDB";
+            }
+        }
+
+        protected override string CreateForeignKeyString
+        {
+            get { return "ALTER TABLE {0} ADD CONSTRAINT FOREIGN KEY ({1}) REFERENCES {2}({3}) ON UPDATE {4} ON DELETE {5}"; }
+        }
 		
 		protected override string SelectTableNamesString
 		{
@@ -35,7 +53,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 			get
 			{
 				return "SELECT UPPER(COLUMN_NAME), "+
-					" UPPER(DATA_TYPE) dtype, " +
+                    " (CASE UPPER(DATA_TYPE) WHEN 'INT' THEN 'INTEGER' ELSE UPPER(DATA_TYPE) END) dtype, " +
 					" (CASE " +
 					"   WHEN CHARACTER_MAXIMUM_LENGTH IS NOT NULL THEN CHARACTER_MAXIMUM_LENGTH " +
 					"   ELSE " +
@@ -69,7 +87,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
                     " UPPER(cols.REFERENCED_TABLE_NAME) references_table, " +
 					" UPPER(cols.REFERENCED_COLUMN_NAME) references_field, "+
 					" UPPER(ref.UPDATE_RULE) 'on Update', "+
-					" UPPER(ref.DELETE_RULE) 'on Delete' "+
+					" UPPER(ref.DELETE_RULE) 'on Delete', "+
                     " ref.CONSTRAINT_NAME "+
 					" FROM information_schema.KEY_COLUMN_USAGE cols, information_schema.REFERENTIAL_CONSTRAINTS ref "+
 					" WHERE ref.CONSTRAINT_SCHEMA = '"+((MySqlConnectionPool)pool).DbName+"' "+
@@ -96,7 +114,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 				return "SELECT "+
 					" UPPER(TABLE_NAME)," +
 					" UPPER(COLUMN_NAME), "+
-					" UPPER(DATA_TYPE) " +
+                    " (CASE UPPER(DATA_TYPE) WHEN 'INT' THEN 'INTEGER' ELSE UPPER(DATA_TYPE) END) " +
 					" from information_schema.COLUMNS "+
 					" WHERE TABLE_SCHEMA='"+((MySqlConnectionPool)pool).DbName+"' "+
 					" AND EXTRA LIKE '%auto_increment%'";
@@ -111,8 +129,8 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 			{
 				ret+=String.Format("SELECT '{0}','{1}','{2}', "+
 				                   " (CASE ISNULL(MAX({1})) "+
-				                   " WHEN 1 THEN '1' "+
-				                   " ELSE CONVERT(MAX({1}),CHAR(250)) END) VAL FROM {0} GROUP BY '{0}','{1}','{2}' \nUNION\n",
+				                   " WHEN 1 THEN '0' "+
+				                   " ELSE CONVERT(MAX({1}),CHAR(250)) END) VAL FROM {0} \nUNION\n",
 				                   conn[0].ToString(),
 				                   conn[1].ToString(),
 				                   conn[2].ToString());
@@ -289,7 +307,7 @@ AND rtns.ROUTINE_NAME = prc.`NAME`";
         {
             return string.Format(@"SELECT * FROM ( SELECT TABLE_COMMENT,TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA='{0} '
                                     UNION
-                                    SELECT COLUMN_COMMENT,COLUMN_NAME FROM information_schema.COLUMNS WHERE COLUMNS_SCHEMA='{0}'
+                                    SELECT COLUMN_COMMENT,COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='{0}'
                                     UNION 
                                     SELECT SUBSTRING(b.body, b.start, (b.eind - b.start)),b.TRIGGER_NAME FROM (SELECT a.body,locate('/**@DESCRIPTION:',a.body) as start,locate('**/',a.body,locate('/**@DESCRIPTION:',a.body)) as eind,a.TRIGGER_NAME FROM (SELECT t.ACTION_STATEMENT as body,t.TRIGGER_NAME FROM information_schema.triggers t WHERE t.TRIGGER_SCHEMA='{0}' AND t.ACTION_STATEMENT LIKE '%/**@DESCRIPTION:%') a ) b 
                                     UNION

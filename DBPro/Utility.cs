@@ -300,5 +300,19 @@ namespace Org.Reddragonit.Dbpro
             return outputQuery.Trim();
         }
 
-	}
+
+        internal static bool OnlyContains(List<string> alterations, string[] p)
+        {
+            Regex r = new Regex("\\s+");
+            for (int x = 0; x < p.Length; x++)
+                p[x] = r.Replace(p[x], "");
+            List<string> vals = new List<string>(p);
+            foreach (string a in alterations)
+            {
+                if (!vals.Contains(r.Replace(a, "")))
+                    return false;
+            }
+            return true;
+        }
+    }
 }

@@ -744,7 +744,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
             Utility.RemoveDuplicateStrings(ref alterations, new string[] { " COMMIT;" });
 
-            if (alterations.Count > 12)
+            if (!Utility.OnlyContains(alterations,new string[]{"COMMIT;"}))
             {
                 try
                 {

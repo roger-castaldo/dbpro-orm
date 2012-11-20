@@ -147,10 +147,17 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 			return new MySqlConnection(this,connectionString,_readonly,exclusiveLock);
 		}
 
+        private static Version _version;
+        internal static Version AssemblyVersion
+        {
+            get { return _version; }
+        }
+
         protected override void _InitClass()
         {
             if (Utility.LocateType(MySqlConnection._PARAMETER_NAME) == null)
                 Assembly.Load(MySqlConnection._ASSEMBLY_NAME);
+            _version = Assembly.Load(MySqlConnection._ASSEMBLY_NAME).GetName().Version;
         }
 
         protected override bool _IsCoreStoredProcedure(StoredProcedure storedProcedure)
