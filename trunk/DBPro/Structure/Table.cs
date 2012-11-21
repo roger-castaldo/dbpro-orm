@@ -683,6 +683,8 @@ namespace Org.Reddragonit.Dbpro.Structure
             foreach (string prop in tbl.Properties)
             {
                 PropertyInfo pi = this.GetType().GetProperty(prop, Utility._BINDING_FLAGS);
+                if (pi == null)
+                    pi = this.GetType().GetProperty(prop, Utility._BINDING_FLAGS_WITH_INHERITANCE);
                 if (pi.CanWrite)
                     pi.SetValue(this, pi.GetValue(tmp, new object[0]), new object[0]);
             }
