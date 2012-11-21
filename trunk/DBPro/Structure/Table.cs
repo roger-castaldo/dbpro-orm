@@ -252,52 +252,59 @@ namespace Org.Reddragonit.Dbpro.Structure
         //recursively sets values 
 		private void RecurSetValues(sTable map,Connection conn)
 		{
+            Type ty = conn.Pool.Mapping[map.Name];
             List<string> extFields = new List<string>(map.ForeignTableProperties);
 			foreach (string prop in map.Properties)
 			{
-                PropertyInfo pi = this.GetType().GetProperty(prop, Utility._BINDING_FLAGS);
-				if (extFields.Contains(prop) && !pi.PropertyType.IsEnum)
-				{
-					if (!pi.PropertyType.IsArray)
-					{
-                        Table t = (Table)pi.PropertyType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
-                        t._loadStatus = LoadStatus.Partial;
-                        t = (Table)LazyProxy.Instance(t);
-                        bool setValue = false;
-                        t = SetExternalValues(map, prop, conn, out setValue, t);
-						if (!t.AllFieldsNull&&setValue)
-						{
-							t.InitPrimaryKeys();
-							this.SetField(prop,t);
-						}
-					}
-				}
-				else
-				{
-                    if (!pi.PropertyType.IsArray){
-                        sTableField fld = map[prop][0];
-                        if (conn.ContainsField(fld.Name))
+                PropertyInfo pi = ty.GetProperty(prop, Utility._BINDING_FLAGS);
+                if (pi != null)
+                {
+                    if (extFields.Contains(prop) && !pi.PropertyType.IsEnum)
+                    {
+                        if (!pi.PropertyType.IsArray)
                         {
-                            if (conn.IsDBNull(conn.GetOrdinal(fld.Name)))
+                            Table t = (Table)pi.PropertyType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
+                            t._loadStatus = LoadStatus.Partial;
+                            t = (Table)LazyProxy.Instance(t);
+                            bool setValue = false;
+                            t = SetExternalValues(map, prop, conn, out setValue, t);
+                            if (!t.AllFieldsNull && setValue)
                             {
-                                try
+                                t.InitPrimaryKeys();
+                                this.SetField(prop, t);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (!pi.PropertyType.IsArray)
+                        {
+                            sTableField fld = map[prop][0];
+                            if (conn.ContainsField(fld.Name))
+                            {
+                                if (conn.IsDBNull(conn.GetOrdinal(fld.Name)))
                                 {
-                                    this.SetField(prop, null);
+                                    try
+                                    {
+                                        this.SetField(prop, null);
+                                    }
+                                    catch (Exception e) { }
                                 }
-                                catch (Exception e) { }
-                            }else{
-                                if (fld.Type == FieldType.ENUM)
-                                    this.SetField(prop,conn.Pool.GetEnumValue(pi.PropertyType,(int)conn[fld.Name]));
                                 else
-                                    this.SetField(prop,conn[fld.Name]);
+                                {
+                                    if (fld.Type == FieldType.ENUM)
+                                        this.SetField(prop, conn.Pool.GetEnumValue(pi.PropertyType, (int)conn[fld.Name]));
+                                    else
+                                        this.SetField(prop, conn[fld.Name]);
+                                }
                             }
                         }
                     }
                 }
 			}
-			if (conn.Pool.Mapping.IsMappableType(this.GetType().BaseType))
+			if (conn.Pool.Mapping.IsMappableType(ty.BaseType))
 			{
-				RecurSetValues(conn.Pool.Mapping[this.GetType().BaseType],conn);
+				RecurSetValues(conn.Pool.Mapping[ty.BaseType],conn);
 			}
             this.InitPrimaryKeys();
 		}
