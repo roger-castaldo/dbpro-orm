@@ -189,9 +189,9 @@ namespace Org.Reddragonit.Dbpro.Structure
                         {
                             if (fld.ExternalField == f.Name)
                             {
-                                if (!conn.ContainsField(fld.Name) && !conn.IsDBNull(conn.GetOrdinal(fld.Name)))
+                                if (conn.ContainsField(fld.Name) && !conn.IsDBNull(conn.GetOrdinal(fld.Name)))
                                 {
-                                    RecurSetPropertyValue(f.Name, conn, fld.Name, t);
+                                    RecurSetPropertyValue(f.ExternalField, conn, fld.Name, t);
                                 }
                                 break;
                             }
