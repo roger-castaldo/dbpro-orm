@@ -182,7 +182,9 @@ namespace Org.Reddragonit.Dbpro.Structure
                 if (fProps.Contains(prop))
                 {
                     PropertyInfo pi = table.GetType().GetProperty(prop, Utility._BINDING_FLAGS);
-                    Table t = (Table)LazyProxy.Instance(pi.PropertyType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
+                    Table t = (Table)pi.PropertyType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
+                    t._loadStatus = LoadStatus.Partial;
+                    t = (Table)LazyProxy.Instance(t);
                     foreach (sTableField f in eMap[prop])
                     {
                         foreach (sTableField fld in flds)
@@ -239,7 +241,9 @@ namespace Org.Reddragonit.Dbpro.Structure
                         if (table.GetField(fld.ClassProperty) == null)
                         {
                             PropertyInfo pi = table.GetType().GetProperty(fld.ClassProperty, Utility._BINDING_FLAGS);
-                            Table t = (Table)LazyProxy.Instance(pi.PropertyType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
+                            Table t = (Table)pi.PropertyType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
+                            t._loadStatus = LoadStatus.Partial;
+                            t = (Table)LazyProxy.Instance(t);
                             table.SetField(fld.Name,t);
                         }
                         RecurSetPropertyValue(fld.ExternalField, conn, queryFieldName, (Table)table.GetField(fld.Name));
