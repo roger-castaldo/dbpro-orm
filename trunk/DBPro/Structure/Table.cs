@@ -177,11 +177,23 @@ namespace Org.Reddragonit.Dbpro.Structure
             sTable eMap = conn.Pool.Mapping[table.GetType()];
             sTableField[] flds = map[propertyName];
             List<string> fProps = new List<string>(eMap.ForeignTableProperties);
+            Type ty = table.GetType().BaseType;
+            while (conn.Pool.Mapping.IsMappableType(ty))
+            {
+                foreach (string str in conn.Pool.Mapping[ty].ForeignTableProperties)
+                {
+                    if (!fProps.Contains(str))
+                        fProps.Add(str);
+                }
+                ty = ty.BaseType;
+            }
             foreach (string prop in eMap.PrimaryKeyProperties)
             {
                 if (fProps.Contains(prop))
                 {
                     PropertyInfo pi = table.GetType().GetProperty(prop, Utility._BINDING_FLAGS);
+                    if (pi == null)
+                        pi = table.GetType().GetProperty(prop, Utility._BINDING_FLAGS_WITH_INHERITANCE);
                     Table t = (Table)pi.PropertyType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
                     t._loadStatus = LoadStatus.Partial;
                     t = (Table)LazyProxy.Instance(t);
@@ -241,6 +253,8 @@ namespace Org.Reddragonit.Dbpro.Structure
                         if (table.GetField(fld.ClassProperty) == null)
                         {
                             PropertyInfo pi = table.GetType().GetProperty(fld.ClassProperty, Utility._BINDING_FLAGS);
+                            if (pi == null)
+                                pi = table.GetType().GetProperty(fld.ClassProperty, Utility._BINDING_FLAGS_WITH_INHERITANCE);
                             Table t = (Table)pi.PropertyType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
                             t._loadStatus = LoadStatus.Partial;
                             t = (Table)LazyProxy.Instance(t);
