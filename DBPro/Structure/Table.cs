@@ -450,9 +450,25 @@ namespace Org.Reddragonit.Dbpro.Structure
                     if (value.GetType().FullName != pi.PropertyType.FullName)
                     {
                         Type pt = pi.PropertyType;
-                                if (pt.IsGenericType && pt.GetGenericTypeDefinition().FullName.StartsWith("System.Nullable"))
-                                    pt = pt.GetGenericArguments()[0];
-                        if (pt.GetCustomAttributes(typeof(TypeConverterAttribute),false).Length > 0)
+                        if (pt.IsGenericType && pt.GetGenericTypeDefinition().FullName.StartsWith("System.Nullable"))
+                            pt = pt.GetGenericArguments()[0];
+                        MethodInfo conMethod = null;
+                        foreach (MethodInfo mi in pt.GetMethods(BindingFlags.Static | BindingFlags.Public))
+                        {
+                            if (mi.Name == "op_Implicit" || mi.Name == "op_Explicit")
+                            {
+                                if (mi.ReturnType.Equals(pt)
+                                    && mi.GetParameters().Length == 1
+                                    && mi.GetParameters()[0].ParameterType.Equals(value.GetType()))
+                                {
+                                    conMethod = mi;
+                                    break;
+                                }
+                            }
+                        }
+                        if (conMethod != null)
+                            value = conMethod.Invoke(null, new object[] { value });
+                        else if (pt.GetCustomAttributes(typeof(TypeConverterAttribute),false).Length > 0)
                         {
                             if (TypeDescriptor.GetConverter(pt).CanConvertFrom(value.GetType()))
                             {
