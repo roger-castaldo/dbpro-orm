@@ -1720,7 +1720,11 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 					}
 					if (fieldName != "*")
 					{
-                        pi = t.GetProperty(fieldName,Utility._BINDING_FLAGS);
+                        while ((pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS)) == null)
+                        {
+                            t=t.BaseType;
+                            map = _conn.Pool.Mapping[t];
+                        }
                         if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)))
                         {
                             if (ordinal != -1)
