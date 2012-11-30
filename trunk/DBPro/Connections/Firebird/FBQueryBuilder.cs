@@ -167,22 +167,22 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		
 		protected override string SelectForeignKeysString {
 			get {
-				return "SELECT   "+
-                    "TRIM(fseg.rdb$field_name) AS FKColumnName,  " +
-                    "TRIM(pidx.rdb$relation_name) as PKTableName, " +
-					"TRIM(pseg.rdb$field_name) AS PKColumnName,   "+
-					"TRIM(actions.rdb$update_rule) as on_update, "+
-					"TRIM(actions.rdb$delete_rule) as on_delete,  "+
-                    "TRIM(rc.rdb$constraint_name) as conName "+
-					"FROM  "+
-					"rdb$relation_constraints rc  "+
-					"inner join rdb$indices fidx ON (rc.rdb$index_name = fidx.rdb$index_name AND rc.rdb$constraint_type = 'FOREIGN KEY')  "+
-					"inner join rdb$index_segments fseg ON fidx.rdb$index_name = fseg.rdb$index_name  "+
-					"inner join rdb$indices pidx ON fidx.rdb$foreign_key = pidx.rdb$index_name  "+
-					"inner join rdb$index_segments pseg ON (pidx.rdb$index_name = pseg.rdb$index_name AND pseg.rdb$field_position=fseg.rdb$field_position)  "+
-					"inner join RDB$REF_CONSTRAINTS actions ON rc.rdb$constraint_name = actions.RDB$constraint_name  "+
-					"WHERE rc.rdb$relation_name = '{0}'  "+
-					"ORDER BY rc.rdb$relation_name,fseg.rdb$field_name";
+				return @"SELECT   
+                    TRIM(fseg.rdb$field_name) AS FKColumnName,   
+                    TRIM(pidx.rdb$relation_name) as PKTableName, 
+					TRIM(pseg.rdb$field_name) AS PKColumnName,   
+					TRIM(actions.rdb$update_rule) as on_update, 
+					TRIM(actions.rdb$delete_rule) as on_delete,  
+                    TRIM(rc.rdb$constraint_name) as conName 
+					FROM  
+					rdb$relation_constraints rc  
+					inner join rdb$indices fidx ON (rc.rdb$index_name = fidx.rdb$index_name AND rc.rdb$constraint_type = 'FOREIGN KEY')  
+					inner join rdb$index_segments fseg ON fidx.rdb$index_name = fseg.rdb$index_name  
+					inner join rdb$indices pidx ON fidx.rdb$foreign_key = pidx.rdb$index_name  
+					inner join rdb$index_segments pseg ON (pidx.rdb$index_name = pseg.rdb$index_name AND pseg.rdb$field_position=fseg.rdb$field_position)  
+					inner join RDB$REF_CONSTRAINTS actions ON rc.rdb$constraint_name = actions.RDB$constraint_name  
+					WHERE rc.rdb$relation_name = '{0}'  
+					ORDER BY rc.rdb$relation_name,fseg.rdb$field_name";
 			}
 		}
 

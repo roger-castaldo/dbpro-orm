@@ -156,25 +156,9 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             List<Trigger> triggers;
             List<Generator> generators;
             List<IdentityField> identities;
-            List<View> views = new List<View>();
-            List<StoredProcedure> procedures = new List<StoredProcedure>();
-            List<View> tviews;
-            List<StoredProcedure> tprocs;
-            for (int x = 0; x < types.Count; x++)
-            {
-                List<Type> ttypes;
-                ConnectionPoolManager.GetAdditionalsForTable(_pool, types[x], out tviews, out tprocs, out ttypes);
-                views.AddRange(tviews);
-                procedures.AddRange(tprocs);
-                foreach (Type t in ttypes)
-                {
-                    if (!types.Contains(t) && !_createdTypes.Contains(t))
-                        types.Add(t);
-                }
-            }
-            ExtractExpectedStructure(types, out tables, out triggers, out generators, out identities, out tviews, out tprocs, conn);
-            views.AddRange(tviews);
-            procedures.AddRange(tprocs);
+            List<View> views;
+            List<StoredProcedure> procedures;
+            ExtractExpectedStructure(ref types, out tables, out triggers, out generators, out identities, out views, out procedures, conn);
             List<string> createdTables = _UpdateStructure(tables, triggers, generators, identities, views, procedures,conn);
             foreach (Type t in types)
             {
@@ -285,8 +269,10 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             return types;
         }
 
-        private void ExtractExpectedStructure(List<Type> types, out List<ExtractedTableMap> tables, out List<Trigger> triggers, out List<Generator> generators, out List<IdentityField> identities, out List<View> views, out List<StoredProcedure> procedures, Connection conn)
+        private void ExtractExpectedStructure(ref List<Type> types, out List<ExtractedTableMap> tables, out List<Trigger> triggers, out List<Generator> generators, out List<IdentityField> identities, out List<View> views, out List<StoredProcedure> procedures, Connection conn)
         {
+            List<View> tviews;
+            List<StoredProcedure> tprocs;
             tables = new List<ExtractedTableMap>();
             triggers = new List<Trigger>();
             generators = new List<Generator>();
@@ -300,8 +286,18 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
             Dictionary<string, string> AutoDeleteParentTables = new Dictionary<string, string>();
 
-            foreach (Type type in types)
+            for (int x = 0; x < types.Count;x++ )
             {
+                Type type = types[x];
+                List<Type> ttypes;
+                ConnectionPoolManager.GetAdditionalsForTable(_pool, types[x], out tviews, out tprocs, out ttypes);
+                views.AddRange(tviews);
+                procedures.AddRange(tprocs);
+                foreach (Type t in ttypes)
+                {
+                    if (!types.Contains(t) && !_createdTypes.Contains(t))
+                        types.Add(t);
+                }
                 if (_pool.Mapping.IsVirtualTable(type))
                     views.Add(_CreateViewForVirtualTable(type, conn));
                 else
@@ -355,9 +351,9 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                                 foreach (sTableField f in iMap.Fields)
                                 {
                                     ietm.Fields.Add(new ExtractedFieldMap(f.Name, conn.TranslateFieldType(f.Type, f.Length), f.Length, ipKeys.Contains(f.Name), false, (iMap.AutoGenField != null ? iMap.AutoGenField == f.Name : false)));
-                                    if (Utility.StringsEqual("PARENT",f.ClassProperty))
+                                    if (Utility.StringsEqual("PARENT", f.ClassProperty))
                                         ietm.ForeignFields.Add(new ForeignRelationMap(type.Name + "_" + prop + (_pool.Mapping.IsMappableType(pi.PropertyType.GetElementType()) ? "_intermediate" : ""), f.Name, etm.TableName, f.ExternalField, ForeignField.UpdateDeleteAction.CASCADE.ToString(), ForeignField.UpdateDeleteAction.CASCADE.ToString()));
-                                    if (Utility.StringsEqual("CHILD",f.ClassProperty))
+                                    if (Utility.StringsEqual("CHILD", f.ClassProperty))
                                         ietm.ForeignFields.Add(new ForeignRelationMap(type.Name + "_" + prop, f.Name, extTable, f.ExternalField, ForeignField.UpdateDeleteAction.CASCADE.ToString(), ForeignField.UpdateDeleteAction.CASCADE.ToString()));
                                 }
                                 tables.Add(ietm);
@@ -388,6 +384,48 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                         }
                     }
                     tables.Add(etm);
+                    bool keyDifferent = false;
+                    foreach (ExtractedTableMap e in _tables)
+                    {
+                        if (etm.TableName == e.TableName)
+                        {
+                            foreach (ExtractedFieldMap efm in etm.PrimaryKeys)
+                            {
+                                bool foundField = false;
+                                foreach (ExtractedFieldMap ee in e.PrimaryKeys)
+                                {
+                                    if (ee.FieldName == efm.FieldName)
+                                    {
+                                        foundField = true;
+                                        if ((ee.PrimaryKey != efm.PrimaryKey) || (ee.PrimaryKey && efm.PrimaryKey && ((ee.Type != efm.Type) || (ee.Size != efm.Size))))
+                                            keyDifferent = true;
+                                        break;
+                                    }
+                                }
+                                if (!foundField)
+                                    keyDifferent = true;
+                                if (keyDifferent)
+                                    break;
+                            }
+                            if (keyDifferent)
+                                break;
+                        }
+                    }
+                    if (keyDifferent)
+                    {
+                        foreach (ExtractedTableMap e in _tables)
+                        {
+                            if (e.RelatedTables.Contains(etm.TableName))
+                            {
+                                Type t = _pool.Mapping[e.TableName];
+                                if (t != null)
+                                {
+                                    if (!types.Contains(t) && !_createdTypes.Contains(t))
+                                        types.Add(t);
+                                }
+                            }
+                        }
+                    }
                 }
             }
             foreach (ExtractedTableMap etm in tables)
@@ -461,45 +499,37 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
             List<Trigger> dropTriggers = new List<Trigger>();
             List<Trigger> createTriggers = new List<Trigger>();
-
-            _CompareTriggers(triggers, out dropTriggers, out createTriggers);
-
             List<StoredProcedure> createProcedures = new List<StoredProcedure>();
             List<StoredProcedure> updateProcedures = new List<StoredProcedure>();
-
-            _CompareStoredProcedures(procedures, out createProcedures, out updateProcedures);
-
             List<Generator> createGenerators = new List<Generator>();
-
-            _CompareGenerators(generators, out createGenerators);
-
             List<string> constraintDrops = new List<string>();
             List<string> constraintCreations = new List<string>();
-
-            _ExtractConstraintDropsCreates(tables, conn, out constraintDrops, out constraintCreations);
-
             List<PrimaryKey> primaryKeyDrops = new List<PrimaryKey>();
             List<PrimaryKey> primaryKeyCreations = new List<PrimaryKey>();
+            List<ForeignKey> foreignKeyDrops = new List<ForeignKey>();
+            List<ForeignKey> foreignKeyCreations = new List<ForeignKey>();
+            List<IdentityField> createIdentities = new List<IdentityField>();
+            List<IdentityField> setIdentities = new List<IdentityField>();
+            Dictionary<string, List<Index>> dropIndexes = new Dictionary<string, List<Index>>();
+            Dictionary<string, List<Index>> createIndexes = new Dictionary<string, List<Index>>();
+            List<View> createViews = new List<View>();
+            List<View> dropViews = new List<View>();
 
             _ExtractPrimaryKeyCreationsDrops(tables, out primaryKeyDrops, out primaryKeyCreations);
 
-            List<ForeignKey> foreignKeyDrops = new List<ForeignKey>();
-            List<ForeignKey> foreignKeyCreations = new List<ForeignKey>();
+            _CompareTriggers(triggers, out dropTriggers, out createTriggers);
+
+            _CompareStoredProcedures(procedures, out createProcedures, out updateProcedures);
+
+            _CompareGenerators(generators, out createGenerators);
+
+            _ExtractConstraintDropsCreates(tables, conn, out constraintDrops, out constraintCreations);
 
             _ExtractForeignKeyCreatesDrops(tables, out foreignKeyDrops, out foreignKeyCreations);
 
-            List<IdentityField> createIdentities = new List<IdentityField>();
-            List<IdentityField> setIdentities = new List<IdentityField>();
-
             _CompareIdentities(identities, out createIdentities, out setIdentities);
 
-            Dictionary<string, List<Index>> dropIndexes = new Dictionary<string, List<Index>>();
-            Dictionary<string, List<Index>> createIndexes = new Dictionary<string, List<Index>>();
-
             _ExtractIndexCreationsDrops(tables, out dropIndexes, out createIndexes);
-
-            List<View> createViews = new List<View>();
-            List<View> dropViews = new List<View>();
 
             _CompareViews(views, out createViews, out dropViews);
 
@@ -983,8 +1013,10 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                                         {
                                             foundRelation = true;
                                             break;
-                                        }
-                                    }
+                                        }else
+                                            foreignKeyDrops.Add(new ForeignKey(etm.TableName,new List<string>(new string[]{curfrms[0].InternalField}),tableName,new List<string>(new string[]{curfrms[0].ExternalField}),curfrms[0].OnUpdate,curfrms[0].OnDelete));
+                                    }else
+                                        foreignKeyDrops.Add(new ForeignKey(etm,tableName,curfrms[0].ID));
                                 }
                                 if (!foundRelation)
                                     foreignKeyCreations.Add(new ForeignKey(etm, tableName, exfrms[0].ID));
