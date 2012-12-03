@@ -1762,7 +1762,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                             t = t.BaseType;
                             pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS);
                         }
-                        if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)))
+                        if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) && !(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType).IsEnum)
                         {
                             ret = "";
                             if (ordinal != -1)
