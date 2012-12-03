@@ -1233,10 +1233,10 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 					if (pi.PropertyType.IsArray)
 					{
                         sTable iMap = _conn.Pool.Mapping[cur, pi.Name];
-						innerJoin += iMap + " " + alias + "_intermediate_" + className + " ON ";
+						innerJoin += iMap.Name + " " + alias + "_intermediate_" + className + " ON ";
                         foreach (sTableField f in iMap.Fields)
                         {
-                            if (f.ClassProperty!=null)
+                            if (f.ClassProperty=="PARENT")
                                 innerJoin += " " + talias + "." + f.ExternalField + " = " + alias + "_intermediate_" + className + "." + f.Name + " AND ";
                         }
 						innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
@@ -1249,7 +1249,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         List<string> pkeys = new List<string>(eMap.PrimaryKeyFields);
                         foreach (sTableField f in iMap.Fields)
                         {
-                            if (f.ClassProperty==null && f.ExternalField!=null && pkeys.Contains(f.ExternalField))
+                            if (f.ClassProperty=="CHILD" && f.ExternalField!=null && pkeys.Contains(f.ExternalField))
                                 innerJoin += " " + alias + "_intermediate_" + className + "." + f.Name + " = " + alias + "_" + className + "." + f.ExternalField + " AND ";
                         }
 						innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
