@@ -160,6 +160,30 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                 }
             }
 
+            if (!tbl.BaseType.Equals(typeof(Org.Reddragonit.Dbpro.Structure.Table)))
+            {
+                if (tbl.BaseType.IsSubclassOf(typeof(Org.Reddragonit.Dbpro.Structure.Table)))
+                {
+                    if (!_classMaps.ContainsKey(tbl.BaseType))
+                    {
+                        Dictionary<string, sTable> imediates = new Dictionary<string, sTable>();
+                        _classMaps.Add(tbl.BaseType, _ConstructTable(tbl.BaseType, conn, out imediates));
+                        if (imediates.Count > 0)
+                            _intermediateTables.Add(tbl.BaseType, imediates);
+                    }
+                    sTable pTbl = _classMaps[tbl.BaseType];
+                    List<string> pkeys = new List<string>(pTbl.PrimaryKeyFields);
+                    foreach (sTableField fld in pTbl.Fields)
+                    {
+                        if (pkeys.Contains(fld.Name))
+                        {
+                            fields.Add(fld);
+                            primaryKeyFields.Add(fld.Name);
+                        }
+                    }
+                }
+            }
+
             foreach (PropertyInfo pi in selfReferenceProperties)
             {
                 foreach (string str in primaryKeyFields)
@@ -298,29 +322,6 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                 _versionMaps.Add(tbl, new sTable(vtblName, vfields.ToArray(),null,new sTableRelation[]{new sTableRelation(tblName,"PARENT",ForeignField.UpdateDeleteAction.CASCADE,ForeignField.UpdateDeleteAction.CASCADE,false)}, vpkeys.ToArray(), vfields[vfields.Count - 1].Name));
             }
 
-            if (!tbl.BaseType.Equals(typeof(Org.Reddragonit.Dbpro.Structure.Table)))
-            {
-                if (tbl.BaseType.IsSubclassOf(typeof(Org.Reddragonit.Dbpro.Structure.Table)))
-                {
-                    if (!_classMaps.ContainsKey(tbl.BaseType))
-                    {
-                        Dictionary<string, sTable> imediates = new Dictionary<string, sTable>();
-                        _classMaps.Add(tbl.BaseType, _ConstructTable(tbl.BaseType,conn, out imediates));
-                        if (imediates.Count > 0)
-                            _intermediateTables.Add(tbl.BaseType, imediates);
-                    }
-                    sTable pTbl = _classMaps[tbl.BaseType];
-                    List<string> pkeys = new List<string>(pTbl.PrimaryKeyFields);
-                    foreach (sTableField fld in pTbl.Fields)
-                    {
-                        if (pkeys.Contains(fld.Name))
-                        {
-                            fields.Add(fld);
-                            primaryKeyFields.Add(fld.Name);
-                        }
-                    }
-                }
-            }
             return new sTable(tblName, fields.ToArray(),arrayProperties, relations.ToArray(), primaryKeyFields.ToArray(), autogenField);
         }
 
