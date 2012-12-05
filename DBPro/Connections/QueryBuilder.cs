@@ -1027,14 +1027,15 @@ namespace Org.Reddragonit.Dbpro.Connections
                                 addedAutogenCorrection = true;
                             }
                         }
-                        if (flds[0].ExternalField == null)
+                        if (flds[0].ExternalField != null)
                         {
-                            sTable relTable = _pool.Mapping[tableType.GetProperty(flds[0].ClassProperty, Utility._BINDING_FLAGS).PropertyType];
+                            PropertyInfo pi = tableType.GetProperty(flds[0].ClassProperty, Utility._BINDING_FLAGS_WITH_INHERITANCE);
+                            sTable relTable = _pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
                             if (updateFields[flds[0].ClassProperty] == null)
                             {
                                 foreach (sTableField fld in flds)
                                 {
-                                    fields += fld.Name + " = " + CreateParameterName(fld.Name);
+                                    fields += fld.Name + " = " + CreateParameterName(fld.Name) + ", ";
                                     queryParameters.Add(conn.CreateParameter(CreateParameterName(fld.Name), null, fld.Type, fld.Length));
                                 }
                             }
@@ -1048,7 +1049,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                                         if (fld.ExternalField == f.Name)
                                         {
                                             object val = LocateFieldValue(relatedTable, f, pool);
-                                            fields += fld.Name + " = " + CreateParameterName(fld.Name);
+                                            fields += fld.Name + " = " + CreateParameterName(fld.Name) + ", ";
                                             if (val == null)
                                                 queryParameters.Add(conn.CreateParameter(CreateParameterName(fld.Name), null, fld.Type, fld.Length));
                                             else
@@ -1225,6 +1226,12 @@ namespace Org.Reddragonit.Dbpro.Connections
                     while (field.Contains("."))
                     {
                         PropertyInfo pi = curType.GetProperty(field.Substring(0, field.IndexOf(".")), Utility._BINDING_FLAGS);
+                        while (pi == null && conn.Pool.Mapping.IsMappableType(curType.BaseType))
+                        {
+                            curType = curType.BaseType;
+                            pi = curType.GetProperty(field.Substring(0, field.IndexOf(".")), Utility._BINDING_FLAGS);
+                            map = pool.Mapping[curType];
+                        }
                         sTableRelation? rel = map.GetRelationForProperty(pi.Name);
                         sTable relMap = _pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
                         string className = pi.Name;

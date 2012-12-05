@@ -410,7 +410,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             pool.Updater.InitType(table.GetType(), this);
             sTable map = Pool.Mapping[table.GetType()];
             table._changedFields = table.ChangedFields;
-			if (Pool.Mapping.IsMappableType(table.GetType().BaseType)!=null)
+			if (Pool.Mapping.IsMappableType(table.GetType().BaseType))
 			{
 				Table ta = Update((Table)table.ToType(table.GetType().BaseType,null));
 				table.CopyValuesFrom(ta);
@@ -462,6 +462,8 @@ namespace Org.Reddragonit.Dbpro.Connections
             foreach (string prop in map.Properties)
             {
                 PropertyInfo pi = table.GetType().GetProperty(prop, Utility._BINDING_FLAGS);
+                if (pi == null)
+                    pi = table.GetType().GetProperty(prop, Utility._BINDING_FLAGS_WITH_INHERITANCE);
                 if (pi.PropertyType.IsArray)
                 {
                     if (Pool.Mapping.IsMappableType(pi.PropertyType.GetElementType()))
