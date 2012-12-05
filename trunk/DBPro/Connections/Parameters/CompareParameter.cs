@@ -61,7 +61,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
             if (fieldName.Contains("."))
             {
                 string newField = fieldName.Substring(0, fieldName.IndexOf("."));
-                PropertyInfo pi = tableType.GetProperty(newField, Utility._BINDING_FLAGS);
+                PropertyInfo pi = tableType.GetProperty(newField, Utility._BINDING_FLAGS_WITH_INHERITANCE);
                 ret = LocateTableField(fieldName.Substring(fieldName.IndexOf(".") + 1), (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType), out ClassBased, out isExternal, out newType, out alias);
                 alias = fieldName.Substring(0, fieldName.IndexOf("."))+((alias==null) ? "" : "_"+alias);
             }
