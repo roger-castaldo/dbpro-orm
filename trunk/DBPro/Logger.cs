@@ -28,7 +28,7 @@ namespace Org.Reddragonit.Dbpro
                     {
                         try
                         {
-                            if (!ass.GetName().Name.Contains("mscorlib") && !ass.GetName().Name.StartsWith("System") && !ass.GetName().Name.StartsWith("Microsoft"))
+                            if (ass.GetName().Name!="mscorlib" && !ass.GetName().Name.StartsWith("System.") && ass.GetName().Name!="System" && !ass.GetName().Name.StartsWith("Microsoft"))
                             {
                                 foreach (Type t in ass.GetTypes())
                                 {
