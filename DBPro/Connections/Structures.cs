@@ -304,6 +304,15 @@ namespace Org.Reddragonit.Dbpro.Connections
             _declareLines = declareLines.Trim();
             _code = code.Trim();
         }
+
+        public override bool Equals(object obj)
+        {
+            StoredProcedure proc = (StoredProcedure)obj;
+            return Utility.StringsEqualIgnoreWhitespace(proc.DeclareLines, this.DeclareLines)
+                    && Utility.StringsEqualIgnoreWhitespace(proc.ReturnLine, this.ReturnLine)
+                    && Utility.StringsEqualIgnoreWhitespace(proc.ParameterLines, this.ParameterLines)
+                    && Utility.StringsEqualIgnoreWhitespace(proc.Code, this.Code);
+        }
     }
 	
 	internal struct ForeignRelationMap

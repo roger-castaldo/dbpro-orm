@@ -474,6 +474,18 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                     }
                 }
             }
+
+            for (int x = 0; x < procedures.Count; x++)
+            {
+                for (int y = x + 1; y < procedures.Count; y++)
+                {
+                    if (procedures[x].Equals(procedures[y]))
+                    {
+                        procedures.RemoveAt(y);
+                        y--;
+                    }
+                }
+            }
         }
 
         private View _CreateViewForVirtualTable(Type virtualTable, Connection conn)
