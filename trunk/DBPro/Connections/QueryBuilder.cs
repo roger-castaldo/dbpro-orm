@@ -389,12 +389,12 @@ namespace Org.Reddragonit.Dbpro.Connections
             return SelectViewsString;
         }
 
-        internal string CreateProcedure(StoredProcedure procedure)
+        internal virtual string CreateProcedure(StoredProcedure procedure)
         {
             return string.Format(CreateProcedureString, new object[]{procedure.ProcedureName,procedure.ParameterLines,procedure.ReturnLine,procedure.DeclareLines,procedure.Code});
         }
 
-        internal string UpdateProcedure(StoredProcedure procedure)
+        internal virtual string UpdateProcedure(StoredProcedure procedure)
         {
             return string.Format(UpdateProcedureString, new object[] { procedure.ProcedureName, procedure.ParameterLines, procedure.ReturnLine, procedure.DeclareLines, procedure.Code });
         }
@@ -1159,7 +1159,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                         foreach (sTableField fld in t[prop])
                         {
                             if (!fields.Contains("table_" + count.ToString() + "." + fld.Name + ","))
-                                fields += "table_" + origCount.ToString() + "." + fld.Name + ",";
+                                fields += "table_" + count.ToString() + "." + fld.Name + ",";
                         }
                     }
                 }
