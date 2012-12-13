@@ -31,6 +31,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		protected string connectionString;
 		private int commCntr;
         private bool firstRead = false;
+        private bool exitReadLock = false;
         private bool firstReadResult;
         private bool lockedForBackup=false;
         private string _uniqueID;
@@ -247,6 +248,18 @@ namespace Org.Reddragonit.Dbpro.Connections
                 trans = null;
                 comm.Transaction = null;
             }
+            if (reader != null)
+            {
+                if (!reader.IsClosed)
+                {
+                    try
+                    {
+                        reader.Close();
+                    }
+                    catch (Exception e) { }
+                }
+            }
+            exitReadLock = true;
 		}
 
         internal void StartTransaction()
@@ -1382,6 +1395,7 @@ namespace Org.Reddragonit.Dbpro.Connections
         private void CheckReadLock()
         {
             Thread runner = new Thread(new ThreadStart(RunReadCheck));
+            exitReadLock = false;
             runner.IsBackground = true;
             for (int x = 0; x < MAX_READCHECK_TRIES; x++)
             {
@@ -1396,7 +1410,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 catch (Exception e)
                 {
                 }
-                if (!firstRead)
+                if (!firstRead && !exitReadLock)
                 {
                     Logger.LogLine("Reading of first result failed with timeout of " + pool.readTimeout.ToString() + " seconds, resetting connection and reattempting query.");
                     ResetConnection(true);
