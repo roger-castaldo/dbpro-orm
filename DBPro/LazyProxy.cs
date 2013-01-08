@@ -183,7 +183,7 @@ namespace Org.Reddragonit.Dbpro
                     }
                 }
 
-				if ((pi!=null)&&(_map[pi.Name].Length>0))
+				if ((pi!=null)&&(_map[pi.Name].Length>0||new List<string>(_map.ArrayProperties).Contains(pi.Name)))
 				{
 					if (pi.Name!="LoadStatus")
 					{
