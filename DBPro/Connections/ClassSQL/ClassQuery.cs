@@ -927,7 +927,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 				else
 				{
                     pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS);
-                    if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) && !pi.PropertyType.IsEnum)
+                    if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) && !(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType).IsEnum)
 						return true;
 					else
 						return false;
@@ -1014,7 +1014,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 					else
 					{
                         PropertyInfo pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS);
-                        if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) && !pi.PropertyType.IsEnum)
+                        if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) && !(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType).IsEnum)
 						{
 							ret.RemoveAt(0);
 							foreach (string str in fieldList[field.Value])
@@ -1374,9 +1374,10 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                             joins.Add(iJoin);
                         alias += "_prnt";
                         pi = pType.GetProperty(field, Utility._BINDING_FLAGS);
+                        cur = pType;
                         if (pi != null)
                             break;
-                        cur = pType;
+                        pType = pType.BaseType;
                     }
                 }
                 foreach (object obj in pi.GetCustomAttributes(false))
@@ -1387,7 +1388,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         break;
                     }
                 }
-                if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) && !pi.PropertyType.IsEnum)
+                if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) && !(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType).IsEnum)
                 {
                     _conn.Pool.Updater.InitType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType), _conn);
                     sTable eMap = _conn.Pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
@@ -1411,7 +1412,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         innerJoin += iMap.Name + " " + alias + "_intermediate_" + field + " ON ";
                         foreach (sTableField f in iMap.Fields)
                         {
-                            if (f.ClassProperty != null)
+                            if (f.ClassProperty=="PARENT")
                                 innerJoin += " " + alias + "." + f.ExternalField + " = " + alias + "_intermediate_" + field + "." + f.Name + " AND ";
                         }
                         innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
@@ -1424,7 +1425,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         List<string> pkeys = new List<string>(eMap.PrimaryKeyFields);
                         foreach (sTableField f in iMap.Fields)
                         {
-                            if (f.ClassProperty == null && f.ExternalField != null && pkeys.Contains(f.ExternalField))
+                            if (f.ClassProperty =="CHILD")
                                 innerJoin += " " + alias + "_intermediate_" + field + "." + f.Name + " = " + alias + "_" + field + "." + f.ExternalField + " AND ";
                         }
                         innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
@@ -1463,7 +1464,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     string innerJoin = (nlb.Nullable || parentIsLeftJoin ? " LEFT JOIN " : " INNER JOIN ")+iMap.Name + " " + alias + "_" + pi.Name+ " ON ";
                     foreach (sTableField f in iMap.Fields)
                     {
-                        if (f.ExternalField!=null)
+                        if (f.ClassProperty=="PARENT")
                             innerJoin += " " + alias + "." + f.ExternalField + " = " + alias + "_" + pi.Name + "." + f.Name + " AND ";
                     }
                     innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
@@ -1477,7 +1478,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
         private string TranslateParentFieldName(string alias,string field, Type table,int ordinal)
         {
             string ret = null;
-            PropertyInfo pi = table.GetProperty(field, Utility._BINDING_FLAGS);
+            PropertyInfo pi = table.GetProperty(field, Utility._BINDING_FLAGS_WITH_INHERITANCE);
             if (pi == null)
             {
                 if (alias == "")
@@ -1757,11 +1758,8 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 					else
 					{
                         pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS);
-                        while (pi == null)
-                        {
-                            t = t.BaseType;
-                            pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS);
-                        }
+                        if (pi == null)
+                            pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS_WITH_INHERITANCE);
                         if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) && !(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType).IsEnum)
                         {
                             ret = "";
