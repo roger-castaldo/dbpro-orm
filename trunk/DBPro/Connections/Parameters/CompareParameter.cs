@@ -76,7 +76,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                 {
                     if (fld.ClassProperty == fieldName)
                     {
-                        if (fld.ExternalField != null)
+                        if (fld.ExternalField != null && fld.Type!=FieldType.ENUM)
                         {
                             if (new List<string>(map.PrimaryKeyProperties).Contains(fieldName))
                                 alias = "";
@@ -101,7 +101,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                     else if (fld.Name == fieldName)
                     {
                         ret = fieldName;
-                        isExternal = fld.ExternalField != null;
+                        isExternal = fld.ExternalField != null && fld.Type != FieldType.ENUM;
                         ClassBased = false;
                         break;
                     }
