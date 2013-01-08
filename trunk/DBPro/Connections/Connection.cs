@@ -479,7 +479,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                     pi = table.GetType().GetProperty(prop, Utility._BINDING_FLAGS_WITH_INHERITANCE);
                 if (pi.PropertyType.IsArray)
                 {
-                    if (Pool.Mapping.IsMappableType(pi.PropertyType.GetElementType()))
+                    if (Pool.Mapping.IsMappableType(pi.PropertyType.GetElementType()) && !pi.PropertyType.GetElementType().IsEnum)
                     {
                         Dictionary<string, List<List<IDbDataParameter>>> queries = queryBuilder.UpdateMapArray(table, prop, false);
                         foreach (string str in queries.Keys)
@@ -725,7 +725,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 foreach (string prop in map.ArrayProperties)
                 {
                     PropertyInfo pi = type.GetProperty(prop, Utility._BINDING_FLAGS);
-                    if (pool.Mapping.IsMappableType(pi.PropertyType.GetElementType()))
+                    if (pool.Mapping.IsMappableType(pi.PropertyType.GetElementType()) && !pi.PropertyType.GetElementType().IsEnum)
                     {
                         foreach (Table t in ret)
                         {
@@ -776,14 +776,8 @@ namespace Org.Reddragonit.Dbpro.Connections
                         string conditions = "";
                         foreach (sTableField fld in arMap.Fields)
                         {
-                            foreach (sTableField f in map.Fields)
-                            {
-                                if (Utility.StringsEqual(fld.ExternalField, f.Name))
-                                {
-                                    conditions += fld.Name + " = " + queryBuilder.CreateParameterName(f.Name) + " AND ";
-                                    break;
-                                }
-                            }
+                            if (fld.ClassProperty == "PARENT")
+                                conditions += fld.Name + " = " + queryBuilder.CreateParameterName(fld.ExternalField) + " AND ";
                         }
                         query = "SELECT " + Pool.Translator.GetIntermediateValueFieldName(type, pi, this) + " FROM " + arMap.Name + " WHERE " + conditions.Substring(0, conditions.Length - 4) + " ORDER BY " + Pool.Translator.GetIntermediateIndexFieldName(type, pi, this) + " ASC";
                         foreach (Table t in ret)
