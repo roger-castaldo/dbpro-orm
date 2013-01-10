@@ -335,13 +335,24 @@ namespace Org.Reddragonit.Dbpro
                 pars.Add(new EqualParameter(prop, ((Table)owner).GetField(prop)));
             Connection conn = ConnectionPoolManager.GetConnection(owner.GetType()).getConnection();
             Table tmp = conn.Select(owner.GetType(), pars)[0];
+            conn.CloseConnection();
             List<string> pkeys = new List<string>(_map.PrimaryKeyProperties);
             foreach (string prop in _map.Properties)
             {
                 if ((!pkeys.Contains(prop)) && (!tmp.IsFieldNull(prop)))
                     ((Table)owner).SetField(prop, tmp.GetField(prop));
             }
-            conn.CloseConnection();
+            Type btype = owner.GetType().BaseType;
+            while (_pool.Mapping.IsMappableType(btype))
+            {
+                sTable map = _pool.Mapping[btype];
+                foreach (string prop in map.Properties)
+                {
+                    if ((!pkeys.Contains(prop)) && (!tmp.IsFieldNull(prop)))
+                        ((Table)owner).SetField(prop, tmp.GetField(prop));
+                }
+                btype = btype.BaseType;
+            }
             ((Table)owner).LoadStatus = LoadStatus.Complete;
         }
 	}
