@@ -1190,7 +1190,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 while (_pool.Mapping.IsMappableType(btype))
                 {
                     sTable t = _pool.Mapping[btype];
-                    foreach (string prop in tbl.Properties)
+                    foreach (string prop in t.Properties)
                     {
                         foreach (sTableField fld in t[prop])
                         {
