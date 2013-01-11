@@ -1027,7 +1027,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                                 addedAutogenCorrection = true;
                             }
                         }
-                        if (flds[0].ExternalField != null)
+                        if (flds[0].ExternalField != null&&flds[0].Type!=FieldType.ENUM)
                         {
                             PropertyInfo pi = tableType.GetProperty(flds[0].ClassProperty, Utility._BINDING_FLAGS_WITH_INHERITANCE);
                             sTable relTable = _pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
