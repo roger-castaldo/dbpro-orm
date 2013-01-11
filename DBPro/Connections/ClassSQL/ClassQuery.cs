@@ -1956,7 +1956,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 int index = 0;
                 foreach (sTableField fld in flds)
                 {
-                    PropertyInfo pi = t.GetType().GetProperty(fld.Name, Utility._BINDING_FLAGS);
+                    PropertyInfo pi = t.GetType().GetProperty(fld.ClassProperty, Utility._BINDING_FLAGS_WITH_INHERITANCE);
                     if (!pi.PropertyType.IsArray)
                     {
                         if (_conn.Pool.Mapping.IsMappableType(pi.PropertyType))
