@@ -431,22 +431,25 @@ namespace Org.Reddragonit.Dbpro.Connections
             foreach (string prop in map.ForeignTableProperties)
             {
                 PropertyInfo pi = table.GetType().GetProperty(prop, Utility._BINDING_FLAGS);
-                if (pi.PropertyType.IsArray)
+                if (!(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType).IsEnum)
                 {
-                    Table[] vals = (Table[])table.GetField(prop);
-                    if (vals != null)
+                    if (pi.PropertyType.IsArray)
                     {
-                        foreach (Table t in vals)
-                            this.Save(t);
+                        Table[] vals = (Table[])table.GetField(prop);
+                        if (vals != null)
+                        {
+                            foreach (Table t in vals)
+                                this.Save(t);
+                        }
                     }
-                }
-                else
-                {
-                    Table ext = (Table)table.GetField(prop);
-                    if (ext != null)
+                    else
                     {
-                        ext = Save(ext);
-                        table.SetField(prop, ext);
+                        Table ext = (Table)table.GetField(prop);
+                        if (ext != null)
+                        {
+                            ext = Save(ext);
+                            table.SetField(prop, ext);
+                        }
                     }
                 }
             }
@@ -503,31 +506,34 @@ namespace Org.Reddragonit.Dbpro.Connections
                 throw new Exception("Cannot insert an entry into a table into the database connection that it was not specified for.");
             }
             if (table.LoadStatus == LoadStatus.Partial)
-                ret= table;
-            if (table.IsSaved)
-            {
-                if (table.LoadStatus == LoadStatus.Complete)
-                {
-                    Table orig = table.LoadCopyOfOriginal(this);
-                    bool abort = false;
-                    ConnectionPoolManager.RunTriggers(this, orig, table, ConnectionPoolManager.TriggerTypes.PRE_UPDATE, out abort);
-                    if (!abort)
-                    {
-                        ret = Update(table);
-                        ConnectionPoolManager.RunTriggers(this, orig, ret, ConnectionPoolManager.TriggerTypes.POST_UPDATE, out abort);
-                    }
-                }
-                else
-                    ret = table;
-            }
+                ret = table;
             else
             {
-                bool abort = false;
-                ConnectionPoolManager.RunTriggers(this, null, table, ConnectionPoolManager.TriggerTypes.PRE_INSERT, out abort);
-                if (!abort)
+                if (table.IsSaved)
                 {
-                    ret = Insert(table, false);
-                    ConnectionPoolManager.RunTriggers(this, null, ret, ConnectionPoolManager.TriggerTypes.POST_INSERT, out abort);
+                    if (table.LoadStatus == LoadStatus.Complete)
+                    {
+                        Table orig = table.LoadCopyOfOriginal(this);
+                        bool abort = false;
+                        ConnectionPoolManager.RunTriggers(this, orig, table, ConnectionPoolManager.TriggerTypes.PRE_UPDATE, out abort);
+                        if (!abort)
+                        {
+                            ret = Update(table);
+                            ConnectionPoolManager.RunTriggers(this, orig, ret, ConnectionPoolManager.TriggerTypes.POST_UPDATE, out abort);
+                        }
+                    }
+                    else
+                        ret = table;
+                }
+                else
+                {
+                    bool abort = false;
+                    ConnectionPoolManager.RunTriggers(this, null, table, ConnectionPoolManager.TriggerTypes.PRE_INSERT, out abort);
+                    if (!abort)
+                    {
+                        ret = Insert(table, false);
+                        ConnectionPoolManager.RunTriggers(this, null, ret, ConnectionPoolManager.TriggerTypes.POST_INSERT, out abort);
+                    }
                 }
             }
             if (!ret.IsProxied)
