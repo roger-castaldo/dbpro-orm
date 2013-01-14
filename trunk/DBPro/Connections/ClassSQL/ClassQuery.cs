@@ -1959,10 +1959,14 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     PropertyInfo pi = t.GetType().GetProperty(fld.ClassProperty, Utility._BINDING_FLAGS_WITH_INHERITANCE);
                     if (!pi.PropertyType.IsArray)
                     {
-                        if (_conn.Pool.Mapping.IsMappableType(pi.PropertyType))
+                        if (_conn.Pool.Mapping.IsMappableType(pi.PropertyType) && !pi.PropertyType.IsEnum)
                         {
                             if (t.GetField(pi.Name) == null)
-                                t.SetField(fld.Name, (Table)LazyProxy.Instance(pi.PropertyType.GetConstructor(Type.EmptyTypes).Invoke(new object[0])));
+                            {
+                                Table tmp = (Table)LazyProxy.Instance(pi.PropertyType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
+                                tmp.LoadStatus=LoadStatus.Partial;
+                                t.SetField(fld.Name,tmp );
+                            }
                             Table tbl = (Table)t.GetField(pi.Name);
                             foreach (sTableField f in _conn.Pool.Mapping[tbl.GetType()].Fields)
                             {
@@ -1976,7 +1980,10 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         }
                         else
                         {
-                            t.SetField(fld.ClassProperty, _conn[i + index]);
+                            if (pi.PropertyType.IsEnum)
+                                t.SetField(fld.ClassProperty, _conn.Pool.GetEnumValue(pi.PropertyType, _conn.GetInt32(i+index)));
+                            else
+                                t.SetField(fld.ClassProperty, _conn[i + index]);
                             index++;
                         }
                     }
