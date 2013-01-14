@@ -183,7 +183,7 @@ namespace Org.Reddragonit.Dbpro
                     }
                 }
 
-				if ((pi!=null)&&(_map[pi.Name].Length>0||new List<string>(_map.ArrayProperties).Contains(pi.Name)))
+				if ((pi!=null)&&(_IsParentTableField(pi.Name,owner)||new List<string>(_map.ArrayProperties).Contains(pi.Name)))
 				{
 					if (pi.Name!="LoadStatus")
 					{
@@ -327,6 +327,23 @@ namespace Org.Reddragonit.Dbpro
 
 			return new ReturnMessage(outVal,mc.Args,mc.Args.Length, mc.LogicalCallContext, mc);
 		}
+
+        private bool _IsParentTableField(string p,object owner)
+        {
+            if (_map[p].Length > 0)
+                return true;
+            else
+            {
+                Type btype = owner.GetType().BaseType;
+                while (_pool.Mapping.IsMappableType(btype))
+                {
+                    if (_pool.Mapping[btype][p].Length > 0)
+                        return true;
+                    btype = btype.BaseType;
+                }
+            }
+            return false;
+        }
 
         private void CompleteLazyLoad(object owner)
         {
