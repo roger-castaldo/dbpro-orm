@@ -80,7 +80,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                         {
                             if (new List<string>(map.PrimaryKeyProperties).Contains(fieldName))
                                 alias = "";
-                            else
+                            else if ((alias==null ? "" : alias)!="")
                                 alias = fieldName+(alias == null ? "" : "_" + alias);
                             ret = fieldName;
                             newType = tableType.GetProperty(fieldName, Utility._BINDING_FLAGS_WITH_INHERITANCE).PropertyType;
