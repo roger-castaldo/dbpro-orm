@@ -32,6 +32,12 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
         {
             _autogen = autogen;
         }
+
+        public PrimaryKeyField(bool autogen, int fieldLength,bool Nullable)
+            : base(fieldLength, Nullable)
+        {
+            _autogen = autogen;
+        }
 		
 		public PrimaryKeyField(string FieldName,FieldType type):this(FieldName,type,0,false)
 		{}
