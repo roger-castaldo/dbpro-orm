@@ -261,27 +261,45 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                                 break;
                             }
                         }
-                        if (!_classMaps.ContainsKey(pi.PropertyType.GetElementType()))
-                        {
-                            Dictionary<string, sTable> imediates = new Dictionary<string, sTable>();
-                            _classMaps.Add(pi.PropertyType.GetElementType(), _ConstructTable(pi.PropertyType.GetElementType(),conn, out imediates));
-                            if (imediates.Count > 0)
-                                _intermediateTables.Add(pi.PropertyType.GetElementType(), imediates);
-                        }
-                        sTable sExt = _classMaps[pi.PropertyType.GetElementType()];
                         List<sTableField> extFields = new List<sTableField>();
-                        extFields.AddRange(afields);
-                        foreach (string str in sExt.PrimaryKeyProperties)
+                        string extTableName = "";
+                        if (pi.PropertyType.GetElementType() == tbl)
                         {
-                            foreach (sTableField f in sExt[str])
-                                extFields.Add(new sTableField(_pool.Translator.GetIntermediateFieldName(tbl,pi,f.Name,false,conn),"CHILD",f.Name,f.Type,f.Length,f.Nullable));
+                            extFields.AddRange(afields);
+                            foreach(string str in primaryKeyFields){
+                                foreach(sTableField f in fields){
+                                    if (f.Name == str)
+                                    {
+                                        extFields.Add(new sTableField(_pool.Translator.GetIntermediateFieldName(tbl, pi, f.Name, false, conn), "CHILD", f.Name, f.Type, f.Length, f.Nullable));
+                                        break;
+                                    }
+                                }
+                            }
                         }
-                        intermediates.Add(pi.Name, new sTable(itblName, extFields.ToArray(),null,
-                            new sTableRelation[]{
+                        else
+                        {
+                            if (!_classMaps.ContainsKey(pi.PropertyType.GetElementType()))
+                            {
+                                Dictionary<string, sTable> imediates = new Dictionary<string, sTable>();
+                                _classMaps.Add(pi.PropertyType.GetElementType(), _ConstructTable(pi.PropertyType.GetElementType(), conn, out imediates));
+                                if (imediates.Count > 0)
+                                    _intermediateTables.Add(pi.PropertyType.GetElementType(), imediates);
+                            }
+                            sTable sExt = _classMaps[pi.PropertyType.GetElementType()];
+                            extTableName = sExt.Name;
+                            extFields.AddRange(afields);
+                            foreach (string str in sExt.PrimaryKeyProperties)
+                            {
+                                foreach (sTableField f in sExt[str])
+                                    extFields.Add(new sTableField(_pool.Translator.GetIntermediateFieldName(tbl, pi, f.Name, false, conn), "CHILD", f.Name, f.Type, f.Length, f.Nullable));
+                            }
+                        }
+                        intermediates.Add(pi.Name, new sTable(itblName, extFields.ToArray(), null,
+                                new sTableRelation[]{
                                 new sTableRelation(tblName,"PARENT",iff.OnUpdate,iff.OnDelete,iff.Nullable),
-                                new sTableRelation(sExt.Name,"CHILD",iff.OnUpdate,iff.OnDelete,iff.Nullable)
-                            }, 
-                            apKeys.ToArray(),afields[afields.Count-1].Name));
+                                new sTableRelation(extTableName,"CHILD",iff.OnUpdate,iff.OnDelete,iff.Nullable)
+                            },
+                                apKeys.ToArray(), afields[afields.Count - 1].Name));
                     }
                 }
             }
