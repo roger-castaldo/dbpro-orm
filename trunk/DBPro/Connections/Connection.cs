@@ -453,6 +453,25 @@ namespace Org.Reddragonit.Dbpro.Connections
                     }
                 }
             }
+            foreach (string prop in map.ArrayProperties)
+            {
+                PropertyInfo pi = table.GetType().GetProperty(prop, Utility._BINDING_FLAGS);
+                if (!pi.PropertyType.IsEnum)
+                {
+                    if (Pool.Mapping.IsMappableType(pi.PropertyType.GetElementType()))
+                    {
+                        Table[] vals = (Table[])table.GetField(prop);
+                        if (vals != null)
+                        {
+                            if (vals != null)
+                            {
+                                foreach (Table t in vals)
+                                    this.Save(t);
+                            }
+                        }
+                    }
+                }
+            }
             string query = "";
             string select = "";
             List<IDbDataParameter> pars = new List<IDbDataParameter>();
@@ -625,6 +644,25 @@ namespace Org.Reddragonit.Dbpro.Connections
                             {
                                 ext = Save(ext);
                                 table.SetField(prop, ext);
+                            }
+                        }
+                    }
+                }
+                foreach (string prop in map.ArrayProperties)
+                {
+                    PropertyInfo pi = table.GetType().GetProperty(prop, Utility._BINDING_FLAGS);
+                    if (!pi.PropertyType.IsEnum)
+                    {
+                        if (Pool.Mapping.IsMappableType(pi.PropertyType.GetElementType()))
+                        {
+                            Table[] vals = (Table[])table.GetField(prop);
+                            if (vals != null)
+                            {
+                                if (vals != null)
+                                {
+                                    foreach (Table t in vals)
+                                        this.Save(t);
+                                }
                             }
                         }
                     }

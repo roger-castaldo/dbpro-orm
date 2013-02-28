@@ -265,6 +265,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                         string extTableName = "";
                         if (pi.PropertyType.GetElementType() == tbl)
                         {
+                            extTableName = tblName;
                             extFields.AddRange(afields);
                             foreach(string str in primaryKeyFields){
                                 foreach(sTableField f in fields){

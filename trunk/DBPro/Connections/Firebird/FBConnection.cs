@@ -119,7 +119,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 					code+="SELECT MAX("+field.FieldName+") FROM "+map.TableName+" WHERE ";
 					code+=queryFields.Substring(4)+" INTO :"+field.FieldName+";\n";
 					code+="IF ("+field.FieldName+" is NULL)\n";
-					code+="\tTHEN "+field.FieldName+" = -1;\n";
+					code+="\tTHEN "+field.FieldName+" = 0;\n";
 					code+="NEW."+field.FieldName+" = "+field.FieldName+"+1;\n";
 					code+="END";
                     triggers.Add(new Trigger((imediate ? Pool.Translator.GetInsertIntermediateTriggerName(t, pi, this) : Pool.Translator.GetInsertTriggerName(t, this)), "FOR " + map.TableName + " ACTIVE BEFORE INSERT POSITION 0", code));
