@@ -171,6 +171,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                 }
             }
             _createdTypes.AddRange(types);
+            _UpdateAddiontalData(triggers, generators, identities, views, procedures);
             if (!_pool.DebugMode && (_translations.Count > 0))
             {
                 foreach (Type t in types)
@@ -244,6 +245,71 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             }
         }
 
+        private void _UpdateAddiontalData(List<Trigger> triggers, List<Generator> generators, List<IdentityField> identities, List<View> views, List<StoredProcedure> procedures)
+        {
+            bool add=true;
+            foreach (Trigger t in triggers)
+            {
+                add = true;
+                for (int x = 0; x < _triggers.Count; x++)
+                {
+                    if (t.Name == _triggers[x].Name)
+                    {
+                        add = false;
+                        _triggers[x] = t;
+                        break;
+                    }
+                }
+                if (add)
+                    _triggers.Add(t);
+            }
+            foreach (Generator g in generators)
+            {
+                add = true;
+                for (int x = 0; x < _generators.Count; x++)
+                {
+                    if (g.Name == _generators[x].Name)
+                    {
+                        add = false;
+                        _generators[x] = g;
+                        break;
+                    }
+                }
+                if (add)
+                    _generators.Add(g);
+            }
+            foreach (IdentityField i in identities)
+            {
+                add = true;
+                for (int x = 0; x < _identities.Count; x++)
+                {
+                    if (i.FieldName == _identities[x].FieldName && i.TableName == _identities[x].TableName)
+                    {
+                        add = false;
+                        _identities[x] = i;
+                        break;
+                    }
+                }
+                if (add)
+                    _identities.Add(i);
+            }
+            foreach (StoredProcedure sp in procedures)
+            {
+                add = true;
+                for (int x = 0; x < _procedures.Count; x++)
+                {
+                    if (sp.ProcedureName == _procedures[x].ProcedureName)
+                    {
+                        add = false;
+                        _procedures[x] = sp;
+                        break;
+                    }
+                }
+                if (add)
+                    _procedures.Add(sp);
+            }
+        }
+
         private List<Type> _RecurLoadTypesForTable(sTable tbl, List<Type> types)
         {
             Type t = _pool.Mapping[tbl.Name];
@@ -262,8 +328,11 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                 if (_pool.Mapping.PropertyHasIntermediateTable(t, prop))
                 {
                     sTable itbl = _pool.Mapping[t, prop];
-                    if (itbl.Relations[1].ExternalTable != tbl.Name)
-                        types = _RecurLoadTypesForTable(_pool.Mapping[_pool.Mapping[itbl.Relations[1].ExternalTable]], types);
+                    if (itbl.Relations!=null)
+                    {
+                        if (itbl.Relations[1].ExternalTable != tbl.Name)
+                            types = _RecurLoadTypesForTable(_pool.Mapping[_pool.Mapping[itbl.Relations[1].ExternalTable]], types);
+                    }
                 }
             }
             return types;
