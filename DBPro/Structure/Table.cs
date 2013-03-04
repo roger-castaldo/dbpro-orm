@@ -639,8 +639,18 @@ namespace Org.Reddragonit.Dbpro.Structure
 		{
 			if (!conversionType.IsSubclassOf(typeof(Table)))
 				throw new Exception("Cannot convert object to type that does not inherit table.");
-			if (!this.GetType().IsSubclassOf(conversionType) && !conversionType.IsSubclassOf(this.GetType()))
-				throw new Exception("Cannot convert object to type that is not a parent/child of the current class.");
+            if (!this.GetType().IsSubclassOf(conversionType) && !conversionType.IsSubclassOf(this.GetType()))
+            {
+                Type btype = this.GetType().BaseType;
+                while (btype != typeof(Table))
+                {
+                    if (conversionType.IsSubclassOf(btype))
+                        return ((Table)ToType(btype, null)).ToType(conversionType, null);
+                    else
+                        btype = btype.BaseType;
+                }
+                throw new Exception("Cannot convert object to type that is not a parent/child or has no matching inheritance of the current class.");
+            }
 			Table ret = (Table)conversionType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
             sTable map = ConnectionPoolManager.GetConnection(conversionType).Mapping[conversionType];
             if (conversionType.IsSubclassOf(this.GetType()))
@@ -663,6 +673,8 @@ namespace Org.Reddragonit.Dbpro.Structure
             }
             ConnectionPool pool = ConnectionPoolManager.GetConnection(ret.GetType());
             Type t = ret.GetType().BaseType;
+            if (conversionType.IsSubclassOf(this.GetType()))
+                t = this.GetType().BaseType;
             while (pool.Mapping.IsMappableType(t))
             {
                 map = pool.Mapping[t];
@@ -675,7 +687,7 @@ namespace Org.Reddragonit.Dbpro.Structure
                         if (this.ChangedFields.Contains(prop))
                             ((Table)ret)._changedFields.Add(prop);
                     }
-                }    
+                }
                 t = t.BaseType;
             }
             ((Table)ret).InitPrimaryKeys();
