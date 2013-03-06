@@ -759,7 +759,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                             else
                             {
                                 if (flds[0].Type == FieldType.ENUM)
-                                    insertParameters.Add(conn.CreateParameter(CreateParameterName(prop), conn.Pool.GetEnumID(table.GetType().GetProperty(prop, Utility._BINDING_FLAGS).PropertyType, table.GetField(prop).ToString())));
+                                    insertParameters.Add(conn.CreateParameter(CreateParameterName(prop), conn.Pool.GetEnumID(table.GetType().GetProperty(prop, Utility._BINDING_FLAGS_WITH_INHERITANCE).PropertyType, table.GetField(prop).ToString())));
                                 else
                                     insertParameters.Add(conn.CreateParameter(CreateParameterName(prop), table.GetField(prop), flds[0].Type, flds[0].Length));
                             }
