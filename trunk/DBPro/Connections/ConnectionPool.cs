@@ -22,6 +22,7 @@ using Org.Reddragonit.Dbpro.Virtual;
 using Org.Reddragonit.Dbpro.Connections.PoolComponents;
 using Org.Reddragonit.Dbpro.Structure.Attributes;
 using System.Reflection;
+using System.Xml;
 
 namespace Org.Reddragonit.Dbpro.Connections
 {
@@ -37,12 +38,13 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		private List<Connection> locked=new List<Connection>();
 		private Queue<Connection> unlocked=new Queue<Connection>();
-		protected string connectionString;
+
+        protected abstract string connectionString{get;}
 		
 		private int minPoolSize=0;
 		private int maxPoolSize=0;
 		private long maxKeepAlive=0;
-        internal int readTimeout;
+        internal int readTimeout=300;
 		private bool _debugMode=false;
         public bool DebugMode
         {
@@ -50,6 +52,11 @@ namespace Org.Reddragonit.Dbpro.Connections
         }
 		private bool _allowTableDeletions=true;
         protected bool _readonly = false;
+        private bool _classless=false;
+        public bool Classless
+        {
+            get { return _classless; }
+        }
 		
 		private bool isClosed=false;
 		private bool isReady=false;
@@ -207,55 +214,103 @@ namespace Org.Reddragonit.Dbpro.Connections
             return _enums.GetEnumID(enumType, enumName);
 		}
 
-        protected ConnectionPool(string connectionString, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions)
-            :this(connectionString,minPoolSize,maxPoolSize,maxKeepAlive,UpdateStructureDebugMode,connectionName,allowTableDeletions,DEFAULT_READ_TIMEOUT,false)
-        { }
-
-        protected ConnectionPool(string connectionString, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions,bool Readonly)
-            : this(connectionString, minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode, connectionName, allowTableDeletions, DEFAULT_READ_TIMEOUT, Readonly)
-        { }
-		
-		protected ConnectionPool(string connectionString,int minPoolSize,int maxPoolSize,long maxKeepAlive,bool UpdateStructureDebugMode,string connectionName,bool allowTableDeletions,int readTimeout,bool Readonly)
+        protected ConnectionPool(XmlElement elem)
 		{
 			Logger.LogLine("Establishing Connection with string: "+connectionString);
-			this.connectionString=connectionString;
-			this.minPoolSize=minPoolSize;
-			this.maxPoolSize=maxPoolSize;
-			this.maxKeepAlive=maxKeepAlive;
-			_debugMode=UpdateStructureDebugMode;
-			_connectionName=connectionName;
-			_allowTableDeletions=allowTableDeletions;
-            _readonly = Readonly;
-            this.readTimeout = readTimeout;
-			ConnectionPoolManager.AddConnection(connectionName,this);
+            foreach (XmlNode node in elem.ChildNodes)
+            {
+                if (node.Name == "ConnectionParameter")
+                {
+                    switch(node.Attributes["parameter_name"].Value){
+                        case "minPoolSize":
+                            if (node.Attributes["parameter_value"].Value != "null")
+                                minPoolSize = int.Parse(node.Attributes["parameter_value"].Value);
+                            else
+                                minPoolSize = 5;
+                            break;
+                        case "maxPoolSize":
+                            if (node.Attributes["parameter_value"].Value != "null")
+                                maxPoolSize = int.Parse(node.Attributes["parameter_value"].Value);
+                            else
+                                maxPoolSize = 10;
+                            break;
+                        case "maxKeepAlive":
+                            if (node.Attributes["parameter_value"].Value != "null")
+                                maxKeepAlive = int.Parse(node.Attributes["parameter_value"].Value);
+                            else
+                                maxKeepAlive = 600;
+                            break;
+                        case "UpdateStructureDebugMode":
+                            if (node.Attributes["parameter_value"].Value != "null")
+                                _debugMode = bool.Parse(node.Attributes["parameter_value"].Value);
+                            else
+                                _debugMode=false;
+                            break;
+                        case "connectionName":
+                            if (node.Attributes["parameter_value"].Value != "null")
+                                _connectionName = node.Attributes["parameter_value"].Value;
+                            else
+                                _connectionName=null;
+                            break;
+                        case "allowTableDeletions":
+                            if (node.Attributes["parameter_value"].Value != "null")
+                                _allowTableDeletions = bool.Parse(node.Attributes["parameter_value"].Value);
+                            else
+                                _allowTableDeletions=true;
+                            break;
+                        case "Readonly":
+                            if (node.Attributes["parameter_value"].Value != "null")
+                                _readonly = bool.Parse(node.Attributes["parameter_value"].Value);
+                            else
+                                _readonly=false;
+                            break;
+                        case "Classless":
+                            if (node.Attributes["parameter_value"].Value != "null")
+                                _classless = bool.Parse(node.Attributes["parameter_value"].Value);
+                            else
+                                _classless=false;
+                            break;
+                        case "readTimeout":
+                            if (node.Attributes["parameter_value"].Value != "null")
+                                readTimeout= int.Parse(node.Attributes["parameter_value"].Value);
+                            else
+                                readTimeout = 300;
+                            break;
+                    }
+                }
+            }
+			ConnectionPoolManager.AddConnection(_connectionName,this);
 		}
 		
 		internal void Init(Dictionary<Type,List<EnumTranslationPair>> translations)
 		{
             _InitClass();
             Connection conn = CreateConnection();
-            _translator = new NameTranslator(this, conn);
-            _enums = new EnumsHandler(this);
-            _updater = new StructureUpdater(this,translations);
-            List<Type> tables = new List<Type>();
-            List<Type> virtualTables = new List<Type>();
-            
-            if (!_debugMode)
+            if (!_classless)
             {
-                foreach (Type t in Utility.LocateAllTypesWithAttribute(typeof(Table)))
+                _translator = new NameTranslator(this, conn);
+                _enums = new EnumsHandler(this);
+                _updater = new StructureUpdater(this, translations);
+                List<Type> tables = new List<Type>();
+                List<Type> virtualTables = new List<Type>();
+
+                if (!_debugMode)
                 {
-                    Table tbl = (Table)t.GetCustomAttributes(typeof(Table), false)[0];
-                    if (Utility.StringsEqual(tbl.ConnectionName, ConnectionName))
-                        tables.Add(t);
+                    foreach (Type t in Utility.LocateAllTypesWithAttribute(typeof(Table)))
+                    {
+                        Table tbl = (Table)t.GetCustomAttributes(typeof(Table), false)[0];
+                        if (Utility.StringsEqual(tbl.ConnectionName, ConnectionName))
+                            tables.Add(t);
+                    }
+                    foreach (Type t in Utility.LocateAllTypesWithAttribute(typeof(VirtualTableAttribute)))
+                    {
+                        if (tables.Contains(VirtualTableAttribute.GetMainTableTypeForVirtualTable(t)))
+                            virtualTables.Add(t);
+                    }
+                    _mapping = new ClassMapping(conn, tables, virtualTables);
+                    PreInit();
+                    _updater.Init(conn);
                 }
-                foreach (Type t in Utility.LocateAllTypesWithAttribute(typeof(VirtualTableAttribute)))
-                {
-                    if (tables.Contains(VirtualTableAttribute.GetMainTableTypeForVirtualTable(t)))
-                        virtualTables.Add(t);
-                }
-                _mapping = new ClassMapping(conn, tables, virtualTables);
-                PreInit();
-                _updater.Init(conn);
             }
             conn.CloseConnection();
             for (int x=0;x<minPoolSize;x++){

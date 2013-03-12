@@ -1262,15 +1262,35 @@ namespace Org.Reddragonit.Dbpro.Connections
 
 		public void ExecuteQuery(string queryString)
 		{
-			ExecuteQuery(queryString,new IDbDataParameter[0]);
+			_ExecuteQuery(queryString,new IDbDataParameter[0],null);
 		}
+
+        public void ExecuteQuery(string queryString, int timeout)
+        {
+            _ExecuteQuery(queryString, new IDbDataParameter[0], timeout);
+        }
 		
 		public void ExecuteQuery(string queryString,List<IDbDataParameter> parameters)
 		{
-			ExecuteQuery(queryString, parameters.ToArray());
+			_ExecuteQuery(queryString, parameters.ToArray(),null);
 		}
 
-		public void ExecuteQuery(string queryString, IDbDataParameter[] parameters)
+        public void ExecuteQuery(string queryString, List<IDbDataParameter> parameters, int timeout)
+        {
+            _ExecuteQuery(queryString, parameters.ToArray(), timeout);
+        }
+
+        public void ExecuteQuery(string queryString, IDbDataParameter[] parameters)
+        {
+            _ExecuteQuery(queryString, parameters, null);
+        }
+
+        public void ExecuteQuery(string queryString, IDbDataParameter[] parameters,int timeout)
+        {
+            _ExecuteQuery(queryString, parameters, timeout);
+        }
+
+        private void _ExecuteQuery(string queryString,IDbDataParameter[] parameters,int? timeout)
 		{
             if (_readonly)
             {
@@ -1298,6 +1318,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 			if ((queryString!=null)&&(queryString.Length>0)){
 				reader = null;
 				comm.CommandText = FormatParameters(queryString + " ", ref parameters);
+                if (timeout.HasValue)
+                    comm.CommandTimeout = timeout.Value;
 				comm.Parameters.Clear();
                 comm.CommandType = CommandType.Text;
 				if (parameters != null)

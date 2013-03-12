@@ -9,111 +9,47 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 {
 	class MsSqlConnectionPool : ConnectionPool
 	{
-		public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode,string connectionName)
-			: this(username, password, database, databaseServer, 1433, minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode,connectionName,true,false)
-		{ }
-		
-		public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode,string connectionName,bool allowTableDeletions)
-			: this(username, password, database, databaseServer, 1433, minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode,connectionName,allowTableDeletions,false)
-		{ }
-
-		public MsSqlConnectionPool(string username, string password, string database, string databaseServer, bool UpdateStructureDebugMode,string connectionName)
-			: this(username, password, database, databaseServer, 1433, UpdateStructureDebugMode,connectionName)
-		{}
-
-		public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int port, bool UpdateStructureDebugMode,string connectionName)
-			: this(username, password, database, databaseServer, port, 5, 10, 600, UpdateStructureDebugMode,connectionName,true,false)
-		{
-			
-		}
-		
-		public MsSqlConnectionPool(string username, string password, string database, string databaseServer, bool UpdateStructureDebugMode,string connectionName,bool allowTableDeletions)
-			: this(username, password, database, databaseServer, 1433, UpdateStructureDebugMode,connectionName,allowTableDeletions)
-		{}
-
-		public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int port, bool UpdateStructureDebugMode,string connectionName,bool allowTableDeletions)
-			: this(username, password, database, databaseServer, port, 5, 10, 600, UpdateStructureDebugMode,connectionName,allowTableDeletions,false)
-		{}
-
-        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode, string connectionName,int readTimeout)
-            : this(username, password, database, databaseServer, 1433, minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode, connectionName, true, readTimeout)
-        { }
-
-        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions,int readTimeout)
-            : this(username, password, database, databaseServer, 1433, minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode, connectionName, allowTableDeletions,readTimeout)
-        { }
-
-        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int port, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions,int readTimeout)
-            :this (username,password,database,databaseServer,port,minPoolSize,maxPoolSize,maxKeepAlive,UpdateStructureDebugMode,connectionName,allowTableDeletions,readTimeout,false)
-        { }
-
-        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, bool UpdateStructureDebugMode, string connectionName,int readTimeout)
-            : this(username, password, database, databaseServer, 1433, UpdateStructureDebugMode, connectionName,readTimeout)
-        { }
-
-        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int port, bool UpdateStructureDebugMode, string connectionName,int readTimeout)
-            : this(username, password, database, databaseServer, port, 5, 10, 600, UpdateStructureDebugMode, connectionName, true,readTimeout)
+        private string _connectionString;
+        protected override string connectionString
         {
-
+            get { return _connectionString; }
         }
 
-        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions,int readTimeout)
-            : this(username, password, database, databaseServer, 1433, UpdateStructureDebugMode, connectionName, allowTableDeletions, readTimeout,false)
-        { }
-
-        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int port, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions,int readTimeout,bool Readonly)
-            : this(username, password, database, databaseServer, port, 5, 10, 600, UpdateStructureDebugMode, connectionName, allowTableDeletions,readTimeout,Readonly)
-        { }
-
-        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions, bool Readonly)
-            : this(username, password, database, databaseServer, 1433, minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode, connectionName, allowTableDeletions,Readonly)
-        { }
-
-        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions, bool Readonly)
-            : this(username, password, database, databaseServer, 1433, UpdateStructureDebugMode, connectionName, allowTableDeletions, Readonly)
-        { }
-
-        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int port, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions, bool Readonly)
-            : this(username, password, database, databaseServer, port, 5, 10, 600, UpdateStructureDebugMode, connectionName, allowTableDeletions, Readonly)
-        { }
-
-        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode, string connectionName, int readTimeout, bool Readonly)
-            : this(username, password, database, databaseServer, 1433, minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode, connectionName, true, readTimeout, Readonly)
-        { }
-
-        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions, int readTimeout, bool Readonly)
-            : this(username, password, database, databaseServer, 1433, minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode, connectionName, allowTableDeletions, readTimeout, Readonly)
-        { }
-
-        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, bool UpdateStructureDebugMode, string connectionName, int readTimeout, bool Readonly)
-            : this(username, password, database, databaseServer, 1433, UpdateStructureDebugMode, connectionName, readTimeout, Readonly)
-        { }
-
-        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int port, bool UpdateStructureDebugMode, string connectionName, int readTimeout, bool Readonly)
-            : this(username, password, database, databaseServer, port, 5, 10, 600, UpdateStructureDebugMode, connectionName, true, readTimeout, Readonly)
+        public MsSqlConnectionPool(XmlElement elem)
+            : base(elem)
         {
-
-        }
-
-        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions, int readTimeout, bool Readonly)
-            : this(username, password, database, databaseServer, 1433, UpdateStructureDebugMode, connectionName, allowTableDeletions, readTimeout, Readonly)
-        { }
-
-        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int port, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions, bool Readonly)
-            : base("Data Source=" + databaseServer + ", " + port.ToString() +
+            int port=1433;
+            string databaseServer = null;
+            string database = null;
+            string username = null;
+            string password = null;
+            foreach (XmlNode node in elem.ChildNodes)
+            {
+                if (node.Name == "ConnectionParameter")
+                {
+                    switch(node.Attributes["parameter_name"].Value){
+                        case "databaseServer":
+                            databaseServer=node.Attributes["parameter_value"].Value;
+                            break;
+                        case "port":
+                            port = int.Parse(node.Attributes["parameter_value"].Value);
+                            break;
+                        case "username":
+                            username = node.Attributes["parameter_value"].Value;
+                            break;
+                        case "password":
+                            password = node.Attributes["parameter_value"].Value;
+                            break;
+                        case "database":
+                            database = node.Attributes["parameter_value"].Value;
+                            break;
+                    }
+                }
+            }
+            _connectionString = "Data Source=" + databaseServer + ", " + port.ToString() +
                    ";Initial Catalog=" + database + ";" +
                    "User ID=" + username + ";" +
-                   "Password=" + password + ";", minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode, connectionName, allowTableDeletions, Readonly)
-        {
-            _catalog = database;
-        }
-
-        public MsSqlConnectionPool(string username, string password, string database, string databaseServer, int port, int minPoolSize, int maxPoolSize, long maxKeepAlive, bool UpdateStructureDebugMode, string connectionName, bool allowTableDeletions, int readTimeout, bool Readonly)
-            : base("Data Source=" + databaseServer + ", " + port.ToString() +
-                   ";Initial Catalog=" + database + ";" +
-                   "User ID=" + username + ";" +
-                   "Password=" + password + ";", minPoolSize, maxPoolSize, maxKeepAlive, UpdateStructureDebugMode, connectionName, allowTableDeletions, readTimeout, Readonly)
-        {
+                   "Password=" + password + ";";
             _catalog = database;
         }
 

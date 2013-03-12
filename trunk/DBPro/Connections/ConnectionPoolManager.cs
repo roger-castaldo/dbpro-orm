@@ -312,64 +312,10 @@ namespace Org.Reddragonit.Dbpro.Connections
 		private static void ExtractConnectionFromXml(XmlNode connectionNode)
 		{
 			Type t = Type.GetType(connectionNode.Attributes["connection_type"].Value,false);
-			if (t!=null)
-			{
-				Dictionary<string, string> parameters = new Dictionary<string, string>();
-				ConstructorInfo[] constructors=t.GetConstructors();
-				foreach (XmlNode node in connectionNode.ChildNodes)
-				{
-					if (node.Name=="ConnectionParameter")
-					{
-						if (node.Attributes["parameter_value"].Value=="null")
-						{
-							parameters.Add(node.Attributes["parameter_name"].Value,null);
-						}else{
-							parameters.Add(node.Attributes["parameter_name"].Value,node.Attributes["parameter_value"].Value);
-						}
-					}
-				}
-				ConstructorInfo selected=null;
-				int paramCount=0;
-				foreach (ConstructorInfo c in constructors)
-				{
-					bool canWork=true;
-					foreach (ParameterInfo p in c.GetParameters())
-					{
-						if (!parameters.ContainsKey(p.Name))
-						{
-							canWork=false;
-							break;
-						}
-					}
-					if (canWork)
-					{
-						if (paramCount<c.GetParameters().Length)
-						{
-							paramCount=c.GetParameters().Length;
-							selected=c;
-						}
-					}
-				}
-				if (selected!=null)
-				{
-					object[] pars = new object[selected.GetParameters().Length];
-					for (int x=0;x<selected.GetParameters().Length;x++)
-					{
-						ParameterInfo p = selected.GetParameters()[x];
-						if (p.ParameterType==typeof(int))
-							pars[x]=int.Parse(parameters[p.Name]);
-						else if (p.ParameterType==typeof(long))
-							pars[x]=long.Parse(parameters[p.Name]);
-						else if (p.ParameterType==typeof(bool))
-							pars[x]=bool.Parse(parameters[p.Name]);
-						else
-							pars[x]=parameters[p.Name];
-					}
-					selected.Invoke(pars);
-				}else{
-					throw new Exception("Unable to load connection "+t.FullName+".  Unable to find constructor with supplied parameters.");
-				}
-			}
+            if (t != null)
+                t.GetConstructor(new Type[] { typeof(XmlElement) }).Invoke(new object[] { connectionNode });
+            else
+                throw new Exception("Unable to load connection of type " + connectionNode.Attributes["connection_type"].Value);
 		}
 		
 		private static FileInfo RecurLocateConfigFile(DirectoryInfo di)
