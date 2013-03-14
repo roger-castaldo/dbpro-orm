@@ -967,7 +967,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         internal static object LocateFieldValue(Table table,sTableField fld,ConnectionPool pool)
         {
-            if (fld.ExternalField == null)
+            if (fld.ExternalField == null || fld.Type==FieldType.ENUM)
                 return table.GetField(fld.ClassProperty);
             else
             {

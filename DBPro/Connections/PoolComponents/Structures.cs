@@ -259,5 +259,19 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             }
             return ret;
         }
+
+        internal bool IsEnumProperty(string fieldName)
+        {
+            bool ret = false;
+            foreach (sTableField fld in Fields)
+            {
+                if (fld.Name == fieldName || fld.ClassProperty == fieldName)
+                {
+                    ret = fld.Type == FieldType.ENUM;
+                    break;
+                }
+            }
+            return ret;
+        }
     }
 }
