@@ -463,11 +463,8 @@ namespace Org.Reddragonit.Dbpro.Connections
                         Table[] vals = (Table[])table.GetField(prop);
                         if (vals != null)
                         {
-                            if (vals != null)
-                            {
-                                foreach (Table t in vals)
-                                    this.Save(t);
-                            }
+                            foreach (Table t in vals)
+                                this.Save(t);
                         }
                     }
                 }
