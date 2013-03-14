@@ -1236,22 +1236,32 @@ namespace Org.Reddragonit.Dbpro.Connections
                         sTable relMap = _pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
                         string className = pi.Name;
                         string innerJoin = " INNER JOIN ";
-                        if (rel.Value.Nullable)
-                        {
-                            parentIsNullable = true;
-                            innerJoin = " LEFT JOIN ";
-                        }
-                        else if (parentIsNullable)
-                            innerJoin = " LEFT JOIN ";
                         string tbl = _conn.queryBuilder.SelectAll((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType), null);
                         if (pi.PropertyType.IsArray)
                         {
                             sTable iMap = _pool.Mapping[curType, pi.Name];
+                            if (parentIsNullable)
+                                innerJoin = " LEFT JOIN ";
+                            else
+                            {
+                                foreach (object obj in pi.GetCustomAttributes(false))
+                                {
+                                    if (obj is Org.Reddragonit.Dbpro.Structure.Attributes.IForeignField)
+                                    {
+                                        if (((Org.Reddragonit.Dbpro.Structure.Attributes.IForeignField)obj).Nullable)
+                                        {
+                                            innerJoin = " LEFT JOIN ";
+                                            parentIsNullable = true;
+                                        }
+                                        break;
+                                    }
+                                }
+                            }
                             innerJoin += iMap.Name + " " + alias + "_intermediate_" + className + " ON ";
                             List<string> pkeys = new List<string>(map.PrimaryKeyFields);
                             foreach (sTableField fld in iMap.Fields)
                             {
-                                if (pkeys.Contains(fld.ExternalField))
+                                if ((fld.ClassProperty==null ? "" : fld.ClassProperty)=="PARENT")
                                     innerJoin += " " + alias + "." + fld.ExternalField + " = " + alias + "_intermediate_" + className + "." + fld.Name + " AND ";
                             }
                             innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
@@ -1262,13 +1272,20 @@ namespace Org.Reddragonit.Dbpro.Connections
                             pkeys.AddRange(relMap.PrimaryKeyFields);
                             foreach (sTableField fld in iMap.Fields)
                             {
-                                if (pkeys.Contains(fld.ExternalField))
-                                    innerJoin += " " + alias + "_intermediate_" + className + "." + fld.Name + " = " + alias + "_" + className + "." + fld.Name + " AND ";
+                                if ((fld.ClassProperty == null ? "" : fld.ClassProperty)=="CHILD")
+                                    innerJoin += " " + alias + "_intermediate_" + className + "." + fld.Name + " = " + alias + "_" + className + "." + fld.ExternalField + " AND ";
                             }
                             innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
                         }
                         else
                         {
+                            if (rel.Value.Nullable)
+                            {
+                                parentIsNullable = true;
+                                innerJoin = " LEFT JOIN ";
+                            }
+                            else if (parentIsNullable)
+                                innerJoin = " LEFT JOIN ";
                             innerJoin += "(" + tbl + ") " + alias + "_" + className + " ON ";
                             List<string> pkeys = new List<string>(relMap.PrimaryKeyFields);
                             foreach (sTableField fld in map[pi.Name])
