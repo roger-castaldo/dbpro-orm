@@ -81,6 +81,8 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             }
             Translate();
             _outputQuery = _outputQuery.Trim();
+            for (int x = 0; x < _fieldNames.Count; x++)
+                _fieldNames[x] = _fieldNames[x].Trim("'\"".ToCharArray());
             Logger.LogLine("Class Query: " + query + "\nTranslated To:" + _outputQuery);
         }
 		
@@ -252,12 +254,16 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             if (_tableFields.Count > 0)
             {
                 int ret = i;
+                int shift = 0;
                 foreach (int index in Utility.SortDictionaryKeys(_tableFieldCounts.Keys))
                 {
                     if (index < i)
+                    {
                         ret += _tableFieldCounts[index];
+                        shift++;
+                    }
                 }
-                return (ret==i ? i : ret-1);
+                return (ret==i ? i : ret-shift);
             }
             return i;
         }
@@ -914,7 +920,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 				{
 					while (fieldName.Contains("."))
 					{
-                        pi = t.GetProperty(fieldName.Substring(0, fieldName.IndexOf(".")), Utility._BINDING_FLAGS);
+                        pi = t.GetProperty(fieldName.Substring(0, fieldName.IndexOf(".")), Utility._BINDING_FLAGS_WITH_INHERITANCE);
                         t = (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType);
 						fieldName = fieldName.Substring(fieldName.IndexOf(".") + 1);
 					}
@@ -926,7 +932,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 				}
 				else
 				{
-                    pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS);
+                    pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS_WITH_INHERITANCE);
                     if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) && !(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType).IsEnum)
 						return true;
 					else
@@ -971,7 +977,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     PropertyInfo pi = null;
 					while (fieldName.Contains("."))
 					{
-                        pi = t.GetProperty(fieldName.Substring(0, fieldName.IndexOf(".")), Utility._BINDING_FLAGS);
+                        pi = t.GetProperty(fieldName.Substring(0, fieldName.IndexOf(".")), Utility._BINDING_FLAGS_WITH_INHERITANCE);
                         map = _conn.Pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
 						fieldName = fieldName.Substring(fieldName.IndexOf(".") + 1);
                         t = (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType);
@@ -1013,7 +1019,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 					}
 					else
 					{
-                        PropertyInfo pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS);
+                        PropertyInfo pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS_WITH_INHERITANCE);
                         if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) && !(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType).IsEnum)
 						{
 							ret.RemoveAt(0);
@@ -1184,7 +1190,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 			{
 				while (field.Contains("."))
 				{
-                    pi = cur.GetProperty(field.Substring(0, field.IndexOf(".")), Utility._BINDING_FLAGS);
+                    pi = cur.GetProperty(field.Substring(0, field.IndexOf(".")), Utility._BINDING_FLAGS_WITH_INHERITANCE);
                     string talias = alias;
                     if (!pi.DeclaringType.Equals(cur))
                     {
@@ -1714,7 +1720,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 				{
 					while (fieldName.Contains("."))
 					{
-                        pi = t.GetProperty(fieldName.Substring(0, fieldName.IndexOf(".")), Utility._BINDING_FLAGS);
+                        pi = t.GetProperty(fieldName.Substring(0, fieldName.IndexOf(".")), Utility._BINDING_FLAGS_WITH_INHERITANCE);
                         t = (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType);
                         map = _conn.Pool.Mapping[t];
 						fieldName = fieldName.Substring(fieldName.IndexOf(".") + 1);
@@ -1945,8 +1951,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             return _conn.GetString(TranslateFieldIndex(i));
         }
 
-        public object GetValue(int i)
-        {
+        public object GetValue(int i){
             if (IsDBNull(i))
                 return null;
             if (_tableFieldCounts.ContainsKey(i))
@@ -1954,6 +1959,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 Table t = (Table)LazyProxy.Instance(_tableFields[_fieldNames[i]].GetConstructor(System.Type.EmptyTypes).Invoke(new object[0]));
                 sTableField[] flds = _conn.Pool.Mapping[_tableFields[_fieldNames[i]]].Fields;
                 int index = 0;
+                i = TranslateFieldIndex(i);
                 foreach (sTableField fld in flds)
                 {
                     PropertyInfo pi = t.GetType().GetProperty(fld.ClassProperty, Utility._BINDING_FLAGS_WITH_INHERITANCE);
@@ -2010,16 +2016,18 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 
         public bool IsDBNull(int i)
         {
-        	if (!_tableFieldCounts.ContainsKey(i))
-            	return _conn.IsDBNull(TranslateFieldIndex(i));
-        	else{
-        		int start=TranslateFieldIndex(i);
-        		for(int x=0;x<_tableFieldCounts[i];x++){
-        			if(!_conn.IsDBNull(x+start))
-        				return false;
-        		}
-        		return true;
-        	}
+            if (!_tableFieldCounts.ContainsKey(i))
+                return _conn.IsDBNull(TranslateFieldIndex(i));
+            else
+            {
+                int start = TranslateFieldIndex(i);
+                for (int x = 0; x < _tableFieldCounts[i]; x++)
+                {
+                    if (!_conn.IsDBNull(x + start))
+                        return false;
+                }
+                return true;
+            }
         }
 
         public object this[string name]
