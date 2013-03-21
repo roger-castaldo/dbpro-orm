@@ -211,7 +211,7 @@ namespace Org.Reddragonit.Dbpro.Structure
                             }
                         }
                     }
-                    if (!t.AllFieldsNull)
+                    if (!t.AllPrimaryKeysNull)
                     {
                         t.InitPrimaryKeys();
                         table.SetField(prop, t);
@@ -286,7 +286,7 @@ namespace Org.Reddragonit.Dbpro.Structure
                             t = (Table)LazyProxy.Instance(t);
                             bool setValue = false;
                             t = SetExternalValues(map, prop, conn, out setValue, t);
-                            if (!t.AllFieldsNull && setValue)
+                            if (!t.AllPrimaryKeysNull && setValue)
                             {
                                 t.InitPrimaryKeys();
                                 this.SetField(prop, t);
@@ -327,11 +327,11 @@ namespace Org.Reddragonit.Dbpro.Structure
             this.InitPrimaryKeys();
 		}
 
-		internal bool AllFieldsNull
+		internal bool AllPrimaryKeysNull
 		{
 			get
 			{
-				foreach (string prop in ConnectionPoolManager.GetConnection(GetType()).Mapping[GetType()].Properties)
+				foreach (string prop in ConnectionPoolManager.GetConnection(GetType()).Mapping[GetType()].PrimaryKeyFields)
 				{
 					if (!IsFieldNull(prop))
 					{
@@ -518,8 +518,12 @@ namespace Org.Reddragonit.Dbpro.Structure
                 if (((pi.PropertyType.Equals(typeof(bool))||pi.PropertyType.IsEnum)
                     && !fld.Nullable) ||
                     (new List<string>(map.PrimaryKeyProperties).Contains(FieldName) && this.IsSaved)||
-                    !fld.Nullable)
+                    (!fld.Nullable && this.IsSaved))
                     return false;
+                else if (new List<string>(map.PrimaryKeyProperties).Contains(FieldName)
+                    && _initialPrimaryKeys.ContainsKey(FieldName))
+                    return _initialPrimaryKeys[FieldName] == cur;
+                return cur==null;
             }
             return equalObjects(cur, pi.GetValue(this.GetType().GetConstructor(Type.EmptyTypes).Invoke(new object[0]), new object[0]));
 		}
