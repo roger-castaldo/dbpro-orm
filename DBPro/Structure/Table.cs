@@ -522,7 +522,7 @@ namespace Org.Reddragonit.Dbpro.Structure
                     return false;
                 else if (new List<string>(map.PrimaryKeyProperties).Contains(FieldName)
                     && _initialPrimaryKeys.ContainsKey(FieldName))
-                    return _initialPrimaryKeys[FieldName] == cur;
+                    return _initialPrimaryKeys[FieldName] == cur && !this.IsSaved && LoadStatus == LoadStatus.NotLoaded;
                 return cur==null;
             }
             return equalObjects(cur, pi.GetValue(this.GetType().GetConstructor(Type.EmptyTypes).Invoke(new object[0]), new object[0]));
