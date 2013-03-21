@@ -618,9 +618,10 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 {
                     while (fieldName.Contains("."))
                     {
-                        PropertyInfo pi = t.GetProperty(fieldName.Substring(0, fieldName.IndexOf(".")), Utility._BINDING_FLAGS);
+                        PropertyInfo pi = t.GetProperty(fieldName.Substring(0, fieldName.IndexOf(".")), Utility._BINDING_FLAGS_WITH_INHERITANCE);
                         map = _conn.Pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
                         fieldName = fieldName.Substring(fieldName.IndexOf(".") + 1);
+                        t = (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType);
                     }
                     if (fieldName != "*")
                     {
