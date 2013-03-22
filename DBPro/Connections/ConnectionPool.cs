@@ -217,6 +217,16 @@ namespace Org.Reddragonit.Dbpro.Connections
         protected ConnectionPool(XmlElement elem)
 		{
 			Logger.LogLine("Establishing Connection with string: "+connectionString);
+            //set up default values
+            minPoolSize = 5;
+            maxPoolSize = 10;
+            maxKeepAlive = 600;
+            _debugMode = false;
+            _connectionName = null;
+            _allowTableDeletions = true;
+            _readonly = false;
+            _classless = false;
+            readTimeout = 300;
             foreach (XmlNode node in elem.ChildNodes)
             {
                 if (node.Name == "ConnectionParameter")
@@ -225,56 +235,38 @@ namespace Org.Reddragonit.Dbpro.Connections
                         case "minPoolSize":
                             if (node.Attributes["parameter_value"].Value != "null")
                                 minPoolSize = int.Parse(node.Attributes["parameter_value"].Value);
-                            else
-                                minPoolSize = 5;
                             break;
                         case "maxPoolSize":
                             if (node.Attributes["parameter_value"].Value != "null")
                                 maxPoolSize = int.Parse(node.Attributes["parameter_value"].Value);
-                            else
-                                maxPoolSize = 10;
                             break;
                         case "maxKeepAlive":
                             if (node.Attributes["parameter_value"].Value != "null")
                                 maxKeepAlive = int.Parse(node.Attributes["parameter_value"].Value);
-                            else
-                                maxKeepAlive = 600;
                             break;
                         case "UpdateStructureDebugMode":
                             if (node.Attributes["parameter_value"].Value != "null")
                                 _debugMode = bool.Parse(node.Attributes["parameter_value"].Value);
-                            else
-                                _debugMode=false;
                             break;
                         case "connectionName":
                             if (node.Attributes["parameter_value"].Value != "null")
                                 _connectionName = node.Attributes["parameter_value"].Value;
-                            else
-                                _connectionName=null;
                             break;
                         case "allowTableDeletions":
                             if (node.Attributes["parameter_value"].Value != "null")
                                 _allowTableDeletions = bool.Parse(node.Attributes["parameter_value"].Value);
-                            else
-                                _allowTableDeletions=true;
                             break;
                         case "Readonly":
                             if (node.Attributes["parameter_value"].Value != "null")
                                 _readonly = bool.Parse(node.Attributes["parameter_value"].Value);
-                            else
-                                _readonly=false;
                             break;
                         case "Classless":
                             if (node.Attributes["parameter_value"].Value != "null")
                                 _classless = bool.Parse(node.Attributes["parameter_value"].Value);
-                            else
-                                _classless=false;
                             break;
                         case "readTimeout":
                             if (node.Attributes["parameter_value"].Value != "null")
                                 readTimeout= int.Parse(node.Attributes["parameter_value"].Value);
-                            else
-                                readTimeout = 300;
                             break;
                     }
                 }
