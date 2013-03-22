@@ -24,6 +24,8 @@ namespace Org.Reddragonit.Dbpro.Structure
 	{
         //Whether or not the table has been saved in the database.
 		internal bool _isSaved = false;
+        //Whether or not the table has been converted from a table loaded in the database
+        private bool _isParentSaved = false;
         //Houses the current load state for the table object.
 		private LoadStatus _loadStatus=LoadStatus.NotLoaded;
         //Houses the initial values for the primary keys prior to editing them.
@@ -157,6 +159,15 @@ namespace Org.Reddragonit.Dbpro.Structure
 				return _isSaved;
 			}
 		}
+
+        //returnf if the parent table the object was converted from was saved
+        internal bool IsParentSaved
+        {
+            get
+            {
+                return _isParentSaved;
+            }
+        }
 
         //called by a connection to set the values in the table object from the generated query.
         internal void SetValues(Connection conn)
@@ -511,7 +522,8 @@ namespace Org.Reddragonit.Dbpro.Structure
                 return true;
             PropertyInfo pi = LocatePropertyInfo(FieldName);
 			object cur = pi.GetValue(this,new object[0]);
-            sTable map = ConnectionPoolManager.GetConnection(this.GetType()).Mapping[this.GetType()];
+            ConnectionPool pool = ConnectionPoolManager.GetConnection(this.GetType());
+            sTable map = pool.Mapping[this.GetType()];
             if (map[FieldName].Length>0)
             {
                 sTableField fld = map[FieldName][0];
@@ -522,11 +534,21 @@ namespace Org.Reddragonit.Dbpro.Structure
                     return false;
                 else if (new List<string>(map.PrimaryKeyProperties).Contains(FieldName)
                     && _initialPrimaryKeys.ContainsKey(FieldName))
-                    return _initialPrimaryKeys[FieldName] == cur && !this.IsSaved && LoadStatus == LoadStatus.NotLoaded;
+                    return _initialPrimaryKeys[FieldName] == cur && !this.IsSaved && !this.IsParentSaved && LoadStatus == LoadStatus.NotLoaded && !_isParentPrimaryKey(FieldName,map,pool,this.GetType(),cur);
                 return cur==null;
             }
             return equalObjects(cur, pi.GetValue(this.GetType().GetConstructor(Type.EmptyTypes).Invoke(new object[0]), new object[0]));
 		}
+
+        private bool _isParentPrimaryKey(string FieldName,sTable map,ConnectionPool pool,Type type,object cur)
+        {
+            if (pool.Mapping.IsMappableType(type.BaseType))
+            {
+                if (pool.Mapping[type.BaseType][FieldName].Length > 0)
+                    return _initialPrimaryKeys[FieldName] == cur;
+            }
+            return false;
+        }
 
 		private bool equalObjects(object obj1, object obj2)
 		{
@@ -703,6 +725,7 @@ namespace Org.Reddragonit.Dbpro.Structure
                     ((Table)ret)._initialPrimaryKeys.Add(str, this._initialPrimaryKeys[str]);
                 }
             }
+            ret._isParentSaved = this.IsParentSaved||this.IsSaved;
 			return ret;
 		}
 
