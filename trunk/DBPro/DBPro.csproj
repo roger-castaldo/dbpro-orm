@@ -85,6 +85,7 @@
     <Compile Include="Connections\MySql\MySqlQueryBuilder.cs" />
     <Compile Include="Connections\Parameters\AndParameter.cs" />
     <Compile Include="Connections\Parameters\CompareParameter.cs" />
+    <Compile Include="Connections\Parameters\EndsWithParameter.cs" />
     <Compile Include="Connections\Parameters\EqualIgnoreCaseParameter.cs" />
     <Compile Include="Connections\Parameters\EqualParameter.cs" />
     <Compile Include="Connections\Parameters\GreaterThanEqualToParameter.cs" />
@@ -97,6 +98,7 @@
     <Compile Include="Connections\Parameters\NotParameter.cs" />
     <Compile Include="Connections\Parameters\OrParameter.cs" />
     <Compile Include="Connections\Parameters\SelectParameter.cs" />
+    <Compile Include="Connections\Parameters\StartsWithParameter.cs" />
     <Compile Include="Connections\PgSql\PgSqlConnection.cs" />
     <Compile Include="Connections\PgSql\PgSqlConnectionPool.cs" />
     <Compile Include="Connections\PgSql\PgSqlQueryBuilder.cs" />
