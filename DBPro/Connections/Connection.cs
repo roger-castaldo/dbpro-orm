@@ -1029,13 +1029,23 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		public List<Table> SelectPaged(System.Type type,List<SelectParameter> parameters,ulong? StartIndex,ulong? RowCount)
 		{
-			if (parameters==null)
-				return SelectPaged(type,new SelectParameter[0],StartIndex,RowCount);
-			else
-				return SelectPaged(type,parameters.ToArray(),StartIndex,RowCount);
+            return SelectPaged(type, parameters, StartIndex, RowCount, null);
 		}
-		
-		public List<Table> SelectPaged(System.Type type,SelectParameter[] parameters,ulong? StartIndex,ulong? RowCount)
+
+        public List<Table> SelectPaged(System.Type type, List<SelectParameter> parameters, ulong? StartIndex, ulong? RowCount, string[] OrderByFields)
+        {
+            if (parameters == null)
+                return SelectPaged(type, new SelectParameter[0], StartIndex, RowCount, OrderByFields);
+            else
+                return SelectPaged(type, parameters.ToArray(), StartIndex, RowCount, OrderByFields);
+        }
+
+        public List<Table> SelectPaged(System.Type type, SelectParameter[] parameters, ulong? StartIndex, ulong? RowCount)
+        {
+            return SelectPaged(type, parameters, StartIndex, RowCount, null);
+        }
+
+        public List<Table> SelectPaged(System.Type type, SelectParameter[] parameters, ulong? StartIndex, ulong? RowCount, string[] OrderByFields)
 		{
 			if (!type.IsSubclassOf(typeof(Table)))
 			{
@@ -1048,7 +1058,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             pool.Updater.InitType(type, this);
 			List<Table> ret = new List<Table>();
 			List<IDbDataParameter> pars = new List<IDbDataParameter>();
-			string query = queryBuilder.SelectPaged(type,parameters,out pars,StartIndex,RowCount,null);
+			string query = queryBuilder.SelectPaged(type,parameters,out pars,StartIndex,RowCount,OrderByFields);
 			ExecuteQuery(query,pars);
 			while (Read())
 			{
