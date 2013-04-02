@@ -566,7 +566,12 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     wheres += " " + qt.Tokens[0].Value+" ";
                 for (int y = 1; y < qt.Tokens.Count; y++)
                 {
-                    if (
+                    if (qt.Tokens[y].Value.ToUpper() == "ASC" ||
+                            qt.Tokens[y].Value.ToUpper() == "DESC" ||
+                            qt.Tokens[y].Value.ToUpper() == "ASCENDING" ||
+                            qt.Tokens[y].Value.ToUpper() == "DESCENDING"){
+                                wheres += qt.Tokens[y].Value + " ";
+                    }else if (
                         (qt.Tokens[y - 1].Value == ",") ||
                         (qt.Tokens[y - 1].Value == "(") ||
                         (qt.Tokens[y - 1].Value.ToUpper() == "BY") ||
