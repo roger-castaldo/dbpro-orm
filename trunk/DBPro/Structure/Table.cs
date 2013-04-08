@@ -131,6 +131,8 @@ namespace Org.Reddragonit.Dbpro.Structure
                 t = t.BaseType;
             }
             InitPrimaryKeys();
+            if (table.GetType() == this.GetType().BaseType)
+                this._isParentSaved = table.IsSaved;
 		}
 		
         //returns the connection name that this table is linked to
@@ -527,20 +529,22 @@ namespace Org.Reddragonit.Dbpro.Structure
             if (map[FieldName].Length>0)
             {
                 sTableField fld = map[FieldName][0];
-                if (((pi.PropertyType.Equals(typeof(bool))||pi.PropertyType.IsEnum)
+                if (((pi.PropertyType.Equals(typeof(bool)) || pi.PropertyType.IsEnum)
                     && !fld.Nullable) ||
-                    (new List<string>(map.PrimaryKeyProperties).Contains(FieldName) && this.IsSaved)||
+                    (new List<string>(map.PrimaryKeyProperties).Contains(FieldName) && this.IsSaved) ||
                     (!fld.Nullable && this.IsSaved))
                     return false;
+                else if (new List<string>(map.PrimaryKeyProperties).Contains(FieldName) && this.IsParentSaved && _isParentPrimaryKey(FieldName, pool, this.GetType(), cur))
+                    return (_initialPrimaryKeys.ContainsKey(FieldName) ? false : true);
                 else if (new List<string>(map.PrimaryKeyProperties).Contains(FieldName)
                     && _initialPrimaryKeys.ContainsKey(FieldName))
-                    return _initialPrimaryKeys[FieldName] == cur && !this.IsSaved && !this.IsParentSaved && LoadStatus == LoadStatus.NotLoaded && !_isParentPrimaryKey(FieldName,map,pool,this.GetType(),cur);
+                    return _initialPrimaryKeys[FieldName] == cur && !this.IsSaved && !this.IsParentSaved && LoadStatus == LoadStatus.NotLoaded && !_isParentPrimaryKey(FieldName, pool, this.GetType(), cur);
                 return cur==null;
             }
             return equalObjects(cur, pi.GetValue(this.GetType().GetConstructor(Type.EmptyTypes).Invoke(new object[0]), new object[0]));
 		}
 
-        private bool _isParentPrimaryKey(string FieldName,sTable map,ConnectionPool pool,Type type,object cur)
+        private bool _isParentPrimaryKey(string FieldName,ConnectionPool pool,Type type,object cur)
         {
             if (pool.Mapping.IsMappableType(type.BaseType))
             {
@@ -725,7 +729,7 @@ namespace Org.Reddragonit.Dbpro.Structure
                     ((Table)ret)._initialPrimaryKeys.Add(str, this._initialPrimaryKeys[str]);
                 }
             }
-            ret._isParentSaved = this.IsParentSaved||this.IsSaved;
+            ret._isParentSaved = this.IsParentSaved||(this.IsSaved&&ret.GetType().BaseType==this.GetType());
 			return ret;
 		}
 
