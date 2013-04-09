@@ -897,7 +897,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 {
                     if (tbl[str].Length == 0)
                         throw new Exception("Unable to execute a Virtual table Query with Order By Fields that are not fields in the Virtual Table");
-                    orderByString += str + ",";
+                    orderByString += ","+tbl[str][0].Name;
                 }
             }
             this.ExecuteQuery("SELECT * FROM " + tbl.Name + (parString == "" ? "" : " WHERE "+parString.Substring(4))+(orderByString == "" ? "" : " ORDER BY "+orderByString.Substring(1)),queryParameters.ToArray());
@@ -1052,7 +1052,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 {
                     if (tbl[str].Length == 0)
                         throw new Exception("Unable to execute a Virtual table Query with Order By Fields that are not fields in the Virtual Table");
-                    orderByString += str + ",";
+                    orderByString += "," + tbl[str][0].Name;
                 }
             }
             this.ExecuteQuery(queryBuilder.SelectPaged("SELECT * FROM " + tbl.Name + (parString == "" ? "" : " WHERE " + parString.Substring(4)) + (orderByString == "" ? "" : " ORDER BY " + orderByString.Substring(1)),tbl,ref queryParameters,StartIndex,RowCount,OrderByFields), queryParameters.ToArray());
@@ -1112,6 +1112,10 @@ namespace Org.Reddragonit.Dbpro.Connections
                 else if (pi.PropertyType.Equals(typeof(ulong)) || pi.PropertyType.Equals(typeof(UInt64)))
                 {
                     pi.SetValue(obj, BitConverter.ToUInt64(BitConverter.GetBytes(long.Parse(value.ToString())), 0), new object[0]);
+                }
+                else if (pi.PropertyType.IsEnum)
+                {
+                    pi.SetValue(obj, Pool.GetEnumValue(pi.PropertyType, (int)value),new object[0]);
                 }
                 else
                 {
