@@ -356,5 +356,44 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
             }
             return ret;
         }
+
+        internal override sealed string ConstructVirtualTableString(sTable tbl, Connection conn,QueryBuilder builder, ref List<IDbDataParameter> queryParameters, ref int parCount)
+        {
+            string ret = tbl[FieldName][0].Name;
+            if (FieldValue == null)
+            {
+                ret += ComparatorString + " " + builder.CreateParameterName("parameter_" + parCount.ToString());
+                queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), FieldValue));
+                parCount++;
+            }
+            else if (FieldValue.GetType().IsArray || (FieldValue is ICollection))
+            {
+                string tmp = ret;
+                tmp += ComparatorString + " ";
+                ret += "( ";
+                foreach (object obj in (IEnumerable)FieldValue)
+                {
+                    ret += tmp + builder.CreateParameterName("parameter_" + parCount.ToString()) + " AND ";
+                    if (tbl[FieldName][0].Type==FieldType.ENUM)
+                        queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), conn.Pool.GetEnumID(obj.GetType(), obj.ToString())));
+                    else
+                        queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), obj, tbl[FieldName][0].Type, tbl[FieldName][0].Length));
+                    parCount++;
+                }
+                ret = ret.Substring(0, tmp.Length - 4);
+                ret += " )";
+            }
+            else
+            {
+                ret += ComparatorString + " ";
+                ret += builder.CreateParameterName("parameter_" + parCount.ToString());
+                if (tbl[FieldName][0].Type == FieldType.ENUM)
+                    queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), conn.Pool.GetEnumID(FieldValue.GetType(), FieldValue.ToString())));
+                else
+                    queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), FieldValue, tbl[FieldName][0].Type, tbl[FieldName][0].Length));
+                parCount++;
+            }
+            return ret;
+        }
 	}
 }

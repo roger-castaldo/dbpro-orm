@@ -20,5 +20,6 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
             get;
         }
 		internal abstract string ConstructString(Type tableType,Connection conn,QueryBuilder builder,ref List<IDbDataParameter> queryParameters,ref int parCount);
+        internal abstract string ConstructVirtualTableString(sTable tbl, Connection conn,QueryBuilder builder, ref List<IDbDataParameter> queryParameters, ref int parCount);
 	}
 }

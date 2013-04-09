@@ -341,6 +341,11 @@ namespace Org.Reddragonit.Dbpro.Connections
                 Org.Reddragonit.Dbpro.Structure.Attributes.Table t = (Org.Reddragonit.Dbpro.Structure.Attributes.Table)type.GetCustomAttributes(typeof(Org.Reddragonit.Dbpro.Structure.Attributes.Table), false)[0];
                 return GetConnection(t.ConnectionName);
             }
+            else if (type.GetCustomAttributes(typeof(Org.Reddragonit.Dbpro.Virtual.Attributes.VirtualTableAttribute), false).Length > 0)
+            {
+                Org.Reddragonit.Dbpro.Virtual.Attributes.VirtualTableAttribute vta = (Org.Reddragonit.Dbpro.Virtual.Attributes.VirtualTableAttribute)type.GetCustomAttributes(typeof(Org.Reddragonit.Dbpro.Virtual.Attributes.VirtualTableAttribute), false)[0];
+                return GetConnection(vta.MainTable);
+            }
 			return null;
 		}
 

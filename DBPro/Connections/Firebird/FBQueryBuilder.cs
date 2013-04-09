@@ -374,7 +374,7 @@ GROUP BY par.RDB$PROCEDURE_NAME
         {
             get
             {
-                return @"SELECT vw.RDB$RELATION_NAME,vw.RDB$VIEW_SOURCE
+                return @"SELECT TRIM(vw.RDB$RELATION_NAME),TRIM(vw.RDB$VIEW_SOURCE)
 FROM RDB$RELATIONS vw
 WHERE vw.RDB$VIEW_SOURCE IS NOT NULL";
             }

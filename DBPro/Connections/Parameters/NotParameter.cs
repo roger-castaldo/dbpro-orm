@@ -23,5 +23,10 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
         {
             return "NOT ( " + _negatedParameter.ConstructString(tableType, conn, builder, ref queryParameters, ref parCount) + " ) ";
         }
+
+        internal override string ConstructVirtualTableString(sTable tbl, Connection conn, QueryBuilder builder, ref List<System.Data.IDbDataParameter> queryParameters, ref int parCount)
+        {
+            return "NOT ( " + _negatedParameter.ConstructVirtualTableString(tbl, conn, builder, ref queryParameters, ref parCount) + " ) ";
+        }
     }
 }
