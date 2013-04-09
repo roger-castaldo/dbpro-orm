@@ -10,6 +10,7 @@ using System.Reflection;
 using System.Threading;
 using Org.Reddragonit.Dbpro.Virtual.Attributes;
 using Org.Reddragonit.Dbpro.Connections.PoolComponents;
+using System.ComponentModel;
 
 namespace Org.Reddragonit.Dbpro.Connections
 {
@@ -849,31 +850,334 @@ namespace Org.Reddragonit.Dbpro.Connections
                 type = type.BaseType;
             }
 			return ret;
-		}
+        }
 
+        #region Virtual Tables
         public List<Object> SelectVirtualTable(System.Type type)
+        {
+            return SelectVirtualTable(type, null,null);
+        }
+
+        public List<Object> SelectVirtualTable(System.Type type,SelectParameter[] pars)
+        {
+            return SelectVirtualTable(type, pars, null);
+        }
+
+        public List<Object> SelectVirtualTable(System.Type type,string[] OrderByFields)
+        {
+            return SelectVirtualTable(type, null, OrderByFields);
+        }
+
+        public List<Object> SelectVirtualTable(System.Type type,SelectParameter[] pars,string[] OrderByFields)
         {
             if (type.GetCustomAttributes(typeof(VirtualTableAttribute), true).Length == 0)
                 throw new Exception("Unable to execute a Virtual Table Query from a class that does not have a VirtualTableAttribute attached to it.");
             pool.Updater.InitType(type, this);
             List<Object> ret = new List<object>();
             sTable tbl = pool.Mapping.GetVirtualTable(type);
-            this.ExecuteQuery("SELECT * FROM " + tbl.Name);
+            int parCount = 0;
+            List<IDbDataParameter> queryParameters = new List<IDbDataParameter>();
+            string parString = "";
+            string orderByString = "";
+            if (pars != null)
+            {
+                foreach (SelectParameter par in pars)
+                {
+                    foreach (string str in par.Fields)
+                    {
+                        if (tbl[str].Length == 0)
+                            throw new Exception("Unable to execute a Virtual Table Query with parameters that are not fields in the Virtual Table");
+                    }
+                    parString += " AND ( " + par.ConstructVirtualTableString(tbl, this,queryBuilder , ref queryParameters, ref parCount) + " ) ";
+                }
+            }
+            if (OrderByFields != null)
+            {
+                foreach (string str in OrderByFields)
+                {
+                    if (tbl[str].Length == 0)
+                        throw new Exception("Unable to execute a Virtual table Query with Order By Fields that are not fields in the Virtual Table");
+                    orderByString += str + ",";
+                }
+            }
+            this.ExecuteQuery("SELECT * FROM " + tbl.Name + (parString == "" ? "" : " WHERE "+parString.Substring(4))+(orderByString == "" ? "" : " ORDER BY "+orderByString.Substring(1)),queryParameters.ToArray());
             while (Read())
             {
                 object obj = type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
                 foreach (sTableField fld in tbl.Fields)
-                {
-                    if (!this.IsDBNull(this.GetOrdinal(fld.Name)))
-                        type.GetProperty(fld.ClassProperty, Utility._BINDING_FLAGS).SetValue(obj, this[fld.Name], new object[0]);
-                }
+                    _setVirtualField(ref obj, fld, type);
                 ret.Add(obj);
             }
             Close();
             return ret;
         }
-		
-		public List<Table> SelectAll(System.Type type)
+
+        public object SelectMaxVirtualTable(string fieldName, System.Type type)
+        {
+            return SelectMaxVirtualTable(fieldName, type, null);
+        }
+
+        public object SelectMaxVirtualTable(string fieldName, System.Type type, SelectParameter[] pars)
+        {
+            object ret = null;
+            if (type.GetCustomAttributes(typeof(VirtualTableAttribute), true).Length == 0)
+                throw new Exception("Unable to execute a Virtual Table Query from a class that does not have a VirtualTableAttribute attached to it.");
+            pool.Updater.InitType(type, this);
+            sTable tbl = pool.Mapping.GetVirtualTable(type);
+            if (tbl[fieldName].Length == 0)
+                throw new Exception("Unable to execute a Max Virtual Table Query without specificying a Field in the virtual table");
+            int parCount = 0;
+            List<IDbDataParameter> queryParameters = new List<IDbDataParameter>();
+            string parString = "";
+            if (pars != null)
+            {
+                foreach (SelectParameter par in pars)
+                {
+                    foreach (string str in par.Fields)
+                    {
+                        if (tbl[str].Length == 0)
+                            throw new Exception("Unable to execute a Virtual Table Query with parameters that are not fields in the Virtual Table");
+                    }
+                    parString += " AND ( " + par.ConstructVirtualTableString(tbl, this, queryBuilder, ref queryParameters, ref parCount) + " ) ";
+                }
+            }
+            this.ExecuteQuery("SELECT MAX("+tbl[fieldName][0].Name+") FROM " + tbl.Name + (parString == "" ? "" : " WHERE " + parString.Substring(4)), queryParameters.ToArray());
+            if (Read())
+                ret = this[0];
+            Close();
+            return ret;
+        }
+
+        public object SelectMinVirtualTable(string fieldName, System.Type type)
+        {
+            return SelectMinVirtualTable(fieldName, type, null);
+        }
+
+        public object SelectMinVirtualTable(string fieldName, System.Type type, SelectParameter[] pars)
+        {
+            object ret = null;
+            if (type.GetCustomAttributes(typeof(VirtualTableAttribute), true).Length == 0)
+                throw new Exception("Unable to execute a Virtual Table Query from a class that does not have a VirtualTableAttribute attached to it.");
+            pool.Updater.InitType(type, this);
+            sTable tbl = pool.Mapping.GetVirtualTable(type);
+            if (tbl[fieldName].Length == 0)
+                throw new Exception("Unable to execute a Min Virtual Table Query without specificying a Field in the virtual table");
+            int parCount = 0;
+            List<IDbDataParameter> queryParameters = new List<IDbDataParameter>();
+            string parString = "";
+            if (pars != null)
+            {
+                foreach (SelectParameter par in pars)
+                {
+                    foreach (string str in par.Fields)
+                    {
+                        if (tbl[str].Length == 0)
+                            throw new Exception("Unable to execute a Virtual Table Query with parameters that are not fields in the Virtual Table");
+                    }
+                    parString += " AND ( " + par.ConstructVirtualTableString(tbl, this, queryBuilder, ref queryParameters, ref parCount) + " ) ";
+                }
+            }
+            this.ExecuteQuery("SELECT MIN(" + tbl[fieldName][0].Name + ") FROM " + tbl.Name + (parString == "" ? "" : " WHERE " + parString.Substring(4)), queryParameters.ToArray());
+            if (Read())
+                ret = this[0];
+            Close();
+            return ret;
+        }
+
+        public object SelectCountVirtualTable(System.Type type)
+        {
+            return SelectCountVirtualTable(type, null);
+        }
+
+        public object SelectCountVirtualTable(System.Type type, SelectParameter[] pars)
+        {
+            object ret = null;
+            if (type.GetCustomAttributes(typeof(VirtualTableAttribute), true).Length == 0)
+                throw new Exception("Unable to execute a Virtual Table Query from a class that does not have a VirtualTableAttribute attached to it.");
+            pool.Updater.InitType(type, this);
+            sTable tbl = pool.Mapping.GetVirtualTable(type);
+            int parCount = 0;
+            List<IDbDataParameter> queryParameters = new List<IDbDataParameter>();
+            string parString = "";
+            if (pars != null)
+            {
+                foreach (SelectParameter par in pars)
+                {
+                    foreach (string str in par.Fields)
+                    {
+                        if (tbl[str].Length == 0)
+                            throw new Exception("Unable to execute a Virtual Table Query with parameters that are not fields in the Virtual Table");
+                    }
+                    parString += " AND ( " + par.ConstructVirtualTableString(tbl, this, queryBuilder, ref queryParameters, ref parCount) + " ) ";
+                }
+            }
+            this.ExecuteQuery("SELECT COUNT(*) FROM " + tbl.Name + (parString == "" ? "" : " WHERE " + parString.Substring(4)), queryParameters.ToArray());
+            if (Read())
+                ret = this[0];
+            Close();
+            return ret;
+        }
+
+        public List<Object> SelectPagedVirtualTable(System.Type type, List<SelectParameter> parameters, ulong? StartIndex, ulong? RowCount)
+        {
+            return SelectPagedVirtualTable(type, parameters, StartIndex, RowCount, null);
+        }
+
+        public List<Object> SelectPagedVirtualTable(System.Type type, List<SelectParameter> parameters, ulong? StartIndex, ulong? RowCount,string[] OrderByFields)
+        {
+            if (type.GetCustomAttributes(typeof(VirtualTableAttribute), true).Length == 0)
+                throw new Exception("Unable to execute a Virtual Table Query from a class that does not have a VirtualTableAttribute attached to it.");
+            pool.Updater.InitType(type, this);
+            List<Object> ret = new List<object>();
+            sTable tbl = pool.Mapping.GetVirtualTable(type);
+            int parCount = 0;
+            List<IDbDataParameter> queryParameters = new List<IDbDataParameter>();
+            string parString = "";
+            string orderByString = "";
+            if (parameters != null)
+            {
+                foreach (SelectParameter par in parameters)
+                {
+                    foreach (string str in par.Fields)
+                    {
+                        if (tbl[str].Length == 0)
+                            throw new Exception("Unable to execute a Virtual Table Query with parameters that are not fields in the Virtual Table");
+                    }
+                    parString += " AND ( " + par.ConstructVirtualTableString(tbl, this, queryBuilder, ref queryParameters, ref parCount) + " ) ";
+                }
+            }
+            if (OrderByFields != null)
+            {
+                foreach (string str in OrderByFields)
+                {
+                    if (tbl[str].Length == 0)
+                        throw new Exception("Unable to execute a Virtual table Query with Order By Fields that are not fields in the Virtual Table");
+                    orderByString += str + ",";
+                }
+            }
+            this.ExecuteQuery(queryBuilder.SelectPaged("SELECT * FROM " + tbl.Name + (parString == "" ? "" : " WHERE " + parString.Substring(4)) + (orderByString == "" ? "" : " ORDER BY " + orderByString.Substring(1)),tbl,ref queryParameters,StartIndex,RowCount,OrderByFields), queryParameters.ToArray());
+            while (Read())
+            {
+                object obj = type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
+                foreach (sTableField fld in tbl.Fields)
+                    _setVirtualField(ref obj, fld, type);
+                ret.Add(obj);
+            }
+            Close();
+            return ret;
+        }
+
+        private void _setVirtualField(ref object obj, sTableField fld, Type type)
+        {
+            if (!this.IsDBNull(this.GetOrdinal(fld.Name)))
+            {
+                PropertyInfo pi = type.GetProperty(fld.ClassProperty, Utility._BINDING_FLAGS);
+                object value = this[this.GetOrdinal(fld.Name)];
+                if (pi.PropertyType.Equals(typeof(bool)) && !(value.GetType().Equals(typeof(bool))))
+                {
+                    if (value.GetType().Equals(typeof(int)))
+                    {
+                        if ((int)value == 0)
+                            pi.SetValue(obj, false, new object[0]);
+                        else
+                            pi.SetValue(obj, true, new object[0]);
+                    }
+                    else if (value.GetType().Equals(typeof(string)))
+                    {
+                        if (((string)value).Length == 1)
+                        {
+                            if ((string)value == "F")
+                                value = "False";
+                            else
+                                value = "True";
+                        }
+                        pi.SetValue(obj, bool.Parse((string)value), new object[0]);
+                    }
+                    else if (value.GetType().Equals(typeof(char)))
+                    {
+                        if ((char)value == 'F')
+                            pi.SetValue(obj, false, new object[0]);
+                        else
+                            pi.SetValue(obj, true, new object[0]);
+                    }
+                }
+                else if (pi.PropertyType.Equals(typeof(uint)) || pi.PropertyType.Equals(typeof(UInt32)))
+                {
+                    pi.SetValue(obj, BitConverter.ToUInt32(BitConverter.GetBytes(int.Parse(value.ToString())), 0), new object[0]);
+                }
+                else if (pi.PropertyType.Equals(typeof(ushort)) || pi.PropertyType.Equals(typeof(UInt16)))
+                {
+                    pi.SetValue(obj, BitConverter.ToUInt16(BitConverter.GetBytes(short.Parse(value.ToString())), 0), new object[0]);
+                }
+                else if (pi.PropertyType.Equals(typeof(ulong)) || pi.PropertyType.Equals(typeof(UInt64)))
+                {
+                    pi.SetValue(obj, BitConverter.ToUInt64(BitConverter.GetBytes(long.Parse(value.ToString())), 0), new object[0]);
+                }
+                else
+                {
+                    if (value != null)
+                    {
+                        if (value.GetType().FullName != pi.PropertyType.FullName)
+                        {
+                            Type pt = pi.PropertyType;
+                            if (pt.IsGenericType && pt.GetGenericTypeDefinition().FullName.StartsWith("System.Nullable"))
+                                pt = pt.GetGenericArguments()[0];
+                            MethodInfo conMethod = null;
+                            foreach (MethodInfo mi in pt.GetMethods(BindingFlags.Static | BindingFlags.Public))
+                            {
+                                if (mi.Name == "op_Implicit" || mi.Name == "op_Explicit")
+                                {
+                                    if (mi.ReturnType.Equals(pt)
+                                        && mi.GetParameters().Length == 1
+                                        && mi.GetParameters()[0].ParameterType.Equals(value.GetType()))
+                                    {
+                                        conMethod = mi;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (conMethod != null)
+                                value = conMethod.Invoke(null, new object[] { value });
+                            else if (pt.GetCustomAttributes(typeof(TypeConverterAttribute), false).Length > 0)
+                            {
+                                if (TypeDescriptor.GetConverter(pt).CanConvertFrom(value.GetType()))
+                                {
+                                    value = TypeDescriptor.GetConverter(pt).ConvertFrom(value);
+                                }
+                                else
+                                {
+                                    try
+                                    {
+                                        object val = Convert.ChangeType(value, pt);
+                                        value = val;
+                                    }
+                                    catch (Exception e)
+                                    {
+                                        Logger.LogLine(e);
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                try
+                                {
+                                    object val = Convert.ChangeType(value, pt);
+                                    value = val;
+                                }
+                                catch (Exception e)
+                                {
+                                    Logger.LogLine(e);
+                                }
+                            }
+                        }
+                    }
+                    pi.SetValue(obj, value, new object[0]);
+                }
+            }
+        }
+        #endregion
+
+        public List<Table> SelectAll(System.Type type)
 		{
             return SelectAll(type, new string[0]);
 		}

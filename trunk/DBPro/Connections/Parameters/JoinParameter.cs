@@ -45,5 +45,18 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
             else
                 return "";
 		}
+
+        internal sealed override string ConstructVirtualTableString(sTable tbl, Connection conn, QueryBuilder builder, ref List<IDbDataParameter> queryParameters, ref int parCount)
+        {
+            string ret = "( ";
+            foreach (SelectParameter par in _parameters)
+            {
+                ret += " (" + par.ConstructVirtualTableString(tbl,conn, builder, ref queryParameters, ref parCount) + ") " + JoinString;
+            }
+            if (_parameters.Length > 0)
+                return ret.Substring(0, ret.Length - JoinString.Length) + ")";
+            else
+                return "";
+        }
 	}
 }
