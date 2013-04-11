@@ -162,7 +162,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                             ret.Add(_conn.CreateParameter(par.ParameterName + "_" + cnt.ToString(), obj));
                         cnt++;
                     }
-                    outputQuery = outputQuery.Replace("****" + par.ParameterName + "****", newPar.Substring(0,newPar.Length-2));
+                    outputQuery = outputQuery.Replace(par.ParameterName, newPar.Substring(0,newPar.Length-2));
                 }else{
                     if (par.Value is Table)
                     {
