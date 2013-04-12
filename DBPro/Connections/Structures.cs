@@ -9,6 +9,7 @@
 using Org.Reddragonit.Dbpro.Structure.Attributes;
 using System;
 using System.Collections.Generic;
+using Org.Reddragonit.Dbpro.Connections.ClassSQL;
 
 namespace Org.Reddragonit.Dbpro.Connections
 {
@@ -260,6 +261,12 @@ namespace Org.Reddragonit.Dbpro.Connections
         {
             _name = name;
             _query=query;
+        }
+
+        public View(string name, ClassQuery query)
+        {
+            _name = name;
+            _query = query.QueryString;
         }
     }
 
