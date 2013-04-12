@@ -410,7 +410,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         {
                             if (_subQueryIndexes.ContainsKey(i + x))
                                 x += _subQueryIndexes[i + x] + 2;
-                            if (_tokenizer.Tokens[i + x].Value.ToUpper() == "WHERE" || _tokenizer.Tokens[i + x].Value.ToUpper() == "ORDER" || _tokenizer.Tokens[i + x].Value.ToUpper() == "GROUP" || _tokenizer.Tokens[i + x].Value == "," || _tokenizer.Tokens[i + x].Value.ToUpper() == "INNER" || _tokenizer.Tokens[i + x].Value.ToUpper() == "OUTER" || _tokenizer.Tokens[i + x].Value.ToUpper() == "LEFT" || _tokenizer.Tokens[i + x].Value.ToUpper() == "RIGHT")
+                            if (_tokenizer.Tokens[i + x].Value.ToUpper() == "WHERE" || _tokenizer.Tokens[i + x].Value.ToUpper() == "UNION" || _tokenizer.Tokens[i + x].Value.ToUpper() == "ORDER" || _tokenizer.Tokens[i + x].Value.ToUpper() == "GROUP" || _tokenizer.Tokens[i + x].Value == "," || _tokenizer.Tokens[i + x].Value.ToUpper() == "INNER" || _tokenizer.Tokens[i + x].Value.ToUpper() == "OUTER" || _tokenizer.Tokens[i + x].Value.ToUpper() == "LEFT" || _tokenizer.Tokens[i + x].Value.ToUpper() == "RIGHT")
                                 break;
                             else if (x + i + 1 == _tokenizer.Tokens.Count)
                                 break;
@@ -436,7 +436,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     }
                     else if (x >= _subQueryIndexes[i])
                         break;
-                    else if (_tokenizer.Tokens[i + x].Value.ToUpper() == "WHERE" || _tokenizer.Tokens[i + x].Value.ToUpper() == "ORDER" || _tokenizer.Tokens[i + x].Value.ToUpper() == "GROUP")
+                    else if (_tokenizer.Tokens[i + x].Value.ToUpper() == "WHERE" || _tokenizer.Tokens[i + x].Value.ToUpper() == "ORDER" || _tokenizer.Tokens[i + x].Value.ToUpper() == "GROUP" || _tokenizer.Tokens[i + x].Value.ToUpper() == "UNION")
                         break;
                     x++;
                 }
@@ -1163,6 +1163,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 while (_tokenizer.Tokens[z].Value.ToUpper() != "WHERE"
                     && _tokenizer.Tokens[z].Value.ToUpper() != "GROUP"
                     && _tokenizer.Tokens[z].Value.ToUpper() != "ORDER"
+                    && _tokenizer.Tokens[z].Value.ToUpper() != "UNION"
                     && (z < _subQueryIndexes[queryIndex] + queryIndex))
                 {
                     if (joinConditionIndexes.Contains(z))

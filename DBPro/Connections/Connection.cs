@@ -2010,6 +2010,16 @@ namespace Org.Reddragonit.Dbpro.Connections
             }
             return ret.Length;
         }
+
+        public object GetEnum(Type type, string name)
+        {
+            return GetEnum(type, GetOrdinal(name));
+        }
+
+        public object GetEnum(Type type,int i)
+        {
+            return Pool.Enums.GetEnumValue(type, (int)this[i]);
+        }
 		
 		public List<string> FieldNames{
 			get{
