@@ -571,7 +571,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             query = query.Substring(0, query.Length - 2);
             query += " FROM " + t.Name + " main";
             ClassQuery cq = new ClassQuery(t.Namespace, query);
-            return new View(tbl.Name,cq.QueryString);
+            return new View(tbl.Name,cq);
         }
 
         private List<string> _UpdateStructure(List<ExtractedTableMap> tables, List<Trigger> triggers, List<Generator> generators, List<IdentityField> identities, List<View> views, List<StoredProcedure> procedures,Connection conn)
