@@ -20,13 +20,25 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             _enumReverseValuesMap = new Dictionary<Type, Dictionary<int, string>>();
         }
 
+        private void _initEnum(Type enumType)
+        {
+            if (!_enumReverseValuesMap.ContainsKey(enumType))
+            {
+                Connection conn = _pool.getConnection();
+                _pool.Updater.InitType(enumType, conn);
+                conn.CloseConnection();
+            }
+        }
+
         public object GetEnumValue(Type enumType, int ID)
         {
+            _initEnum(enumType);
             return Enum.Parse(enumType, _enumReverseValuesMap[enumType][ID]);
         }
 
         public int GetEnumID(Type enumType, string enumName)
         {
+            _initEnum(enumType);
             return _enumValuesMap[enumType][enumName];
         }
 
