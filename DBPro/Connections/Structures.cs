@@ -216,7 +216,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		}
 	}
 	
-	internal struct Trigger{
+	public struct Trigger{
 		
 		private string _triggerName;
 		private string _triggerCode;

@@ -47,7 +47,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         public delegate void delPreInit(ConnectionPool pool);
         public delegate void delPostInit(ConnectionPool pool);
-        public delegate void delGetAdditionalsForTable(Type tableType,out List<View> views, out List<StoredProcedure> procedures, out List<Type> additionalTypes);
+        public delegate void delGetAdditionalsForTable(Type tableType,out List<View> views, out List<StoredProcedure> procedures, out List<Type> additionalTypes,out List<Trigger> triggers);
 		
 		internal readonly static string DEFAULT_CONNECTION_NAME="Org.Reddragonit.Dbpro.Connections.DEFAULT";
 		private readonly static string CONNECTION_CONFIG_FILENAME="DbPro.xml";
@@ -411,11 +411,12 @@ namespace Org.Reddragonit.Dbpro.Connections
 			return ret;
 		}
 
-        internal static void GetAdditionalsForTable(ConnectionPool pool,Type type, out List<View> views, out List<StoredProcedure> procedures, out List<Type> types)
+        internal static void GetAdditionalsForTable(ConnectionPool pool,Type type, out List<View> views, out List<StoredProcedure> procedures, out List<Type> types, out List<Trigger> triggers)
         {
             views = new List<View>();
             procedures = new List<StoredProcedure>();
             types = new List<Type>();
+            triggers = new List<Trigger>();
             Utility.WaitOne(_getAdditionals);
             if (_getAdditionals.ContainsKey(pool.ConnectionName))
             {
@@ -424,10 +425,12 @@ namespace Org.Reddragonit.Dbpro.Connections
                     List<View> tviews;
                     List<StoredProcedure> tprocedures;
                     List<Type> ttypes;
-                    del.Invoke(type, out tviews, out tprocedures, out ttypes);
+                    List<Trigger> ttriggers;
+                    del.Invoke(type, out tviews, out tprocedures, out ttypes,out ttriggers);
                     views.AddRange(tviews);
                     procedures.AddRange(tprocedures);
                     types.AddRange(ttypes);
+                    triggers.AddRange(ttriggers);
                 }
             }
             Utility.Release(_getAdditionals);

@@ -41,6 +41,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
         private Dictionary<int, Type> _enumFields;
         private bool _connectionPassed;
 		private Connection _conn = null;
+        private Queue<Type> _requiredTypes;
 	
 		public ClassQuery(string NameSpace,string query)
 		{
@@ -62,6 +63,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             if (query.StartsWith("(") && query.EndsWith(")"))
                 query = query.TrimStart('(').TrimEnd(')');
             query = query.Trim();
+            _requiredTypes = new Queue<Type>();
             _tokenizer = new QueryTokenizer(query);
             _tokenizer.parse();
             _tableFieldCounts = new Dictionary<int, int>();
@@ -205,6 +207,14 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 
         public void Execute(IDbDataParameter[] parameters)
         {
+            lock (_requiredTypes)
+            {
+                if (_requiredTypes.Count > 0)
+                {
+                    while (_requiredTypes.Count > 0)
+                        _conn.Pool.Updater.InitType(_requiredTypes.Dequeue(), _conn);
+                }
+            }
             try
             {
                 if ((parameters != null) && (parameters.Length > 0))
@@ -233,6 +243,14 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 
         public void ExecutePaged(Type primaryTable, IDbDataParameter[] parameters, ulong? start, ulong? recordCount)
         {
+            lock (_requiredTypes)
+            {
+                if (_requiredTypes.Count > 0)
+                {
+                    while (_requiredTypes.Count > 0)
+                        _conn.Pool.Updater.InitType(_requiredTypes.Dequeue(), _conn);
+                }
+            }
             string query = "";
             try
             {
@@ -1110,7 +1128,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 				{
 					if (_conn == null)
 						_conn = ConnectionPoolManager.GetConnection(t).getConnection();
-                    _conn.Pool.Updater.InitType(t, _conn);
+                    _requiredTypes.Enqueue(t);
 					sTable map = _conn.Pool.Mapping[t];
 					ret += map.Name + " ";
 					string alias = _tokenizer.Tokens[x].Value;
@@ -1205,7 +1223,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         while (!pi.DeclaringType.Equals(pType))
                         {
                             pType = pType.BaseType;
-                            _conn.Pool.Updater.InitType(pType, _conn);
+                            _requiredTypes.Enqueue(pType);
                             sTable parentMap = _conn.Pool.Mapping[pType];
                             string iJoin = " " + (parentIsLeftJoin ? "LEFT JOIN" : "INNER JOIN") + " " + parentMap.Name + " " + talias + "_prnt ON ";
                             foreach (string key in parentMap.PrimaryKeyFields)
@@ -1225,7 +1243,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                             break;
                         }
                     }
-                    _conn.Pool.Updater.InitType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType), _conn);
+                    _requiredTypes.Enqueue((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType));
                     sTable eMap = _conn.Pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
                     map = _conn.Pool.Mapping[cur];
 					string className = field.Substring(0, field.IndexOf("."));
@@ -1299,7 +1317,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     }
                     if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray? pi.PropertyType.GetElementType() : pi.PropertyType)))
                     {
-                        _conn.Pool.Updater.InitType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType), _conn);
+                        _requiredTypes.Enqueue((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType));
                         sTable eMap = _conn.Pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
                         string innerJoin = " INNER JOIN ";
                         if (nlb.Nullable)
@@ -1355,7 +1373,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         while (!pi.DeclaringType.Equals(pType))
                         {
                             pType = pType.BaseType;
-                            _conn.Pool.Updater.InitType(pType, _conn);
+                            _requiredTypes.Enqueue(pType);
                             sTable parentMap = _conn.Pool.Mapping[pType];
                             string iJoin = " " + (parentIsLeftJoin ? "LEFT JOIN" : "INNER JOIN") + " " + parentMap.Name + " " + alias + "_prnt ON ";
                             foreach (string key in parentMap.PrimaryKeyFields)
@@ -1377,7 +1395,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     Type pType = cur.BaseType;
                     while (_conn.Pool.Mapping.IsMappableType(pType))
                     {
-                        _conn.Pool.Updater.InitType(pType, _conn);
+                        _requiredTypes.Enqueue(pType);
                         sTable parentMap = _conn.Pool.Mapping[pType];
                         string iJoin = " " + (parentIsLeftJoin ? "LEFT JOIN" : "INNER JOIN") + " " + parentMap.Name + " " + alias + "_prnt ON ";
                         foreach (string key in parentMap.PrimaryKeyFields)
@@ -1403,7 +1421,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 }
                 if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) && !(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType).IsEnum)
                 {
-                    _conn.Pool.Updater.InitType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType), _conn);
+                    _requiredTypes.Enqueue((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType));
                     sTable eMap = _conn.Pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
                     string innerJoin = " INNER JOIN ";
                     if (nlb.Nullable)
@@ -1459,7 +1477,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     while (!pi.DeclaringType.Equals(pType))
                     {
                         pType = pType.BaseType;
-                        _conn.Pool.Updater.InitType(pType, _conn);
+                        _requiredTypes.Enqueue(pType);
                         sTable parentMap = _conn.Pool.Mapping[pType];
                         string iJoin = " " + (parentIsLeftJoin ? "LEFT JOIN" : "INNER JOIN") + " " + parentMap.Name + " " + alias + "_prnt ON ";
                         foreach (string key in parentMap.PrimaryKeyFields)
