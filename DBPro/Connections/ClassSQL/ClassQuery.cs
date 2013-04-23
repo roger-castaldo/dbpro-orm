@@ -115,6 +115,14 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
         #region ConnectionFunctions
         public IDbDataParameter CreateParameter(string name, object value)
         {
+            lock (_requiredTypes)
+            {
+                if (_requiredTypes.Count > 0)
+                {
+                    while (_requiredTypes.Count > 0)
+                        _conn.Pool.Updater.InitType(_requiredTypes.Dequeue(), _conn);
+                }
+            }
             if ((value != null) && (value.GetType().IsEnum))
             {
                 if ((value.GetType().IsArray) || (value is IEnumerable))
