@@ -342,6 +342,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
         {
             List<View> tviews;
             List<StoredProcedure> tprocs;
+            List<Trigger> ttriggers;
             tables = new List<ExtractedTableMap>();
             triggers = new List<Trigger>();
             generators = new List<Generator>();
@@ -359,9 +360,10 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             {
                 Type type = types[x];
                 List<Type> ttypes;
-                ConnectionPoolManager.GetAdditionalsForTable(_pool, types[x], out tviews, out tprocs, out ttypes);
+                ConnectionPoolManager.GetAdditionalsForTable(_pool, types[x], out tviews, out tprocs, out ttypes,out ttriggers);
                 views.AddRange(tviews);
                 procedures.AddRange(tprocs);
+                triggers.AddRange(ttriggers);
                 foreach (Type t in ttypes)
                 {
                     if (!types.Contains(t) && !_createdTypes.Contains(t))
@@ -854,9 +856,22 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             }
 
             Utility.RemoveDuplicateStrings(ref alterations, new string[] { " COMMIT;" });
+            for (int x = 0; x < alterations.Count; x++)
+            {
+                if (x + 1 < alterations.Count)
+                {
+                    if (alterations[x + 1].Trim() == alterations[x].Trim() && alterations[x].Trim() == "COMMIT;")
+                    {
+                        alterations.RemoveAt(x);
+                        x--;
+                    }
+                }
+            }
 
             if (!Utility.OnlyContains(alterations,new string[]{"COMMIT;"}))
             {
+                if (alterations[0].Trim() == "COMMIT;")
+                    alterations.RemoveAt(0);
                 try
                 {
                     if (_pool.DebugMode)
@@ -1097,7 +1112,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                                         }else
                                             foreignKeyDrops.Add(new ForeignKey(etm.TableName,new List<string>(new string[]{curfrms[0].InternalField}),tableName,new List<string>(new string[]{curfrms[0].ExternalField}),curfrms[0].OnUpdate,curfrms[0].OnDelete));
                                     }else
-                                        foreignKeyDrops.Add(new ForeignKey(etm,tableName,curfrms[0].ID));
+                                        foreignKeyDrops.Add(new ForeignKey(etm,tableName,exfrms[0].ID));
                                 }
                                 if (!foundRelation)
                                     foreignKeyCreations.Add(new ForeignKey(etm, tableName, exfrms[0].ID));
