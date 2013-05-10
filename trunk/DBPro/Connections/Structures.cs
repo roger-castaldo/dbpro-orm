@@ -257,16 +257,24 @@ namespace Org.Reddragonit.Dbpro.Connections
             get { return _query; }
         }
 
+        private Queue<Type> _requiredTypes;
+        internal Queue<Type> RequiredTypes
+        {
+            get { return _requiredTypes; }
+        }
+
         public View(string name, string query)
         {
             _name = name;
             _query=query;
+            _requiredTypes = null;
         }
 
         public View(string name, ClassQuery query)
         {
             _name = name;
             _query = query.QueryString;
+            _requiredTypes = query.RequiredTypes;
         }
     }
 
