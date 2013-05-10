@@ -42,6 +42,10 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
         private bool _connectionPassed;
 		private Connection _conn = null;
         private Queue<Type> _requiredTypes;
+        internal Queue<Type> RequiredTypes
+        {
+            get { return _requiredTypes; }
+        }
 	
 		public ClassQuery(string NameSpace,string query)
 		{

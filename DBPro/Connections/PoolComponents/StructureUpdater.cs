@@ -361,6 +361,18 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                 Type type = types[x];
                 List<Type> ttypes;
                 ConnectionPoolManager.GetAdditionalsForTable(_pool, types[x], out tviews, out tprocs, out ttypes,out ttriggers);
+                foreach (View vw in tviews)
+                {
+                    if (vw.RequiredTypes != null)
+                    {
+                        while (vw.RequiredTypes.Count > 0)
+                        {
+                            Type tp = vw.RequiredTypes.Dequeue();
+                            if (!types.Contains(tp))
+                                types.Add(tp);
+                        }
+                    }
+                }
                 views.AddRange(tviews);
                 procedures.AddRange(tprocs);
                 triggers.AddRange(ttriggers);
@@ -370,7 +382,19 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                         types.Add(t);
                 }
                 if (_pool.Mapping.IsVirtualTable(type))
-                    views.Add(_CreateViewForVirtualTable(type, conn));
+                {
+                    View vw = _CreateViewForVirtualTable(type, conn);
+                    views.Add(vw);
+                    if (vw.RequiredTypes != null)
+                    {
+                        while (vw.RequiredTypes.Count > 0)
+                        {
+                            Type tp = vw.RequiredTypes.Dequeue();
+                            if (!types.Contains(tp))
+                                types.Add(tp);
+                        }
+                    }
+                }
                 else
                 {
                     sTable tm = _pool.Mapping[type];
