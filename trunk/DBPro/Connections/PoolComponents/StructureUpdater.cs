@@ -769,12 +769,12 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             _CleanUpForeignKeys(ref foreignKeyCreations);
 
             List<string> alterations = new List<string>();
-            //add drops to alterations
-            alterations.AddRange(constraintDrops);
-            alterations.Add(" COMMIT;");
-
             foreach (View vw in dropViews)
                 alterations.Add(conn.queryBuilder.DropView(vw.Name));
+            alterations.Add(" COMMIT;");
+
+            //add drops to alterations
+            alterations.AddRange(constraintDrops);
             alterations.Add(" COMMIT;");
 
             foreach (Trigger trig in dropTriggers)
