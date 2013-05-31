@@ -1261,7 +1261,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                             List<string> pkeys = new List<string>(map.PrimaryKeyFields);
                             foreach (sTableField fld in iMap.Fields)
                             {
-                                if ((fld.ClassProperty==null ? "" : fld.ClassProperty)=="PARENT")
+                                if ((fld.ClassProperty == null ? "" : fld.ClassProperty) == "PARENT")
                                     innerJoin += " " + alias + "." + fld.ExternalField + " = " + alias + "_intermediate_" + className + "." + fld.Name + " AND ";
                             }
                             innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
@@ -1272,7 +1272,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                             pkeys.AddRange(relMap.PrimaryKeyFields);
                             foreach (sTableField fld in iMap.Fields)
                             {
-                                if ((fld.ClassProperty == null ? "" : fld.ClassProperty)=="CHILD")
+                                if ((fld.ClassProperty == null ? "" : fld.ClassProperty) == "CHILD")
                                     innerJoin += " " + alias + "_intermediate_" + className + "." + fld.Name + " = " + alias + "_" + className + "." + fld.ExternalField + " AND ";
                             }
                             innerJoin = innerJoin.Substring(0, innerJoin.Length - 5);
@@ -1303,6 +1303,21 @@ namespace Org.Reddragonit.Dbpro.Connections
                         curType = (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType);
                     }
 
+                }
+                else if (new List<string>(map.ArrayProperties).Contains(field))
+                {
+                    sTable iMap = _conn.Pool.Mapping[baseType, field];
+                    PropertyInfo pi = baseType.GetProperty(field, Utility._BINDING_FLAGS_WITH_INHERITANCE);
+                    if (!joins.Contains(iMap.Name))
+                    {
+                        joins += " LEFT JOIN " + iMap.Name + " " + alias + "_"+field+" ON ";
+                        foreach (sTableField f in iMap.Fields)
+                        {
+                            if (f.ClassProperty == "PARENT")
+                                joins += " " + alias + "." + f.ExternalField + " = " + alias + "_" + field + "." + f.Name + " AND ";
+                        }
+                        joins = joins.Substring(0, joins.Length - 4);
+                    }
                 }
             }
         }

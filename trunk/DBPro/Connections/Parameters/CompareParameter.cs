@@ -72,44 +72,54 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                 isExternal = false;
                 ConnectionPool pool = ConnectionPoolManager.GetConnection(tableType);
                 sTable map = pool.Mapping[tableType];
-                foreach (sTableField fld in map.Fields)
+                if (pool.Mapping.PropertyHasIntermediateTable(newType, fieldName))
                 {
-                    if (fld.ClassProperty == fieldName)
-                    {
-                        if (fld.ExternalField != null && fld.Type!=FieldType.ENUM)
-                        {
-                            if (new List<string>(map.PrimaryKeyProperties).Contains(fieldName))
-                                alias = "";
-                            else if ((alias==null ? "" : alias)!="")
-                                alias = fieldName+(alias == null ? "" : "_" + alias);
-                            ret = fieldName;
-                            newType = tableType.GetProperty(fieldName, Utility._BINDING_FLAGS_WITH_INHERITANCE).PropertyType;
-                            if (newType.IsArray)
-                                newType = newType.GetElementType();
-                            isExternal = true;
-                            ClassBased = true;
-                            break;
-                        }
-                        else
-                        {
-                            isExternal = false;
-                            ClassBased = true;
-                            ret = fld.Name;
-                            break;
-                        }
-                    }
-                    else if (fld.Name == fieldName)
-                    {
-                        ret = fieldName;
-                        isExternal = fld.ExternalField != null && fld.Type != FieldType.ENUM;
-                        ClassBased = false;
-                        break;
-                    }
+                    sTable iTbl = pool.Mapping[newType, fieldName];
+                    ClassBased = true;
+                    alias = fieldName;
+                    ret = iTbl.Fields[iTbl.Fields.Length - 1].Name;
                 }
-                if (ret==null)
+                else
                 {
-                    if (pool.Mapping.IsMappableType(tableType.BaseType))
-                        ret = LocateTableField(fieldName,tableType.BaseType, out ClassBased, out isExternal,out newType,out alias);
+                    foreach (sTableField fld in map.Fields)
+                    {
+                        if (fld.ClassProperty == fieldName)
+                        {
+                            if (fld.ExternalField != null && fld.Type != FieldType.ENUM)
+                            {
+                                if (new List<string>(map.PrimaryKeyProperties).Contains(fieldName))
+                                    alias = "";
+                                else if ((alias == null ? "" : alias) != "")
+                                    alias = fieldName + (alias == null ? "" : "_" + alias);
+                                ret = fieldName;
+                                newType = tableType.GetProperty(fieldName, Utility._BINDING_FLAGS_WITH_INHERITANCE).PropertyType;
+                                if (newType.IsArray)
+                                    newType = newType.GetElementType();
+                                isExternal = true;
+                                ClassBased = true;
+                                break;
+                            }
+                            else
+                            {
+                                isExternal = false;
+                                ClassBased = true;
+                                ret = fld.Name;
+                                break;
+                            }
+                        }
+                        else if (fld.Name == fieldName)
+                        {
+                            ret = fieldName;
+                            isExternal = fld.ExternalField != null && fld.Type != FieldType.ENUM;
+                            ClassBased = false;
+                            break;
+                        }
+                    }
+                    if (ret == null)
+                    {
+                        if (pool.Mapping.IsMappableType(tableType.BaseType))
+                            ret = LocateTableField(fieldName, tableType.BaseType, out ClassBased, out isExternal, out newType, out alias);
+                    }
                 }
             }
             return ret;
