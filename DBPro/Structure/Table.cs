@@ -549,7 +549,7 @@ namespace Org.Reddragonit.Dbpro.Structure
             if (pool.Mapping.IsMappableType(type.BaseType))
             {
                 if (pool.Mapping[type.BaseType][FieldName].Length > 0)
-                    return _initialPrimaryKeys[FieldName] == cur;
+                    return (_initialPrimaryKeys.ContainsKey(FieldName) ? _initialPrimaryKeys[FieldName] == cur : false);
             }
             return false;
         }
