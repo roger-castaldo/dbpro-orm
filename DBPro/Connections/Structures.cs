@@ -314,9 +314,9 @@ namespace Org.Reddragonit.Dbpro.Connections
         public StoredProcedure(string procedureName, string parameterLines, string returnLines, string declareLines, string code)
         {
             _procedureName = procedureName.Trim();
-            _parameterLines = parameterLines.Trim();
-            _returnLine = returnLines.Trim();
-            _declareLines = declareLines.Trim();
+            _parameterLines = (parameterLines == null ? null : parameterLines.Trim());
+            _returnLine = (returnLines==null ? null : returnLines.Trim());
+            _declareLines = (declareLines==null ? null : declareLines.Trim());
             _code = code.Trim();
         }
 
