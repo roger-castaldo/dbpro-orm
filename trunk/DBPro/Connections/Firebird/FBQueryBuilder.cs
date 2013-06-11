@@ -340,26 +340,26 @@ GROUP BY par.RDB$PROCEDURE_NAME
         {
             get
             {
-                return "CREATE PROCEDURE {0} {1} RETURNS ({2}) AS {3} BEGIN {4} END";
+                return "CREATE PROCEDURE {0} {1} {2} AS {3} BEGIN {4} END";
             }
         }
 
         internal override string CreateProcedure(StoredProcedure procedure)
         {
-            return string.Format(CreateProcedureString, new object[] { procedure.ProcedureName, (procedure.ParameterLines==null ? "" : (procedure.ParameterLines=="" ? "" : "("+procedure.ParameterLines+")")), procedure.ReturnLine, procedure.DeclareLines, procedure.Code });
+            return string.Format(CreateProcedureString, new object[] { procedure.ProcedureName, (procedure.ParameterLines==null ? "" : (procedure.ParameterLines=="" ? "" : "("+procedure.ParameterLines+")")), (procedure.ReturnLine==null ? "" : "RETURNS ("+procedure.ReturnLine+")"), procedure.DeclareLines, procedure.Code });
         }
 
         protected override string UpdateProcedureString
         {
             get
             {
-                return "ALTER PROCEDURE {0} ({1}) RETURNS ({2}) AS {3} BEGIN {4} END";
+                return "ALTER PROCEDURE {0} {1} {2} AS {3} BEGIN {4} END";
             }
         }
 
         internal override string UpdateProcedure(StoredProcedure procedure)
         {
-            return string.Format(UpdateProcedureString, new object[] { procedure.ProcedureName, (procedure.ParameterLines == null ? "" : (procedure.ParameterLines == "" ? "" : "(" + procedure.ParameterLines + ")")), procedure.ReturnLine, procedure.DeclareLines, procedure.Code });
+            return string.Format(UpdateProcedureString, new object[] { procedure.ProcedureName, (procedure.ParameterLines == null ? "" : (procedure.ParameterLines == "" ? "" : "(" + procedure.ParameterLines + ")")), (procedure.ReturnLine == null ? "" : "RETURNS (" + procedure.ReturnLine + ")"), procedure.DeclareLines, procedure.Code });
         }
 
         protected override string DropProcedureString
