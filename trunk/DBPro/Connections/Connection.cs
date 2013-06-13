@@ -1671,18 +1671,27 @@ namespace Org.Reddragonit.Dbpro.Connections
                 }
                 catch (Exception e)
                 {
-                    string pars = "";
-                    if (parameters != null)
+                    //if recieving this error, try and reset the connection and attempt to query again
+                    if (e.Message == "Connection must be valid and open")
                     {
-                        foreach (IDbDataParameter param in parameters)
-                        {
-                            if (param.Value != null)
-                                pars += param.ParameterName + ": " + param.Value.ToString() + "\n";
-                            else
-                                pars += param.ParameterName + ": NULL" + "\n";
-                        }
+                        ResetConnection(true);
+                        _ExecuteQuery(queryString, parameters, timeout);
                     }
-                    throw new Exception("An error occured in executing the query: " + queryString + "\nwith the parameters: " + pars, e);
+                    else
+                    {
+                        string pars = "";
+                        if (parameters != null)
+                        {
+                            foreach (IDbDataParameter param in parameters)
+                            {
+                                if (param.Value != null)
+                                    pars += param.ParameterName + ": " + param.Value.ToString() + "\n";
+                                else
+                                    pars += param.ParameterName + ": NULL" + "\n";
+                            }
+                        }
+                        throw new Exception("An error occured in executing the query: " + queryString + "\nwith the parameters: " + pars, e);
+                    }
                 }
 			}
 		}
