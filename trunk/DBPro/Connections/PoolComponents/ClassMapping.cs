@@ -99,7 +99,8 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                                 _pool.Enums.Add(etype, etbl.Name);
                             }
                         }
-                        if (!pi.PropertyType.IsArray)
+                        if (!pi.PropertyType.IsArray
+                            || pi.PropertyType.Equals(typeof(byte[])))
                         {
                             Logger.LogLine("Adding Field (" + pi.Name + ")");
                             fields.Add(new sTableField(_pool.Translator.GetFieldName(tbl,pi,conn), pi.Name, (pi.PropertyType.IsEnum ? "ID" : null),((IField)obj).Type,((IField)obj).Length,((IField)obj).Nullable));

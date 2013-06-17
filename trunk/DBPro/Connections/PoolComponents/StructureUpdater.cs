@@ -427,7 +427,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                         foreach (string prop in tm.Properties)
                         {
                             PropertyInfo pi = type.GetProperty(prop, Utility._BINDING_FLAGS_WITH_INHERITANCE);
-                            if (!pi.PropertyType.IsArray)
+                            if (!tm.ArrayProperties.Contains(prop))
                             {
                                 sTableRelation? rel = tm.GetRelationForProperty(prop);
                                 foreach (sTableField f in tm[prop])
