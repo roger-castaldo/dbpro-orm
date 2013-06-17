@@ -494,11 +494,11 @@ namespace Org.Reddragonit.Dbpro.Connections
             }
             foreach (string prop in map.Properties)
             {
-                PropertyInfo pi = table.GetType().GetProperty(prop, Utility._BINDING_FLAGS);
-                if (pi == null)
-                    pi = table.GetType().GetProperty(prop, Utility._BINDING_FLAGS_WITH_INHERITANCE);
-                if (pi.PropertyType.IsArray)
+                if (map.ArrayProperties.Contains(prop))
                 {
+                    PropertyInfo pi = table.GetType().GetProperty(prop, Utility._BINDING_FLAGS);
+                    if (pi == null)
+                        pi = table.GetType().GetProperty(prop, Utility._BINDING_FLAGS_WITH_INHERITANCE);
                     if (Pool.Mapping.IsMappableType(pi.PropertyType.GetElementType()) && !pi.PropertyType.GetElementType().IsEnum)
                     {
                         Dictionary<string, List<List<IDbDataParameter>>> queries = queryBuilder.UpdateMapArray(table, prop, false);

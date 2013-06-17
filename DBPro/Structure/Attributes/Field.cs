@@ -188,7 +188,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 				case "CHAR":
 					return FieldType.CHAR;
 				case "BYTE":
-                    _fieldLength = 1;
+                    _fieldLength = (_fieldLength==0 ? 1 : _fieldLength);
 					return FieldType.BYTE;
 				case "DECIMAL":
                     _fieldLength = 8;

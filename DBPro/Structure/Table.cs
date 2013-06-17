@@ -202,7 +202,7 @@ namespace Org.Reddragonit.Dbpro.Structure
             }
             foreach (string prop in eMap.PrimaryKeyProperties)
             {
-                if (fProps.Contains(prop))
+                if (fProps.Contains(prop) && !eMap.IsEnumProperty(prop))
                 {
                     PropertyInfo pi = table.GetType().GetProperty(prop, Utility._BINDING_FLAGS);
                     if (pi == null)
@@ -240,7 +240,10 @@ namespace Org.Reddragonit.Dbpro.Structure
                             if (fld.ExternalField == f.Name)
                             {
                                 if (conn.ContainsField(fld.Name)&&!conn.IsDBNull(conn.GetOrdinal(fld.Name))){
-                                    table.SetField(f.ClassProperty, conn[fld.Name]);
+                                    if (f.Type == FieldType.ENUM)
+                                        table.SetField(prop, conn.Pool.GetEnumValue(table.GetType().GetProperty(f.ClassProperty,Utility._BINDING_FLAGS_WITH_INHERITANCE).PropertyType, (int)conn[fld.Name]));
+                                    else
+                                        table.SetField(prop, conn[fld.Name]);
                                     setValue = true;
                                 }
                                 break;
@@ -287,12 +290,12 @@ namespace Org.Reddragonit.Dbpro.Structure
             List<string> extFields = new List<string>(map.ForeignTableProperties);
 			foreach (string prop in map.Properties)
 			{
-                PropertyInfo pi = ty.GetProperty(prop, Utility._BINDING_FLAGS);
-                if (pi != null)
+                if (!map.ArrayProperties.Contains(prop))
                 {
-                    if (extFields.Contains(prop) && !pi.PropertyType.IsEnum)
+                    PropertyInfo pi = ty.GetProperty(prop, Utility._BINDING_FLAGS);
+                    if (pi != null)
                     {
-                        if (!pi.PropertyType.IsArray)
+                        if (extFields.Contains(prop) && !pi.PropertyType.IsEnum)
                         {
                             Table t = (Table)pi.PropertyType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
                             t._loadStatus = LoadStatus.Partial;
@@ -305,10 +308,7 @@ namespace Org.Reddragonit.Dbpro.Structure
                                 this.SetField(prop, t);
                             }
                         }
-                    }
-                    else
-                    {
-                        if (!pi.PropertyType.IsArray)
+                        else
                         {
                             sTableField fld = map[prop][0];
                             if (conn.ContainsField(fld.Name))

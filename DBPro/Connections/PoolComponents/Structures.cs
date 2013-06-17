@@ -128,8 +128,8 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             get { return _autoGenField; }
         }
 
-        private string[] _arrayProperties;
-        public string[] ArrayProperties
+        private List<string> _arrayProperties;
+        public List<string> ArrayProperties
         {
             get{return _arrayProperties;}
         }
@@ -160,8 +160,8 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             _relations = relations;
             _primaryKeyFields = primaryKeyFields;
             _autoGenField = autoGenField;
-            _arrayProperties = new string[(arrayProperties == null ? 0 : arrayProperties.Count)];
-            for (int x = 0; x < _arrayProperties.Length; x++)
+            _arrayProperties = new List<string>(new string[(arrayProperties == null ? 0 : arrayProperties.Count)]);
+            for (int x = 0; x < _arrayProperties.Count; x++)
             {
                 _arrayProperties[x] = arrayProperties[x].Name;
             }
