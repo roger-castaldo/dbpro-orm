@@ -342,6 +342,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             if (!Pool.Mapping.IsMappableType(tableType))
                 throw new Exception("Unable to delete type " + tableType.FullName + " no matching Table Map found for the connection pool "+Pool.ConnectionName+".");
             pool.Updater.InitType(tableType, this);
+            pars = (pars == null ? new SelectParameter[0] : pars);
             List<IDbDataParameter> parameters = new List<IDbDataParameter>();
             string del = queryBuilder.Delete(tableType, pars, out parameters);
             if (del != null)
@@ -436,20 +437,42 @@ namespace Org.Reddragonit.Dbpro.Connections
                 {
                     if (pi.PropertyType.IsArray)
                     {
-                        Table[] vals = (Table[])table.GetField(prop);
-                        if (vals != null)
+                        if (table.ChangedFields.Contains(prop))
                         {
-                            foreach (Table t in vals)
-                                this.Save(t);
+                            Table[] vals = (Table[])table.GetField(prop);
+                            bool changed = false;
+                            if (vals != null)
+                            {
+                                for (int x = 0; x < vals.Length; x++)
+                                {
+                                    Table t = vals[x];
+                                    if (table._changedFields.Contains(prop) ||
+                                        t.LoadStatus == LoadStatus.NotLoaded ||
+                                        t.ChangedFields.Count > 0)
+                                    {
+                                        vals[x] = this.Save(t);
+                                        changed = true;
+                                    }
+                                }
+                            }
+                            if (changed)
+                                table.SetField(prop, vals);
                         }
                     }
                     else
                     {
-                        Table ext = (Table)table.GetField(prop);
-                        if (ext != null)
+                        if (table.ChangedFields.Contains(prop))
                         {
-                            ext = Save(ext);
-                            table.SetField(prop, ext);
+                            Table ext = (Table)table.GetField(prop);
+                            if (ext != null)
+                            {
+                                if (ext.LoadStatus == LoadStatus.NotLoaded ||
+                                        ext.ChangedFields.Count > 0)
+                                {
+                                    ext = Save(ext);
+                                    table.SetField(prop, ext);
+                                }
+                            }
                         }
                     }
                 }
@@ -461,11 +484,25 @@ namespace Org.Reddragonit.Dbpro.Connections
                 {
                     if (Pool.Mapping.IsMappableType(pi.PropertyType.GetElementType()))
                     {
-                        Table[] vals = (Table[])table.GetField(prop);
-                        if (vals != null)
+                        if (table.ChangedFields.Contains(prop))
                         {
-                            foreach (Table t in vals)
-                                this.Save(t);
+                            Table[] vals = (Table[])table.GetField(prop);
+                            bool changed = false;
+                            if (vals != null)
+                            {
+                                for (int x = 0; x < vals.Length; x++)
+                                {
+                                    Table t = vals[x];
+                                    if (t.LoadStatus == LoadStatus.NotLoaded ||
+                                        t.ChangedFields.Count > 0)
+                                    {
+                                        vals[x] = this.Save(t);
+                                        changed = true;
+                                    }
+                                }
+                            }
+                            if (changed)
+                                table.SetField(prop, vals);
                         }
                     }
                 }
@@ -492,24 +529,27 @@ namespace Org.Reddragonit.Dbpro.Connections
                     table.LoadStatus = LoadStatus.Complete;
                 }
             }
-            foreach (string prop in map.Properties)
+            if (table.ChangedFields != null)
             {
-                if (map.ArrayProperties.Contains(prop))
+                foreach (string prop in map.Properties)
                 {
-                    PropertyInfo pi = table.GetType().GetProperty(prop, Utility._BINDING_FLAGS);
-                    if (pi == null)
-                        pi = table.GetType().GetProperty(prop, Utility._BINDING_FLAGS_WITH_INHERITANCE);
-                    if (Pool.Mapping.IsMappableType(pi.PropertyType.GetElementType()) && !pi.PropertyType.GetElementType().IsEnum)
+                    if (map.ArrayProperties.Contains(prop) && table.ChangedFields.Contains(prop))
                     {
-                        Dictionary<string, List<List<IDbDataParameter>>> queries = queryBuilder.UpdateMapArray(table, prop, false);
-                        foreach (string str in queries.Keys)
+                        PropertyInfo pi = table.GetType().GetProperty(prop, Utility._BINDING_FLAGS);
+                        if (pi == null)
+                            pi = table.GetType().GetProperty(prop, Utility._BINDING_FLAGS_WITH_INHERITANCE);
+                        if (Pool.Mapping.IsMappableType(pi.PropertyType.GetElementType()) && !pi.PropertyType.GetElementType().IsEnum)
                         {
-                            foreach (List<IDbDataParameter> p in queries[str])
-                                ExecuteNonQuery(str, p);
+                            Dictionary<string, List<List<IDbDataParameter>>> queries = queryBuilder.UpdateMapArray(table, prop, false);
+                            foreach (string str in queries.Keys)
+                            {
+                                foreach (List<IDbDataParameter> p in queries[str])
+                                    ExecuteNonQuery(str, p);
+                            }
                         }
+                        else
+                            InsertArrayValue(table,pi,table.OriginalArrayLengths[prop],(table.ReplacedArrayIndexes.ContainsKey(prop) ? table.ReplacedArrayIndexes[prop] : (List<int>)null), map, (Array)table.GetField(prop), prop, false);
                     }
-                    else
-                        InsertArrayValue(table, map, (Array)table.GetField(prop), prop, false);
                 }
             }
 			return table;
@@ -700,14 +740,12 @@ namespace Org.Reddragonit.Dbpro.Connections
                     }
                 }
                 else
-                {
-                    InsertArrayValue(table, map, (Array)table.GetField(prop), prop, ignoreAutogen);
-                }
+                    InsertArrayValue(table,pi,0,null, map, (Array)table.GetField(prop), prop, ignoreAutogen);
             }
 			return table;
 		}
 		
-		private void InsertArrayValue(Table table,sTable map,Array values,string prop,bool ignoreAutogen)
+		private void InsertArrayValue(Table table,PropertyInfo pi,int originalLength,List<int> changedIndexes,sTable map,Array values,string prop,bool ignoreAutogen)
 		{
 			List<IDbDataParameter> pars = new List<IDbDataParameter>();
 			string query="";
@@ -716,6 +754,9 @@ namespace Org.Reddragonit.Dbpro.Connections
 			string conditions = "";
 			pars = new List<IDbDataParameter>();
             sTable arMap = pool.Mapping[table.GetType(), prop];
+            changedIndexes = (changedIndexes == null ? new List<int>() : changedIndexes);
+            string indexName = Pool.Translator.GetIntermediateIndexFieldName(table.GetType(), pi, this);
+            string valueName = Pool.Translator.GetIntermediateValueFieldName(table.GetType(), pi, this);
             foreach (string pk in map.PrimaryKeyProperties)
             {
                 foreach (sTableField fld in map[pk])
@@ -733,27 +774,44 @@ namespace Org.Reddragonit.Dbpro.Connections
                     }
                 }
             }
-			query = queryBuilder.Delete(arMap.Name,conditions.Substring(0,conditions.Length-4));
-			ExecuteNonQuery(query,pars);
+            conditions = conditions.Substring(0, conditions.Length - 4);
+            if (originalLength > (values == null ? 0 : values.Length))
+            {
+                pars.Add(CreateParameter(queryBuilder.CreateParameterName(indexName), values.Length));
+                query = queryBuilder.Delete(arMap.Name, conditions+" AND "+indexName + " > " + queryBuilder.CreateParameterName(indexName));
+                ExecuteNonQuery(query, pars);
+            }
 			if (values!=null)
 			{
+                if (changedIndexes.Count>0)
+                {
+                    pars.Add(CreateParameter(queryBuilder.CreateParameterName("VALUE"), null));
+                    pars.Add(CreateParameter(queryBuilder.CreateParameterName(indexName), null));
+                    foreach (int index in changedIndexes)
+                    {
+                        if (index<values.Length){
+                            pars[pars.Count - 2] = CreateParameter(queryBuilder.CreateParameterName("VALUE"), values.GetValue(index));
+                            pars[pars.Count - 1] = CreateParameter(queryBuilder.CreateParameterName(indexName), index);
+                            query = queryBuilder.Update(arMap.Name, valueName + "=" + queryBuilder.CreateParameterName("VALUE") + "," + indexName + "=" + queryBuilder.CreateParameterName(indexName),
+                                conditions + " AND " + indexName + " = " + queryBuilder.CreateParameterName(indexName));
+                            ExecuteQuery(query, pars);
+                        }
+                    }
+                }
 				pars.Add(CreateParameter(queryBuilder.CreateParameterName("VALUE"),null));
                 if (ignoreAutogen)
                     pars.Add(CreateParameter(CreateParameterName("index_id"), null));
-                fields += Pool.Translator.GetIntermediateValueFieldName(table.GetType(),table.GetType().GetProperty(prop,Utility._BINDING_FLAGS),this) + (ignoreAutogen ? ", " + Pool.Translator.GetIntermediateIndexFieldName(table.GetType(),table.GetType().GetProperty(prop,Utility._BINDING_FLAGS),this) : "");
+                fields += indexName + (ignoreAutogen ? ", " + indexName : "");
 				paramString+=CreateParameterName("VALUE")+(ignoreAutogen ? ", "+CreateParameterName("index_id") : "");
 				query = queryBuilder.Insert(arMap.Name,fields,paramString);
-                long index = 0;
-				foreach (object obj in values)
-				{
+                for(int index = originalLength;index<values.Length;index++){
 					pars.RemoveAt(pars.Count-1);
                     if(ignoreAutogen)
                         pars.RemoveAt(pars.Count - 1);
-					pars.Add(CreateParameter(queryBuilder.CreateParameterName("VALUE"),obj));
+					pars.Add(CreateParameter(queryBuilder.CreateParameterName("VALUE"),values.GetValue(index)));
                     if (ignoreAutogen)
                         pars.Add(CreateParameter(CreateParameterName("index_id"), index, FieldType.LONG, 8));
 					ExecuteNonQuery(query,pars);
-                    index++;
 				}
 			}
 		}
