@@ -38,6 +38,8 @@ namespace Org.Reddragonit.Dbpro
 		private bool _allowPrimaryChange=true;
 		private sTableField? _mainPrimary=null;
 		private List<string> _changedFields = new List<string>();
+        private Dictionary<string, int> _originalArrayLengths = new Dictionary<string, int>();
+        private Dictionary<string, List<int>> _replacedArrayIndexes = new Dictionary<string, List<int>>();
 		
 		public void Dispose()
 		{
@@ -236,7 +238,42 @@ namespace Org.Reddragonit.Dbpro
 						if (((Table)owner)._isSaved)
 						{
 							object curVal = pi.GetValue(owner,new object[0]);
-							if (((curVal==null)&&(mc.Args[0]!=null))||
+                            if (map.ArrayProperties.Contains(pi.Name))
+                            {
+                                if (!_originalArrayLengths.ContainsKey(pi.Name))
+                                    _originalArrayLengths.Add(pi.Name,(curVal==null ? 0 : ((Array)curVal).Length));
+                                if (curVal != null && mc.Args[0] != null)
+                                {
+                                    List<int> indexes = new List<int>();
+                                    if (_replacedArrayIndexes.ContainsKey(pi.Name))
+                                    {
+                                        indexes = _replacedArrayIndexes[pi.Name];
+                                        _replacedArrayIndexes.Remove(pi.Name);
+                                    }
+                                    Array arCur = (Array)curVal;
+                                    Array arNew = (Array)mc.Args[0];
+                                    for (int x = 0; x < _originalArrayLengths[pi.Name]; x++)
+                                    {
+                                        if (!indexes.Contains(x) && x<arNew.Length)
+                                        {
+                                            if (arCur.GetValue(x) is Table)
+                                            {
+                                                if (!((Table)arNew.GetValue(x))._isSaved)
+                                                    indexes.Add(x);
+                                                if (((Table)arNew.GetValue(x)).ChangedFields.Count > 0)
+                                                    indexes.Add(x);
+                                                else if (!((Table)arCur.GetValue(x)).PrimaryKeysEqual((Table)arNew.GetValue(x)))
+                                                    indexes.Add(x);
+                                            }
+                                            else if (!arCur.GetValue(x).Equals(arNew.GetValue(x)))
+                                                indexes.Add(x);
+                                        }
+                                    }
+                                    _replacedArrayIndexes.Add(pi.Name, indexes);
+                                }
+                                else if (!_changedFields.Contains(pi.Name))
+                                    _changedFields.Add(pi.Name);
+                            }else if (((curVal==null)&&(mc.Args[0]!=null))||
 							    ((curVal!=null)&&(mc.Args[0]==null))||
 							    ((curVal!=null)&&(mc.Args[0]!=null)&&(!curVal.Equals(mc.Args[0]))))
 							{
@@ -263,6 +300,10 @@ namespace Org.Reddragonit.Dbpro
                         outVal = true;
                     if ((pi != null) && (pi.Name == "ChangedFields"))
                         outVal = _changedFields;
+                    else if ((pi != null) && (pi.Name == "OriginalArrayLengths"))
+                        outVal = _originalArrayLengths;
+                    else if ((pi != null) && (pi.Name == "ReplacedArrayIndexes"))
+                        outVal = _replacedArrayIndexes;
                     else if (mi.Name == "get_ChangedFields")
                         outVal = _changedFields;
                     else if (mi.Name == "GetType")

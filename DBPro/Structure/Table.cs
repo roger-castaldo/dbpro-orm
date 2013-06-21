@@ -61,6 +61,22 @@ namespace Org.Reddragonit.Dbpro.Structure
 		internal List<string> ChangedFields{
 			get{return _changedFields;}
 		}
+
+        /*virtual function doesn't do anything, calls are caught by the proxy to 
+         * to return the original array fields lengths according to the proxy.
+        */
+        public Dictionary<string, int> OriginalArrayLengths
+        {
+            get { return null; }
+        }
+
+        /*virtual function doesn't do anything, calls are caught by the proxy to 
+         * to return the changed indexes in any arrayed fields to the proxy.
+        */
+        public Dictionary<string, List<int>> ReplacedArrayIndexes
+        {
+            get { return null; }
+        }
 		
         //Load the initial primary keys into the table object for later comparison.
         private void InitPrimaryKeys()
@@ -781,5 +797,22 @@ namespace Org.Reddragonit.Dbpro.Structure
             get { return false; }
         }
 
-	}
+
+        internal bool PrimaryKeysEqual(Table table)
+        {
+            sTable tbl = ConnectionPoolManager.GetConnection(this.GetType()).Mapping[this.GetType()];
+            foreach (string prop in tbl.PrimaryKeyProperties)
+            {
+                object obj = this.GetField(prop);
+                if (obj is Table)
+                {
+                    if (!((Table)obj).PrimaryKeysEqual((Table)table.GetField(prop)))
+                        return false;
+                }
+                else if (!obj.Equals(table.GetField(prop)))
+                    return false;
+            }
+            return true;
+        }
+    }
 }

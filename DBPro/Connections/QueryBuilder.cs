@@ -803,7 +803,9 @@ namespace Org.Reddragonit.Dbpro.Connections
                 }
                 if (conditions.Length > 0)
                     conditions = conditions.Substring(0, conditions.Length - 4).Replace("main_table.", "");
-                return string.Format(DeleteWithConditions, tbl.Name, conditions);
+                if (conditions.Length>0)
+                    return string.Format(DeleteWithConditions, tbl.Name, conditions);
+                return string.Format(DeleteWithoutConditions, tbl.Name);
             }
             catch (Exception e)
             {
@@ -967,8 +969,24 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         internal static object LocateFieldValue(Table table,sTableField fld,ConnectionPool pool)
         {
-            if (fld.ExternalField == null || fld.Type==FieldType.ENUM)
-                return table.GetField(fld.ClassProperty);
+            if (fld.ExternalField == null || fld.Type == FieldType.ENUM)
+            {
+                object obj = table.GetField(fld.ClassProperty);
+                if (obj == null)
+                    return null;
+                else if (obj is Table)
+                {
+                    foreach (sTableField field in pool.Mapping[obj.GetType()].Fields)
+                    {
+                        if (field.Name == fld.ExternalField)
+                        {
+                            return LocateFieldValue((Table)obj, field, pool);
+                        }
+                    }
+                }
+                else
+                    return obj;
+            }
             else
             {
                 Table val = (Table)table.GetField(fld.ClassProperty);
@@ -1097,6 +1115,14 @@ namespace Org.Reddragonit.Dbpro.Connections
             return null;
         }
 
+        internal string Update(string table, string fields, string conditions)
+        {
+            if ((conditions == null ? "" : conditions).Length > 0)
+                return String.Format(UpdateWithConditions, table, fields, conditions);
+            else
+                return String.Format(UpdateWithoutConditions, table, fields);
+        }
+
         internal string Update(Table table, out List<IDbDataParameter> queryParameters)
         {
             queryParameters = new List<IDbDataParameter>();
@@ -1113,7 +1139,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             List<string> pkeys = new List<string>(tbl.PrimaryKeyProperties);
             foreach (string prop in tbl.Properties)
             {
-                if (changedFields.Contains(prop))
+                if (changedFields.Contains(prop) && !tbl.ArrayProperties.Contains(prop))
                     updateFields.Add(prop, table.GetField(prop));
                 if (pkeys.Count == 0 || pkeys.Contains(prop))
                     parameters.Add(new EqualParameter(prop, table.GetInitialPrimaryValue(prop)));
@@ -1584,5 +1610,5 @@ namespace Org.Reddragonit.Dbpro.Connections
             return String.Format(SelectWithPagingIncludeOffset, baseQuery, CreateParameterName("startIndex"), CreateParameterName("rowCount"));
         }
 		#endregion
-	}
+    }
 }
