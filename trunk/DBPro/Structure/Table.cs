@@ -311,7 +311,7 @@ namespace Org.Reddragonit.Dbpro.Structure
                     PropertyInfo pi = ty.GetProperty(prop, Utility._BINDING_FLAGS);
                     if (pi != null)
                     {
-                        if (extFields.Contains(prop) && !pi.PropertyType.IsEnum)
+                        if (extFields.Contains(prop) && !Utility.IsEnum(pi.PropertyType))
                         {
                             Table t = (Table)pi.PropertyType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
                             t._loadStatus = LoadStatus.Partial;
@@ -545,7 +545,7 @@ namespace Org.Reddragonit.Dbpro.Structure
             if (map[FieldName].Length>0)
             {
                 sTableField fld = map[FieldName][0];
-                if (((pi.PropertyType.Equals(typeof(bool)) || pi.PropertyType.IsEnum)
+                if (((pi.PropertyType.Equals(typeof(bool)) || Utility.IsEnum(pi.PropertyType))
                     && !fld.Nullable) ||
                     (new List<string>(map.PrimaryKeyProperties).Contains(FieldName) && this.IsSaved) ||
                     (!fld.Nullable && this.IsSaved))

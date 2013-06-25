@@ -314,5 +314,12 @@ namespace Org.Reddragonit.Dbpro
             }
             return true;
         }
+
+        internal static bool IsEnum(Type t)
+        {
+            return (t.IsGenericType ? t.IsGenericType &&
+                   t.GetGenericTypeDefinition() == typeof(Nullable<>) &&
+                   t.GetGenericArguments()[0].IsEnum : t.IsEnum);
+        }
     }
 }

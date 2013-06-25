@@ -22,6 +22,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
         private void _initEnum(Type enumType)
         {
+            enumType = (enumType.IsGenericType ? enumType.GetGenericArguments()[0] : enumType);
             if (!_enumReverseValuesMap.ContainsKey(enumType))
             {
                 Connection conn = _pool.getConnection();
@@ -32,12 +33,14 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
         public object GetEnumValue(Type enumType, int ID)
         {
+            enumType = (enumType.IsGenericType ? enumType.GetGenericArguments()[0] : enumType);
             _initEnum(enumType);
             return Enum.Parse(enumType, _enumReverseValuesMap[enumType][ID]);
         }
 
         public int GetEnumID(Type enumType, string enumName)
         {
+            enumType = (enumType.IsGenericType ? enumType.GetGenericArguments()[0] : enumType);
             _initEnum(enumType);
             return _enumValuesMap[enumType][enumName];
         }
@@ -50,6 +53,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
         internal void InsertToDB(Type t, int id, string value, Connection c)
         {
+            t = (t.IsGenericType ? t.GetGenericArguments()[0] : t);
             c.ExecuteNonQuery("INSERT INTO " + _enumTableMaps[t] + " VALUES(" + c.CreateParameterName("id") + "," + c.CreateParameterName("value") + ");",
                             new System.Data.IDbDataParameter[]{
                                 c.CreateParameter(c.CreateParameterName("id"),id),
@@ -59,6 +63,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
         internal void AssignMapValues(Type t, Dictionary<string, int> enumMap, Dictionary<int, string> reverseMap)
         {
+            t = (t.IsGenericType ? t.GetGenericArguments()[0] : t);
             _enumReverseValuesMap.Remove(t);
             _enumValuesMap.Remove(t);
             _enumReverseValuesMap.Add(t, reverseMap);
@@ -69,6 +74,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
         {
             get
             {
+                t = (t.IsGenericType ? t.GetGenericArguments()[0] : t);
                 if (_enumTableMaps.ContainsKey(t))
                     return _enumTableMaps[t];
                 return null;
@@ -77,6 +83,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
         internal void Add(Type type, string name)
         {
+            type = (type.IsGenericType ? type.GetGenericArguments()[0] : type);
             _enumTableMaps.Add(type, name);
         }
 
@@ -92,6 +99,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
         internal void InsertEnumIntoTable(Type t, Connection conn)
         {
+            t = (t.IsGenericType ? t.GetGenericArguments()[0] : t);
             foreach (string str in Enum.GetNames(t))
             {
                 conn.ExecuteNonQuery("INSERT INTO " + _enumTableMaps[t] + " VALUES(" + conn.CreateParameterName("id") + "," + conn.CreateParameterName("value") + ");",
@@ -105,6 +113,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
         internal void LoadEnumsFromTable(Type t, Connection conn)
         {
+            t = (t.IsGenericType ? t.GetGenericArguments()[0] : t);
             conn.ExecuteQuery("SELECT * FROM " + _enumTableMaps[t]);
             Dictionary<string, int> vals = new Dictionary<string, int>();
             while (conn.Read())
@@ -136,6 +145,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
         private Dictionary<string, int> _SyncMissingValues(Dictionary<string, int> vals, Type t, Connection conn)
         {
+            t = (t.IsGenericType ? t.GetGenericArguments()[0] : t);
             string[] keys = new string[vals.Count];
             vals.Keys.CopyTo(keys, 0);
             foreach (string str in Enum.GetNames(t))

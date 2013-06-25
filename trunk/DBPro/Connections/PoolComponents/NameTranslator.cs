@@ -295,9 +295,11 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
         internal string GetTableName(Type t,Connection conn)
         {
+            t = (Utility.IsEnum(t) ? (t.IsGenericType ? t.GetGenericArguments()[0] : t) : t);
             string ret = "";
-            if (t.IsEnum)
+            if (Utility.IsEnum(t))
             {
+                t = (Utility.IsEnum(t) ? (t.IsGenericType ? t.GetGenericArguments()[0] : t) : t);
                 if (_nameTranslations.ContainsKey(string.Format(_ENUM_TABLE_DESCRIPTION, t.FullName)))
                     ret = _nameTranslations[string.Format(_ENUM_TABLE_DESCRIPTION, t.FullName)];
                 else
@@ -323,6 +325,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
         internal string GetVersionTableName(Type t, Connection conn)
         {
+            t = (Utility.IsEnum(t) ? (t.IsGenericType ? t.GetGenericArguments()[0] : t) : t);
             string ret = "";
             if (_nameTranslations.ContainsKey(string.Format(_TABLE_DESCRIPTION, t.FullName+"_VERSION")))
                 ret = _nameTranslations[string.Format(_TABLE_DESCRIPTION, t.FullName + "_VERSION")];
@@ -337,6 +340,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
         internal string GetIntermediateTableName(Type t, PropertyInfo pi, Connection conn)
         {
+            t = (Utility.IsEnum(t) ? (t.IsGenericType ? t.GetGenericArguments()[0] : t) : t);
             string ret = "";
             if (_nameTranslations.ContainsKey(string.Format(_INTERMEDIATE_TABLE_DESCRIPTION, t.FullName, pi.Name)))
                 ret = _nameTranslations[string.Format(_INTERMEDIATE_TABLE_DESCRIPTION, t.FullName, pi.Name)];
@@ -351,6 +355,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
         internal string GetFieldName(Type t, PropertyInfo pi, Connection conn)
         {
+            t = (Utility.IsEnum(t) ? (t.IsGenericType ? t.GetGenericArguments()[0] : t) : t);
             string ret = "";
             if (_nameTranslations.ContainsKey(string.Format(_FIELD_DESCRIPTION, t.FullName, pi.Name)))
                 ret = _nameTranslations[string.Format(_FIELD_DESCRIPTION, t.FullName, pi.Name)];
@@ -380,6 +385,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
         internal string GetFieldName(Type t, PropertyInfo pi, string fieldName, Connection conn)
         {
+            t = (Utility.IsEnum(t) ? (t.IsGenericType ? t.GetGenericArguments()[0] : t) : t);
             string ret = "";
             if (_nameTranslations.ContainsKey(string.Format(_FIELD_DESCRIPTION, t.FullName, pi.Name+"."+fieldName)))
                 ret = _nameTranslations[string.Format(_FIELD_DESCRIPTION, t.FullName, pi.Name + "." + fieldName)];
@@ -401,6 +407,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
         internal string GetEnumIDFieldName(Type t, Connection conn)
         {
             string ret = "";
+            t = (Utility.IsEnum(t) ? (t.IsGenericType ? t.GetGenericArguments()[0] : t) : t);
             if (_nameTranslations.ContainsKey(string.Format(_FIELD_DESCRIPTION, t.FullName, _ENUM_ID_FIELD_NAME)))
                 ret = _nameTranslations[string.Format(_FIELD_DESCRIPTION, t.FullName, _ENUM_ID_FIELD_NAME)];
             else
@@ -415,6 +422,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
         internal string GetEnumValueFieldName(Type t, Connection conn)
         {
             string ret = "";
+            t = (Utility.IsEnum(t) ? (t.IsGenericType ? t.GetGenericArguments()[0] : t) : t);
             if (_nameTranslations.ContainsKey(string.Format(_FIELD_DESCRIPTION, t.FullName, _ENUM_VALUE_FIELD_NAME)))
                 ret = _nameTranslations[string.Format(_FIELD_DESCRIPTION, t.FullName, _ENUM_VALUE_FIELD_NAME)];
             else
@@ -428,6 +436,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
         internal string GetIntermediateFieldName(Type t, PropertyInfo pi,string fieldName, bool isParent, Connection conn)
         {
+            t = (Utility.IsEnum(t) ? (t.IsGenericType ? t.GetGenericArguments()[0] : t) : t);
             string ret = "";
             if (_nameTranslations.ContainsKey(string.Format(_INTERMEDIATE_FIELD_DESCRIPTION, new object[] { t.FullName, pi.Name, (isParent ? "PARENT" : "CHILD"), fieldName })))
                 ret = _nameTranslations[string.Format(_INTERMEDIATE_FIELD_DESCRIPTION, new object[] { t.FullName, pi.Name, (isParent ? "PARENT" : "CHILD"), fieldName })];
@@ -442,6 +451,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
         internal string GetIntermediateValueFieldName(Type t, PropertyInfo pi, Connection conn)
         {
+            t = (Utility.IsEnum(t) ? (t.IsGenericType ? t.GetGenericArguments()[0] : t) : t);
             string ret = "";
             if (_nameTranslations.ContainsKey(string.Format(_INTERMEDIATE_FIELD_DESCRIPTION, new object[] { t.FullName, pi.Name, _INTERMEDIATE_VALUE_FIELD_NAME, "" }).Trim('_')))
                 ret = _nameTranslations[string.Format(_INTERMEDIATE_FIELD_DESCRIPTION, new object[] { t.FullName, pi.Name, _INTERMEDIATE_VALUE_FIELD_NAME, "" }).Trim('_')];
@@ -456,6 +466,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
         internal string GetIntermediateIndexFieldName(Type t, PropertyInfo pi, Connection conn)
         {
+            t = (Utility.IsEnum(t) ? (t.IsGenericType ? t.GetGenericArguments()[0] : t) : t);
             string ret = "";
             if (_nameTranslations.ContainsKey(string.Format(_INTERMEDIATE_FIELD_DESCRIPTION, new object[] { t.FullName, pi.Name, _INTERMEDIATE_INDEX_FIELD_NAME, "" }).Trim('_')))
                 ret = _nameTranslations[string.Format(_INTERMEDIATE_FIELD_DESCRIPTION, new object[] { t.FullName, pi.Name, _INTERMEDIATE_INDEX_FIELD_NAME, "" }).Trim('_')];
@@ -470,9 +481,10 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
         internal string GetGeneratorName(Type t, PropertyInfo pi, Connection conn)
         {
+            t = (Utility.IsEnum(t) ? (t.IsGenericType ? t.GetGenericArguments()[0] : t) : t);
             string fieldName = "";
             string pName = "";
-            if (t.IsEnum && pi == null){
+            if (Utility.IsEnum(t) && pi == null){
                 fieldName = "ID";
                 pName = "ID";
             }else{
@@ -493,6 +505,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
         internal string GetIntermediateGeneratorName(Type t, PropertyInfo pi, Connection conn)
         {
+            t = (Utility.IsEnum(t) ? (t.IsGenericType ? t.GetGenericArguments()[0] : t) : t);
             string ret = "";
             if (_nameTranslations.ContainsKey(string.Format(_GENERATOR_DESCRIPTION, t.FullName, pi.Name)))
                 ret = _nameTranslations[string.Format(_GENERATOR_DESCRIPTION, t.FullName, pi.Name)];
@@ -507,6 +520,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
         internal string GetEnumGeneratorName(Type t, Connection conn)
         {
+            t = (Utility.IsEnum(t) ? (t.IsGenericType ? t.GetGenericArguments()[0] : t) : t);
             string ret = "";
             if (_nameTranslations.ContainsKey(string.Format(_GENERATOR_DESCRIPTION, t.FullName, "ID")))
                 ret = _nameTranslations[string.Format(_GENERATOR_DESCRIPTION, t.FullName, "ID")];
@@ -521,6 +535,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
         internal string GetInsertTriggerName(Type t, Connection conn)
         {
+            t = (Utility.IsEnum(t) ? (t.IsGenericType ? t.GetGenericArguments()[0] : t) : t);
             string ret = "";
             if (_nameTranslations.ContainsKey(string.Format(_TRIGGER_DESCRIPTION, t.FullName, "INSERT")))
                 ret = _nameTranslations[string.Format(_TRIGGER_DESCRIPTION, t.FullName, "INSERT")];
@@ -535,6 +550,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
         internal string GetVersionInsertTriggerName(Type t, Connection conn)
         {
+            t = (Utility.IsEnum(t) ? (t.IsGenericType ? t.GetGenericArguments()[0] : t) : t);
             string ret = "";
             if (_nameTranslations.ContainsKey(string.Format(_TRIGGER_DESCRIPTION, t.FullName, "INSERT_VERSION")))
                 return _nameTranslations[string.Format(_TRIGGER_DESCRIPTION, t.FullName, "INSERT_VERSION")];
@@ -549,6 +565,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
         internal string GetVersionUpdateTriggerName(Type t, Connection conn)
         {
+            t = (Utility.IsEnum(t) ? (t.IsGenericType ? t.GetGenericArguments()[0] : t) : t);
             string ret = "";
             if (_nameTranslations.ContainsKey(string.Format(_TRIGGER_DESCRIPTION, t.FullName, "UPDATE_VERSION")))
                 return _nameTranslations[string.Format(_TRIGGER_DESCRIPTION, t.FullName, "UPDATE_VERSION")];
@@ -563,6 +580,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
         internal string GetInsertIntermediateTriggerName(Type t,PropertyInfo pi, Connection conn)
         {
+            t = (Utility.IsEnum(t) ? (t.IsGenericType ? t.GetGenericArguments()[0] : t) : t);
             string ret = "";
             if (_nameTranslations.ContainsKey(string.Format(_TRIGGER_DESCRIPTION, t.FullName+"."+pi.Name, "INSERT")))
                 ret = _nameTranslations[string.Format(_TRIGGER_DESCRIPTION, t.FullName + "." + pi.Name, "INSERT")];
@@ -577,6 +595,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
         internal string GetDeleteParentTriggerName(Type t, Connection conn)
         {
+            t = (Utility.IsEnum(t) ? (t.IsGenericType ? t.GetGenericArguments()[0] : t) : t);
             string ret = "";
             if (_nameTranslations.ContainsKey(string.Format(_TRIGGER_DESCRIPTION, t.FullName, "DELETE")))
                 ret = _nameTranslations[string.Format(_TRIGGER_DESCRIPTION, t.FullName, "DELETE")];
@@ -591,6 +610,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
         internal string GetViewName(Type t, List<string> properties, out Dictionary<string, string> translatedProperties, Connection conn)
         {
+            t = (Utility.IsEnum(t) ? (t.IsGenericType ? t.GetGenericArguments()[0] : t) : t);
             string ret = "";
             translatedProperties = new Dictionary<string, string>();
             string flds = "";
@@ -616,6 +636,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
         internal string GetIndexName(Type t, string indexName, Connection conn)
         {
+            t = (Utility.IsEnum(t) ? (t.IsGenericType ? t.GetGenericArguments()[0] : t) : t);
             string ret = "";
             if (_nameTranslations.ContainsKey(string.Format(_INDEX_DESCRIPTION, t.FullName, indexName)))
                 ret = _nameTranslations[string.Format(_INDEX_DESCRIPTION, t.FullName, indexName)];

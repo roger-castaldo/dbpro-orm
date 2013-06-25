@@ -162,7 +162,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             List<string> createdTables = _UpdateStructure(tables, triggers, generators, identities, views, procedures,conn);
             foreach (Type t in types)
             {
-                if (t.IsEnum)
+                if (Utility.IsEnum(t))
                 {
                     if (createdTables.Contains(_pool.Enums[t]))
                         _pool.Enums.InsertEnumIntoTable(t, conn);
@@ -399,7 +399,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                 {
                     sTable tm = _pool.Mapping[type];
                     ExtractedTableMap etm = new ExtractedTableMap(tm.Name);
-                    if (type.IsEnum)
+                    if (Utility.IsEnum(type))
                     {
                         foreach (sTableField f in tm.Fields)
                             etm.Fields.Add(new ExtractedFieldMap(f.Name, conn.TranslateFieldType(f.Type, f.Length), f.Length, tm.AutoGenField == f.Name, false, tm.AutoGenField == f.Name));

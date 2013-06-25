@@ -707,7 +707,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                         PropertyInfo pi = table.GetType().GetProperty(prop, Utility._BINDING_FLAGS);
                         if (pi == null)
                             pi = table.GetType().GetProperty(prop, Utility._BINDING_FLAGS_WITH_INHERITANCE);
-                        if ((fprops.Contains(prop)||pool.Mapping.IsMappableType(pi.PropertyType)) && !pi.PropertyType.IsEnum)
+                        if ((fprops.Contains(prop)||pool.Mapping.IsMappableType(pi.PropertyType)) && !Utility.IsEnum(pi.PropertyType))
                         {
                             Table eTable = (Table)table.GetField(prop);
                             if (eTable == null)

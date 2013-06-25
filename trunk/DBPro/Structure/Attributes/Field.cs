@@ -208,7 +208,7 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
                     _fieldLength = 4;
                     return FieldType.UNSIGNED_INTEGER;
 				default:
-                    if (propertyType.IsEnum)
+                    if (Utility.IsEnum(propertyType))
                     {
                         _fieldLength = 4;
                         return FieldType.ENUM;
