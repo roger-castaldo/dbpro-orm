@@ -55,7 +55,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 		{
             if (parameterValue != null)
             {
-                if (parameterValue.GetType().IsEnum)
+                if (Utility.IsEnum(parameterValue.GetType()))
                 {
                     if (parameterValue != null)
                         parameterValue = Pool.GetEnumID(parameterValue.GetType(), parameterValue.ToString());
@@ -83,7 +83,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 		{
             if (parameterValue != null)
             {
-                if (parameterValue.GetType().IsEnum)
+                if (Utility.IsEnum(parameterValue.GetType()))
                 {
                     if (parameterValue != null)
                         parameterValue = Pool.GetEnumID(parameterValue.GetType(), parameterValue.ToString());

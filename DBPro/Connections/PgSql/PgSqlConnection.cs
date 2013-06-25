@@ -46,7 +46,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 		{
             if (parameterValue != null)
             {
-                if (parameterValue.GetType().IsEnum)
+                if (Utility.IsEnum(parameterValue.GetType()))
                 {
                     if (parameterValue != null)
                         parameterValue = Pool.GetEnumID(parameterValue.GetType(), parameterValue.ToString());
@@ -348,7 +348,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
                 foreach(string prop in tm.Properties)
                 {
                     PropertyInfo pi = t.GetProperty(prop, Utility._BINDING_FLAGS);
-                    if (pi.PropertyType.IsEnum)
+                    if (Utility.IsEnum(pi.PropertyType))
                     {
                         this.ExecuteQuery("SELECT (CASE WHEN MAX(ID) IS NULL THEN 0 ELSE MAX(ID) END)+1 FROM " + Pool.Enums[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)]);
                         this.Read();

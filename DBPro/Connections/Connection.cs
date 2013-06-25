@@ -433,7 +433,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             foreach (string prop in map.ForeignTableProperties)
             {
                 PropertyInfo pi = table.GetType().GetProperty(prop, Utility._BINDING_FLAGS);
-                if (!(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType).IsEnum)
+                if (!Utility.IsEnum(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType))
                 {
                     if (pi.PropertyType.IsArray)
                     {
@@ -480,7 +480,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             foreach (string prop in map.ArrayProperties)
             {
                 PropertyInfo pi = table.GetType().GetProperty(prop, Utility._BINDING_FLAGS);
-                if (!pi.PropertyType.IsEnum)
+                if (!Utility.IsEnum(pi.PropertyType))
                 {
                     if (Pool.Mapping.IsMappableType(pi.PropertyType.GetElementType()))
                     {
@@ -538,7 +538,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                         PropertyInfo pi = table.GetType().GetProperty(prop, Utility._BINDING_FLAGS);
                         if (pi == null)
                             pi = table.GetType().GetProperty(prop, Utility._BINDING_FLAGS_WITH_INHERITANCE);
-                        if (Pool.Mapping.IsMappableType(pi.PropertyType.GetElementType()) && !pi.PropertyType.GetElementType().IsEnum)
+                        if (Pool.Mapping.IsMappableType(pi.PropertyType.GetElementType()) && !Utility.IsEnum(pi.PropertyType.GetElementType()))
                         {
                             Dictionary<string, List<List<IDbDataParameter>>> queries = queryBuilder.UpdateMapArray(table, prop, false);
                             foreach (string str in queries.Keys)
@@ -664,7 +664,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 foreach (string prop in map.ForeignTableProperties)
                 {
                     PropertyInfo pi = table.GetType().GetProperty(prop, Utility._BINDING_FLAGS);
-                    if (!pi.PropertyType.IsEnum)
+                    if (!Utility.IsEnum(pi.PropertyType))
                     {
                         if (pi.PropertyType.IsArray)
                         {
@@ -689,7 +689,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 foreach (string prop in map.ArrayProperties)
                 {
                     PropertyInfo pi = table.GetType().GetProperty(prop, Utility._BINDING_FLAGS);
-                    if (!pi.PropertyType.IsEnum)
+                    if (!Utility.IsEnum(pi.PropertyType))
                     {
                         if (Pool.Mapping.IsMappableType(pi.PropertyType.GetElementType()))
                         {
@@ -825,7 +825,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 foreach (string prop in map.ArrayProperties)
                 {
                     PropertyInfo pi = type.GetProperty(prop, Utility._BINDING_FLAGS);
-                    if (pool.Mapping.IsMappableType(pi.PropertyType.GetElementType()) && !pi.PropertyType.GetElementType().IsEnum)
+                    if (pool.Mapping.IsMappableType(pi.PropertyType.GetElementType()) && !Utility.IsEnum(pi.PropertyType.GetElementType()))
                     {
                         foreach (Table t in ret)
                         {
@@ -892,7 +892,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                             ExecuteQuery(query, pars);
                             while (Read())
                             {
-                                if (pi.PropertyType.GetElementType().IsEnum)
+                                if (Utility.IsEnum(pi.PropertyType.GetElementType()))
                                     values.Add(this.pool.GetEnumValue(pi.PropertyType.GetElementType(), this.GetInt32(0)));
                                 else
                                     values.Add(this[0]);
@@ -1171,7 +1171,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 {
                     pi.SetValue(obj, BitConverter.ToUInt64(BitConverter.GetBytes(long.Parse(value.ToString())), 0), new object[0]);
                 }
-                else if (pi.PropertyType.IsEnum)
+                else if (Utility.IsEnum(pi.PropertyType))
                 {
                     pi.SetValue(obj, Pool.GetEnumValue(pi.PropertyType, (int)value),new object[0]);
                 }

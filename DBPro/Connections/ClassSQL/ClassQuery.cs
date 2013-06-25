@@ -127,7 +127,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         _conn.Pool.Updater.InitType(_requiredTypes.Dequeue(), _conn);
                 }
             }
-            if ((value != null) && (value.GetType().IsEnum))
+            if ((value != null) && Utility.IsEnum(value.GetType()))
             {
                 if ((value.GetType().IsArray) || (value is IEnumerable))
                 {
@@ -969,7 +969,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 				else
 				{
                     pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS_WITH_INHERITANCE);
-                    if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) && !(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType).IsEnum)
+                    if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) && !Utility.IsEnum(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType))
 						return true;
 					else
 						return false;
@@ -1056,7 +1056,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 					else
 					{
                         PropertyInfo pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS_WITH_INHERITANCE);
-                        if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) && !(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType).IsEnum)
+                        if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) && !Utility.IsEnum(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType))
 						{
 							ret.RemoveAt(0);
 							foreach (string str in fieldList[field.Value])
@@ -1431,7 +1431,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         break;
                     }
                 }
-                if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) && !(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType).IsEnum)
+                if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) && !Utility.IsEnum(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType))
                 {
                     _requiredTypes.Enqueue((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType));
                     sTable eMap = _conn.Pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
@@ -1535,7 +1535,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             }
             if (pi.DeclaringType.Equals(table))
             {
-                if ((ordinal != -1) && pi.PropertyType.IsEnum)
+                if ((ordinal != -1) && Utility.IsEnum(pi.PropertyType))
                 {
                     if (_enumFields.ContainsKey(ordinal))
                         _enumFields.Remove(ordinal);
@@ -1803,7 +1803,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS);
                         if (pi == null)
                             pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS_WITH_INHERITANCE);
-                        if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) && !(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType).IsEnum)
+                        if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) && !Utility.IsEnum(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType))
                         {
                             ret = "";
                             if (ordinal != -1)
@@ -2002,7 +2002,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     PropertyInfo pi = t.GetType().GetProperty(fld.ClassProperty, Utility._BINDING_FLAGS_WITH_INHERITANCE);
                     if (!pi.PropertyType.IsArray)
                     {
-                        if (_conn.Pool.Mapping.IsMappableType(pi.PropertyType) && !pi.PropertyType.IsEnum)
+                        if (_conn.Pool.Mapping.IsMappableType(pi.PropertyType) && !Utility.IsEnum(pi.PropertyType))
                         {
                             if (t.GetField(pi.Name) == null)
                             {
@@ -2023,7 +2023,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         }
                         else
                         {
-                            if (pi.PropertyType.IsEnum)
+                            if (Utility.IsEnum(pi.PropertyType))
                                 t.SetField(fld.ClassProperty, _conn.Pool.GetEnumValue(pi.PropertyType, _conn.GetInt32(i+index)));
                             else
                                 t.SetField(fld.ClassProperty, _conn[i + index]);

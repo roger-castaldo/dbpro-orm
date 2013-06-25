@@ -276,7 +276,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                             if (_objType == null)
                                 _objType = obj.GetType();
                             ret += builder.CreateParameterName("parameter_" + parCount.ToString()) + ",";
-                            if ((_objType != null) && _objType.IsEnum)
+                            if ((_objType != null) && Utility.IsEnum(_objType))
                             {
                                 queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), conn.Pool.GetEnumID(_objType, obj.ToString())));
                             }
@@ -296,7 +296,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                         ret += builder.CreateParameterName("parameter_" + parCount.ToString());
                         if (_objType == null)
                             _objType = FieldValue.GetType();
-                        if ((_objType != null) && _objType.IsEnum)
+                        if ((_objType != null) && Utility.IsEnum(_objType))
                             queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), conn.Pool.GetEnumID(_objType, FieldValue.ToString())));
                         else
                         {
@@ -327,7 +327,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                             if (_objType == null)
                                 _objType = obj.GetType();
                             ret += tmp + builder.CreateParameterName("parameter_" + parCount.ToString()) + " AND ";
-                            if ((_objType != null) && _objType.IsEnum)
+                            if ((_objType != null) && Utility.IsEnum(_objType))
                             {
                                 queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), conn.Pool.GetEnumID(_objType, obj.ToString())));
                             }
@@ -349,7 +349,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                         ret += builder.CreateParameterName("parameter_" + parCount.ToString());
                         if (_objType == null)
                             _objType = FieldValue.GetType();
-                        if ((_objType != null) && _objType.IsEnum)
+                        if ((_objType != null) && Utility.IsEnum(_objType))
                         {
                             queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), conn.Pool.GetEnumID(_objType, FieldValue.ToString())));
                         }

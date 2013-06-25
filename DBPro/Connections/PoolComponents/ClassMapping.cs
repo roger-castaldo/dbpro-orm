@@ -77,9 +77,9 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                     }
                     if (obj is IField)
                     {
-                        bool isEnum = pi.PropertyType.IsEnum;
+                        bool isEnum = Utility.IsEnum(pi.PropertyType);
                         if (!isEnum && pi.PropertyType.IsArray)
-                            isEnum = pi.PropertyType.GetElementType().IsEnum;
+                            isEnum = Utility.IsEnum(pi.PropertyType.GetElementType());
                         if (isEnum)
                         {
                             if (_pool.Enums[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)] == null)
@@ -103,14 +103,14 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                             || pi.PropertyType.Equals(typeof(byte[])))
                         {
                             Logger.LogLine("Adding Field (" + pi.Name + ")");
-                            fields.Add(new sTableField(_pool.Translator.GetFieldName(tbl,pi,conn), pi.Name, (pi.PropertyType.IsEnum ? "ID" : null),((IField)obj).Type,((IField)obj).Length,((IField)obj).Nullable));
+                            fields.Add(new sTableField(_pool.Translator.GetFieldName(tbl,pi,conn), pi.Name, (Utility.IsEnum(pi.PropertyType) ? "ID" : null),((IField)obj).Type,((IField)obj).Length,((IField)obj).Nullable));
                             if (obj is IPrimaryKeyField)
                             {
                                 primaryKeyFields.Add(fields[fields.Count - 1].Name);
                                 if (((IPrimaryKeyField)obj).AutoGen)
                                     autogenField = fields[fields.Count - 1].Name;
                             }
-                            if (pi.PropertyType.IsEnum)
+                            if (Utility.IsEnum(pi.PropertyType))
                                 relations.Add(new sTableRelation(_pool.Enums[pi.PropertyType], pi.Name, ForeignField.UpdateDeleteAction.CASCADE, ForeignField.UpdateDeleteAction.CASCADE,((IField)obj).Nullable));
                         }
                         else
@@ -235,7 +235,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                                 break;
                             }
                         }
-                        if (pi.PropertyType.GetElementType().IsEnum)
+                        if (Utility.IsEnum(pi.PropertyType.GetElementType()))
                         {
                             afields.Add(new sTableField(_pool.Translator.GetIntermediateValueFieldName(tbl,pi,conn), "CHILD", _classMaps[pi.PropertyType.GetElementType()].Fields[0].Name, fld.Type, fld.Length, fld.Nullable));
                             intermediates.Add(pi.Name, new sTable(itblName, afields.ToArray(),null,
