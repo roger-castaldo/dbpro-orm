@@ -94,10 +94,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 		
 		private void Translate()
 		{
-            for (int y = 0; y < _tokenizer.Tokens.Count; y++)
-            {
-                _outputQuery += _tokenizer.Tokens[y].Value + " ";
-            }
+            _outputQuery = "";
             _fieldNames = new Dictionary<int, string>();
             _tableFields = new Dictionary<string, Type>();
 			Dictionary<string,string> tableTranslations = new Dictionary<string, string>();
@@ -106,14 +103,28 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 			List<IDbDataParameter> parameters;
 			EstablishSubQueries(ref pos,_tokenizer.Tokens);
 			Dictionary<int, string> subQueryTranlsations = TranslateSubQueries(out parameters);
-			foreach (int x in Utility.SortDictionaryKeys(subQueryTranlsations.Keys)){
-                string orig = "";
-                for (int y = 0; y < _subQueryIndexes[x]; y++)
+            _outputQuery = _RecurBuildOutputSubquery(0, subQueryTranlsations);
+        }
+
+        private string _RecurBuildOutputSubquery(int subqueryIndex, Dictionary<int, string> subQueryTranlsations)
+        {
+            string ret = subQueryTranlsations[subqueryIndex];
+            for (int y = 1; y < _subQueryIndexes[subqueryIndex]; y++)
+            {
+                if (_subQueryIndexes.ContainsKey(subqueryIndex + y))
                 {
-                    orig += _tokenizer.Tokens[y+x].Value + " ";
+                    string orig = "";
+                    for (int x = subqueryIndex + y; x < subqueryIndex + y + _subQueryIndexes[subqueryIndex + y]; x++)
+                        orig += _tokenizer.Tokens[x].Value + " ";
+                    string start = ret.Substring(0,ret.IndexOf(orig));
+                    string end = ret.Substring(start.Length + orig.Length);
+                    ret = start +
+                    _RecurBuildOutputSubquery(subqueryIndex + y, subQueryTranlsations) +
+                    end;
+                    y += _subQueryIndexes[subqueryIndex + y];
                 }
-                _outputQuery = _outputQuery.Replace(orig, subQueryTranlsations[x]);
-			}
+            }
+            return ret;
         }
 
         #region ConnectionFunctions
