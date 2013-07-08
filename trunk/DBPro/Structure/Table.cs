@@ -65,7 +65,7 @@ namespace Org.Reddragonit.Dbpro.Structure
         /*virtual function doesn't do anything, calls are caught by the proxy to 
          * to return the original array fields lengths according to the proxy.
         */
-        public Dictionary<string, int> OriginalArrayLengths
+        internal Dictionary<string, int> OriginalArrayLengths
         {
             get { return null; }
         }
@@ -73,7 +73,7 @@ namespace Org.Reddragonit.Dbpro.Structure
         /*virtual function doesn't do anything, calls are caught by the proxy to 
          * to return the changed indexes in any arrayed fields to the proxy.
         */
-        public Dictionary<string, List<int>> ReplacedArrayIndexes
+        internal Dictionary<string, List<int>> ReplacedArrayIndexes
         {
             get { return null; }
         }
