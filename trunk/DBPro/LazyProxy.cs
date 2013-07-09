@@ -300,9 +300,9 @@ namespace Org.Reddragonit.Dbpro
                         outVal = true;
                     if ((pi != null) && (pi.Name == "ChangedFields"))
                         outVal = _changedFields;
-                    else if ((pi != null) && (pi.Name == "OriginalArrayLengths"))
+                    else if (((pi != null) && (pi.Name == "OriginalArrayLengths"))||mi.Name=="get_OriginalArrayLengths")
                         outVal = _originalArrayLengths;
-                    else if ((pi != null) && (pi.Name == "ReplacedArrayIndexes"))
+                    else if (((pi != null) && (pi.Name == "ReplacedArrayIndexes"))||mi.Name=="get_ReplacedArrayIndexes")
                         outVal = _replacedArrayIndexes;
                     else if (mi.Name == "get_ChangedFields")
                         outVal = _changedFields;
