@@ -801,7 +801,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 				pars.Add(CreateParameter(queryBuilder.CreateParameterName("VALUE"),null));
                 if (ignoreAutogen)
                     pars.Add(CreateParameter(CreateParameterName("index_id"), null));
-                fields += indexName + (ignoreAutogen ? ", " + indexName : "");
+                fields += valueName + (ignoreAutogen ? ", " + indexName : "");
 				paramString+=CreateParameterName("VALUE")+(ignoreAutogen ? ", "+CreateParameterName("index_id") : "");
 				query = queryBuilder.Insert(arMap.Name,fields,paramString);
                 for(int index = originalLength;index<values.Length;index++){
