@@ -341,10 +341,10 @@ namespace Org.Reddragonit.Dbpro.Connections
                 Org.Reddragonit.Dbpro.Structure.Attributes.Table t = (Org.Reddragonit.Dbpro.Structure.Attributes.Table)type.GetCustomAttributes(typeof(Org.Reddragonit.Dbpro.Structure.Attributes.Table), false)[0];
                 return GetConnection(t.ConnectionName);
             }
-            else if (type.GetCustomAttributes(typeof(Org.Reddragonit.Dbpro.Virtual.Attributes.VirtualTableAttribute), false).Length > 0)
+            else if (type.GetCustomAttributes(typeof(Org.Reddragonit.Dbpro.Virtual.ClassViewAttribute), false).Length > 0)
             {
-                Org.Reddragonit.Dbpro.Virtual.Attributes.VirtualTableAttribute vta = (Org.Reddragonit.Dbpro.Virtual.Attributes.VirtualTableAttribute)type.GetCustomAttributes(typeof(Org.Reddragonit.Dbpro.Virtual.Attributes.VirtualTableAttribute), false)[0];
-                return GetConnection(vta.MainTable);
+                Org.Reddragonit.Dbpro.Virtual.ClassViewAttribute cva = (Org.Reddragonit.Dbpro.Virtual.ClassViewAttribute)type.GetCustomAttributes(typeof(Org.Reddragonit.Dbpro.Virtual.ClassViewAttribute), false)[0];
+                return GetConnection(cva.ConnectionName);
             }
 			return null;
 		}

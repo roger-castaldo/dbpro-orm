@@ -9,6 +9,7 @@
 using System;
 using System.Reflection;
 using System.Xml;
+using System.Data;
 
 namespace Org.Reddragonit.Dbpro.Connections.PgSql
 {
@@ -17,6 +18,8 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 	/// </summary>
 	public class PgSqlConnectionPool : ConnectionPool 
 	{
+        internal const string _PARAMETER_TYPE_NAME = "Npgsql.NpgsqlParameter";
+
 		private string _dbName=null;
 		internal string DbName{
 			get{return _dbName;}
@@ -75,13 +78,56 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 
         protected override void _InitClass()
         {
-            if (Utility.LocateType(PgSqlConnection._PARAMETER_TYPE_NAME) == null)
+            if (Utility.LocateType(_PARAMETER_TYPE_NAME) == null)
                 Assembly.Load(PgSqlConnection._ASSEMBLY_NAME);
         }
 
         protected override bool _IsCoreStoredProcedure(StoredProcedure storedProcedure)
         {
             return false;
+        }
+
+        private PgSqlQueryBuilder _builder = null;
+        internal override QueryBuilder queryBuilder
+        {
+            get
+            {
+                if (_builder == null)
+                    _builder = new PgSqlQueryBuilder(this);
+                return _builder;
+            }
+        }
+
+        internal override IDbDataParameter CreateParameter(string parameterName, object parameterValue)
+        {
+            if (parameterValue != null)
+            {
+                if (Utility.IsEnum(parameterValue.GetType()))
+                {
+                    if (parameterValue != null)
+                        parameterValue = GetEnumID(parameterValue.GetType(), parameterValue.ToString());
+                    else
+                        parameterValue = (int?)null;
+                }
+            }
+            if ((parameterValue is uint) || (parameterValue is UInt32))
+            {
+                parameterValue = System.Text.ASCIIEncoding.ASCII.GetString(System.BitConverter.GetBytes(uint.Parse(parameterValue.ToString()))).ToCharArray();
+            }
+            else if ((parameterValue is UInt16) || (parameterValue is ushort))
+            {
+                parameterValue = System.Text.ASCIIEncoding.ASCII.GetString(System.BitConverter.GetBytes(ushort.Parse(parameterValue.ToString()))).ToCharArray();
+            }
+            else if ((parameterValue is ulong) || (parameterValue is Int64))
+            {
+                parameterValue = System.Text.ASCIIEncoding.ASCII.GetString(System.BitConverter.GetBytes(ulong.Parse(parameterValue.ToString()))).ToCharArray();
+            }
+            return (IDbDataParameter)Utility.LocateType(_PARAMETER_TYPE_NAME).GetConstructor(new Type[] { typeof(string), typeof(object) }).Invoke(new object[] { parameterName, parameterValue });
+        }
+
+        internal override IDbDataParameter CreateParameter(string parameterName, object parameterValue, Org.Reddragonit.Dbpro.Structure.Attributes.FieldType type, int fieldLength)
+        {
+            return CreateParameter(parameterName, parameterValue);
         }
 	}
 }

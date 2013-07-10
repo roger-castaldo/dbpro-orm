@@ -56,8 +56,8 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             t = (t.IsGenericType ? t.GetGenericArguments()[0] : t);
             c.ExecuteNonQuery("INSERT INTO " + _enumTableMaps[t] + " VALUES(" + c.CreateParameterName("id") + "," + c.CreateParameterName("value") + ");",
                             new System.Data.IDbDataParameter[]{
-                                c.CreateParameter(c.CreateParameterName("id"),id),
-                                c.CreateParameter(c.CreateParameterName("value"),value)
+                                c.Pool.CreateParameter(c.CreateParameterName("id"),id),
+                                c.Pool.CreateParameter(c.CreateParameterName("value"),value)
                             });
         }
 
@@ -104,7 +104,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             {
                 conn.ExecuteNonQuery("INSERT INTO " + _enumTableMaps[t] + " VALUES(" + conn.CreateParameterName("id") + "," + conn.CreateParameterName("value") + ");",
                     new System.Data.IDbDataParameter[]{
-                                conn.CreateParameter(conn.CreateParameterName("id"),null,Org.Reddragonit.Dbpro.Structure.Attributes.FieldType.INTEGER,4),
+                                conn.Pool.CreateParameter(conn.CreateParameterName("id"),null,Org.Reddragonit.Dbpro.Structure.Attributes.FieldType.INTEGER,4),
                                 conn.CreateParameter(conn.CreateParameterName("value"),str)
                             });
             }
@@ -154,7 +154,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                 {
                     conn.ExecuteNonQuery("INSERT INTO " + _enumTableMaps[t] + " VALUES(" + conn.CreateParameterName("id") + "," + conn.CreateParameterName("value") + ");",
                     new System.Data.IDbDataParameter[]{
-                                conn.CreateParameter(conn.CreateParameterName("id"),null,Org.Reddragonit.Dbpro.Structure.Attributes.FieldType.INTEGER,4),
+                                conn.Pool.CreateParameter(conn.CreateParameterName("id"),null,Org.Reddragonit.Dbpro.Structure.Attributes.FieldType.INTEGER,4),
                                 conn.CreateParameter(conn.CreateParameterName("value"),str)
                             });
                     conn.ExecuteQuery("SELECT ID FROM " + _enumTableMaps[t] + " WHERE " + _pool.Translator.GetEnumValueFieldName(t, conn) + " = " + conn.CreateParameterName("value"),

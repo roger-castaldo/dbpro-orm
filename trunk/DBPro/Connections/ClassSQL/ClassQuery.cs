@@ -41,6 +41,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
         private Dictionary<int, Type> _enumFields;
         private bool _connectionPassed;
 		private Connection _conn = null;
+        private ConnectionPool _pool = null;
         private Queue<Type> _requiredTypes;
         internal Queue<Type> RequiredTypes
         {
@@ -57,6 +58,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
         {
             _connectionPassed = true;
             _conn = conn;
+            _pool = conn.Pool;
             NewQuery(NameSpace, query);
         }
 
@@ -130,12 +132,13 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
         #region ConnectionFunctions
         public IDbDataParameter CreateParameter(string name, object value)
         {
+            _conn = (_conn == null ? _pool.getConnection() : _conn);
             lock (_requiredTypes)
             {
                 if (_requiredTypes.Count > 0)
                 {
                     while (_requiredTypes.Count > 0)
-                        _conn.Pool.Updater.InitType(_requiredTypes.Dequeue(), _conn);
+                        _pool.Updater.InitType(_requiredTypes.Dequeue(), _conn);
                 }
             }
             if ((value != null) && Utility.IsEnum(value.GetType()))
@@ -145,12 +148,12 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     ArrayList tmp = new ArrayList();
                     foreach (Enum en in (IEnumerable)value)
                     {
-                        tmp.Add(_conn.Pool.GetEnumID(value.GetType(), value.ToString()));
+                        tmp.Add(_pool.GetEnumID(value.GetType(), value.ToString()));
                     }
                     return _conn.CreateParameter(name, tmp);
                 }
                 else
-                    return _conn.CreateParameter(name, _conn.Pool.GetEnumID(value.GetType(), value.ToString()));
+                    return _conn.CreateParameter(name, _pool.GetEnumID(value.GetType(), value.ToString()));
             }else if (value==null)
                 return _conn.CreateParameter(name, DBNull.Value);
             else
@@ -175,7 +178,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                             newPar = newPar.Replace(par.ParameterName + "_" + cnt.ToString() + ", ", "NULL, ");
                         else if (obj is Table)
                         {
-                            sTable tm = _conn.Pool.Mapping[obj.GetType()];
+                            sTable tm = _pool.Mapping[obj.GetType()];
                             if (tm.PrimaryKeyFields.Length== 1)
                             {
                                 ret.Add(_conn.CreateParameter(par.ParameterName + "_" + cnt.ToString(), ((Table)obj).GetField(tm.PrimaryKeyProperties[0])));
@@ -191,7 +194,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 }else{
                     if (par.Value is Table)
                     {
-                        sTable tm = _conn.Pool.Mapping[par.Value.GetType()];
+                        sTable tm = _pool.Mapping[par.Value.GetType()];
                         Table t = (Table)par.Value;
                         if (t == null)
                         {
@@ -230,12 +233,13 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 
         public void Execute(IDbDataParameter[] parameters)
         {
+            _conn = (_conn == null ? _pool.getConnection() : _conn);
             lock (_requiredTypes)
             {
                 if (_requiredTypes.Count > 0)
                 {
                     while (_requiredTypes.Count > 0)
-                        _conn.Pool.Updater.InitType(_requiredTypes.Dequeue(), _conn);
+                        _pool.Updater.InitType(_requiredTypes.Dequeue(), _conn);
                 }
             }
             try
@@ -266,12 +270,13 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 
         public void ExecutePaged(Type primaryTable, IDbDataParameter[] parameters, ulong? start, ulong? recordCount)
         {
+            _conn = (_conn == null ? _pool.getConnection() : _conn);
             lock (_requiredTypes)
             {
                 if (_requiredTypes.Count > 0)
                 {
                     while (_requiredTypes.Count > 0)
-                        _conn.Pool.Updater.InitType(_requiredTypes.Dequeue(), _conn);
+                        _pool.Updater.InitType(_requiredTypes.Dequeue(), _conn);
                 }
             }
             string query = "";
@@ -280,7 +285,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 List<IDbDataParameter> pars = new List<IDbDataParameter>();
                 if (parameters != null)
                     pars.AddRange(parameters);
-                query = _conn.queryBuilder.SelectPaged(_outputQuery, _conn.Pool.Mapping[primaryTable], ref pars, start, recordCount);
+                query = _conn.queryBuilder.SelectPaged(_outputQuery, _pool.Mapping[primaryTable], ref pars, start, recordCount);
                 List<IDbDataParameter> p = CorrectParameters(pars, ref query);
                 _conn.ExecuteQuery(query, p);
             }
@@ -454,7 +459,11 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                             if (_tokenizer.Tokens[i + x].Value.ToUpper() == "WHERE" || _tokenizer.Tokens[i + x].Value.ToUpper() == "UNION" || _tokenizer.Tokens[i + x].Value.ToUpper() == "ORDER" || _tokenizer.Tokens[i + x].Value.ToUpper() == "GROUP" || _tokenizer.Tokens[i + x].Value == "," || _tokenizer.Tokens[i + x].Value.ToUpper() == "INNER" || _tokenizer.Tokens[i + x].Value.ToUpper() == "OUTER" || _tokenizer.Tokens[i + x].Value.ToUpper() == "LEFT" || _tokenizer.Tokens[i + x].Value.ToUpper() == "RIGHT")
                                 break;
                             else if (x + i + 1 == _tokenizer.Tokens.Count)
+                            {
+                                if (_tokenizer.Tokens[i + x - 1].Type == TokenType.OPERATOR)
+                                    joinConditionIndexes.Add(i + x);
                                 break;
+                            }
                             else if ((_tokenizer.Tokens[i + x].Type == TokenType.KEY) &&
                                 (
                                     (_tokenizer.Tokens[i + x - 1].Value.ToUpper() == "ON") ||
@@ -659,13 +668,13 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             Type t = LocateTableType(tableName);
             if (t != null)
             {
-                sTable map = _conn.Pool.Mapping[t];
+                sTable map = _pool.Mapping[t];
                 if (fieldName.Contains("."))
                 {
                     while (fieldName.Contains("."))
                     {
                         PropertyInfo pi = t.GetProperty(fieldName.Substring(0, fieldName.IndexOf(".")), Utility._BINDING_FLAGS_WITH_INHERITANCE);
-                        map = _conn.Pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
+                        map = _pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
                         fieldName = fieldName.Substring(fieldName.IndexOf(".") + 1);
                         t = (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType);
                     }
@@ -778,7 +787,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                                 throw new Exception("Unable to compare two table objects that are not of the same type.");
                         }
                         string addition = "";
-                        sTable tm = _conn.Pool.Mapping[t1];
+                        sTable tm = _pool.Mapping[t1];
                         List<string> tmpFields1 = TranslateConditionField(fields[0], tableDeclarations, tableAliases, fieldList,parentTableAliases);
                         List<string> tmpFields2 = null;
                         if (t2!=null)
@@ -923,13 +932,13 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         t = (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType);
                         fieldName = fieldName.Substring(fieldName.IndexOf(".") + 1);
                     }
-                    t = (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) 
+                    t = (_pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) 
                         ? (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType) : t);
                 }
                 else
                 {
                     pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS);
-                    t = (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType))
+                    t = (_pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType))
                         ? (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType) : t);
                 }
             }
@@ -972,7 +981,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 						fieldName = fieldName.Substring(fieldName.IndexOf(".") + 1);
 					}
                     pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS);
-					if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)))
+					if (_pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)))
 						return true;
 					else
 						return false;
@@ -980,7 +989,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 				else
 				{
                     pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS_WITH_INHERITANCE);
-                    if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) && !Utility.IsEnum(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType))
+                    if (_pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) && !Utility.IsEnum(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType))
 						return true;
 					else
 						return false;
@@ -1018,21 +1027,21 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 			Type t = LocateTableType(tableName);
 			if (t != null)
 			{
-                sTable map = _conn.Pool.Mapping[t];
+                sTable map = _pool.Mapping[t];
 				if (fieldName.Contains("."))
 				{
                     PropertyInfo pi = null;
 					while (fieldName.Contains("."))
 					{
                         pi = t.GetProperty(fieldName.Substring(0, fieldName.IndexOf(".")), Utility._BINDING_FLAGS_WITH_INHERITANCE);
-                        map = _conn.Pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
+                        map = _pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
 						fieldName = fieldName.Substring(fieldName.IndexOf(".") + 1);
                         t = (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType);
 					}
 					if (fieldName != "*")
 					{
                         pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS);
-						if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)))
+						if (_pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)))
 						{
 							ret.RemoveAt(0);
 							foreach (string str in fieldList[field.Value])
@@ -1067,7 +1076,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 					else
 					{
                         PropertyInfo pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS_WITH_INHERITANCE);
-                        if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) && !Utility.IsEnum(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType))
+                        if (_pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) && !Utility.IsEnum(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType))
 						{
 							ret.RemoveAt(0);
 							foreach (string str in fieldList[field.Value])
@@ -1149,10 +1158,10 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 					throw new CannotLocateTable(_tokenizer.Tokens[x].Value);
 				else
 				{
-					if (_conn == null)
-						_conn = ConnectionPoolManager.GetConnection(t).getConnection();
+                    if (_pool == null)
+                        _pool = ConnectionPoolManager.GetConnection(t);
                     _requiredTypes.Enqueue(t);
-					sTable map = _conn.Pool.Mapping[t];
+					sTable map = _pool.Mapping[t];
 					ret += map.Name + " ";
 					string alias = _tokenizer.Tokens[x].Value;
                     if ((x + 1 < _tokenizer.Tokens.Count) && (_tokenizer.Tokens[x + 1].Value != ",") && (_tokenizer.Tokens[x + 1].Value.ToUpper() != "WHERE")
@@ -1247,7 +1256,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         {
                             pType = pType.BaseType;
                             _requiredTypes.Enqueue(pType);
-                            sTable parentMap = _conn.Pool.Mapping[pType];
+                            sTable parentMap = _pool.Mapping[pType];
                             string iJoin = " " + (parentIsLeftJoin ? "LEFT JOIN" : "INNER JOIN") + " " + parentMap.Name + " " + talias + "_prnt ON ";
                             foreach (string key in parentMap.PrimaryKeyFields)
                                 iJoin += talias + "." + key + " = " + talias + "_prnt." + key + " AND ";
@@ -1267,13 +1276,13 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         }
                     }
                     _requiredTypes.Enqueue((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType));
-                    sTable eMap = _conn.Pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
-                    map = _conn.Pool.Mapping[cur];
+                    sTable eMap = _pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
+                    map = _pool.Mapping[cur];
 					string className = field.Substring(0, field.IndexOf("."));
 					string innerJoin = " "+(parentIsLeftJoin ? "LEFT JOIN" : "INNER JOIN")+" ";
                     if (nlb.Nullable)
                         innerJoin = " LEFT JOIN ";
-                    string tbl = _conn.queryBuilder.SelectAll((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType), null);
+                    string tbl = _pool.queryBuilder.SelectAll((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType), null);
                     List<string> fields = new List<string>();
                     string fieldString = tbl.Substring(tbl.IndexOf("SELECT") + "SELECT".Length);
                     fieldString = fieldString.Substring(0, fieldString.IndexOf("FROM"));
@@ -1286,7 +1295,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         fieldLists.Add(origAlias + "." + pi.Name, fields);
 					if (pi.PropertyType.IsArray)
 					{
-                        sTable iMap = _conn.Pool.Mapping[cur, pi.Name];
+                        sTable iMap = _pool.Mapping[cur, pi.Name];
 						innerJoin += iMap.Name + " " + alias + "_intermediate_" + className + " ON ";
                         foreach (sTableField f in iMap.Fields)
                         {
@@ -1324,7 +1333,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     parentIsLeftJoin |= nlb.Nullable;
 				}
 			}
-            map = _conn.Pool.Mapping[cur];
+            map = _pool.Mapping[cur];
             if (field == "*")
             {
                 foreach (string prop in map.PrimaryKeyProperties)
@@ -1338,14 +1347,14 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                             break;
                         }
                     }
-                    if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray? pi.PropertyType.GetElementType() : pi.PropertyType)))
+                    if (_pool.Mapping.IsMappableType((pi.PropertyType.IsArray? pi.PropertyType.GetElementType() : pi.PropertyType)))
                     {
                         _requiredTypes.Enqueue((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType));
-                        sTable eMap = _conn.Pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
+                        sTable eMap = _pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
                         string innerJoin = " INNER JOIN ";
                         if (nlb.Nullable)
                             innerJoin = " LEFT JOIN ";
-                        string tbl = _conn.queryBuilder.SelectAll((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType), null);
+                        string tbl = _pool.queryBuilder.SelectAll((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType), null);
                         string fieldString = tbl.Substring(tbl.IndexOf("SELECT") + "SELECT".Length);
                         List<string> fields = new List<string>();
                         fieldString = fieldString.Substring(0, fieldString.IndexOf("FROM"));
@@ -1358,7 +1367,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                             fieldLists.Add(origAlias + "." + origField.Substring(0, origField.Length - field.Length) + "." + field.Substring(0, field.IndexOf(".")), fields);
                         if (pi.PropertyType.IsArray)
                         {
-                            sTable iMap = _conn.Pool.Mapping[cur, pi.Name];
+                            sTable iMap = _pool.Mapping[cur, pi.Name];
                             innerJoin += iMap.Name + " " + alias + "_intermediate_" + prop+ " ON ";
                             foreach (sTableField f in iMap.Fields)
                             {
@@ -1397,7 +1406,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         {
                             pType = pType.BaseType;
                             _requiredTypes.Enqueue(pType);
-                            sTable parentMap = _conn.Pool.Mapping[pType];
+                            sTable parentMap = _pool.Mapping[pType];
                             string iJoin = " " + (parentIsLeftJoin ? "LEFT JOIN" : "INNER JOIN") + " " + parentMap.Name + " " + alias + "_prnt ON ";
                             foreach (string key in parentMap.PrimaryKeyFields)
                                 iJoin += alias + "." + key + " = " + alias + "_prnt." + key + " AND ";
@@ -1416,10 +1425,10 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 if (pi == null)
                 {
                     Type pType = cur.BaseType;
-                    while (_conn.Pool.Mapping.IsMappableType(pType))
+                    while (_pool.Mapping.IsMappableType(pType))
                     {
                         _requiredTypes.Enqueue(pType);
-                        sTable parentMap = _conn.Pool.Mapping[pType];
+                        sTable parentMap = _pool.Mapping[pType];
                         string iJoin = " " + (parentIsLeftJoin ? "LEFT JOIN" : "INNER JOIN") + " " + parentMap.Name + " " + alias + "_prnt ON ";
                         foreach (string key in parentMap.PrimaryKeyFields)
                             iJoin += alias + "." + key + " = " + alias + "_prnt." + key + " AND ";
@@ -1442,14 +1451,14 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         break;
                     }
                 }
-                if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) && !Utility.IsEnum(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType))
+                if (_pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) && !Utility.IsEnum(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType))
                 {
                     _requiredTypes.Enqueue((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType));
-                    sTable eMap = _conn.Pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
+                    sTable eMap = _pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
                     string innerJoin = " INNER JOIN ";
                     if (nlb.Nullable)
                         innerJoin = " LEFT JOIN ";
-                    string tbl = _conn.queryBuilder.SelectAll((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType), null);
+                    string tbl = _pool.queryBuilder.SelectAll((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType), null);
                     string fieldString = tbl.Substring(tbl.IndexOf("SELECT") + "SELECT".Length);
                     List<string> fields = new List<string>();
                     fieldString = fieldString.Substring(0, fieldString.IndexOf("FROM"));
@@ -1462,7 +1471,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         fieldLists.Add(origAlias + "." + origField, fields);
                     if (pi.PropertyType.IsArray)
                     {
-                        sTable iMap = _conn.Pool.Mapping[cur, pi.Name];
+                        sTable iMap = _pool.Mapping[cur, pi.Name];
                         innerJoin += iMap.Name + " " + alias + "_intermediate_" + field + " ON ";
                         foreach (sTableField f in iMap.Fields)
                         {
@@ -1501,7 +1510,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     {
                         pType = pType.BaseType;
                         _requiredTypes.Enqueue(pType);
-                        sTable parentMap = _conn.Pool.Mapping[pType];
+                        sTable parentMap = _pool.Mapping[pType];
                         string iJoin = " " + (parentIsLeftJoin ? "LEFT JOIN" : "INNER JOIN") + " " + parentMap.Name + " " + alias + "_prnt ON ";
                         foreach (string key in parentMap.PrimaryKeyFields)
                             iJoin += alias + "." + key + " = " + alias + "_prnt." + key + " AND ";
@@ -1514,7 +1523,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 }
                 else if (pi.PropertyType.IsArray)
                 {
-                    sTable iMap = _conn.Pool.Mapping[cur, pi.Name];
+                    sTable iMap = _pool.Mapping[cur, pi.Name];
                     string innerJoin = (nlb.Nullable || parentIsLeftJoin ? " LEFT JOIN " : " INNER JOIN ")+iMap.Name + " " + alias + "_" + pi.Name+ " ON ";
                     foreach (sTableField f in iMap.Fields)
                     {
@@ -1554,9 +1563,9 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     _enumFields.Add(ordinal, pi.PropertyType);
                 }
                 if (pi.PropertyType.IsArray)
-                    ret = alias + "_" + field + "." + _conn.Pool.Translator.GetIntermediateValueFieldName(table,pi,_conn);
+                    ret = alias + "_" + field + "." + _pool.Translator.GetIntermediateValueFieldName(table,pi);
                 else
-                    ret = alias + "." + _conn.Pool.Mapping[table][pi.Name][0].Name;
+                    ret = alias + "." + _pool.Mapping[table][pi.Name][0].Name;
             }
             return ret;
         }
@@ -1595,7 +1604,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     {
                         if (_tokenizer.Tokens[y - 1].Value == ")" && _tokenizer.Tokens[y].Value == ",")
                         {
-                            ret += " AS " + _conn.WrapAlias("FIELD_" + ordinal.ToString()) + ", ";
+                            ret += " AS " + _pool.WrapAlias("FIELD_" + ordinal.ToString()) + ", ";
                             if (_fieldNames.ContainsKey(ordinal))
                                 ordinal++;
                             _fieldNames.Add(ordinal, "FIELD_" + ordinal.ToString());
@@ -1604,7 +1613,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         }
                         else if (_tokenizer.Tokens[y - 1].Value == ")" && _tokenizer.Tokens[y].Value.ToUpper() == "AS" && (_tokenizer.Tokens[y + 2].Value == "," || _tokenizer.Tokens[y + 2].Value.ToUpper() == "FROM"))
                         {
-                            ret += " AS " + _conn.WrapAlias(_tokenizer.Tokens[y + 1].Value.Trim("'\"".ToCharArray()));
+                            ret += " AS " + _pool.WrapAlias(_tokenizer.Tokens[y + 1].Value.Trim("'\"".ToCharArray()));
                             if (_fieldNames.ContainsKey(ordinal))
                                 ordinal++;
                             _fieldNames.Add(ordinal, _tokenizer.Tokens[y + 1].Value.Trim("'\"".ToCharArray()));
@@ -1660,7 +1669,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 				{
                     int incr = 1;
                     if ((fieldAlias != "") && ((_tokenizer.Tokens[x + 1].Value == ",") || (_tokenizer.Tokens[x + 1].Value == "FROM")))
-                        ret += " AS " + _conn.WrapAlias(fieldAlias);
+                        ret += " AS " + _pool.WrapAlias(fieldAlias);
                     else if (_tokenizer.Tokens[x + 1].Value.ToUpper() == "AS" && _tokenizer.Tokens[x + 2].Value == fieldAlias)
                     {
                         if (_tokenizer.Tokens[x + 3].Value.ToUpper() == "FROM")
@@ -1694,7 +1703,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 {
                     if (_tokenizer.Tokens[z - 1].Value == ")" && _tokenizer.Tokens[z].Value == ",")
                     {
-                        ret += " AS " + _conn.WrapAlias("FIELD_" + ordinal.ToString()) + ", ";
+                        ret += " AS " + _pool.WrapAlias("FIELD_" + ordinal.ToString()) + ", ";
                         if (_fieldNames.ContainsKey(ordinal))
                             ordinal++;
                         _fieldNames.Add(ordinal, "FIELD_" + ordinal.ToString());
@@ -1703,7 +1712,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     }
                     else if (_tokenizer.Tokens[z - 1].Value == ")" && _tokenizer.Tokens[z].Value.ToUpper() == "AS" && (_tokenizer.Tokens[z + 2].Value == "," || _tokenizer.Tokens[z + 2].Value.ToUpper() == "FROM"))
                     {
-                        ret += " AS " + _conn.WrapAlias(_tokenizer.Tokens[z + 1].Value.Trim("'\"".ToCharArray()));
+                        ret += " AS " + _pool.WrapAlias(_tokenizer.Tokens[z + 1].Value.Trim("'\"".ToCharArray()));
                         if (_fieldNames.ContainsKey(ordinal))
                             ordinal++;
                         _fieldNames.Add(ordinal, _tokenizer.Tokens[z + 1].Value.Trim("'\"".ToCharArray()));
@@ -1762,7 +1771,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 			Type t = LocateTableType(tableName);
 			if (t != null)
 			{
-				sTable map = _conn.Pool.Mapping[t];
+				sTable map = _pool.Mapping[t];
                 PropertyInfo pi = null;
 				if (fieldName.Contains("."))
 				{
@@ -1770,7 +1779,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 					{
                         pi = t.GetProperty(fieldName.Substring(0, fieldName.IndexOf(".")), Utility._BINDING_FLAGS_WITH_INHERITANCE);
                         t = (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType);
-                        map = _conn.Pool.Mapping[t];
+                        map = _pool.Mapping[t];
 						fieldName = fieldName.Substring(fieldName.IndexOf(".") + 1);
 					}
 					if (fieldName != "*")
@@ -1778,9 +1787,9 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         while ((pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS)) == null)
                         {
                             t=t.BaseType;
-                            map = _conn.Pool.Mapping[t];
+                            map = _pool.Mapping[t];
                         }
-                        if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)))
+                        if (_pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)))
                         {
                             if (ordinal != -1)
                             {
@@ -1790,7 +1799,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                             ret = "";
                             foreach (string str in fieldList[field.Value])
                             {
-                                ret += field.Value.Replace(".", "_") + "." + str + " AS " + _conn.WrapAlias(fieldAlias + "_" + str) + ", ";
+                                ret += field.Value.Replace(".", "_") + "." + str + " AS " + _pool.WrapAlias(fieldAlias + "_" + str) + ", ";
                             }
                         }
                         else
@@ -1814,7 +1823,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS);
                         if (pi == null)
                             pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS_WITH_INHERITANCE);
-                        if (_conn.Pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) && !Utility.IsEnum(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType))
+                        if (_pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) && !Utility.IsEnum(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType))
                         {
                             ret = "";
                             if (ordinal != -1)
@@ -1824,7 +1833,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                             }
                             foreach (string str in fieldList[field.Value])
                             {
-                                ret += field.Value.Replace(".", "_") + "." + str + " AS " + _conn.WrapAlias(fieldAlias + "_" + str) + ", ";
+                                ret += field.Value.Replace(".", "_") + "." + str + " AS " + _pool.WrapAlias(fieldAlias + "_" + str) + ", ";
                             }
                         }
                         else
@@ -1991,7 +2000,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 if (_fieldNames[x] == name)
                     return x;
             }
-            throw new Exception("No Field at given position.");
+            return -1;
         }
 
         public string GetString(int i)
@@ -2005,7 +2014,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             if (_tableFieldCounts.ContainsKey(i))
             {
                 Table t = (Table)LazyProxy.Instance(_tableFields[_fieldNames[i]].GetConstructor(System.Type.EmptyTypes).Invoke(new object[0]));
-                sTableField[] flds = _conn.Pool.Mapping[_tableFields[_fieldNames[i]]].Fields;
+                sTableField[] flds = _pool.Mapping[_tableFields[_fieldNames[i]]].Fields;
                 int index = 0;
                 i = TranslateFieldIndex(i);
                 foreach (sTableField fld in flds)
@@ -2013,7 +2022,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     PropertyInfo pi = t.GetType().GetProperty(fld.ClassProperty, Utility._BINDING_FLAGS_WITH_INHERITANCE);
                     if (!pi.PropertyType.IsArray)
                     {
-                        if (_conn.Pool.Mapping.IsMappableType(pi.PropertyType) && !Utility.IsEnum(pi.PropertyType))
+                        if (_pool.Mapping.IsMappableType(pi.PropertyType) && !Utility.IsEnum(pi.PropertyType))
                         {
                             if (t.GetField(pi.Name) == null)
                             {
@@ -2022,7 +2031,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                                 t.SetField(fld.Name,tmp );
                             }
                             Table tbl = (Table)t.GetField(pi.Name);
-                            foreach (sTableField f in _conn.Pool.Mapping[tbl.GetType()].Fields)
+                            foreach (sTableField f in _pool.Mapping[tbl.GetType()].Fields)
                             {
                                 if (fld.ExternalField == f.Name)
                                 {
@@ -2035,7 +2044,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         else
                         {
                             if (Utility.IsEnum(pi.PropertyType))
-                                t.SetField(fld.ClassProperty, _conn.Pool.GetEnumValue(pi.PropertyType, _conn.GetInt32(i+index)));
+                                t.SetField(fld.ClassProperty, _pool.GetEnumValue(pi.PropertyType, _conn.GetInt32(i+index)));
                             else
                                 t.SetField(fld.ClassProperty, _conn[i + index]);
                             index++;
@@ -2047,7 +2056,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             }
             else if (_enumFields.ContainsKey(i))
             {
-                return _conn.Pool.GetEnumValue(_enumFields[i], _conn.GetInt32(TranslateFieldIndex(i)));
+                return _pool.GetEnumValue(_enumFields[i], _conn.GetInt32(TranslateFieldIndex(i)));
             }else
                 return _conn.GetValue(TranslateFieldIndex(i));
         }
@@ -2089,5 +2098,25 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
         }
 
         #endregion
+
+        internal bool IsEnumField(string name)
+        {
+            return _enumFields.ContainsKey(GetOrdinal(name));
+        }
+
+        internal bool IsEnumField(int ordinal)
+        {
+            return _enumFields.ContainsKey(ordinal);
+        }
+
+        internal Type EnumFieldType(string name)
+        {
+            return _enumFields[GetOrdinal(name)];
+        }
+
+        internal Type EnumFieldType(int ordinal)
+        {
+            return _enumFields[ordinal];
+        }
     }
 }

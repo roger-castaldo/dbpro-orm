@@ -27,7 +27,7 @@ namespace TestingApp
 		[STAThread]
 		static void Main(string[] args)
 		{
-            Group grp = new Group();
+            /*Group grp = new Group();
             grp.Name = "Testing";
             grp.ParentGroup = null;
             grp.Rights = SecurityRight.LoadAll().ToArray();
@@ -43,9 +43,9 @@ namespace TestingApp
 			u.Type=UserTypes.Normal;
 			u.UserGroup=Group.LoadAllGroups()[0];
 			u.UserName="rcastaldo";
-			u=User.Save(u);
+			u=User.Save(u);*/
             Connection conn = ConnectionPoolManager.GetConnection(typeof(User)).getConnection();
-            foreach (UserGroupList ugl in conn.SelectVirtualTable(typeof(UserGroupList))){
+            foreach (UserGroupList ugl in conn.SelectClassView(typeof(UserGroupList))){
                 Console.WriteLine("FirstName: "+ugl.FirstName+"\tLastName: "+ugl.LastName+"\tGroup: "+ugl.GroupName);
             }
 			/*ClassQuery cq =new ClassQuery("TestingApp.Structure","SELECT u.FirstName||' '||u.LastName AS PersonName,u.UserGroup FROM User u WHERE u.UserGroup IN @Groups");

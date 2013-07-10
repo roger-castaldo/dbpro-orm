@@ -17,7 +17,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 	/// </summary>
 	internal class FBQueryBuilder : QueryBuilder
 	{
-		public FBQueryBuilder(ConnectionPool pool,Connection conn): base(pool,conn)
+		public FBQueryBuilder(ConnectionPool pool): base(pool)
 		{
 		}
 		
@@ -43,10 +43,11 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		internal override string DropNullConstraint(string table, ExtractedFieldMap field)
 		{
 			string ret = "";
+            Connection conn = pool.getConnection();
 			conn.ExecuteQuery(String.Format(DropNotNullString,table,field.FieldName));
 			if (conn.Read())
 				ret=conn[0].ToString();
-			conn.Close();
+            conn.CloseConnection();
             if (ret == "")
                 ret = String.Format(DropNullStringV2, table, field.FieldName);
 			return ret;
@@ -83,10 +84,11 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		internal override string DropForeignKey(string table, string tableName,string primaryField,string relatedField)
 		{
 			string ret = "";
+            Connection conn = pool.getConnection();
 			conn.ExecuteQuery(String.Format(DropForeignKeyString,new object[]{table.ToUpper(),tableName.ToUpper(),primaryField.ToUpper(),relatedField.ToUpper()}));
 			while (conn.Read())
 				ret+=conn[0].ToString().Trim()+";\n";
-			conn.Close();
+            conn.CloseConnection();
 			return ret;
 		}
 
@@ -94,6 +96,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		internal override string DropPrimaryKey(PrimaryKey key)
 		{
 			string ret="";
+            Connection conn = pool.getConnection();
 			foreach (string str in key.Fields)
 			{
 				conn.ExecuteQuery(String.Format(DropPrimaryKeyString, key.Name.ToUpper(), str.ToUpper()));
@@ -101,6 +104,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 					ret += conn[0].ToString().Trim()+";\n";
 				conn.Close();
 			}
+            conn.CloseConnection();
 			return ret;
 		}
 		

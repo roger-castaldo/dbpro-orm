@@ -16,7 +16,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 	/// </summary>
 	internal class PgSqlQueryBuilder : QueryBuilder
 	{
-		public PgSqlQueryBuilder(ConnectionPool pool,Connection conn): base(pool,conn)
+		public PgSqlQueryBuilder(ConnectionPool pool): base(pool)
 		{
 		}
 		
@@ -170,6 +170,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 		internal override string DropPrimaryKey(PrimaryKey key)
 		{
 			string ret="";
+            Connection conn = pool.getConnection();
 			foreach (string str in key.Fields)
 			{
 				conn.ExecuteQuery(String.Format(DropPrimaryKeyString, key.Name, str));
@@ -177,6 +178,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 					ret += conn[0].ToString()+";\n";
 				conn.Close();
 			}
+            conn.CloseConnection();
 			return ret;
 		}
 
@@ -211,10 +213,11 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 		internal override string DropForeignKey(string table, string externalTable,string primaryField,string relatedField)
 		{
 			string ret="";
+            Connection conn = pool.getConnection();
 			conn.ExecuteQuery(String.Format(DropForeignKeyString, table, externalTable));
 			while (conn.Read())
 				ret += conn[0].ToString()+";\n";
-			conn.Close();
+            conn.CloseConnection();
 			return ret;
 		}
 		

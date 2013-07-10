@@ -17,12 +17,12 @@ using ForeignRelationMap = Org.Reddragonit.Dbpro.Connections.ForeignRelationMap;
 using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.FieldType;
 using VersionTypes = Org.Reddragonit.Dbpro.Structure.Attributes.VersionField.VersionTypes;
 using UpdateDeleteAction =  Org.Reddragonit.Dbpro.Structure.Attributes.ForeignField.UpdateDeleteAction;
-using Org.Reddragonit.Dbpro.Virtual.Attributes;
-using Org.Reddragonit.Dbpro.Virtual;
 using Org.Reddragonit.Dbpro.Connections.PoolComponents;
 using Org.Reddragonit.Dbpro.Structure.Attributes;
 using System.Reflection;
 using System.Xml;
+using Org.Reddragonit.Dbpro.Virtual;
+using System.Data;
 
 namespace Org.Reddragonit.Dbpro.Connections
 {
@@ -61,10 +61,13 @@ namespace Org.Reddragonit.Dbpro.Connections
 		private bool isClosed=false;
 		private bool isReady=false;
 		private string _connectionName;
-		
+
+        internal abstract QueryBuilder queryBuilder { get; }
 		protected abstract Connection CreateConnection(bool exclusiveLock);
         protected abstract void _InitClass();
         protected abstract bool _IsCoreStoredProcedure(StoredProcedure storedProcedure);
+        internal abstract IDbDataParameter CreateParameter(string parameterName, object parameterValue, Org.Reddragonit.Dbpro.Structure.Attributes.FieldType type, int fieldLength);
+        internal abstract IDbDataParameter CreateParameter(string parameterName, object parameterValue);
 
         private Connection CreateConnection()
         {
@@ -284,7 +287,6 @@ namespace Org.Reddragonit.Dbpro.Connections
                 _enums = new EnumsHandler(this);
                 _updater = new StructureUpdater(this, translations);
                 List<Type> tables = new List<Type>();
-                List<Type> virtualTables = new List<Type>();
 
                 if (!_debugMode)
                 {
@@ -294,12 +296,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                         if (Utility.StringsEqual(tbl.ConnectionName, ConnectionName))
                             tables.Add(t);
                     }
-                    foreach (Type t in Utility.LocateAllTypesWithAttribute(typeof(VirtualTableAttribute)))
-                    {
-                        if (tables.Contains(VirtualTableAttribute.GetMainTableTypeForVirtualTable(t)))
-                            virtualTables.Add(t);
-                    }
-                    _mapping = new ClassMapping(conn, tables, virtualTables);
+                    _mapping = new ClassMapping(conn, tables);
                     PreInit();
                     _updater.Init(conn);
                 }
@@ -711,6 +708,11 @@ namespace Org.Reddragonit.Dbpro.Connections
         internal bool IsCoreStoredProcedure(StoredProcedure storedProcedure)
         {
             return _IsCoreStoredProcedure(storedProcedure);
+        }
+
+        internal virtual string WrapAlias(string alias)
+        {
+            return "\"" + alias + "\"";
         }
     }
 }

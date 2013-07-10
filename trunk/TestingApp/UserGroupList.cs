@@ -7,40 +7,45 @@
  * To change this template use Tools | Options | Coding | Edit Standard Headers.
  */
 using System;
-using Org.Reddragonit.Dbpro.Virtual.Attributes;
 using TestingApp.Structure;
+using Org.Reddragonit.Dbpro.Virtual;
 
 namespace TestingApp
 {
 	/// <summary>
 	/// Description of UserGroupList.
 	/// </summary>
-	[VirtualTableAttribute(typeof(User))]
-	public class UserGroupList
+    [ClassViewAttribute("TestingApp.Structure", "SELECT u.FirstName,u.LastName,u.UserGroup.Name as \"GroupName\" FROM User u")]
+	public class UserGroupList : IClassView
 	{
 		public UserGroupList()
 		{
 		}
 		
 		private string _firstName;
-		[VirtualField(typeof(User),"FirstName")]
 		public string FirstName{
 			get{return _firstName;}
-			set{_firstName=value;}
 		}
 		
 		private string _lastName;
-		[VirtualField(typeof(User),"LastName")]
 		public string LastName{
 			get{return _lastName;}
-			set{_lastName=value;}
 		}
 		
 		private string _groupName;
-		[VirtualField(typeof(Group),"UserGroup.Name")]
 		public string GroupName{
 			get{return _groupName;}
-			set{_groupName=value;}
 		}
-	}
+
+        #region IClassView Members
+
+        public void LoadFromRow(ViewResultRow row)
+        {
+            _firstName = row["FirstName"].ToString();
+            _lastName = row["LastName"].ToString();
+            _groupName = row["GroupName"].ToString();
+        }
+
+        #endregion
+    }
 }

@@ -143,8 +143,9 @@
     <Compile Include="Validation\NotNullValidation.cs" />
     <Compile Include="Validation\RegexValidation.cs" />
     <Compile Include="Validation\ValidationAttribute.cs" />
-    <Compile Include="Virtual\Attributes\VirtualField.cs" />
-    <Compile Include="Virtual\Attributes\VirtualTableAttribute.cs" />
+    <Compile Include="Virtual\ClassViewAttribute.cs" />
+    <Compile Include="Virtual\IClassView.cs" />
+    <Compile Include="Virtual\ViewResultRow.cs" />
     <EmbeddedResource Include="Connections\MsSql\IdentitySP.sql" />
   </ItemGroup>
   <ItemGroup />

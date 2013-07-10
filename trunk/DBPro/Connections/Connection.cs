@@ -8,9 +8,9 @@ using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.FieldType;
 using VersionTypes = Org.Reddragonit.Dbpro.Structure.Attributes.VersionField.VersionTypes;
 using System.Reflection;
 using System.Threading;
-using Org.Reddragonit.Dbpro.Virtual.Attributes;
 using Org.Reddragonit.Dbpro.Connections.PoolComponents;
 using System.ComponentModel;
+using Org.Reddragonit.Dbpro.Virtual;
 
 namespace Org.Reddragonit.Dbpro.Connections
 {
@@ -37,16 +37,16 @@ namespace Org.Reddragonit.Dbpro.Connections
         private bool lockedForBackup=false;
         private string _uniqueID;
         private bool _readonly;
-		
-		private QueryBuilder _qb;
-		internal virtual QueryBuilder queryBuilder
-		{
-			get{
-				if (_qb==null)
-					_qb=new QueryBuilder(pool,this);
-				return _qb;
-			}
-		}
+
+        public IDbDataParameter CreateParameter(string parameterName, object parameterValue)
+        {
+            return pool.CreateParameter(parameterName, parameterValue);
+        }
+
+        internal QueryBuilder queryBuilder
+        {
+            get { return pool.queryBuilder; }
+        }
 
         protected bool Readonly
         {
@@ -72,11 +72,6 @@ namespace Org.Reddragonit.Dbpro.Connections
             }
         }
 
-        internal virtual string WrapAlias(string alias)
-        {
-            return "\"" + alias + "\"";
-        }
-
         internal string ID
         {
             get { return _uniqueID; }
@@ -91,8 +86,6 @@ namespace Org.Reddragonit.Dbpro.Connections
 		internal abstract string DefaultTableString{
 			get;
 		}
-		internal abstract IDbDataParameter CreateParameter(string parameterName,object parameterValue,Org.Reddragonit.Dbpro.Structure.Attributes.FieldType type, int fieldLength);
-		public abstract IDbDataParameter CreateParameter(string parameterName,object parameterValue);
 		internal abstract string TranslateFieldType(Org.Reddragonit.Dbpro.Structure.Attributes.FieldType type,int fieldLength);
 		internal abstract void GetDropAutogenStrings(ExtractedTableMap map,out List<IdentityField> identities,out List<Generator> generators,out List<Trigger> triggers);
 		internal abstract void GetAddAutogen(ExtractedTableMap map, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers,out List<StoredProcedure> procedures);
@@ -755,8 +748,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 			pars = new List<IDbDataParameter>();
             sTable arMap = pool.Mapping[table.GetType(), prop];
             changedIndexes = (changedIndexes == null ? new List<int>() : changedIndexes);
-            string indexName = Pool.Translator.GetIntermediateIndexFieldName(table.GetType(), pi, this);
-            string valueName = Pool.Translator.GetIntermediateValueFieldName(table.GetType(), pi, this);
+            string indexName = Pool.Translator.GetIntermediateIndexFieldName(table.GetType(), pi);
+            string valueName = Pool.Translator.GetIntermediateValueFieldName(table.GetType(), pi);
             foreach (string pk in map.PrimaryKeyProperties)
             {
                 foreach (sTableField fld in map[pk])
@@ -810,7 +803,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                         pars.RemoveAt(pars.Count - 1);
 					pars.Add(CreateParameter(queryBuilder.CreateParameterName("VALUE"),values.GetValue(index)));
                     if (ignoreAutogen)
-                        pars.Add(CreateParameter(CreateParameterName("index_id"), index, FieldType.LONG, 8));
+                        pars.Add(pool.CreateParameter(CreateParameterName("index_id"), index, FieldType.LONG, 8));
 					ExecuteNonQuery(query,pars);
 				}
 			}
@@ -852,7 +845,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                             }
                             fields = fields.Substring(0, fields.Length - 2);
                             conditions = conditions.Substring(0, conditions.Length - 4);
-                            query = String.Format(queryBuilder.OrderBy, string.Format(queryBuilder.SelectWithConditions, fields, arMap.Name, conditions), Pool.Translator.GetIntermediateIndexFieldName(type, pi, this));
+                            query = String.Format(queryBuilder.OrderBy, string.Format(queryBuilder.SelectWithConditions, fields, arMap.Name, conditions), Pool.Translator.GetIntermediateIndexFieldName(type, pi));
                             ArrayList values = new ArrayList();
                             ExecuteQuery(query, pars);
                             while (Read())
@@ -879,7 +872,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                             if (fld.ClassProperty == "PARENT")
                                 conditions += fld.Name + " = " + queryBuilder.CreateParameterName(fld.ExternalField) + " AND ";
                         }
-                        query = "SELECT " + Pool.Translator.GetIntermediateValueFieldName(type, pi, this) + " FROM " + arMap.Name + " WHERE " + conditions.Substring(0, conditions.Length - 4) + " ORDER BY " + Pool.Translator.GetIntermediateIndexFieldName(type, pi, this) + " ASC";
+                        query = "SELECT " + Pool.Translator.GetIntermediateValueFieldName(type, pi) + " FROM " + arMap.Name + " WHERE " + conditions.Substring(0, conditions.Length - 4) + " ORDER BY " + Pool.Translator.GetIntermediateIndexFieldName(type, pi) + " ASC";
                         foreach (Table t in ret)
                         {
                             List<IDbDataParameter> pars = new List<IDbDataParameter>();
@@ -910,29 +903,30 @@ namespace Org.Reddragonit.Dbpro.Connections
 			return ret;
         }
 
-        #region Virtual Tables
-        public List<Object> SelectVirtualTable(System.Type type)
+        #region Class Views
+        public List<IClassView> SelectClassView(System.Type type)
         {
-            return SelectVirtualTable(type, null,null);
+            return SelectClassView(type, null,null);
         }
 
-        public List<Object> SelectVirtualTable(System.Type type,SelectParameter[] pars)
+        public List<IClassView> SelectClassView(System.Type type,SelectParameter[] pars)
         {
-            return SelectVirtualTable(type, pars, null);
+            return SelectClassView(type, pars, null);
         }
 
-        public List<Object> SelectVirtualTable(System.Type type,string[] OrderByFields)
+        public List<IClassView> SelectClassView(System.Type type,string[] OrderByFields)
         {
-            return SelectVirtualTable(type, null, OrderByFields);
+            return SelectClassView(type, null, OrderByFields);
         }
 
-        public List<Object> SelectVirtualTable(System.Type type,SelectParameter[] pars,string[] OrderByFields)
+        public List<IClassView> SelectClassView(System.Type type,SelectParameter[] pars,string[] OrderByFields)
         {
-            if (type.GetCustomAttributes(typeof(VirtualTableAttribute), true).Length == 0)
-                throw new Exception("Unable to execute a Virtual Table Query from a class that does not have a VirtualTableAttribute attached to it.");
+            if (type.GetCustomAttributes(typeof(ClassViewAttribute), true).Length == 0 || !new List<Type>(type.GetInterfaces()).Contains(typeof(IClassView)))
+                throw new Exception("Unable to execute a Class View Query from a class that does not have a ClassViewAttributes attached to it as well as has the interface IClassView.");
             pool.Updater.InitType(type, this);
-            List<Object> ret = new List<object>();
-            sTable tbl = pool.Mapping.GetVirtualTable(type);
+            List<IClassView> ret = new List<IClassView>();
+            string viewName = Pool.Translator.GetViewName(type);
+            ClassViewAttribute cva = (ClassViewAttribute)type.GetCustomAttributes(typeof(ClassViewAttribute), false)[0];
             int parCount = 0;
             List<IDbDataParameter> queryParameters = new List<IDbDataParameter>();
             string parString = "";
@@ -943,47 +937,48 @@ namespace Org.Reddragonit.Dbpro.Connections
                 {
                     foreach (string str in par.Fields)
                     {
-                        if (tbl[str].Length == 0)
-                            throw new Exception("Unable to execute a Virtual Table Query with parameters that are not fields in the Virtual Table");
+                        if (cva.Query.GetOrdinal(str)==-1)
+                            throw new Exception("Unable to execute a Class View Query with parameters that are not fields in the Class View");
                     }
-                    parString += " AND ( " + par.ConstructVirtualTableString(tbl, this,queryBuilder , ref queryParameters, ref parCount) + " ) ";
+                    parString += " AND ( " + par.ConstructClassViewString(cva,Pool,queryBuilder , ref queryParameters, ref parCount) + " ) ";
                 }
             }
             if (OrderByFields != null)
             {
                 foreach (string str in OrderByFields)
                 {
-                    if (tbl[str].Length == 0)
-                        throw new Exception("Unable to execute a Virtual table Query with Order By Fields that are not fields in the Virtual Table");
-                    orderByString += ","+tbl[str][0].Name;
+                    if (cva.Query.GetOrdinal(str) == -1)
+                        throw new Exception("Unable to execute a Class View Query with Order By Fields that are not fields in the Class View");
+                    orderByString += ","+str;
                 }
             }
-            this.ExecuteQuery("SELECT * FROM " + tbl.Name + (parString == "" ? "" : " WHERE "+parString.Substring(4))+(orderByString == "" ? "" : " ORDER BY "+orderByString.Substring(1)),queryParameters.ToArray());
+            this.ExecuteQuery("SELECT * FROM " + viewName + (parString == "" ? "" : " WHERE "+parString.Substring(4))+(orderByString == "" ? "" : " ORDER BY "+orderByString.Substring(1)),queryParameters.ToArray());
+            ViewResultRow vrr = new ViewResultRow(this);
             while (Read())
             {
-                object obj = type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
-                foreach (sTableField fld in tbl.Fields)
-                    _setVirtualField(ref obj, fld, type);
-                ret.Add(obj);
+                IClassView icv = (IClassView)type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
+                icv.LoadFromRow(vrr);
+                ret.Add(icv);
             }
             Close();
             return ret;
         }
 
-        public object SelectMaxVirtualTable(string fieldName, System.Type type)
+        public object SelectMaxClassView(string fieldName, System.Type type)
         {
-            return SelectMaxVirtualTable(fieldName, type, null);
+            return SelectMaxClassView(fieldName, type, null);
         }
 
-        public object SelectMaxVirtualTable(string fieldName, System.Type type, SelectParameter[] pars)
+        public object SelectMaxClassView(string fieldName, System.Type type, SelectParameter[] pars)
         {
             object ret = null;
-            if (type.GetCustomAttributes(typeof(VirtualTableAttribute), true).Length == 0)
-                throw new Exception("Unable to execute a Virtual Table Query from a class that does not have a VirtualTableAttribute attached to it.");
+            if (type.GetCustomAttributes(typeof(ClassViewAttribute), true).Length == 0 || !new List<Type>(type.GetInterfaces()).Contains(typeof(IClassView)))
+                throw new Exception("Unable to execute a Class View Query from a class that does not have a ClassViewAttribute attached to it and does not inherit IClassView.");
             pool.Updater.InitType(type, this);
-            sTable tbl = pool.Mapping.GetVirtualTable(type);
-            if (tbl[fieldName].Length == 0)
-                throw new Exception("Unable to execute a Max Virtual Table Query without specificying a Field in the virtual table");
+            string viewName = Pool.Translator.GetViewName(type);
+            ClassViewAttribute cva = (ClassViewAttribute)type.GetCustomAttributes(typeof(ClassViewAttribute), false)[0];
+            if (cva.Query.GetOrdinal(fieldName) == -1)
+                throw new Exception("Unable to execute a Max Class View Query without specificying a Field in the Class View");
             int parCount = 0;
             List<IDbDataParameter> queryParameters = new List<IDbDataParameter>();
             string parString = "";
@@ -993,33 +988,34 @@ namespace Org.Reddragonit.Dbpro.Connections
                 {
                     foreach (string str in par.Fields)
                     {
-                        if (tbl[str].Length == 0)
-                            throw new Exception("Unable to execute a Virtual Table Query with parameters that are not fields in the Virtual Table");
+                        if (cva.Query.GetOrdinal(str)==-1)
+                            throw new Exception("Unable to execute a Class View Query with parameters that are not fields in the Class View");
                     }
-                    parString += " AND ( " + par.ConstructVirtualTableString(tbl, this, queryBuilder, ref queryParameters, ref parCount) + " ) ";
+                    parString += " AND ( " + par.ConstructClassViewString(cva, Pool, queryBuilder, ref queryParameters, ref parCount) + " ) ";
                 }
             }
-            this.ExecuteQuery("SELECT MAX("+tbl[fieldName][0].Name+") FROM " + tbl.Name + (parString == "" ? "" : " WHERE " + parString.Substring(4)), queryParameters.ToArray());
+            this.ExecuteQuery("SELECT MAX("+fieldName+") FROM " + viewName + (parString == "" ? "" : " WHERE " + parString.Substring(4)), queryParameters.ToArray());
             if (Read())
                 ret = this[0];
             Close();
             return ret;
         }
 
-        public object SelectMinVirtualTable(string fieldName, System.Type type)
+        public object SelectMinClassView(string fieldName, System.Type type)
         {
-            return SelectMinVirtualTable(fieldName, type, null);
+            return SelectMinClassView(fieldName, type, null);
         }
 
-        public object SelectMinVirtualTable(string fieldName, System.Type type, SelectParameter[] pars)
+        public object SelectMinClassView(string fieldName, System.Type type, SelectParameter[] pars)
         {
             object ret = null;
-            if (type.GetCustomAttributes(typeof(VirtualTableAttribute), true).Length == 0)
-                throw new Exception("Unable to execute a Virtual Table Query from a class that does not have a VirtualTableAttribute attached to it.");
+            if (type.GetCustomAttributes(typeof(ClassViewAttribute), true).Length == 0 || !new List<Type>(type.GetInterfaces()).Contains(typeof(IClassView)))
+                throw new Exception("Unable to execute a Class View Query from a class that does not have a ClassViewAttribute attached to it and inheriting IClassView interface.");
             pool.Updater.InitType(type, this);
-            sTable tbl = pool.Mapping.GetVirtualTable(type);
-            if (tbl[fieldName].Length == 0)
-                throw new Exception("Unable to execute a Min Virtual Table Query without specificying a Field in the virtual table");
+            string viewName = Pool.Translator.GetViewName(type);
+            ClassViewAttribute cva = (ClassViewAttribute)type.GetCustomAttributes(typeof(ClassViewAttribute), false)[0];
+            if (cva.Query.GetOrdinal(fieldName)==-1)
+                throw new Exception("Unable to execute a Min Class View Query without specificying a Field in the Class View");
             int parCount = 0;
             List<IDbDataParameter> queryParameters = new List<IDbDataParameter>();
             string parString = "";
@@ -1029,31 +1025,32 @@ namespace Org.Reddragonit.Dbpro.Connections
                 {
                     foreach (string str in par.Fields)
                     {
-                        if (tbl[str].Length == 0)
-                            throw new Exception("Unable to execute a Virtual Table Query with parameters that are not fields in the Virtual Table");
+                        if (cva.Query.GetOrdinal(str)==-1)
+                            throw new Exception("Unable to execute a Class View Query with parameters that are not fields in the Class View");
                     }
-                    parString += " AND ( " + par.ConstructVirtualTableString(tbl, this, queryBuilder, ref queryParameters, ref parCount) + " ) ";
+                    parString += " AND ( " + par.ConstructClassViewString(cva, Pool, queryBuilder, ref queryParameters, ref parCount) + " ) ";
                 }
             }
-            this.ExecuteQuery("SELECT MIN(" + tbl[fieldName][0].Name + ") FROM " + tbl.Name + (parString == "" ? "" : " WHERE " + parString.Substring(4)), queryParameters.ToArray());
+            this.ExecuteQuery("SELECT MIN(" + fieldName + ") FROM " + viewName + (parString == "" ? "" : " WHERE " + parString.Substring(4)), queryParameters.ToArray());
             if (Read())
                 ret = this[0];
             Close();
             return ret;
         }
 
-        public object SelectCountVirtualTable(System.Type type)
+        public object SelectCountClassView(System.Type type)
         {
-            return SelectCountVirtualTable(type, null);
+            return SelectCountClassView(type, null);
         }
 
-        public object SelectCountVirtualTable(System.Type type, SelectParameter[] pars)
+        public object SelectCountClassView(System.Type type, SelectParameter[] pars)
         {
             object ret = null;
-            if (type.GetCustomAttributes(typeof(VirtualTableAttribute), true).Length == 0)
-                throw new Exception("Unable to execute a Virtual Table Query from a class that does not have a VirtualTableAttribute attached to it.");
+            if (type.GetCustomAttributes(typeof(ClassViewAttribute), true).Length == 0 || !new List<Type>(type.GetInterfaces()).Contains(typeof(IClassView)))
+                throw new Exception("Unable to execute a Class View Query from a class that does not have a ClassViewAttibute attached to it and inherits IClassView.");
             pool.Updater.InitType(type, this);
-            sTable tbl = pool.Mapping.GetVirtualTable(type);
+            string viewName = Pool.Translator.GetViewName(type);
+            ClassViewAttribute cva = (ClassViewAttribute)type.GetCustomAttributes(typeof(ClassViewAttribute), false)[0];
             int parCount = 0;
             List<IDbDataParameter> queryParameters = new List<IDbDataParameter>();
             string parString = "";
@@ -1063,31 +1060,29 @@ namespace Org.Reddragonit.Dbpro.Connections
                 {
                     foreach (string str in par.Fields)
                     {
-                        if (tbl[str].Length == 0)
-                            throw new Exception("Unable to execute a Virtual Table Query with parameters that are not fields in the Virtual Table");
+                        if (cva.Query.GetOrdinal(str)==-1)
+                            throw new Exception("Unable to execute a Class View Query with parameters that are not fields in the Class View");
                     }
-                    parString += " AND ( " + par.ConstructVirtualTableString(tbl, this, queryBuilder, ref queryParameters, ref parCount) + " ) ";
+                    parString += " AND ( " + par.ConstructClassViewString(cva, Pool, queryBuilder, ref queryParameters, ref parCount) + " ) ";
                 }
             }
-            this.ExecuteQuery("SELECT COUNT(*) FROM " + tbl.Name + (parString == "" ? "" : " WHERE " + parString.Substring(4)), queryParameters.ToArray());
+            this.ExecuteQuery("SELECT COUNT(*) FROM " + viewName + (parString == "" ? "" : " WHERE " + parString.Substring(4)), queryParameters.ToArray());
             if (Read())
                 ret = this[0];
             Close();
             return ret;
         }
 
-        public List<Object> SelectPagedVirtualTable(System.Type type, List<SelectParameter> parameters, ulong? StartIndex, ulong? RowCount)
+        public List<IClassView> SelectPagedClassView(System.Type type, List<SelectParameter> parameters, ulong? StartIndex, ulong? RowCount,string[] OrderByFields)
         {
-            return SelectPagedVirtualTable(type, parameters, StartIndex, RowCount, null);
-        }
-
-        public List<Object> SelectPagedVirtualTable(System.Type type, List<SelectParameter> parameters, ulong? StartIndex, ulong? RowCount,string[] OrderByFields)
-        {
-            if (type.GetCustomAttributes(typeof(VirtualTableAttribute), true).Length == 0)
-                throw new Exception("Unable to execute a Virtual Table Query from a class that does not have a VirtualTableAttribute attached to it.");
+            if (type.GetCustomAttributes(typeof(ClassViewAttribute), true).Length == 0 || !new List<Type>(type.GetInterfaces()).Contains(typeof(IClassView)))
+                throw new Exception("Unable to execute a Class View Query from a class that does not have a ClassViewAttribute attached to it and inherits IClassView.");
+            if (OrderByFields == null)
+                throw new Exception("Unable to execute a Paged Class View Query without specifying the OrderByFields");
             pool.Updater.InitType(type, this);
-            List<Object> ret = new List<object>();
-            sTable tbl = pool.Mapping.GetVirtualTable(type);
+            List<IClassView> ret = new List<IClassView>();
+            string viewName = Pool.Translator.GetViewName(type);
+            ClassViewAttribute cva = (ClassViewAttribute)type.GetCustomAttributes(typeof(ClassViewAttribute), false)[0];
             int parCount = 0;
             List<IDbDataParameter> queryParameters = new List<IDbDataParameter>();
             string parString = "";
@@ -1098,144 +1093,28 @@ namespace Org.Reddragonit.Dbpro.Connections
                 {
                     foreach (string str in par.Fields)
                     {
-                        if (tbl[str].Length == 0)
-                            throw new Exception("Unable to execute a Virtual Table Query with parameters that are not fields in the Virtual Table");
+                        if (cva.Query.GetOrdinal(str)==-1)
+                            throw new Exception("Unable to execute a Class View Query with parameters that are not fields in the Class View");
                     }
-                    parString += " AND ( " + par.ConstructVirtualTableString(tbl, this, queryBuilder, ref queryParameters, ref parCount) + " ) ";
+                    parString += " AND ( " + par.ConstructClassViewString(cva, Pool, queryBuilder, ref queryParameters, ref parCount) + " ) ";
                 }
             }
-            if (OrderByFields != null)
+            foreach (string str in OrderByFields)
             {
-                foreach (string str in OrderByFields)
-                {
-                    if (tbl[str].Length == 0)
-                        throw new Exception("Unable to execute a Virtual table Query with Order By Fields that are not fields in the Virtual Table");
-                    orderByString += "," + tbl[str][0].Name;
-                }
+                if (cva.Query.GetOrdinal(str)==-1)
+                    throw new Exception("Unable to execute a Class View Query with Order By Fields that are not fields in the Class View");
+                orderByString += "," + str;
             }
-            this.ExecuteQuery(queryBuilder.SelectPaged("SELECT * FROM " + tbl.Name + (parString == "" ? "" : " WHERE " + parString.Substring(4)) + (orderByString == "" ? "" : " ORDER BY " + orderByString.Substring(1)),tbl,ref queryParameters,StartIndex,RowCount,OrderByFields), queryParameters.ToArray());
+            this.ExecuteQuery(queryBuilder.SelectPaged("SELECT * FROM " + viewName + (parString == "" ? "" : " WHERE " + parString.Substring(4)) + " ORDER BY " + orderByString.Substring(1),ref queryParameters,StartIndex,RowCount,OrderByFields), queryParameters.ToArray());
+            ViewResultRow vrr = new ViewResultRow(this);
             while (Read())
             {
-                object obj = type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
-                foreach (sTableField fld in tbl.Fields)
-                    _setVirtualField(ref obj, fld, type);
-                ret.Add(obj);
+                IClassView icv = (IClassView)type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
+                icv.LoadFromRow(vrr);
+                ret.Add(icv);
             }
             Close();
             return ret;
-        }
-
-        private void _setVirtualField(ref object obj, sTableField fld, Type type)
-        {
-            if (!this.IsDBNull(this.GetOrdinal(fld.Name)))
-            {
-                PropertyInfo pi = type.GetProperty(fld.ClassProperty, Utility._BINDING_FLAGS);
-                object value = this[this.GetOrdinal(fld.Name)];
-                if (pi.PropertyType.Equals(typeof(bool)) && !(value.GetType().Equals(typeof(bool))))
-                {
-                    if (value.GetType().Equals(typeof(int)))
-                    {
-                        if ((int)value == 0)
-                            pi.SetValue(obj, false, new object[0]);
-                        else
-                            pi.SetValue(obj, true, new object[0]);
-                    }
-                    else if (value.GetType().Equals(typeof(string)))
-                    {
-                        if (((string)value).Length == 1)
-                        {
-                            if ((string)value == "F")
-                                value = "False";
-                            else
-                                value = "True";
-                        }
-                        pi.SetValue(obj, bool.Parse((string)value), new object[0]);
-                    }
-                    else if (value.GetType().Equals(typeof(char)))
-                    {
-                        if ((char)value == 'F')
-                            pi.SetValue(obj, false, new object[0]);
-                        else
-                            pi.SetValue(obj, true, new object[0]);
-                    }
-                }
-                else if (pi.PropertyType.Equals(typeof(uint)) || pi.PropertyType.Equals(typeof(UInt32)))
-                {
-                    pi.SetValue(obj, BitConverter.ToUInt32(BitConverter.GetBytes(int.Parse(value.ToString())), 0), new object[0]);
-                }
-                else if (pi.PropertyType.Equals(typeof(ushort)) || pi.PropertyType.Equals(typeof(UInt16)))
-                {
-                    pi.SetValue(obj, BitConverter.ToUInt16(BitConverter.GetBytes(short.Parse(value.ToString())), 0), new object[0]);
-                }
-                else if (pi.PropertyType.Equals(typeof(ulong)) || pi.PropertyType.Equals(typeof(UInt64)))
-                {
-                    pi.SetValue(obj, BitConverter.ToUInt64(BitConverter.GetBytes(long.Parse(value.ToString())), 0), new object[0]);
-                }
-                else if (Utility.IsEnum(pi.PropertyType))
-                {
-                    pi.SetValue(obj, Pool.GetEnumValue(pi.PropertyType, (int)value),new object[0]);
-                }
-                else
-                {
-                    if (value != null)
-                    {
-                        if (value.GetType().FullName != pi.PropertyType.FullName)
-                        {
-                            Type pt = pi.PropertyType;
-                            if (pt.IsGenericType && pt.GetGenericTypeDefinition().FullName.StartsWith("System.Nullable"))
-                                pt = pt.GetGenericArguments()[0];
-                            MethodInfo conMethod = null;
-                            foreach (MethodInfo mi in pt.GetMethods(BindingFlags.Static | BindingFlags.Public))
-                            {
-                                if (mi.Name == "op_Implicit" || mi.Name == "op_Explicit")
-                                {
-                                    if (mi.ReturnType.Equals(pt)
-                                        && mi.GetParameters().Length == 1
-                                        && mi.GetParameters()[0].ParameterType.Equals(value.GetType()))
-                                    {
-                                        conMethod = mi;
-                                        break;
-                                    }
-                                }
-                            }
-                            if (conMethod != null)
-                                value = conMethod.Invoke(null, new object[] { value });
-                            else if (pt.GetCustomAttributes(typeof(TypeConverterAttribute), false).Length > 0)
-                            {
-                                if (TypeDescriptor.GetConverter(pt).CanConvertFrom(value.GetType()))
-                                {
-                                    value = TypeDescriptor.GetConverter(pt).ConvertFrom(value);
-                                }
-                                else
-                                {
-                                    try
-                                    {
-                                        object val = Convert.ChangeType(value, pt);
-                                        value = val;
-                                    }
-                                    catch (Exception e)
-                                    {
-                                        Logger.LogLine(e);
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                try
-                                {
-                                    object val = Convert.ChangeType(value, pt);
-                                    value = val;
-                                }
-                                catch (Exception e)
-                                {
-                                    Logger.LogLine(e);
-                                }
-                            }
-                        }
-                    }
-                    pi.SetValue(obj, value, new object[0]);
-                }
-            }
         }
         #endregion
 

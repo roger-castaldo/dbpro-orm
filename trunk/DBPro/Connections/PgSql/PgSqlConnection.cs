@@ -21,13 +21,12 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 	public class PgSqlConnection : Connection
 	{
         internal const string _ASSEMBLY_NAME = "Npgsql";
-        internal const string _PARAMETER_TYPE_NAME = "Npgsql.NpgsqlParameter";
         private const string _CONNECTION_TYPE_NAME = "Npgsql.NpgsqlConnection";
         private const string _COMMAND_TYPE_NAME = "Npgsql.NpgsqlCommand";
 
 		public PgSqlConnection(ConnectionPool pool,string connectionString,bool Readonly,bool exclusiveLock) : base(pool,connectionString,Readonly,exclusiveLock)
 		{
-            if (Utility.LocateType(_PARAMETER_TYPE_NAME) == null)
+            if (Utility.LocateType(_CONNECTION_TYPE_NAME) == null)
                 Assembly.Load(_ASSEMBLY_NAME);
 		}
 		
@@ -41,38 +40,6 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
         {
             return conn.BeginTransaction(IsolationLevel.Serializable);
         }
-		
-		public override IDbDataParameter CreateParameter(string parameterName, object parameterValue)
-		{
-            if (parameterValue != null)
-            {
-                if (Utility.IsEnum(parameterValue.GetType()))
-                {
-                    if (parameterValue != null)
-                        parameterValue = Pool.GetEnumID(parameterValue.GetType(), parameterValue.ToString());
-                    else
-                        parameterValue = (int?)null;
-                }
-            }
-            if ((parameterValue is uint) || (parameterValue is UInt32))
-            {
-                parameterValue = System.Text.ASCIIEncoding.ASCII.GetString(System.BitConverter.GetBytes(uint.Parse(parameterValue.ToString()))).ToCharArray();
-            }
-            else if ((parameterValue is UInt16) || (parameterValue is ushort))
-            {
-                parameterValue = System.Text.ASCIIEncoding.ASCII.GetString(System.BitConverter.GetBytes(ushort.Parse(parameterValue.ToString()))).ToCharArray();
-            }
-            else if ((parameterValue is ulong) || (parameterValue is Int64))
-            {
-                parameterValue = System.Text.ASCIIEncoding.ASCII.GetString(System.BitConverter.GetBytes(ulong.Parse(parameterValue.ToString()))).ToCharArray();
-            }
-            return (IDbDataParameter)Utility.LocateType(_PARAMETER_TYPE_NAME).GetConstructor(new Type[] { typeof(string), typeof(object) }).Invoke(new object[] { parameterName, parameterValue });
-		}
-		
-		internal override IDbDataParameter CreateParameter(string parameterName, object parameterValue, Org.Reddragonit.Dbpro.Structure.Attributes.FieldType type, int fieldLength)
-		{
-			return CreateParameter(parameterName,parameterValue);
-		}
 		
 		protected override IDbCommand EstablishCommand()
 		{
@@ -291,15 +258,6 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 		
 		internal override bool UsesIdentities {
 			get { return false; }
-		}
-		
-		private PgSqlQueryBuilder _builder=null;
-		internal override QueryBuilder queryBuilder {
-			get {
-				if (_builder==null)
-					_builder=new PgSqlQueryBuilder(Pool,this);
-				return _builder;
-			}
 		}
 
         internal override void DisableAutogens()
