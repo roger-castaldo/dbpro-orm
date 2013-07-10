@@ -27,18 +27,8 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 	public class FBConnection : Connection
 	{
         internal const string _ASSEMBLY_NAME = "FirebirdSql.Data.FirebirdClient";
-        internal const string _PARAMETER_CLASS_NAME = "FirebirdSql.Data.FirebirdClient.FbParameter";
         private const string _COMMAND_CLASS_NAME = "FirebirdSql.Data.FirebirdClient.FbCommand";
         private const string _CONNECTION_CLASS_NAME = "FirebirdSql.Data.FirebirdClient.FbConnection";
-
-		private QueryBuilder _builder;
-		internal override QueryBuilder queryBuilder {
-			get {
-				if (_builder==null)
-					_builder=new FBQueryBuilder(Pool,this);
-				return _builder;
-			}
-		}
 		
 		internal override string DefaultTableString {
 			get {
@@ -241,42 +231,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
             return ret;
         }
 		
-		internal override System.Data.IDbDataParameter CreateParameter(string parameterName, object parameterValue, FieldType type, int fieldLength)
-		{
-			return CreateParameter(parameterName,parameterValue);
-		}
-		
-		public override System.Data.IDbDataParameter CreateParameter(string parameterName, object parameterValue)
-		{
-            if (parameterValue != null)
-            {
-                if (Utility.IsEnum(parameterValue.GetType()))
-                {
-                    if (parameterValue != null)
-                        parameterValue = Pool.GetEnumID(parameterValue.GetType(), parameterValue.ToString());
-                    else
-                        parameterValue = (int?)null;
-                }
-            }
-            if (parameterValue is bool)
-			{
-				if ((bool)parameterValue)
-					parameterValue='T';
-				else
-					parameterValue='F';
-            }
-            else if ((parameterValue is uint) || (parameterValue is UInt32)){
-				parameterValue = BitConverter.ToInt32(BitConverter.GetBytes(uint.Parse(parameterValue.ToString())),0);
-            }else if ((parameterValue is UInt16)||(parameterValue is ushort)){
-				parameterValue = BitConverter.ToInt16(BitConverter.GetBytes(ushort.Parse(parameterValue.ToString())),0);
-            }
-            else if ((parameterValue is ulong) || (parameterValue is UInt64)){
-				parameterValue = BitConverter.ToInt64(BitConverter.GetBytes(ulong.Parse(parameterValue.ToString())),0);
-            }
-            return (System.Data.IDbDataParameter)Utility.LocateType(_PARAMETER_CLASS_NAME).GetConstructor(new Type[] { typeof(string), typeof(object) }).Invoke(new object[] { parameterName, parameterValue });
-		}
-
-        public override object GetValue(int i)
+		public override object GetValue(int i)
         {
             if ((reader.GetDataTypeName(i)=="CHAR")&&(reader[i].ToString().Length == 1) && ((reader[i].ToString() == "T") || (reader[i].ToString() == "F")))
                 return this.GetBoolean(i);

@@ -12,6 +12,7 @@ using Org.Reddragonit.Dbpro.Connections;
 using System.IO;
 using System.Reflection;
 using System.Xml;
+using Org.Reddragonit.Dbpro.Structure.Attributes;
 
 namespace Org.Reddragonit.Dbpro.Connections.Firebird
 {
@@ -20,6 +21,8 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 	/// </summary>
 	public class FBConnectionPool : ConnectionPool
 	{
+        internal const string _PARAMETER_CLASS_NAME = "FirebirdSql.Data.FirebirdClient.FbParameter";
+
         private string _connectionString;
         protected override string connectionString
         {
@@ -115,7 +118,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 
         protected override void _InitClass()
         {
-            if (Utility.LocateType(FBConnection._PARAMETER_CLASS_NAME) == null)
+            if (Utility.LocateType(_PARAMETER_CLASS_NAME) == null)
                 Assembly.Load(FBConnection._ASSEMBLY_NAME);
         }
 
@@ -134,5 +137,57 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
             }
             return ret;
         }
+
+        private QueryBuilder _builder;
+        internal override QueryBuilder queryBuilder
+        {
+            get
+            {
+                if (_builder == null)
+                    _builder = new FBQueryBuilder(this);
+                return _builder;
+            }
+        }
+
+        internal override System.Data.IDbDataParameter CreateParameter(string parameterName, object parameterValue, FieldType type, int fieldLength)
+        {
+            return CreateParameter(parameterName, parameterValue);
+        }
+
+        internal override System.Data.IDbDataParameter CreateParameter(string parameterName, object parameterValue)
+        {
+            if (parameterValue != null)
+            {
+                if (Utility.IsEnum(parameterValue.GetType()))
+                {
+                    if (parameterValue != null)
+                        parameterValue = GetEnumID(parameterValue.GetType(), parameterValue.ToString());
+                    else
+                        parameterValue = (int?)null;
+                }
+            }
+            if (parameterValue is bool)
+            {
+                if ((bool)parameterValue)
+                    parameterValue = 'T';
+                else
+                    parameterValue = 'F';
+            }
+            else if ((parameterValue is uint) || (parameterValue is UInt32))
+            {
+                parameterValue = BitConverter.ToInt32(BitConverter.GetBytes(uint.Parse(parameterValue.ToString())), 0);
+            }
+            else if ((parameterValue is UInt16) || (parameterValue is ushort))
+            {
+                parameterValue = BitConverter.ToInt16(BitConverter.GetBytes(ushort.Parse(parameterValue.ToString())), 0);
+            }
+            else if ((parameterValue is ulong) || (parameterValue is UInt64))
+            {
+                parameterValue = BitConverter.ToInt64(BitConverter.GetBytes(ulong.Parse(parameterValue.ToString())), 0);
+            }
+            return (System.Data.IDbDataParameter)Utility.LocateType(_PARAMETER_CLASS_NAME).GetConstructor(new Type[] { typeof(string), typeof(object) }).Invoke(new object[] { parameterName, parameterValue });
+        }
+
+        
 	}
 }

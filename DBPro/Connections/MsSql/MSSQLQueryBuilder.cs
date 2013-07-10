@@ -9,7 +9,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 {
 	internal class MSSQLQueryBuilder : QueryBuilder
 	{
-		public MSSQLQueryBuilder(ConnectionPool pool,Connection conn) : base(pool,conn)
+		public MSSQLQueryBuilder(ConnectionPool pool) : base(pool)
 		{}
 		
 		protected override string SelectTableNamesString
@@ -165,10 +165,11 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 		internal override string DropPrimaryKey(PrimaryKey key)
 		{
 			string ret = "";
+            Connection conn = pool.getConnection();
 			conn.ExecuteQuery(DropPrimaryKeyString, new IDbDataParameter[]{conn.CreateParameter(CreateParameterName("TableName"),key.Name)});
 			if (conn.Read())
 				ret = conn[0].ToString();
-			conn.Close();
+            conn.CloseConnection();
 			return ret;
 		}
 		
@@ -224,6 +225,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
         internal override string DropForeignKey(string table, string externalTable, string primaryField, string relatedField)
 		{
 			string ret="";
+            Connection conn = pool.getConnection();
 			conn.ExecuteQuery(string.Format(DropForeignKeyString,new object[]{table,externalTable,primaryField,relatedField}));
 			while (conn.Read())
 				ret+=conn[0].ToString()+"\n";
@@ -245,8 +247,8 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
             if (!recordCount.HasValue)
                 recordCount = 0;
             string baseQuery = Select(type, parameters, out queryParameters, OrderByFields);
-            queryParameters.Add(conn.CreateParameter(CreateParameterName("startIndex"), start.Value));
-            queryParameters.Add(conn.CreateParameter(CreateParameterName("rowCount"), recordCount.Value));
+            queryParameters.Add(pool.CreateParameter(CreateParameterName("startIndex"), start.Value));
+            queryParameters.Add(pool.CreateParameter(CreateParameterName("rowCount"), recordCount.Value));
             string primarys = "";
             if ((OrderByFields == null) || (OrderByFields.Length == 0))
             {
@@ -262,6 +264,27 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
                     foreach (sTableField fld in pool.Mapping[type][str])
                         primarys += "," + fld.Name;
                 }
+            }
+            if (primarys.StartsWith(","))
+                primarys = primarys.Substring(1);
+            return String.Format(SelectWithPagingIncludeOffset, baseQuery, CreateParameterName("startIndex"), CreateParameterName("rowCount"), primarys);
+        }
+
+        internal override string SelectPaged(string baseQuery, ref List<IDbDataParameter> queryParameters, ulong? start, ulong? recordCount, string[] OrderByFields)
+        {
+            if (!start.HasValue)
+                start = 0;
+            if (!recordCount.HasValue)
+                recordCount = 0;
+            queryParameters.Add(pool.CreateParameter(CreateParameterName("startIndex"), start.Value));
+            queryParameters.Add(pool.CreateParameter(CreateParameterName("rowCount"), recordCount.Value));
+            string primarys = "";
+            if (baseQuery.Contains("ORDER BY"))
+                primarys = baseQuery.Substring(baseQuery.IndexOf("ORDER BY") + "ORDER BY".Length);
+            else
+            {
+                foreach (string str in OrderByFields)
+                    primarys += "," + str;
             }
             if (primarys.StartsWith(","))
                 primarys = primarys.Substring(1);

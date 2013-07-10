@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using Org.Reddragonit.Dbpro.Virtual.Attributes;
 using System.Reflection;
 using Org.Reddragonit.Dbpro.Connections.ClassSQL;
 using Org.Reddragonit.Dbpro.Structure.Attributes;
+using Org.Reddragonit.Dbpro.Virtual;
 
 namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 {
@@ -41,13 +41,13 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             _views = new List<View>();
             _procedures = new List<StoredProcedure>();
             _createdTypes = new List<Type>();
-            conn.ExecuteQuery(conn.queryBuilder.SelectTriggers());
+            conn.ExecuteQuery(conn.Pool.queryBuilder.SelectTriggers());
             while (conn.Read())
             {
                 _triggers.Add(new Trigger((string)conn[0], (string)conn[1], (string)conn[2]));
             }
             conn.Close();
-            conn.ExecuteQuery(conn.queryBuilder.SelectProcedures());
+            conn.ExecuteQuery(conn.Pool.queryBuilder.SelectProcedures());
             while (conn.Read())
             {
                 _procedures.Add(new StoredProcedure(conn[0].ToString(), conn[1].ToString(), conn[2].ToString(), conn[3].ToString(), conn[4].ToString()));
@@ -127,19 +127,14 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
         {
             List<Type> types = new List<Type>();
             types.Add(type);
-            if (_pool.Mapping.IsVirtualTable(type))
+            if (new List<Type>(type.GetInterfaces()).Contains(typeof(IClassView)))
             {
-                foreach (PropertyInfo pi in type.GetProperties(Utility._BINDING_FLAGS))
+                ClassViewAttribute cva = (ClassViewAttribute)type.GetCustomAttributes(typeof(ClassViewAttribute), false)[0];
+                foreach (Type t in cva.Query.RequiredTypes)
                 {
-                    if (pi.GetCustomAttributes(typeof(VirtualField), true).Length > 0)
-                    {
-                        VirtualField vf = (VirtualField)pi.GetCustomAttributes(typeof(VirtualField), true)[0];
-                        if (!types.Contains(vf.ReferencingTable))
-                        {
-                            types.Add(vf.ReferencingTable);
-                            types = _RecurLoadTypesForTable(_pool.Mapping[vf.ReferencingTable], types);
-                        }
-                    }
+                    if (!types.Contains(t))
+                        types.Add(t);
+                    types = _RecurLoadTypesForTable(_pool.Mapping[t], types);
                 }
             }
             else
@@ -335,6 +330,28 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                     }
                 }
             }
+            foreach (Type tp in Utility.LocateAllTypesWithAttribute(typeof(ClassViewAttribute)))
+            {
+                if (!types.Contains(tp))
+                {
+                    ClassViewAttribute cva = (ClassViewAttribute)tp.GetCustomAttributes(typeof(ClassViewAttribute), false)[0];
+                    foreach (Type tpe in cva.Query.RequiredTypes)
+                    {
+                        if (types.Contains(tpe))
+                        {
+                            if (!types.Contains(tp))
+                                types.Add(tp);
+                            foreach (Type type in cva.Query.RequiredTypes)
+                            {
+                                if (!types.Contains(type))
+                                    types.Add(type);
+                                types = _RecurLoadTypesForTable(_pool.Mapping[type], types);
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
             return types;
         }
 
@@ -381,9 +398,10 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                     if (!types.Contains(t) && !_createdTypes.Contains(t))
                         types.Add(t);
                 }
-                if (_pool.Mapping.IsVirtualTable(type))
+                if (type.GetCustomAttributes(typeof(ClassViewAttribute),false).Length>0)
                 {
-                    View vw = _CreateViewForVirtualTable(type, conn);
+                    ClassViewAttribute cva = (ClassViewAttribute)type.GetCustomAttributes(typeof(ClassViewAttribute), false)[0];
+                    View vw = new View(_pool.Translator.GetViewName(type), cva.Query);
                     views.Add(vw);
                     if (vw.RequiredTypes != null)
                     {
@@ -585,19 +603,8 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
         private View _CreateViewForVirtualTable(Type virtualTable, Connection conn)
         {
-            Type t = VirtualTableAttribute.GetMainTableTypeForVirtualTable(virtualTable);
-            sTable tbl = _pool.Mapping.GetVirtualTable(virtualTable);
-            string query = "SELECT ";
-            foreach (string prop in tbl.Properties)
-            {
-                PropertyInfo pi = virtualTable.GetProperty(prop, Utility._BINDING_FLAGS);
-                VirtualField vf = (VirtualField)pi.GetCustomAttributes(typeof(VirtualField), false)[0];
-                query += "main." + vf.FieldName + " AS "+tbl[prop][0].Name+", ";
-            }
-            query = query.Substring(0, query.Length - 2);
-            query += " FROM " + t.Name + " main";
-            ClassQuery cq = new ClassQuery(t.Namespace, query);
-            return new View(tbl.Name,cq);
+            ClassViewAttribute cva = (ClassViewAttribute)virtualTable.GetCustomAttributes(typeof(ClassViewAttribute), false)[0];
+            return new View(conn.Pool.Translator.GetViewName(virtualTable), cva.Query);
         }
 
         private List<string> _UpdateStructure(List<ExtractedTableMap> tables, List<Trigger> triggers, List<Generator> generators, List<IdentityField> identities, List<View> views, List<StoredProcedure> procedures,Connection conn)

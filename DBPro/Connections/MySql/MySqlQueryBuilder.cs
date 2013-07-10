@@ -18,7 +18,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 	/// </summary>
 	internal class MySqlQueryBuilder : QueryBuilder
 	{
-		public MySqlQueryBuilder(ConnectionPool pool,Connection conn) : base(pool,conn)
+		public MySqlQueryBuilder(ConnectionPool pool) : base(pool)
 		{
 		}
 
@@ -124,6 +124,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 		internal override string SelectIdentities()
 		{
 			string ret="";
+            Connection conn = pool.getConnection();
 			conn.ExecuteQuery(SelectCurrentIdentities);
 			while(conn.Read())
 			{
@@ -135,7 +136,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 				                   conn[1].ToString(),
 				                   conn[2].ToString());
 			}
-			conn.Close();
+            conn.CloseConnection();
 			if (ret.Length>0)
 				ret=ret.Substring(0,ret.Length-7);
 			return ret;
@@ -188,11 +189,12 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 		
 		internal override string DropForeignKey(string table, string externalTable,string primaryField,string relatedField)
 		{
+            Connection conn = pool.getConnection();
 			conn.ExecuteQuery(string.Format(DropForeignKeyString,table,externalTable,primaryField,relatedField));
 			string ret = "";
 			if (conn.Read())
 				ret=conn[0].ToString();
-			conn.Close();
+            conn.CloseConnection();
 			return ret;
 		}
 

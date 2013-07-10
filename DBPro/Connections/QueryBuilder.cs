@@ -32,15 +32,9 @@ namespace Org.Reddragonit.Dbpro.Connections
 			get{return _pool;}
 		}
 		
-		private Connection _conn;
-		protected Connection conn{
-			get{return _conn;}
-		}
-		
-		public QueryBuilder(ConnectionPool pool,Connection conn)
+		public QueryBuilder(ConnectionPool pool)
 		{
 			_pool=pool;
-			_conn=conn;
 		}
 		
 		public virtual string CreateParameterName(string parameter)
@@ -628,7 +622,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                                 {
                                     values += fld.Name + ",";
                                     parameters += "," + CreateParameterName(fld.Name);
-                                    insertParameters.Add(conn.CreateParameter(CreateParameterName(fld.Name), null, fld.Type, fld.Length));
+                                    insertParameters.Add(pool.CreateParameter(CreateParameterName(fld.Name), null, fld.Type, fld.Length));
                                 }
                             }
                             else
@@ -649,9 +643,9 @@ namespace Org.Reddragonit.Dbpro.Connections
                                             {
                                                 object val = LocateFieldValue(eTable, fld, pool);
                                                 if (val==null)
-                                                    insertParameters.Add(conn.CreateParameter(CreateParameterName(fld.Name), null, fld.Type, fld.Length));
+                                                    insertParameters.Add(pool.CreateParameter(CreateParameterName(fld.Name), null, fld.Type, fld.Length));
                                                 else
-                                                    insertParameters.Add(conn.CreateParameter(CreateParameterName(fld.Name), val));
+                                                    insertParameters.Add(pool.CreateParameter(CreateParameterName(fld.Name), val));
                                                 break;
                                             }
                                         }
@@ -666,13 +660,13 @@ namespace Org.Reddragonit.Dbpro.Connections
                             values += flds[0].Name + ",";
                             parameters += "," + CreateParameterName(prop);
                             if (table.IsFieldNull(prop))
-                                insertParameters.Add(conn.CreateParameter(CreateParameterName(prop), null, flds[0].Type, flds[0].Length));
+                                insertParameters.Add(pool.CreateParameter(CreateParameterName(prop), null, flds[0].Type, flds[0].Length));
                             else
                             {
                                 if (flds[0].Type == FieldType.ENUM)
-                                    insertParameters.Add(conn.CreateParameter(CreateParameterName(prop), conn.Pool.GetEnumID(table.GetType().GetProperty(prop, Utility._BINDING_FLAGS).PropertyType, table.GetField(prop).ToString())));
+                                    insertParameters.Add(pool.CreateParameter(CreateParameterName(prop), pool.GetEnumID(table.GetType().GetProperty(prop, Utility._BINDING_FLAGS).PropertyType, table.GetField(prop).ToString())));
                                 else
-                                    insertParameters.Add(conn.CreateParameter(CreateParameterName(prop), table.GetField(prop), flds[0].Type, flds[0].Length));
+                                    insertParameters.Add(pool.CreateParameter(CreateParameterName(prop), table.GetField(prop), flds[0].Type, flds[0].Length));
                             }
                         }
                     }
@@ -716,7 +710,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                                 {
                                     values += fld.Name + ",";
                                     parameters += "," + CreateParameterName(fld.Name);
-                                    insertParameters.Add(conn.CreateParameter(CreateParameterName(fld.Name), null, fld.Type, fld.Length));
+                                    insertParameters.Add(pool.CreateParameter(CreateParameterName(fld.Name), null, fld.Type, fld.Length));
                                     whereConditions += " AND " + fld.Name + " IS NULL ";
                                 }
                             }
@@ -738,7 +732,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                                         {
                                             if (fld.ExternalField == efld.Name)
                                             {
-                                                insertParameters.Add(conn.CreateParameter(CreateParameterName(fld.Name),QueryBuilder.LocateFieldValue(eTable,efld,pool)));
+                                                insertParameters.Add(pool.CreateParameter(CreateParameterName(fld.Name),QueryBuilder.LocateFieldValue(eTable,efld,pool)));
                                                 break;
                                             }
                                         }
@@ -755,13 +749,13 @@ namespace Org.Reddragonit.Dbpro.Connections
                             parameters += "," + CreateParameterName(prop);
                             whereConditions += " AND "+flds[0].Name+" = " + CreateParameterName(prop) + " ";
                             if (table.IsFieldNull(prop))
-                                insertParameters.Add(conn.CreateParameter(CreateParameterName(prop), null, flds[0].Type, flds[0].Length));
+                                insertParameters.Add(pool.CreateParameter(CreateParameterName(prop), null, flds[0].Type, flds[0].Length));
                             else
                             {
                                 if (flds[0].Type == FieldType.ENUM)
-                                    insertParameters.Add(conn.CreateParameter(CreateParameterName(prop), conn.Pool.GetEnumID(table.GetType().GetProperty(prop, Utility._BINDING_FLAGS_WITH_INHERITANCE).PropertyType, table.GetField(prop).ToString())));
+                                    insertParameters.Add(pool.CreateParameter(CreateParameterName(prop), pool.GetEnumID(table.GetType().GetProperty(prop, Utility._BINDING_FLAGS_WITH_INHERITANCE).PropertyType, table.GetField(prop).ToString())));
                                 else
-                                    insertParameters.Add(conn.CreateParameter(CreateParameterName(prop), table.GetField(prop), flds[0].Type, flds[0].Length));
+                                    insertParameters.Add(pool.CreateParameter(CreateParameterName(prop), table.GetField(prop), flds[0].Type, flds[0].Length));
                             }
                         }
                     }
@@ -799,7 +793,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 int parCount = 0;
                 foreach (SelectParameter eq in pars)
                 {
-                    conditions += eq.ConstructString(tableType, _conn, this, ref parameters, ref parCount) + " AND ";
+                    conditions += eq.ConstructString(tableType, pool, this, ref parameters, ref parCount) + " AND ";
                 }
                 if (conditions.Length > 0)
                     conditions = conditions.Substring(0, conditions.Length - 4).Replace("main_table.", "");
@@ -882,7 +876,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                                     if (Utility.StringsEqual(fld.ExternalField, f.Name))
                                     {
                                         delString += fld.Name + " = " + CreateParameterName(fld.Name) + " AND ";
-                                        pars.Add(conn.CreateParameter(conn.CreateParameterName(fld.Name), LocateFieldValue(table, f, _pool)));
+                                        pars.Add(pool.CreateParameter(CreateParameterName(fld.Name), LocateFieldValue(table, f, _pool)));
                                         insertString += fld.Name + ",";
                                         valueString += CreateParameterName(fld.Name) + ",";
                                         break;
@@ -908,7 +902,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                             }
                         }
                     }
-                    insertString = insertString.Substring(0, insertString.Length - 1) + (ignoreautogen ? "," + pool.Translator.GetIntermediateIndexFieldName(table.GetType(),table.GetType().GetProperty(property,Utility._BINDING_FLAGS),conn) : "") + ") " + valueString.Substring(0, valueString.Length - 1) + (ignoreautogen ? "," + CreateParameterName("index") : "") + ")";
+                    insertString = insertString.Substring(0, insertString.Length - 1) + (ignoreautogen ? "," + pool.Translator.GetIntermediateIndexFieldName(table.GetType(),table.GetType().GetProperty(property,Utility._BINDING_FLAGS)) : "") + ") " + valueString.Substring(0, valueString.Length - 1) + (ignoreautogen ? "," + CreateParameterName("index") : "") + ")";
                     ret.Add(insertString, new List<List<IDbDataParameter>>());
                     int index = 0;
                     pkeys.Clear();
@@ -934,9 +928,9 @@ namespace Org.Reddragonit.Dbpro.Connections
                                             }
                                             object val = LocateFieldValue(t, fld, pool);
                                             if (val == null)
-                                                pars.Add(conn.CreateParameter(CreateParameterName(f.Name), null, f.Type, f.Length));
+                                                pars.Add(pool.CreateParameter(CreateParameterName(f.Name), null, f.Type, f.Length));
                                             else
-                                                pars.Add(conn.CreateParameter(CreateParameterName(f.Name), val));
+                                                pars.Add(pool.CreateParameter(CreateParameterName(f.Name), val));
                                             break;
                                         }
                                     }
@@ -953,7 +947,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                                     break;
                                 }
                             }
-                            pars.Add(conn.CreateParameter(CreateParameterName("index"), index, FieldType.INTEGER, 4));
+                            pars.Add(pool.CreateParameter(CreateParameterName("index"), index, FieldType.INTEGER, 4));
                         }
                         ret[insertString].Add(new List<IDbDataParameter>(pars.ToArray()));
                         index++;
@@ -1036,7 +1030,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                                         else
                                         {
                                             fields += fld.Name + " = " + CreateParameterName(fld.Name);
-                                            queryParameters.Add(conn.CreateParameter(CreateParameterName(fld.Name), val));
+                                            queryParameters.Add(pool.CreateParameter(CreateParameterName(fld.Name), val));
                                         }
                                     }
                                 }
@@ -1054,7 +1048,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                                 foreach (sTableField fld in flds)
                                 {
                                     fields += fld.Name + " = " + CreateParameterName(fld.Name) + ", ";
-                                    queryParameters.Add(conn.CreateParameter(CreateParameterName(fld.Name), null, fld.Type, fld.Length));
+                                    queryParameters.Add(pool.CreateParameter(CreateParameterName(fld.Name), null, fld.Type, fld.Length));
                                 }
                             }
                             else
@@ -1069,9 +1063,9 @@ namespace Org.Reddragonit.Dbpro.Connections
                                             object val = LocateFieldValue(relatedTable, f, pool);
                                             fields += fld.Name + " = " + CreateParameterName(fld.Name) + ", ";
                                             if (val == null)
-                                                queryParameters.Add(conn.CreateParameter(CreateParameterName(fld.Name), null, fld.Type, fld.Length));
+                                                queryParameters.Add(pool.CreateParameter(CreateParameterName(fld.Name), null, fld.Type, fld.Length));
                                             else
-                                                queryParameters.Add(conn.CreateParameter(CreateParameterName(fld.Name), val));
+                                                queryParameters.Add(pool.CreateParameter(CreateParameterName(fld.Name), val));
                                             break;
                                         }
                                     }
@@ -1082,13 +1076,13 @@ namespace Org.Reddragonit.Dbpro.Connections
                         {
                             fields += flds[0].Name + " = " + CreateParameterName(flds[0].Name) + ", ";
                             if (updateFields[flds[0].ClassProperty] == null)
-                                queryParameters.Add(conn.CreateParameter(CreateParameterName(flds[0].Name), null,flds[0].Type,flds[0].Length));
+                                queryParameters.Add(pool.CreateParameter(CreateParameterName(flds[0].Name), null,flds[0].Type,flds[0].Length));
                             else
                             {
                                 if (flds[0].Type==FieldType.ENUM)
-                                    queryParameters.Add(conn.CreateParameter(CreateParameterName(flds[0].Name), pool.GetEnumID(updateFields[flds[0].ClassProperty].GetType(), updateFields[flds[0].ClassProperty].ToString())));
+                                    queryParameters.Add(pool.CreateParameter(CreateParameterName(flds[0].Name), pool.GetEnumID(updateFields[flds[0].ClassProperty].GetType(), updateFields[flds[0].ClassProperty].ToString())));
                                 else
-                                    queryParameters.Add(conn.CreateParameter(CreateParameterName(flds[0].Name), updateFields[flds[0].ClassProperty], flds[0].Type, flds[0].Length));
+                                    queryParameters.Add(pool.CreateParameter(CreateParameterName(flds[0].Name), updateFields[flds[0].ClassProperty], flds[0].Type, flds[0].Length));
                             }
                         }
                     }
@@ -1096,7 +1090,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 int parCount = 0;
                 foreach (SelectParameter eq in parameters)
                 {
-                    conditions += eq.ConstructString(tableType, _conn, this, ref queryParameters, ref parCount) + " AND ";
+                    conditions += eq.ConstructString(tableType, pool, this, ref queryParameters, ref parCount) + " AND ";
                 }
                 if (fields.Length == 0)
                     return "";
@@ -1252,7 +1246,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                     while (field.Contains("."))
                     {
                         PropertyInfo pi = curType.GetProperty(field.Substring(0, field.IndexOf(".")), Utility._BINDING_FLAGS);
-                        while (pi == null && conn.Pool.Mapping.IsMappableType(curType.BaseType))
+                        while (pi == null && pool.Mapping.IsMappableType(curType.BaseType))
                         {
                             curType = curType.BaseType;
                             pi = curType.GetProperty(field.Substring(0, field.IndexOf(".")), Utility._BINDING_FLAGS);
@@ -1262,7 +1256,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                         sTable relMap = _pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
                         string className = pi.Name;
                         string innerJoin = " INNER JOIN ";
-                        string tbl = _conn.queryBuilder.SelectAll((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType), null);
+                        string tbl = SelectAll((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType), null);
                         if (pi.PropertyType.IsArray)
                         {
                             sTable iMap = _pool.Mapping[curType, pi.Name];
@@ -1332,7 +1326,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 }
                 else if (new List<string>(map.ArrayProperties).Contains(field))
                 {
-                    sTable iMap = _conn.Pool.Mapping[baseType, field];
+                    sTable iMap = pool.Mapping[baseType, field];
                     PropertyInfo pi = baseType.GetProperty(field, Utility._BINDING_FLAGS_WITH_INHERITANCE);
                     if (!joins.Contains(iMap.Name))
                     {
@@ -1405,7 +1399,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 					foreach (SelectParameter par in parameters)
 					{
                         AppendJoinsForParameter(par.Fields, ref joins, type);
-						appended+="("+par.ConstructString(type,conn,this,ref queryParameters,ref parCount)+") AND ";
+						appended+="("+par.ConstructString(type,pool,this,ref queryParameters,ref parCount)+") AND ";
 					}
 					appended=appended.Substring(0,appended.Length-4);
 					if (!startAnd)
@@ -1472,7 +1466,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                     foreach (SelectParameter par in parameters)
                     {
                         AppendJoinsForParameter(par.Fields, ref joins, type);
-                        appended += "(" + par.ConstructString(type, conn, this, ref queryParameters, ref parCount) + ") AND ";
+                        appended += "(" + par.ConstructString(type, pool, this, ref queryParameters, ref parCount) + ") AND ";
                     }
                     appended = appended.Substring(0, appended.Length - 4);
                     if (!startAnd)
@@ -1527,7 +1521,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 					foreach (SelectParameter par in parameters)
 					{
                         AppendJoinsForParameter(par.Fields, ref joins, type);
-                        appended+="("+par.ConstructString(type,conn,this,ref queryParameters,ref parCount)+") AND ";
+                        appended+="("+par.ConstructString(type,pool,this,ref queryParameters,ref parCount)+") AND ";
 					}
 					appended=appended.Substring(0,appended.Length-4);
 					if (!startAnd)
@@ -1589,8 +1583,8 @@ namespace Org.Reddragonit.Dbpro.Connections
                 start = 0;
             if (!recordCount.HasValue)
                 recordCount = 0;
-            queryParameters.Add(conn.CreateParameter(CreateParameterName("startIndex"), (long)start.Value));
-            queryParameters.Add(conn.CreateParameter(CreateParameterName("rowCount"), (long)recordCount.Value));
+            queryParameters.Add(pool.CreateParameter(CreateParameterName("startIndex"), (long)start.Value));
+            queryParameters.Add(pool.CreateParameter(CreateParameterName("rowCount"), (long)recordCount.Value));
             return String.Format(SelectWithPagingIncludeOffset, query, CreateParameterName("startIndex"), CreateParameterName("rowCount"));
         }
 
@@ -1605,8 +1599,18 @@ namespace Org.Reddragonit.Dbpro.Connections
                 start = 0;
             if (!recordCount.HasValue)
                 recordCount = 0;
-            queryParameters.Add(conn.CreateParameter(CreateParameterName("startIndex"), (long)start.Value));
-            queryParameters.Add(conn.CreateParameter(CreateParameterName("rowCount"), (long)recordCount.Value));
+            queryParameters.Add(pool.CreateParameter(CreateParameterName("startIndex"), (long)start.Value));
+            queryParameters.Add(pool.CreateParameter(CreateParameterName("rowCount"), (long)recordCount.Value));
+            return String.Format(SelectWithPagingIncludeOffset, baseQuery, CreateParameterName("startIndex"), CreateParameterName("rowCount"));
+        }
+
+        internal virtual string SelectPaged(string baseQuery,ref List<IDbDataParameter> queryParameters, ulong? start, ulong? recordCount, string[] OrderByFields){
+            if (!start.HasValue)
+                start = 0;
+            if (!recordCount.HasValue)
+                recordCount = 0;
+            queryParameters.Add(pool.CreateParameter(CreateParameterName("startIndex"), (long)start.Value));
+            queryParameters.Add(pool.CreateParameter(CreateParameterName("rowCount"), (long)recordCount.Value));
             return String.Format(SelectWithPagingIncludeOffset, baseQuery, CreateParameterName("startIndex"), CreateParameterName("rowCount"));
         }
 		#endregion

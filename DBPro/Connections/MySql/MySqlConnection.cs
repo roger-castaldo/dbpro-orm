@@ -20,20 +20,8 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 	public class MySqlConnection : Connection
 	{
         internal const string _ASSEMBLY_NAME = "MySql.Data";
-        internal const string _PARAMETER_NAME = "MySql.Data.MySqlClient.MySqlParameter";
-        private const string _SQL_DB_TYPE_ENUM = "MySql.Data.MySqlClient.MySqlDbType";
         private const string _CONNECTION_TYPE_NAME = "MySql.Data.MySqlClient.MySqlConnection";
         private const string _COMMAND_TYPE_NAME = "MySql.Data.MySqlClient.MySqlCommand";
-
-		
-		private QueryBuilder _queryBuilder = null;
-		internal override QueryBuilder queryBuilder {
-			get {
-				if (_queryBuilder==null)
-					_queryBuilder=new MySqlQueryBuilder(Pool,this);
-				return _queryBuilder;
-			}
-		}
 		
 		internal override string DefaultTableString {
 			get {
@@ -53,56 +41,6 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
         {
             return conn.BeginTransaction(IsolationLevel.Serializable);
         }
-		
-		public override IDbDataParameter CreateParameter(string parameterName, object parameterValue)
-		{
-            if (parameterValue != null)
-            {
-                if (Utility.IsEnum(parameterValue.GetType()))
-                {
-                    if (parameterValue != null)
-                        parameterValue = Pool.GetEnumID(parameterValue.GetType(), parameterValue.ToString());
-                    else
-                        parameterValue = (int?)null;
-                }
-            }
-            if ((parameterValue is uint) || (parameterValue is UInt32))
-            {
-                parameterValue = System.Text.ASCIIEncoding.ASCII.GetString(System.BitConverter.GetBytes(uint.Parse(parameterValue.ToString()))).ToCharArray();
-            }
-            else if ((parameterValue is UInt16) || (parameterValue is ushort))
-            {
-                parameterValue = System.Text.ASCIIEncoding.ASCII.GetString(System.BitConverter.GetBytes(ushort.Parse(parameterValue.ToString()))).ToCharArray();
-            }
-            else if ((parameterValue is ulong) || (parameterValue is UInt64))
-            {
-                parameterValue = System.Text.ASCIIEncoding.ASCII.GetString(System.BitConverter.GetBytes(ulong.Parse(parameterValue.ToString()))).ToCharArray();
-            }
-            return (IDbDataParameter)Utility.LocateType(_PARAMETER_NAME).GetConstructor(new Type[] { typeof(string), typeof(object) }).Invoke(new object[] { parameterName, parameterValue });
-		}
-		
-		internal override IDbDataParameter CreateParameter(string parameterName, object parameterValue, FieldType type, int fieldLength)
-		{
-            if (parameterValue != null)
-            {
-                if (Utility.IsEnum(parameterValue.GetType()))
-                {
-                    if (parameterValue != null)
-                        parameterValue = Pool.GetEnumID(parameterValue.GetType(), parameterValue.ToString());
-                    else
-                        parameterValue = (int?)null;
-                }
-            }
-			IDbDataParameter ret= CreateParameter(parameterName,parameterValue);
-			if (((type==FieldType.CHAR)||(type==FieldType.STRING))
-			    &&((fieldLength == -1)||(fieldLength>65350)))
-			{
-                Type t = Utility.LocateType(_PARAMETER_NAME);
-                PropertyInfo pi = t.GetProperty("MySqlDbType", Utility._BINDING_FLAGS);
-                pi.SetValue(ret, Enum.Parse(Utility.LocateType(_SQL_DB_TYPE_ENUM), "Text"), new object[] { });
-			}
-			return ret;
-		}
 		
 		protected override IDbCommand EstablishCommand()
 		{

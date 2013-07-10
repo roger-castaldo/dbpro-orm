@@ -14,7 +14,6 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 	class MsSqlConnection : Connection
 	{
         internal const string _ASSEMBLY_NAME = "System.Data";
-        private const string _PARAMETER_TYPE_NAME = "System.Data.SqlClient.SqlParameter";
         internal const string _CONNECTION_TYPE_NAME = "System.Data.SqlClient.SqlConnection";
         private const string _COMMAND_TYPE_NAME = "System.Data.SqlClient.SqlCommand";
 
@@ -25,17 +24,6 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
                 return "+";
             }
         }
-
-		private QueryBuilder _builder;
-		internal override QueryBuilder queryBuilder
-		{
-			get
-			{
-				if (_builder == null)
-					_builder = new MSSQLQueryBuilder(Pool,this);
-				return _builder;
-			}
-		}
 		
 		internal override string DefaultTableString {
 			get {
@@ -51,60 +39,10 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 			: base(pool, ConnectionString,Readonly,exclusiveLock)
 		{ }
 
-		internal override IDbDataParameter CreateParameter(string parameterName, object parameterValue, FieldType type, int fieldLength)
-		{
-            if (parameterValue != null)
-            {
-                if (Utility.IsEnum(parameterValue.GetType()))
-                {
-                    if (parameterValue != null)
-                        parameterValue = Pool.GetEnumID(parameterValue.GetType(), parameterValue.ToString());
-                    else
-                        parameterValue = (int?)null;
-                }
-            }
-			IDbDataParameter ret = CreateParameter(parameterName,parameterValue);
-			if (((type==FieldType.CHAR)||(type==FieldType.STRING))
-			    &&((fieldLength == -1)||(fieldLength>8000)))
-			{
-                Type t = Utility.LocateType(_PARAMETER_TYPE_NAME);
-                PropertyInfo pi = t.GetProperty("SqlDbType", Utility._BINDING_FLAGS);
-                pi.SetValue(ret, SqlDbType.Text, new object[] { });
-			}
-			return ret;
-		}
-
-        internal override IDbTransaction EstablishExclusiveTransaction()
+		internal override IDbTransaction EstablishExclusiveTransaction()
         {
             return conn.BeginTransaction(IsolationLevel.Serializable);
         }
-		
-		public override System.Data.IDbDataParameter CreateParameter(string parameterName, object parameterValue)
-		{
-            if (parameterValue != null)
-            {
-                if (Utility.IsEnum(parameterValue.GetType()))
-                {
-                    if (parameterValue != null)
-                        parameterValue = Pool.GetEnumID(parameterValue.GetType(), parameterValue.ToString());
-                    else
-                        parameterValue = (int?)null;
-                }
-            }
-            if ((parameterValue is uint) || (parameterValue is UInt32))
-            {
-                parameterValue = System.Text.ASCIIEncoding.ASCII.GetString(System.BitConverter.GetBytes(uint.Parse(parameterValue.ToString()))).ToCharArray();
-            }
-            else if ((parameterValue is UInt16) || (parameterValue is ushort))
-            {
-                parameterValue = System.Text.ASCIIEncoding.ASCII.GetString(System.BitConverter.GetBytes(ushort.Parse(parameterValue.ToString()))).ToCharArray();
-            }
-            else if ((parameterValue is ulong) || (parameterValue is UInt64))
-            {
-                parameterValue = System.Text.ASCIIEncoding.ASCII.GetString(System.BitConverter.GetBytes(ulong.Parse(parameterValue.ToString()))).ToCharArray();
-            }
-            return (IDbDataParameter)Utility.LocateType(_PARAMETER_TYPE_NAME).GetConstructor(new Type[] { typeof(string), typeof(object) }).Invoke(new object[] { parameterName, parameterValue });
-		}
 
 		internal override void GetAddAutogen(ExtractedTableMap map, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers,out List<StoredProcedure> procedures)
 		{

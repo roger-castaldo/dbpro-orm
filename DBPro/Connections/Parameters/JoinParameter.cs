@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using Org.Reddragonit.Dbpro.Connections.PoolComponents;
+using Org.Reddragonit.Dbpro.Virtual;
 
 namespace Org.Reddragonit.Dbpro.Connections.Parameters
 {
@@ -33,12 +34,12 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
 			get;
 		}
 		
-		internal sealed override string ConstructString(Type tableType, Connection conn, QueryBuilder builder, ref List<IDbDataParameter> queryParameters, ref int parCount)
+		internal sealed override string ConstructString(Type tableType, ConnectionPool pool, QueryBuilder builder, ref List<IDbDataParameter> queryParameters, ref int parCount)
 		{
             string ret = "( ";
             foreach (SelectParameter par in _parameters)
             {
-                ret += " (" + par.ConstructString(tableType, conn, builder, ref queryParameters, ref parCount) + ") " + JoinString;
+                ret += " (" + par.ConstructString(tableType, pool, builder, ref queryParameters, ref parCount) + ") " + JoinString;
             }
             if (_parameters.Length > 0)
                 return ret.Substring(0, ret.Length - JoinString.Length) + ")";
@@ -46,12 +47,12 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                 return "";
 		}
 
-        internal sealed override string ConstructVirtualTableString(sTable tbl, Connection conn, QueryBuilder builder, ref List<IDbDataParameter> queryParameters, ref int parCount)
+        internal sealed override string ConstructClassViewString(ClassViewAttribute cva, ConnectionPool pool, QueryBuilder builder, ref List<IDbDataParameter> queryParameters, ref int parCount)
         {
             string ret = "( ";
             foreach (SelectParameter par in _parameters)
             {
-                ret += " (" + par.ConstructVirtualTableString(tbl,conn, builder, ref queryParameters, ref parCount) + ") " + JoinString;
+                ret += " (" + par.ConstructClassViewString(cva,pool, builder, ref queryParameters, ref parCount) + ") " + JoinString;
             }
             if (_parameters.Length > 0)
                 return ret.Substring(0, ret.Length - JoinString.Length) + ")";

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Text;
 using System.Reflection;
 using Org.Reddragonit.Dbpro.Structure.Attributes;
-using Org.Reddragonit.Dbpro.Virtual.Attributes;
 
 namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 {
@@ -13,17 +12,15 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
         private Dictionary<Type,Dictionary<string, sTable>> _intermediateTables;
         private Dictionary<Type, sTable> _versionMaps;
         private Dictionary<Type, VersionField.VersionTypes> _versionTypes;
-        private Dictionary<Type, sTable> _virtualTables;
 
         private ConnectionPool _pool;
 
-        public ClassMapping(Connection conn, List<Type> tables,List<Type> virtualTables)
+        public ClassMapping(Connection conn, List<Type> tables)
         {
             _pool = conn.Pool;
             _classMaps = new Dictionary<Type, sTable>();
             _intermediateTables = new Dictionary<Type, Dictionary<string, sTable>>();
             _versionMaps = new Dictionary<Type, sTable>();
-            _virtualTables = new Dictionary<Type, sTable>();
             _versionTypes = new Dictionary<Type, VersionField.VersionTypes>();
             Dictionary<string, sTable> intermediates;
             foreach (Type tbl in tables)
@@ -34,21 +31,6 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                     if (intermediates.Count > 0)
                         _intermediateTables.Add(tbl, intermediates);
                 }
-            }
-            foreach (Type vt in virtualTables)
-            {
-                Dictionary<string, string> flds = new Dictionary<string, string>();
-                List<string> properties = new List<string>();
-                foreach (PropertyInfo pi in vt.GetProperties(Utility._BINDING_FLAGS))
-                {
-                    if (pi.GetCustomAttributes(typeof(VirtualField), true).Length > 0)
-                        properties.Add(pi.Name);
-                }
-                string name = _pool.Translator.GetViewName(vt,properties,out flds,conn);
-                List<sTableField> fields = new List<sTableField>();
-                foreach (string p in properties)
-                    fields.Add(new sTableField(flds[p],p,null,FieldType.STRING,-1,false));
-                _virtualTables.Add(vt, new sTable(name, fields.ToArray(),null, new sTableRelation[0], new string[0], null));
             }
         }
 
@@ -218,7 +200,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                         if (primaryKeyFields.Contains(sf.Name))
                             afields.Add(new sTableField(_pool.Translator.GetIntermediateFieldName(tbl,pi,sf.Name,true,conn),"PARENT", sf.Name, sf.Type, sf.Length, sf.Nullable));
                     }
-                    afields.Add(new sTableField(_pool.Translator.GetIntermediateIndexFieldName(tbl,pi,conn), null, null, FieldType.INTEGER, 4, false));
+                    afields.Add(new sTableField(_pool.Translator.GetIntermediateIndexFieldName(tbl,pi), null, null, FieldType.INTEGER, 4, false));
                     List<string> apKeys = new List<string>();
                     apKeys.AddRange(primaryKeyFields);
                     apKeys.Add(afields[afields.Count - 1].Name);
@@ -237,7 +219,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                         }
                         if (Utility.IsEnum(pi.PropertyType.GetElementType()))
                         {
-                            afields.Add(new sTableField(_pool.Translator.GetIntermediateValueFieldName(tbl,pi,conn), "CHILD", _classMaps[pi.PropertyType.GetElementType()].Fields[0].Name, fld.Type, fld.Length, fld.Nullable));
+                            afields.Add(new sTableField(_pool.Translator.GetIntermediateValueFieldName(tbl,pi), "CHILD", _classMaps[pi.PropertyType.GetElementType()].Fields[0].Name, fld.Type, fld.Length, fld.Nullable));
                             intermediates.Add(pi.Name, new sTable(itblName, afields.ToArray(),null,
                                 new sTableRelation[] { 
                                     new sTableRelation(tbl.Name,"PARENT",ForeignField.UpdateDeleteAction.CASCADE,ForeignField.UpdateDeleteAction.CASCADE,false),
@@ -246,7 +228,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                         }
                         else
                         {
-                            afields.Add(new sTableField(_pool.Translator.GetIntermediateValueFieldName(tbl, pi, conn), null, null, fld.Type, fld.Length, fld.Nullable));
+                            afields.Add(new sTableField(_pool.Translator.GetIntermediateValueFieldName(tbl, pi), null, null, fld.Type, fld.Length, fld.Nullable));
                             intermediates.Add(pi.Name, new sTable(itblName, afields.ToArray(),null, null, apKeys.ToArray(), afields[afields.Count - 2].Name));
                         }
                         afields.RemoveAt(afields.Count - 1);
@@ -419,33 +401,12 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             return false;
         }
 
-        public bool IsVirtualTable(Type type)
-        {
-            return _virtualTables.ContainsKey(type);
-        }
-
-        public sTable GetVirtualTable(Type type)
-        {
-            return _virtualTables[type];
-        }
-
         public List<Type> Types
         {
             get
             {
                 List<Type> ret = new List<Type>();
                 foreach (Type t in _classMaps.Keys)
-                    ret.Add(t);
-                return ret;
-            }
-        }
-
-        public List<Type> VirtualTypes
-        {
-            get
-            {
-                List<Type> ret = new List<Type>();
-                foreach (Type t in _virtualTables.Keys)
                     ret.Add(t);
                 return ret;
             }

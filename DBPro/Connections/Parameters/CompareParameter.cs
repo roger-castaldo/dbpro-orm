@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.Data;
 using Org.Reddragonit.Dbpro.Connections.PoolComponents;
 using System.Reflection;
+using Org.Reddragonit.Dbpro.Virtual;
 
 namespace Org.Reddragonit.Dbpro.Connections.Parameters
 {
@@ -130,7 +131,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
             get { return new List<string>(new string[]{FieldName}); }
         }
 
-        internal sealed override string ConstructString(Type tableType, Connection conn, QueryBuilder builder, ref List<IDbDataParameter> queryParameters, ref int parCount)
+        internal sealed override string ConstructString(Type tableType, ConnectionPool pool, QueryBuilder builder, ref List<IDbDataParameter> queryParameters, ref int parCount)
         {
             bool found = false;
             string ret = "";
@@ -151,10 +152,10 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                 {
                     if ((alias == "")||(alias==null))
                         alias = "main_table.";
-                    sTable relatedMap = conn.Pool.Mapping[newType];
+                    sTable relatedMap = pool.Mapping[newType];
                     if (isClassBased)
                     {
-                        sTable map = conn.Pool.Mapping[tableType];
+                        sTable map = pool.Mapping[tableType];
                         if (FieldValue != null)
                         {
                             foreach (string prop in relatedMap.PrimaryKeyProperties)
@@ -166,8 +167,8 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                                         if (f.ExternalField == fld.Name)
                                         {
                                             ret += " AND " + (this.CaseInsensitive ? "UPPER(" : "") + alias + f.Name + (this.CaseInsensitive ? ")" : "") + " " + ComparatorString + " " + builder.CreateParameterName("parameter_" + parCount.ToString());
-                                            object val = QueryBuilder.LocateFieldValue((Org.Reddragonit.Dbpro.Structure.Table)FieldValue, fld, conn.Pool);
-                                            queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), val, f.Type, f.Length));
+                                            object val = QueryBuilder.LocateFieldValue((Org.Reddragonit.Dbpro.Structure.Table)FieldValue, fld, pool);
+                                            queryParameters.Add(pool.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), val, f.Type, f.Length));
                                             parCount++;
                                             break;
                                         }
@@ -180,7 +181,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                             foreach (sTableField f in map[fldName])
                             {
                                 ret += " AND " + (this.CaseInsensitive ? "UPPER(" : "") + alias + f.Name + (this.CaseInsensitive ? ")" : "") + " " + ComparatorString + " " + builder.CreateParameterName("parameter_" + parCount.ToString());
-                                queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), null, f.Type, f.Length));
+                                queryParameters.Add(pool.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), null, f.Type, f.Length));
                                 parCount++;
                             }
                         }
@@ -194,10 +195,10 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                             {
                                 Org.Reddragonit.Dbpro.Structure.Table tbl = null;
                                 if (FieldValue != null)
-                                    tbl = (Org.Reddragonit.Dbpro.Structure.Table)QueryBuilder.LocateFieldValue((Org.Reddragonit.Dbpro.Structure.Table)FieldValue, flds[0], conn.Pool);
+                                    tbl = (Org.Reddragonit.Dbpro.Structure.Table)QueryBuilder.LocateFieldValue((Org.Reddragonit.Dbpro.Structure.Table)FieldValue, flds[0], pool);
                                 if (tbl != null)
                                 {
-                                    sTable relMap = conn.Pool.Mapping[tbl.GetType()];
+                                    sTable relMap = pool.Mapping[tbl.GetType()];
                                     foreach (sTableField fld in relMap.Fields)
                                     {
                                         foreach (sTableField f in flds)
@@ -205,8 +206,8 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                                             if (fld.Name == f.ExternalField)
                                             {
                                                 ret += " AND " + (this.CaseInsensitive ? "UPPER(" : "") + alias + flds[0].Name + (this.CaseInsensitive ? ")" : "") + " " + ComparatorString + " " + builder.CreateParameterName("parameter_" + parCount.ToString());
-                                                object val = QueryBuilder.LocateFieldValue(tbl, fld, conn.Pool);
-                                                queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), val, fld.Type, fld.Length));
+                                                object val = QueryBuilder.LocateFieldValue(tbl, fld, pool);
+                                                queryParameters.Add(pool.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), val, fld.Type, fld.Length));
                                                 parCount++;
                                                 break;
                                             }
@@ -218,7 +219,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                                     foreach (sTableField fld in flds)
                                     {
                                         ret += " AND " + (this.CaseInsensitive ? "UPPER(" : "") + alias + flds[0].Name + (this.CaseInsensitive ? ")" : "") + " " + ComparatorString + " " + builder.CreateParameterName("parameter_" + parCount.ToString());
-                                        queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), null, fld.Type, fld.Length));
+                                        queryParameters.Add(pool.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), null, fld.Type, fld.Length));
                                         parCount++;
                                     }
                                 }
@@ -229,15 +230,15 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                                 fieldLength = flds[0].Length;
                                 ret += " AND " + (this.CaseInsensitive ? "UPPER(" : "") + alias + flds[0].Name + (this.CaseInsensitive ? ")" : "") + " " + ComparatorString + " " + builder.CreateParameterName("parameter_" + parCount.ToString());
                                 if (type == FieldType.ENUM)
-                                    queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), conn.Pool.GetEnumID(newType.GetProperty(prop, Utility._BINDING_FLAGS).PropertyType, ((Org.Reddragonit.Dbpro.Structure.Table)FieldValue).GetField(prop).ToString())));
+                                    queryParameters.Add(pool.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), pool.GetEnumID(newType.GetProperty(prop, Utility._BINDING_FLAGS).PropertyType, ((Org.Reddragonit.Dbpro.Structure.Table)FieldValue).GetField(prop).ToString())));
                                 else if (FieldValue == null)
-                                    queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), null, type.Value, fieldLength));
+                                    queryParameters.Add(pool.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), null, type.Value, fieldLength));
                                 else
                                 {
                                     object val = ((Org.Reddragonit.Dbpro.Structure.Table)FieldValue).GetField(prop);
                                     if (val == null)
-                                        val = QueryBuilder.LocateFieldValue((Org.Reddragonit.Dbpro.Structure.Table)FieldValue, flds[0], conn.Pool);
-                                    queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), val, type.Value, fieldLength));
+                                        val = QueryBuilder.LocateFieldValue((Org.Reddragonit.Dbpro.Structure.Table)FieldValue, flds[0], pool);
+                                    queryParameters.Add(pool.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), val, type.Value, fieldLength));
                                 }
                                 parCount++;
                             }
@@ -254,7 +255,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                 if (fldName != null)
                 {
                     ret = (this.CaseInsensitive ? "UPPER(" : "") + alias + fldName + " " + (this.CaseInsensitive ? ")" : "");
-                    foreach (sTableField fld in conn.Pool.Mapping[newType].Fields)
+                    foreach (sTableField fld in pool.Mapping[newType].Fields)
                     {
                         if (fld.Name == fldName)
                         {
@@ -278,14 +279,14 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                             ret += builder.CreateParameterName("parameter_" + parCount.ToString()) + ",";
                             if ((_objType != null) && Utility.IsEnum(_objType))
                             {
-                                queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), conn.Pool.GetEnumID(_objType, obj.ToString())));
+                                queryParameters.Add(pool.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), pool.GetEnumID(_objType, obj.ToString())));
                             }
                             else
                             {
                                 if (type.HasValue)
-                                    queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), obj, type.Value, fieldLength));
+                                    queryParameters.Add(pool.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), obj, type.Value, fieldLength));
                                 else
-                                    queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), obj));
+                                    queryParameters.Add(pool.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), obj));
                             }
                             parCount++;
                         }
@@ -297,13 +298,13 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                         if (_objType == null)
                             _objType = FieldValue.GetType();
                         if ((_objType != null) && Utility.IsEnum(_objType))
-                            queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), conn.Pool.GetEnumID(_objType, FieldValue.ToString())));
+                            queryParameters.Add(pool.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), pool.GetEnumID(_objType, FieldValue.ToString())));
                         else
                         {
                             if (type.HasValue)
-                                queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), FieldValue, type.Value, fieldLength));
+                                queryParameters.Add(pool.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), FieldValue, type.Value, fieldLength));
                             else
-                                queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), FieldValue));
+                                queryParameters.Add(pool.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), FieldValue));
                         }
                         parCount++;
                     }
@@ -314,7 +315,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                     if (FieldValue == null)
                     {
                         ret += ComparatorString +" "+ builder.CreateParameterName("parameter_" + parCount.ToString());
-                        queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), FieldValue));
+                        queryParameters.Add(pool.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), FieldValue));
                         parCount++;
                     }
                     else if (FieldValue.GetType().IsArray || (FieldValue is ICollection))
@@ -329,14 +330,14 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                             ret += tmp + builder.CreateParameterName("parameter_" + parCount.ToString()) + " AND ";
                             if ((_objType != null) && Utility.IsEnum(_objType))
                             {
-                                queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), conn.Pool.GetEnumID(_objType, obj.ToString())));
+                                queryParameters.Add(pool.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), pool.GetEnumID(_objType, obj.ToString())));
                             }
                             else
                             {
                                 if (type.HasValue)
-                                    queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), obj, type.Value, fieldLength));
+                                    queryParameters.Add(pool.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), obj, type.Value, fieldLength));
                                 else
-                                    queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), obj));
+                                    queryParameters.Add(pool.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), obj));
                             }
                             parCount++;
                         }
@@ -351,14 +352,14 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                             _objType = FieldValue.GetType();
                         if ((_objType != null) && Utility.IsEnum(_objType))
                         {
-                            queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), conn.Pool.GetEnumID(_objType, FieldValue.ToString())));
+                            queryParameters.Add(pool.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), pool.GetEnumID(_objType, FieldValue.ToString())));
                         }
                         else
                         {
                             if (type.HasValue)
-                                queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), FieldValue, type.Value, fieldLength));
+                                queryParameters.Add(pool.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), FieldValue, type.Value, fieldLength));
                             else
-                                queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), FieldValue));
+                                queryParameters.Add(pool.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), FieldValue));
                         }
                         parCount++;
                     }
@@ -367,40 +368,57 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
             return ret;
         }
 
-        internal override sealed string ConstructVirtualTableString(sTable tbl, Connection conn,QueryBuilder builder, ref List<IDbDataParameter> queryParameters, ref int parCount)
+        internal override sealed string ConstructClassViewString(ClassViewAttribute cva, ConnectionPool pool, QueryBuilder builder, ref List<IDbDataParameter> queryParameters, ref int parCount)
         {
-            string ret = tbl[FieldName][0].Name;
+            string ret = FieldName;
             if (FieldValue == null)
             {
                 ret += ComparatorString + " " + builder.CreateParameterName("parameter_" + parCount.ToString());
-                queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), FieldValue));
+                queryParameters.Add(pool.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), FieldValue));
                 parCount++;
             }
             else if (FieldValue.GetType().IsArray || (FieldValue is ICollection))
             {
-                string tmp = ret;
-                tmp += ComparatorString + " ";
-                ret += "( ";
-                foreach (object obj in (IEnumerable)FieldValue)
+                if (SupportsList)
                 {
-                    ret += tmp + builder.CreateParameterName("parameter_" + parCount.ToString()) + " AND ";
-                    if (tbl[FieldName][0].Type==FieldType.ENUM)
-                        queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), conn.Pool.GetEnumID(obj.GetType(), obj.ToString())));
-                    else
-                        queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), obj, tbl[FieldName][0].Type, tbl[FieldName][0].Length));
-                    parCount++;
+                    ret += " " + ComparatorString + " ( ";
+                    foreach (object obj in (IEnumerable)FieldValue)
+                    {
+                        ret += builder.CreateParameterName("parameter_" + parCount.ToString()) + ",";
+                        if (cva.Query.IsEnumField(FieldName))
+                            queryParameters.Add(pool.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), pool.GetEnumID(obj.GetType(), obj.ToString())));
+                        else
+                            queryParameters.Add(pool.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), obj));
+                        parCount++;
+                    }
+                    ret = ret.Substring(0, ret.Length - 1);
+                    ret += " )";
                 }
-                ret = ret.Substring(0, tmp.Length - 4);
-                ret += " )";
+                else
+                {
+                    string tmp = ret + " " + ComparatorString+" ";
+                    ret = "(";
+                    foreach (object obj in (IEnumerable)FieldValue)
+                    {
+                        ret += tmp+builder.CreateParameterName("parameter_" + parCount.ToString()) + " OR ";
+                        if (cva.Query.IsEnumField(FieldName))
+                            queryParameters.Add(pool.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), pool.GetEnumID(obj.GetType(), obj.ToString())));
+                        else
+                            queryParameters.Add(pool.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), obj));
+                        parCount++;
+                    }
+                    ret = ret.Substring(0, ret.Length - 3);
+                    ret += ")";
+                }
             }
             else
             {
                 ret += ComparatorString + " ";
                 ret += builder.CreateParameterName("parameter_" + parCount.ToString());
-                if (tbl[FieldName][0].Type == FieldType.ENUM)
-                    queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), conn.Pool.GetEnumID(FieldValue.GetType(), FieldValue.ToString())));
+                if (cva.Query.IsEnumField(FieldName))
+                    queryParameters.Add(pool.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), pool.GetEnumID(FieldValue.GetType(), FieldValue.ToString())));
                 else
-                    queryParameters.Add(conn.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), FieldValue, tbl[FieldName][0].Type, tbl[FieldName][0].Length));
+                    queryParameters.Add(pool.CreateParameter(builder.CreateParameterName("parameter_" + parCount.ToString()), FieldValue));
                 parCount++;
             }
             return ret;

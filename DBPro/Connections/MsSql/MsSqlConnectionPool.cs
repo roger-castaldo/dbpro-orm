@@ -4,11 +4,15 @@ using System.IO;
 using System.Text;
 using System.Reflection;
 using System.Xml;
+using System.Data;
+using Org.Reddragonit.Dbpro.Structure.Attributes;
 
 namespace Org.Reddragonit.Dbpro.Connections.MsSql
 {
 	class MsSqlConnectionPool : ConnectionPool
 	{
+        private const string _PARAMETER_TYPE_NAME = "System.Data.SqlClient.SqlParameter";
+
         private string _connectionString;
         protected override string connectionString
         {
@@ -163,5 +167,68 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
             }
             return ret;
         }
+
+        private QueryBuilder _builder;
+        internal override QueryBuilder queryBuilder
+        {
+            get
+            {
+                if (_builder == null)
+                    _builder = new MSSQLQueryBuilder(this);
+                return _builder;
+            }
+        }
+
+        internal override System.Data.IDbDataParameter CreateParameter(string parameterName, object parameterValue)
+        {
+            if (parameterValue != null)
+            {
+                if (Utility.IsEnum(parameterValue.GetType()))
+                {
+                    if (parameterValue != null)
+                        parameterValue = GetEnumID(parameterValue.GetType(), parameterValue.ToString());
+                    else
+                        parameterValue = (int?)null;
+                }
+            }
+            if ((parameterValue is uint) || (parameterValue is UInt32))
+            {
+                parameterValue = System.Text.ASCIIEncoding.ASCII.GetString(System.BitConverter.GetBytes(uint.Parse(parameterValue.ToString()))).ToCharArray();
+            }
+            else if ((parameterValue is UInt16) || (parameterValue is ushort))
+            {
+                parameterValue = System.Text.ASCIIEncoding.ASCII.GetString(System.BitConverter.GetBytes(ushort.Parse(parameterValue.ToString()))).ToCharArray();
+            }
+            else if ((parameterValue is ulong) || (parameterValue is UInt64))
+            {
+                parameterValue = System.Text.ASCIIEncoding.ASCII.GetString(System.BitConverter.GetBytes(ulong.Parse(parameterValue.ToString()))).ToCharArray();
+            }
+            return (IDbDataParameter)Utility.LocateType(_PARAMETER_TYPE_NAME).GetConstructor(new Type[] { typeof(string), typeof(object) }).Invoke(new object[] { parameterName, parameterValue });
+        }
+
+        internal override IDbDataParameter CreateParameter(string parameterName, object parameterValue, FieldType type, int fieldLength)
+        {
+            if (parameterValue != null)
+            {
+                if (Utility.IsEnum(parameterValue.GetType()))
+                {
+                    if (parameterValue != null)
+                        parameterValue = GetEnumID(parameterValue.GetType(), parameterValue.ToString());
+                    else
+                        parameterValue = (int?)null;
+                }
+            }
+            IDbDataParameter ret = CreateParameter(parameterName, parameterValue);
+            if (((type == FieldType.CHAR) || (type == FieldType.STRING))
+                && ((fieldLength == -1) || (fieldLength > 8000)))
+            {
+                Type t = Utility.LocateType(_PARAMETER_TYPE_NAME);
+                PropertyInfo pi = t.GetProperty("SqlDbType", Utility._BINDING_FLAGS);
+                pi.SetValue(ret, SqlDbType.Text, new object[] { });
+            }
+            return ret;
+        }
+
+        
 	}
 }

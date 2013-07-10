@@ -20,8 +20,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
         private const string _INTERMEDIATE_FIELD_DESCRIPTION = "ITMD_FLD:{0}.{1}.{2}_{3}";
         private const string _GENERATOR_DESCRIPTION = "GEN:{0}.{1}";
         private const string _TRIGGER_DESCRIPTION = "TRIG:{0}.{1}";
-        private const string _VIEW_DESCRIPTION = "VIEW:{0}\t[{1}]";
-        private const string _VIEW_FIELD_FORMAT = "{0}:{1}";
+        private const string _VIEW_DESCRIPTION = "VIEW:{0}";
         private const string _INDEX_DESCRIPTION = "IND:{0}.{1}";
 
         private ConnectionPool _pool;
@@ -162,7 +161,12 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             _nameTranslations = new Dictionary<string, string>();
             conn.ExecuteQuery(conn.queryBuilder.GetAllObjectDescriptions());
             while (conn.Read())
-                _nameTranslations.Add(conn[0].ToString().Trim(), conn[1].ToString().Trim());
+            {
+                if (conn[0].ToString().Trim().StartsWith(string.Format(_VIEW_DESCRIPTION,""))&&conn[0].ToString().Trim().EndsWith("]"))
+                    _nameTranslations.Add(conn[0].ToString().Trim().Substring(0,conn[0].ToString().Trim().IndexOf("\t")), conn[1].ToString().Trim());
+                else
+                    _nameTranslations.Add(conn[0].ToString().Trim(), conn[1].ToString().Trim());
+            }
             conn.Close();
             _createDescriptions = new List<string>();
         }
@@ -449,7 +453,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             return ret;
         }
 
-        internal string GetIntermediateValueFieldName(Type t, PropertyInfo pi, Connection conn)
+        internal string GetIntermediateValueFieldName(Type t, PropertyInfo pi)
         {
             t = (Utility.IsEnum(t) ? (t.IsGenericType ? t.GetGenericArguments()[0] : t) : t);
             string ret = "";
@@ -464,7 +468,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             return ret;
         }
 
-        internal string GetIntermediateIndexFieldName(Type t, PropertyInfo pi, Connection conn)
+        internal string GetIntermediateIndexFieldName(Type t, PropertyInfo pi)
         {
             t = (Utility.IsEnum(t) ? (t.IsGenericType ? t.GetGenericArguments()[0] : t) : t);
             string ret = "";
@@ -511,7 +515,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                 ret = _nameTranslations[string.Format(_GENERATOR_DESCRIPTION, t.FullName, pi.Name)];
             else
             {
-                ret = CorrectName("GEN_" + GetIntermediateTableName(t, pi, conn) + "_" + GetIntermediateIndexFieldName(t, pi, conn), GeneratorNames);
+                ret = CorrectName("GEN_" + GetIntermediateTableName(t, pi, conn) + "_" + GetIntermediateIndexFieldName(t, pi), GeneratorNames);
                 _nameTranslations.Add(string.Format(_GENERATOR_DESCRIPTION, t.FullName, pi.Name),ret);
                 _createDescriptions.Add(string.Format(_GENERATOR_DESCRIPTION, t.FullName, pi.Name));
             }
@@ -608,28 +612,17 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             return ret;
         }
 
-        internal string GetViewName(Type t, List<string> properties, out Dictionary<string, string> translatedProperties, Connection conn)
+        internal string GetViewName(Type t)
         {
             t = (Utility.IsEnum(t) ? (t.IsGenericType ? t.GetGenericArguments()[0] : t) : t);
             string ret = "";
-            translatedProperties = new Dictionary<string, string>();
-            string flds = "";
-            List<string> tlist = new List<string>();
-            foreach (string prop in properties){
-                string tmp = CorrectName(_ConvertCamelCaseName(prop),tlist);
-                tlist.Add(tmp);
-                translatedProperties.Add(prop, tmp);
-                flds += string.Format(_VIEW_FIELD_FORMAT, prop, tmp) + ",";
-            }
-            if (flds.Length > 0)
-                flds = flds.Substring(0, flds.Length - 1);
-            if (_nameTranslations.ContainsKey(string.Format(_VIEW_DESCRIPTION, t.FullName, flds)))
-                ret = _nameTranslations[string.Format(_VIEW_DESCRIPTION, t.FullName, flds)];
+            if (_nameTranslations.ContainsKey(string.Format(_VIEW_DESCRIPTION, t.FullName)))
+                ret = _nameTranslations[string.Format(_VIEW_DESCRIPTION, t.FullName)];
             else
             {
                 ret = CorrectName(_ConvertCamelCaseName(t.Name), ViewNames);
-                _nameTranslations.Add(string.Format(_VIEW_DESCRIPTION, t.FullName, flds), ret);
-                _createDescriptions.Add(string.Format(_VIEW_DESCRIPTION, t.FullName, flds));
+                _nameTranslations.Add(string.Format(_VIEW_DESCRIPTION, t.FullName), ret);
+                _createDescriptions.Add(string.Format(_VIEW_DESCRIPTION, t.FullName));
             }
             return ret;
         }

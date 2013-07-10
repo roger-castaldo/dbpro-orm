@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using Org.Reddragonit.Dbpro.Connections.PoolComponents;
+using Org.Reddragonit.Dbpro.Virtual;
 
 namespace Org.Reddragonit.Dbpro.Connections.Parameters
 {
@@ -19,7 +20,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
         {
             get;
         }
-		internal abstract string ConstructString(Type tableType,Connection conn,QueryBuilder builder,ref List<IDbDataParameter> queryParameters,ref int parCount);
-        internal abstract string ConstructVirtualTableString(sTable tbl, Connection conn,QueryBuilder builder, ref List<IDbDataParameter> queryParameters, ref int parCount);
+		internal abstract string ConstructString(Type tableType,ConnectionPool pool,QueryBuilder builder,ref List<IDbDataParameter> queryParameters,ref int parCount);
+        internal abstract string ConstructClassViewString(ClassViewAttribute cva,ConnectionPool pool,QueryBuilder builder, ref List<IDbDataParameter> queryParameters, ref int parCount);
 	}
 }
