@@ -52,18 +52,19 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
             get { return false; }
         }
 
-        private string LocateTableField(string fieldName,Type tableType,out bool ClassBased,out bool isExternal,out Type newType,out string alias)
+        private string LocateTableField(string fieldName,Type tableType,out bool ClassBased,out bool isExternal,out Type newType,out string alias,out Type linkedType)
         {
             string ret = null;
             ClassBased = false;
             isExternal = false;
             newType = null;
             alias = null;
+            linkedType = tableType;
             if (fieldName.Contains("."))
             {
                 string newField = fieldName.Substring(0, fieldName.IndexOf("."));
                 PropertyInfo pi = tableType.GetProperty(newField, Utility._BINDING_FLAGS_WITH_INHERITANCE);
-                ret = LocateTableField(fieldName.Substring(fieldName.IndexOf(".") + 1), (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType), out ClassBased, out isExternal, out newType, out alias);
+                ret = LocateTableField(fieldName.Substring(fieldName.IndexOf(".") + 1), (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType), out ClassBased, out isExternal, out newType, out alias,out linkedType);
                 alias = fieldName.Substring(0, fieldName.IndexOf("."))+((alias==null) ? "" : "_"+alias);
             }
             else
@@ -119,7 +120,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                     if (ret == null)
                     {
                         if (pool.Mapping.IsMappableType(tableType.BaseType))
-                            ret = LocateTableField(fieldName, tableType.BaseType, out ClassBased, out isExternal, out newType, out alias);
+                            ret = LocateTableField(fieldName, tableType.BaseType, out ClassBased, out isExternal, out newType, out alias,out linkedType);
                     }
                 }
             }
@@ -141,8 +142,9 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
             bool isExternal = false;
             bool isClassBased=false;
             Type newType;
+            Type linkedType;
             string alias = "";
-            string fldName = LocateTableField(FieldName,tableType, out isClassBased, out isExternal,out newType,out alias);
+            string fldName = LocateTableField(FieldName,tableType, out isClassBased, out isExternal,out newType,out alias,out linkedType);
             found = fldName != null;
             if ((alias != null) && (alias.Length > 0))
                 alias = "main_table_" + alias + ".";
@@ -155,7 +157,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                     sTable relatedMap = pool.Mapping[newType];
                     if (isClassBased)
                     {
-                        sTable map = pool.Mapping[tableType];
+                        sTable map = pool.Mapping[linkedType];
                         if (FieldValue != null)
                         {
                             foreach (string prop in relatedMap.PrimaryKeyProperties)
