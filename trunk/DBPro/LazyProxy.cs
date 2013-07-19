@@ -142,14 +142,24 @@ namespace Org.Reddragonit.Dbpro
                         foreach (string prop in _map.PrimaryKeyProperties)
                             pars.Add(new EqualParameter(prop, ((Table)owner).GetField(prop)));
                         Connection conn = ConnectionPoolManager.GetConnection(owner.GetType()).getConnection();
-                        Table tmp = conn.Select(owner.GetType(), pars)[0];
+                        Table tmp = null;
+                        try
+                        {
+                            tmp = conn.Select(owner.GetType(), pars)[0];
+                        }
+                        catch (Exception e)
+                        {
+                            Logger.LogLine(e);
+                        }
+                        conn.CloseConnection();
+                        if (tmp == null)
+                            throw new Exception("Unable to Load Lazy Porxy Instance of table");
                         List<string> pkeys = new List<string>(_map.PrimaryKeyProperties);
                         foreach (string prop in _map.Properties)
                         {
                             if ((!pkeys.Contains(prop)) && (!tmp.IsFieldNull(prop)))
                                 ((Table)owner).SetField(prop, tmp.GetField(prop));
                         }
-                        conn.CloseConnection();
                         ((Table)owner).LoadStatus = LoadStatus.Complete;
                     }
                 }
@@ -392,8 +402,18 @@ namespace Org.Reddragonit.Dbpro
             foreach (string prop in _map.PrimaryKeyProperties)
                 pars.Add(new EqualParameter(prop, ((Table)owner).GetField(prop)));
             Connection conn = ConnectionPoolManager.GetConnection(owner.GetType()).getConnection();
-            Table tmp = conn.Select(owner.GetType(), pars)[0];
+            Table tmp = null;
+            try
+            {
+                tmp = conn.Select(owner.GetType(), pars)[0];
+            }
+            catch (Exception e)
+            {
+                Logger.LogLine(e);
+            }
             conn.CloseConnection();
+            if (tmp == null)
+                throw new Exception("Unable to load lazy proxied table.");
             List<string> pkeys = new List<string>(_map.PrimaryKeyProperties);
             foreach (string prop in _map.Properties)
             {
