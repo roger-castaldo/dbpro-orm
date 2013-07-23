@@ -202,8 +202,8 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                     }
                     afields.Add(new sTableField(_pool.Translator.GetIntermediateIndexFieldName(tbl,pi), null, null, FieldType.INTEGER, 4, false));
                     List<string> apKeys = new List<string>();
-                    apKeys.AddRange(primaryKeyFields);
-                    apKeys.Add(afields[afields.Count - 1].Name);
+                    for (int x = 0; x <= afields.Count - 1; x++)
+                        apKeys.Add(afields[x].Name);
                     if (!foriegnProperties.Contains(pi.Name))
                     {
                         IField fld = null;

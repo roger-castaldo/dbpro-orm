@@ -459,11 +459,11 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                             {
                                 sTable iMap = _pool.Mapping[type, prop];
                                 ExtractedTableMap ietm = new ExtractedTableMap(iMap.Name);
-                                List<string> ipKeys = new List<string>(iMap.PrimaryKeyFields);
                                 string extTable = (_pool.Mapping.IsMappableType(pi.PropertyType.GetElementType()) ? _pool.Mapping[pi.PropertyType.GetElementType()].Name : null);
+                                List<string> piKeys = new List<string>(iMap.PrimaryKeyFields);
                                 foreach (sTableField f in iMap.Fields)
                                 {
-                                    ietm.Fields.Add(new ExtractedFieldMap(f.Name, conn.TranslateFieldType(f.Type, f.Length), f.Length, ipKeys.Contains(f.Name), false, (iMap.AutoGenField != null ? iMap.AutoGenField == f.Name : false)));
+                                    ietm.Fields.Add(new ExtractedFieldMap(f.Name, conn.TranslateFieldType(f.Type, f.Length), f.Length, piKeys.Contains(f.Name), false, (iMap.AutoGenField != null ? iMap.AutoGenField == f.Name : false)));
                                     if (Utility.StringsEqual("PARENT", f.ClassProperty))
                                         ietm.ForeignFields.Add(new ForeignRelationMap(type.Name + "_" + prop + (_pool.Mapping.IsMappableType(pi.PropertyType.GetElementType()) ? "_intermediate" : ""), f.Name, etm.TableName, f.ExternalField, ForeignField.UpdateDeleteAction.CASCADE.ToString(), ForeignField.UpdateDeleteAction.CASCADE.ToString()));
                                     if (Utility.StringsEqual("CHILD", f.ClassProperty))
