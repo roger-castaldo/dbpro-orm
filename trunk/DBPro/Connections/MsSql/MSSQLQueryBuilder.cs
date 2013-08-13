@@ -261,8 +261,17 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
             {
                 foreach (string str in OrderByFields)
                 {
-                    foreach (sTableField fld in pool.Mapping[type][str])
-                        primarys += "," + fld.Name;
+                    if (str.EndsWith(" ASC") || str.EndsWith(" DESC"))
+                    {
+                        string[] tmp = str.Split(new char[] { ' ' });
+                        foreach (sTableField fld in pool.Mapping[type][tmp[0]])
+                            primarys += "," + fld.Name+" "+tmp[1];
+                    }
+                    else
+                    {
+                        foreach (sTableField fld in pool.Mapping[type][str])
+                            primarys += "," + fld.Name;
+                    }
                 }
             }
             if (primarys.StartsWith(","))
@@ -281,11 +290,13 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
             string primarys = "";
             if (baseQuery.Contains("ORDER BY"))
                 primarys = baseQuery.Substring(baseQuery.IndexOf("ORDER BY") + "ORDER BY".Length);
-            else
+            else if (OrderByFields != null && OrderByFields.Length > 0)
             {
                 foreach (string str in OrderByFields)
                     primarys += "," + str;
             }
+            else
+                throw new Exception("Unable to selected Paged query without order by fields.");
             if (primarys.StartsWith(","))
                 primarys = primarys.Substring(1);
             return String.Format(SelectWithPagingIncludeOffset, baseQuery, CreateParameterName("startIndex"), CreateParameterName("rowCount"), primarys);

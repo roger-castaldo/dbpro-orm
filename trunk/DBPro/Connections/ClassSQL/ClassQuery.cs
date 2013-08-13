@@ -1173,16 +1173,16 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 					List<string> tmpJoins = new List<string>();
 					foreach (int index in fieldIndexes)
 					{
-						if (_tokenizer.Tokens[index].Value.StartsWith(alias))
+						if (_tokenizer.Tokens[index].Value.StartsWith(alias+"."))
 							tmpJoins = TraceJoins(tmpJoins,  t, _tokenizer.Tokens[index].Value.Substring(alias.Length + 1), alias,ref fieldLists);
 					}
 					foreach (int index in whereFieldIndexes){
-						if (_tokenizer.Tokens[index].Value.StartsWith(alias))
+                        if (_tokenizer.Tokens[index].Value.StartsWith(alias + "."))
 							tmpJoins=TraceJoins(tmpJoins,t,_tokenizer.Tokens[index].Value.Substring(alias.Length+1),alias,ref fieldLists);
 					}
                     foreach (int index in joinConditionIndexes)
                     {
-                        if (_tokenizer.Tokens[index].Value.StartsWith(alias))
+                        if (_tokenizer.Tokens[index].Value.StartsWith(alias + "."))
                             tmpJoins=TraceJoins(tmpJoins, t, _tokenizer.Tokens[index].Value.Substring(alias.Length + 1), alias, ref fieldLists);
                     }
 					if (alias != _tokenizer.Tokens[x].Value)
@@ -1789,7 +1789,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                             t=t.BaseType;
                             map = _pool.Mapping[t];
                         }
-                        if (_pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)))
+                        if (_pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) && !Utility.IsEnum(pi.PropertyType))
                         {
                             if (ordinal != -1)
                             {
@@ -1804,6 +1804,8 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         }
                         else
                             ret = TranslateParentFieldName(field.Value.Substring(0, field.Value.LastIndexOf(".")).Replace(".", "_"), fieldName,t,ordinal);
+                        if (Utility.IsEnum(pi.PropertyType) && !_enumFields.ContainsKey(ordinal))
+                            _enumFields.Add(ordinal, (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType));
 					}
 					else
 					{
