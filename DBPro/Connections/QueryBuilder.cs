@@ -1505,8 +1505,17 @@ namespace Org.Reddragonit.Dbpro.Connections
             {
                 foreach (string str in OrderByFields)
                 {
-                    foreach (sTableField stf in tbl[str])
-                        order += stf.Name + ",";
+                    if (str.EndsWith(" ASC") || str.EndsWith(" DESC"))
+                    {
+                        string[] tmp = str.Split(new char[] { ' ' });
+                        foreach (sTableField stf in tbl[tmp[0]])
+                            order += stf.Name+" "+tmp[1] + ",";
+                    }
+                    else
+                    {
+                        foreach (sTableField stf in tbl[str])
+                            order += stf.Name + ",";
+                    }
                 }
                 if (order.Length>0)
                     order = order.Substring(0, order.Length - 1);

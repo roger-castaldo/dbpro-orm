@@ -947,8 +947,16 @@ namespace Org.Reddragonit.Dbpro.Connections
             {
                 foreach (string str in OrderByFields)
                 {
-                    if (cva.Query.GetOrdinal(str) == -1)
-                        throw new Exception("Unable to execute a Class View Query with Order By Fields that are not fields in the Class View");
+                    if (str.EndsWith(" ASC") || str.EndsWith(" DESC"))
+                    {
+                        if (cva.Query.GetOrdinal(str.Split(new char[]{' '})[0]) == -1)
+                            throw new Exception("Unable to execute a Class View Query with Order By Fields that are not fields in the Class View");
+                    }
+                    else
+                    {
+                        if (cva.Query.GetOrdinal(str) == -1)
+                            throw new Exception("Unable to execute a Class View Query with Order By Fields that are not fields in the Class View");
+                    }
                     orderByString += ","+str;
                 }
             }
@@ -1101,8 +1109,16 @@ namespace Org.Reddragonit.Dbpro.Connections
             }
             foreach (string str in OrderByFields)
             {
-                if (cva.Query.GetOrdinal(str)==-1)
-                    throw new Exception("Unable to execute a Class View Query with Order By Fields that are not fields in the Class View");
+                if (str.EndsWith(" ASC") || str.EndsWith(" DESC"))
+                {
+                    if (cva.Query.GetOrdinal(str.Split(new char[]{' '})[0]) == -1)
+                        throw new Exception("Unable to execute a Class View Query with Order By Fields that are not fields in the Class View");
+                }
+                else
+                {
+                    if (cva.Query.GetOrdinal(str) == -1)
+                        throw new Exception("Unable to execute a Class View Query with Order By Fields that are not fields in the Class View");
+                }
                 orderByString += "," + str;
             }
             this.ExecuteQuery(queryBuilder.SelectPaged("SELECT * FROM " + viewName + (parString == "" ? "" : " WHERE " + parString.Substring(4)) + " ORDER BY " + orderByString.Substring(1),ref queryParameters,StartIndex,RowCount,OrderByFields), queryParameters.ToArray());
