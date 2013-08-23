@@ -932,6 +932,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         t = (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType);
                         fieldName = fieldName.Substring(fieldName.IndexOf(".") + 1);
                     }
+                    pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS);
                     t = (_pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) 
                         ? (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType) : t);
                 }
@@ -1041,7 +1042,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 					if (fieldName != "*")
 					{
                         pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS);
-						if (_pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)))
+						if (_pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) && !Utility.IsEnum(pi.PropertyType))
 						{
 							ret.RemoveAt(0);
 							foreach (string str in fieldList[field.Value])
