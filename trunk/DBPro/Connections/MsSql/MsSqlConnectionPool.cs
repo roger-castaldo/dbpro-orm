@@ -229,6 +229,21 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
             return ret;
         }
 
+        internal override string TrueString
+        {
+            get
+            {
+                return "1";
+            }
+        }
+
+        internal override string FalseString
+        {
+            get
+            {
+                return "0";
+            }
+        }
         
 	}
 }
