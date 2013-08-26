@@ -16,6 +16,7 @@ using Org.Reddragonit.Dbpro.Connections.PoolComponents;
 using System.Reflection;
 using Org.Reddragonit.Dbpro.Structure.Attributes;
 using Table = Org.Reddragonit.Dbpro.Structure.Table;
+using System.Text.RegularExpressions;
 
 namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 {
@@ -26,6 +27,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 	{
 		private static readonly List<string> _conditionOperators =
 			new List<string>(new string[]{"=","NOT","IN","LIKE",">","<","<=",">=","IS"});
+        private static readonly Regex _regTrueFalse = new Regex("=\\s*(((T|t)(R|r)(U|u)(E|e))|((F|f)(A|a)(L|l)(S|s)(E|e)))(\\s*|\\))", RegexOptions.Compiled | RegexOptions.ECMAScript);
 		
 		private string _namespace;
 		private QueryTokenizer _tokenizer;
@@ -89,6 +91,13 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             }
             Translate();
             _outputQuery = _outputQuery.Trim();
+            int index = 0;
+            while (_regTrueFalse.IsMatch(_outputQuery, index))
+            {
+                Match m = _regTrueFalse.Match(_outputQuery, index);
+                _outputQuery = _outputQuery.Substring(0, m.Groups[1].Index) + (m.Groups[1].Value.ToLower() == "true" ? _pool.TrueString : _pool.FalseString) + _outputQuery.Substring(m.Groups[1].Index + m.Groups[1].Length);
+                index = (m.Index + m.Length>_outputQuery.Length ? _outputQuery.Length-1 : m.Index+m.Length);
+            }
             for (int x = 0; x < _fieldNames.Count; x++)
                 _fieldNames[x] = _fieldNames[x].Trim("'\"".ToCharArray());
             Logger.LogLine("Class Query: " + query + "\nTranslated To:" + _outputQuery);
@@ -982,7 +991,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 						fieldName = fieldName.Substring(fieldName.IndexOf(".") + 1);
 					}
                     pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS);
-					if (_pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)))
+                    if (_pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) && !Utility.IsEnum(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType))
 						return true;
 					else
 						return false;

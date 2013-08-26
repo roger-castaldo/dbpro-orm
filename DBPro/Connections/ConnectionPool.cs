@@ -69,6 +69,16 @@ namespace Org.Reddragonit.Dbpro.Connections
         internal abstract IDbDataParameter CreateParameter(string parameterName, object parameterValue, Org.Reddragonit.Dbpro.Structure.Attributes.FieldType type, int fieldLength);
         internal abstract IDbDataParameter CreateParameter(string parameterName, object parameterValue);
 
+        internal virtual string TrueString
+        {
+            get{return "true";}
+        }
+
+        internal virtual string FalseString
+        {
+            get { return "false"; }
+        }
+
         private Connection CreateConnection()
         {
             return CreateConnection(false);

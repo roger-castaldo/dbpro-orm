@@ -188,6 +188,21 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
             return (System.Data.IDbDataParameter)Utility.LocateType(_PARAMETER_CLASS_NAME).GetConstructor(new Type[] { typeof(string), typeof(object) }).Invoke(new object[] { parameterName, parameterValue });
         }
 
+        internal override string TrueString
+        {
+            get
+            {
+                return "'T'";
+            }
+        }
+
+        internal override string FalseString
+        {
+            get
+            {
+                return "'F'";
+            }
+        }
         
 	}
 }
