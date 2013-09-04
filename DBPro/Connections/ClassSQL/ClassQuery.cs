@@ -411,7 +411,8 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         break;
                 }
 				if (((_tokenizer.Tokens[i + x].Type == TokenType.KEY)||
-                    (_tokenizer.Tokens[i + x].Type == TokenType.NUMBER)) &&
+                    (_tokenizer.Tokens[i + x].Type == TokenType.NUMBER)||
+                    (_tokenizer.Tokens[i+x].Value.ToUpper()=="NULL")) &&
 				    (
 				    	(_tokenizer.Tokens[i + x - 1].Value.ToUpper() == "SELECT") ||
 				    	(_tokenizer.Tokens[i+x-1].Value.ToUpper()=="DISTINCT") ||
