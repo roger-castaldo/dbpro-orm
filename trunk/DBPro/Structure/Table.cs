@@ -554,11 +554,19 @@ namespace Org.Reddragonit.Dbpro.Structure
                     return (_initialPrimaryKeys.ContainsKey(FieldName) ? false : true);
                 else if (new List<string>(map.PrimaryKeyProperties).Contains(FieldName)
                     && _initialPrimaryKeys.ContainsKey(FieldName))
-                    return _initialPrimaryKeys[FieldName] == cur && !this.IsSaved && !this.IsParentSaved && LoadStatus == LoadStatus.NotLoaded && !_isParentPrimaryKey(FieldName, pool, this.GetType(), cur);
+                    return _initialPrimaryKeys[FieldName] == cur && !this.IsSaved && !this.IsParentSaved && LoadStatus == LoadStatus.NotLoaded && !_isParentPrimaryKey(FieldName, pool, this.GetType(), cur)
+                        && !_IsSavedTable(cur);
                 return cur==null;
             }
             return equalObjects(cur, pi.GetValue(this.GetType().GetConstructor(Type.EmptyTypes).Invoke(new object[0]), new object[0]));
 		}
+
+        private bool _IsSavedTable(object cur)
+        {
+            if (cur is Table)
+                return ((Table)cur).LoadStatus != LoadStatus.NotLoaded;
+            return false;
+        }
 
         private bool _isParentPrimaryKey(string FieldName,ConnectionPool pool,Type type,object cur)
         {
