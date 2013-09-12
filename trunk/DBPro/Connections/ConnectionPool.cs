@@ -393,6 +393,23 @@ namespace Org.Reddragonit.Dbpro.Connections
 			isClosed=true;
             Utility.WaitOne(this);
 		}
+
+        internal void CleanConnection(string id)
+        {
+            Utility.WaitOne(this);
+            if (locked.Count > 0)
+            {
+                for (int x = 0; x < locked.Count; x++)
+                {
+                    if (locked[x].ID == id)
+                    {
+                        locked.RemoveAt(x);
+                        break;
+                    }
+                }
+            }
+            Utility.Release(this);
+        }
 		
 		internal void returnConnection(Connection conn)
 		{

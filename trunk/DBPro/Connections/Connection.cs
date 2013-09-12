@@ -322,6 +322,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			{
 				Disconnect();
 			}
+            pool.CleanConnection(ID);
 		}
 		
 		public void SetCommandType(CommandType type)
