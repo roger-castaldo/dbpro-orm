@@ -57,15 +57,48 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
             string ret = null;
             ClassBased = false;
             isExternal = false;
-            newType = null;
+            newType = tableType;
             alias = null;
             linkedType = tableType;
             if (fieldName.Contains("."))
             {
                 string newField = fieldName.Substring(0, fieldName.IndexOf("."));
                 PropertyInfo pi = tableType.GetProperty(newField, Utility._BINDING_FLAGS_WITH_INHERITANCE);
-                ret = LocateTableField(fieldName.Substring(fieldName.IndexOf(".") + 1), (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType), out ClassBased, out isExternal, out newType, out alias,out linkedType);
-                alias = fieldName.Substring(0, fieldName.IndexOf("."))+((alias==null) ? "" : "_"+alias);
+                if (fieldName.Split('.').Length - 1 == 1)
+                {
+                    ConnectionPool pool = ConnectionPoolManager.GetConnection(tableType);
+                    sTable map = pool.Mapping[tableType];
+                    sTable subMap = pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
+                    if (new List<string>(map.PrimaryKeyProperties).Contains(fieldName.Substring(0, fieldName.IndexOf(".")))
+                        && new List<string>(subMap.PrimaryKeyProperties).Contains(fieldName.Substring(fieldName.IndexOf(".") + 1)))
+                    {
+                        foreach (sTableField fld in map[newField])
+                        {
+                            bool done = false;
+                            foreach (sTableField sfld in subMap[fieldName.Substring(fieldName.IndexOf(".") + 1)])
+                            {
+                                if (fld.ExternalField == sfld.Name)
+                                {
+                                    ret = fld.Name;
+                                    done = true;
+                                    break;
+                                }
+                            }
+                            if (done)
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        ret = LocateTableField(fieldName.Substring(fieldName.IndexOf(".") + 1), (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType), out ClassBased, out isExternal, out newType, out alias, out linkedType);
+                        alias = fieldName.Substring(0, fieldName.IndexOf(".")) + ((alias == null) ? "" : "_" + alias);
+                    }
+                }
+                else
+                {
+                    ret = LocateTableField(fieldName.Substring(fieldName.IndexOf(".") + 1), (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType), out ClassBased, out isExternal, out newType, out alias, out linkedType);
+                    alias = fieldName.Substring(0, fieldName.IndexOf(".")) + ((alias == null) ? "" : "_" + alias);
+                }
             }
             else
             {
