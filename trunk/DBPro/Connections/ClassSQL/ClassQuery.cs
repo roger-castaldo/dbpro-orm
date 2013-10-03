@@ -174,8 +174,6 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             List<IDbDataParameter> ret = new List<IDbDataParameter>();
             foreach (IDbDataParameter par in parameters)
             {
-                System.Diagnostics.Debug.WriteLine(par.Value.GetType().ToString());
-                System.Diagnostics.Debug.WriteLine(par.Value.GetType().IsArray);
                 if ((par.Value is IEnumerable) && !(par.Value is string))
                 {
                     string newPar = "";
@@ -849,7 +847,6 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                                 else
                                 {
                                     //TODO: Need to implement code to handle all variations of using a table value, including if an arrayed parameter of tables is passed in for IN
-                                    System.Diagnostics.Debug.WriteLine("Current query: " + ret);
                                     throw new Exception("Unable to handle IN conditions using entire tables with complex primary keys at this time.");
                                 }
                                 break;
