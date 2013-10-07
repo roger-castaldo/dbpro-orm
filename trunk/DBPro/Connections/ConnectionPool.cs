@@ -320,7 +320,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			isReady=true;
 		}
 		
-		public Connection getConnection()
+		public Connection GetConnection()
 		{
             Utility.WaitOne(this);
 			if (!isReady)

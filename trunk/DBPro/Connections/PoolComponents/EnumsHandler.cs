@@ -25,7 +25,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             enumType = (enumType.IsGenericType ? enumType.GetGenericArguments()[0] : enumType);
             if (!_enumReverseValuesMap.ContainsKey(enumType))
             {
-                Connection conn = _pool.getConnection();
+                Connection conn = _pool.GetConnection();
                 _pool.Updater.InitType(enumType, conn);
                 conn.CloseConnection();
             }

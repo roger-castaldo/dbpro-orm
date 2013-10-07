@@ -66,7 +66,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                 PropertyInfo pi = tableType.GetProperty(newField, Utility._BINDING_FLAGS_WITH_INHERITANCE);
                 if (fieldName.Split('.').Length - 1 == 1)
                 {
-                    ConnectionPool pool = ConnectionPoolManager.GetConnection(tableType);
+                    ConnectionPool pool = ConnectionPoolManager.GetPool(tableType);
                     sTable map = pool.Mapping[tableType];
                     sTable subMap = pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
                     if (new List<string>(map.PrimaryKeyProperties).Contains(fieldName.Substring(0, fieldName.IndexOf(".")))
@@ -105,7 +105,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                 newType = tableType;
                 ClassBased = false;
                 isExternal = false;
-                ConnectionPool pool = ConnectionPoolManager.GetConnection(tableType);
+                ConnectionPool pool = ConnectionPoolManager.GetPool(tableType);
                 sTable map = pool.Mapping[tableType];
                 if (pool.Mapping.PropertyHasIntermediateTable(newType, fieldName))
                 {

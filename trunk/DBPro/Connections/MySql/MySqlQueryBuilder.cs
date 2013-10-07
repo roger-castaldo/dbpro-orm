@@ -124,7 +124,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 		internal override string SelectIdentities()
 		{
 			string ret="";
-            Connection conn = pool.getConnection();
+            Connection conn = pool.GetConnection();
 			conn.ExecuteQuery(SelectCurrentIdentities);
 			while(conn.Read())
 			{
@@ -189,7 +189,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 		
 		internal override string DropForeignKey(string table, string externalTable,string primaryField,string relatedField)
 		{
-            Connection conn = pool.getConnection();
+            Connection conn = pool.GetConnection();
 			conn.ExecuteQuery(string.Format(DropForeignKeyString,table,externalTable,primaryField,relatedField));
 			string ret = "";
 			if (conn.Read())

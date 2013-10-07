@@ -165,7 +165,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 		internal override string DropPrimaryKey(PrimaryKey key)
 		{
 			string ret = "";
-            Connection conn = pool.getConnection();
+            Connection conn = pool.GetConnection();
 			conn.ExecuteQuery(DropPrimaryKeyString, new IDbDataParameter[]{conn.CreateParameter(CreateParameterName("TableName"),key.Name)});
 			if (conn.Read())
 				ret = conn[0].ToString();
@@ -225,7 +225,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
         internal override string DropForeignKey(string table, string externalTable, string primaryField, string relatedField)
 		{
 			string ret="";
-            Connection conn = pool.getConnection();
+            Connection conn = pool.GetConnection();
 			conn.ExecuteQuery(string.Format(DropForeignKeyString,new object[]{table,externalTable,primaryField,relatedField}));
 			while (conn.Read())
 				ret+=conn[0].ToString()+"\n";

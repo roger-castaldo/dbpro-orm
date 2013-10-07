@@ -334,22 +334,22 @@ namespace Org.Reddragonit.Dbpro.Connections
 			return null;
 		}
 		
-		public static ConnectionPool GetConnection(Type type)
+		public static ConnectionPool GetPool(Type type)
 		{
             if (type.GetCustomAttributes(typeof(Org.Reddragonit.Dbpro.Structure.Attributes.Table), false).Length > 0)
             {
                 Org.Reddragonit.Dbpro.Structure.Attributes.Table t = (Org.Reddragonit.Dbpro.Structure.Attributes.Table)type.GetCustomAttributes(typeof(Org.Reddragonit.Dbpro.Structure.Attributes.Table), false)[0];
-                return GetConnection(t.ConnectionName);
+                return GetPool(t.ConnectionName);
             }
             else if (type.GetCustomAttributes(typeof(Org.Reddragonit.Dbpro.Virtual.ClassViewAttribute), false).Length > 0)
             {
                 Org.Reddragonit.Dbpro.Virtual.ClassViewAttribute cva = (Org.Reddragonit.Dbpro.Virtual.ClassViewAttribute)type.GetCustomAttributes(typeof(Org.Reddragonit.Dbpro.Virtual.ClassViewAttribute), false)[0];
-                return GetConnection(cva.ConnectionName);
+                return GetPool(cva.ConnectionName);
             }
 			return null;
 		}
 
-		public static ConnectionPool GetConnection(string name)
+		public static ConnectionPool GetPool(string name)
 		{
 			ConnectionPool ret = null;
 			Utility.WaitOne(_connectionPools);
@@ -380,6 +380,17 @@ namespace Org.Reddragonit.Dbpro.Connections
 			Utility.Release(_connectionPools);
 			return ret;
 		}
+
+        public static Connection GetConnection(Type type)
+        {
+            ConnectionPool pool = GetPool(type);
+            return (pool == null ? null : pool.GetConnection());
+        }
+
+        public static Connection GetConnection(string name){
+            ConnectionPool pool = GetPool(name);
+            return (pool == null ? null : pool.GetConnection());
+        }
 
 		internal static void AddConnection(string name, ConnectionPool pool)
 		{

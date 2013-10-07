@@ -340,7 +340,7 @@ namespace TestingApp.Structure
 		private static Connection conn
 		{
 			get{
-                return ConnectionPoolManager.GetConnection(typeof(User)).getConnection();
+                return ConnectionPoolManager.GetConnection(typeof(User));
 			}
 		}
 		
