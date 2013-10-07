@@ -62,7 +62,7 @@ namespace Org.Reddragonit.Dbpro.Structure
             _pageSize = PageSize;
             _pars = SelectParams;
             _transationSafe=transationSafe;
-            _conn = ConnectionPoolManager.GetConnection(type).getConnection();
+            _conn = ConnectionPoolManager.GetConnection(type);
             _count = (int)_conn.SelectCount(type,_pars);
             if (!_pageSize.HasValue)
             	_pageSize=20;
@@ -72,8 +72,8 @@ namespace Org.Reddragonit.Dbpro.Structure
         
         private void LoadToIndex(int index)
         {
-        	if (_conn==null)
-        		_conn = ConnectionPoolManager.GetConnection(_tableType).getConnection();
+            if (_conn == null)
+                _conn = ConnectionPoolManager.GetConnection(_tableType);
         	while((_data.Count-1<index)&&(_data.Count<Count))
         	{
         		_data.AddRange(_conn.SelectPaged(TableType,SelectParams,(ulong)_data.Count,(ulong)PageSize));

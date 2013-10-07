@@ -170,7 +170,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 		internal override string DropPrimaryKey(PrimaryKey key)
 		{
 			string ret="";
-            Connection conn = pool.getConnection();
+            Connection conn = pool.GetConnection();
 			foreach (string str in key.Fields)
 			{
 				conn.ExecuteQuery(String.Format(DropPrimaryKeyString, key.Name, str));
@@ -213,7 +213,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 		internal override string DropForeignKey(string table, string externalTable,string primaryField,string relatedField)
 		{
 			string ret="";
-            Connection conn = pool.getConnection();
+            Connection conn = pool.GetConnection();
 			conn.ExecuteQuery(String.Format(DropForeignKeyString, table, externalTable));
 			while (conn.Read())
 				ret += conn[0].ToString()+";\n";

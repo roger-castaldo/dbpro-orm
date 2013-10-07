@@ -48,7 +48,7 @@ namespace Org.Reddragonit.Dbpro
 		
 		public LazyProxy(object subject):base(subject.GetType())
 		{
-            _pool = ConnectionPoolManager.GetConnection(subject.GetType());
+            _pool = ConnectionPoolManager.GetPool(subject.GetType());
             _map = _pool.Mapping[subject.GetType()];
             _allowPrimaryChange = _pool.AllowChangingBasicAutogenField;
             if ((_map.PrimaryKeyFields.Length == 1) && (_map.AutoGenProperty != null))
@@ -141,7 +141,7 @@ namespace Org.Reddragonit.Dbpro
                         List<SelectParameter> pars = new List<SelectParameter>();
                         foreach (string prop in _map.PrimaryKeyProperties)
                             pars.Add(new EqualParameter(prop, ((Table)owner).GetField(prop)));
-                        Connection conn = ConnectionPoolManager.GetConnection(owner.GetType()).getConnection();
+                        Connection conn = ConnectionPoolManager.GetConnection(owner.GetType());
                         Table tmp = null;
                         try
                         {
@@ -242,7 +242,7 @@ namespace Org.Reddragonit.Dbpro
                         }*/
 					}else
 					{
-                        sTable map = ConnectionPoolManager.GetConnection(owner.GetType()).Mapping[owner.GetType()];
+                        sTable map = ConnectionPoolManager.GetPool(owner.GetType()).Mapping[owner.GetType()];
 						if (((Table)owner).IsSaved&&new List<string>(map.PrimaryKeyProperties).Contains(pi.Name)&&Utility.StringsEqual(pi.Name,map.AutoGenProperty))
 							throw new AlterPrimaryKeyException(owner.GetType().ToString(),pi.Name);
 						if (((Table)owner)._isSaved)
@@ -401,7 +401,7 @@ namespace Org.Reddragonit.Dbpro
             List<SelectParameter> pars = new List<SelectParameter>();
             foreach (string prop in _map.PrimaryKeyProperties)
                 pars.Add(new EqualParameter(prop, ((Table)owner).GetField(prop)));
-            Connection conn = ConnectionPoolManager.GetConnection(owner.GetType()).getConnection();
+            Connection conn = ConnectionPoolManager.GetConnection(owner.GetType());
             Table tmp = null;
             try
             {

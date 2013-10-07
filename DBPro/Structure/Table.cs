@@ -82,7 +82,7 @@ namespace Org.Reddragonit.Dbpro.Structure
         private void InitPrimaryKeys()
         {
             _initialPrimaryKeys.Clear();
-            sTable map = ConnectionPoolManager.GetConnection(this.GetType()).Mapping[this.GetType()];
+            sTable map = ConnectionPoolManager.GetPool(this.GetType()).Mapping[this.GetType()];
             List<string> props = new List<string>(map.PrimaryKeyProperties);
             if (props.Count == 0)
                 props.AddRange(map.PrimaryKeyProperties);
@@ -118,7 +118,7 @@ namespace Org.Reddragonit.Dbpro.Structure
         //called to copy values from an existing table object, this is done for table inheritance
 		internal void CopyValuesFrom(Table table)
 		{
-            ConnectionPool pool = ConnectionPoolManager.GetConnection(table.GetType());
+            ConnectionPool pool = ConnectionPoolManager.GetPool(table.GetType());
             sTable mp = pool.Mapping[table.GetType()];
 			foreach (string prop in mp.Properties)
 			{
@@ -360,7 +360,7 @@ namespace Org.Reddragonit.Dbpro.Structure
 		{
 			get
 			{
-				foreach (string prop in ConnectionPoolManager.GetConnection(GetType()).Mapping[GetType()].PrimaryKeyFields)
+				foreach (string prop in ConnectionPoolManager.GetPool(GetType()).Mapping[GetType()].PrimaryKeyFields)
 				{
 					if (!IsFieldNull(prop))
 					{
@@ -373,7 +373,7 @@ namespace Org.Reddragonit.Dbpro.Structure
 
         internal PropertyInfo LocatePropertyInfo(string FieldName)
         {
-            ConnectionPool pool = ConnectionPoolManager.GetConnection(this.GetType());
+            ConnectionPool pool = ConnectionPoolManager.GetPool(this.GetType());
             sTable map = pool.Mapping[this.GetType()];
             PropertyInfo ret = this.GetType().GetProperty(FieldName, Utility._BINDING_FLAGS);
             if (ret == null)
@@ -540,7 +540,7 @@ namespace Org.Reddragonit.Dbpro.Structure
                 return true;
             PropertyInfo pi = LocatePropertyInfo(FieldName);
 			object cur = pi.GetValue(this,new object[0]);
-            ConnectionPool pool = ConnectionPoolManager.GetConnection(this.GetType());
+            ConnectionPool pool = ConnectionPoolManager.GetPool(this.GetType());
             sTable map = pool.Mapping[this.GetType()];
             if (map[FieldName].Length>0)
             {
@@ -706,9 +706,9 @@ namespace Org.Reddragonit.Dbpro.Structure
                 throw new Exception("Cannot convert object to type that is not a parent/child or has no matching inheritance of the current class.");
             }
 			Table ret = (Table)conversionType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
-            sTable map = ConnectionPoolManager.GetConnection(conversionType).Mapping[conversionType];
+            sTable map = ConnectionPoolManager.GetPool(conversionType).Mapping[conversionType];
             if (conversionType.IsSubclassOf(this.GetType()))
-                map = ConnectionPoolManager.GetConnection(this.GetType()).Mapping[this.GetType()];
+                map = ConnectionPoolManager.GetPool(this.GetType()).Mapping[this.GetType()];
             else
             {
                 ret._isSaved = this._isSaved;
@@ -725,7 +725,7 @@ namespace Org.Reddragonit.Dbpro.Structure
                         ((Table)ret)._changedFields.Add(prop);
                 }
             }
-            ConnectionPool pool = ConnectionPoolManager.GetConnection(ret.GetType());
+            ConnectionPool pool = ConnectionPoolManager.GetPool(ret.GetType());
             Type t = ret.GetType().BaseType;
             if (conversionType.IsSubclassOf(this.GetType()))
                 t = this.GetType().BaseType;
@@ -762,7 +762,7 @@ namespace Org.Reddragonit.Dbpro.Structure
         {
             if (!this.IsSaved)
                 throw new Exception("Cannot delete an object from the database if it is not in the database.");
-            Connection conn = ConnectionPoolManager.GetConnection(this.GetType()).getConnection();
+            Connection conn = ConnectionPoolManager.GetConnection(this.GetType());
             conn.Delete(this);
             conn.CloseConnection();
         }
@@ -772,7 +772,7 @@ namespace Org.Reddragonit.Dbpro.Structure
         {
             if (!this.IsSaved)
                 throw new Exception("Cannot update an object that is not in the database.");
-            Connection conn = ConnectionPoolManager.GetConnection(this.GetType()).getConnection();
+            Connection conn = ConnectionPoolManager.GetConnection(this.GetType());
             conn.Save(this);
             conn.CloseConnection();
         }
@@ -782,7 +782,7 @@ namespace Org.Reddragonit.Dbpro.Structure
         {
             if (this.IsSaved)
                 throw new Exception("Cannot Save an object to the database when it already exists.");
-            Connection conn = ConnectionPoolManager.GetConnection(this.GetType()).getConnection();
+            Connection conn = ConnectionPoolManager.GetConnection(this.GetType());
             Table tmp = conn.Save(this);
             sTable tbl = conn.Pool.Mapping[this.GetType()];
             conn.CloseConnection();
@@ -808,7 +808,7 @@ namespace Org.Reddragonit.Dbpro.Structure
 
         internal bool PrimaryKeysEqual(Table table)
         {
-            sTable tbl = ConnectionPoolManager.GetConnection(this.GetType()).Mapping[this.GetType()];
+            sTable tbl = ConnectionPoolManager.GetPool(this.GetType()).Mapping[this.GetType()];
             foreach (string prop in tbl.PrimaryKeyProperties)
             {
                 object obj = this.GetField(prop);

@@ -82,7 +82,7 @@ namespace TestingApp.Structure
 		private static Connection conn
 		{
 			get{
-				return ConnectionPoolManager.GetConnection("Security").getConnection();
+				return ConnectionPoolManager.GetConnection("Security");
 			}
 		}
 		

@@ -43,7 +43,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		internal override string DropNullConstraint(string table, ExtractedFieldMap field)
 		{
 			string ret = "";
-            Connection conn = pool.getConnection();
+            Connection conn = pool.GetConnection();
 			conn.ExecuteQuery(String.Format(DropNotNullString,table,field.FieldName));
 			if (conn.Read())
 				ret=conn[0].ToString();
@@ -84,7 +84,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		internal override string DropForeignKey(string table, string tableName,string primaryField,string relatedField)
 		{
 			string ret = "";
-            Connection conn = pool.getConnection();
+            Connection conn = pool.GetConnection();
 			conn.ExecuteQuery(String.Format(DropForeignKeyString,new object[]{table.ToUpper(),tableName.ToUpper(),primaryField.ToUpper(),relatedField.ToUpper()}));
 			while (conn.Read())
 				ret+=conn[0].ToString().Trim()+";\n";
@@ -96,7 +96,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		internal override string DropPrimaryKey(PrimaryKey key)
 		{
 			string ret="";
-            Connection conn = pool.getConnection();
+            Connection conn = pool.GetConnection();
 			foreach (string str in key.Fields)
 			{
 				conn.ExecuteQuery(String.Format(DropPrimaryKeyString, key.Name.ToUpper(), str.ToUpper()));

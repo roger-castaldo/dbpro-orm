@@ -44,7 +44,7 @@ namespace TestingApp
 			u.UserGroup=Group.LoadAllGroups()[0];
 			u.UserName="rcastaldo";
 			u=User.Save(u);*/
-            Connection conn = ConnectionPoolManager.GetConnection(typeof(User)).getConnection();
+            Connection conn = ConnectionPoolManager.GetConnection(typeof(User));
             foreach (UserGroupList ugl in conn.SelectClassView(typeof(UserGroupList))){
                 Console.WriteLine("FirstName: "+ugl.FirstName+"\tLastName: "+ugl.LastName+"\tGroup: "+ugl.GroupName);
             }
@@ -86,7 +86,7 @@ namespace TestingApp
 
         private static void SecondaryThreadStart()
         {
-            Connection conn = ConnectionPoolManager.GetConnection("Security").getConnection();
+            Connection conn = ConnectionPoolManager.GetConnection("Security");
             for (int x = 0; x < 50; x++)
             {
                 conn.SelectAll(typeof(User));

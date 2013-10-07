@@ -141,7 +141,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
         #region ConnectionFunctions
         public IDbDataParameter CreateParameter(string name, object value)
         {
-            _conn = (_conn == null ? _pool.getConnection() : _conn);
+            _conn = (_conn == null ? _pool.GetConnection() : _conn);
             lock (_requiredTypes)
             {
                 if (_requiredTypes.Count > 0)
@@ -240,7 +240,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 
         public void Execute(IDbDataParameter[] parameters)
         {
-            _conn = (_conn == null ? _pool.getConnection() : _conn);
+            _conn = (_conn == null ? _pool.GetConnection() : _conn);
             lock (_requiredTypes)
             {
                 if (_requiredTypes.Count > 0)
@@ -277,7 +277,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 
         public void ExecutePaged(Type primaryTable, IDbDataParameter[] parameters, ulong? start, ulong? recordCount)
         {
-            _conn = (_conn == null ? _pool.getConnection() : _conn);
+            _conn = (_conn == null ? _pool.GetConnection() : _conn);
             lock (_requiredTypes)
             {
                 if (_requiredTypes.Count > 0)
@@ -1168,7 +1168,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 				else
 				{
                     if (_pool == null)
-                        _pool = ConnectionPoolManager.GetConnection(t);
+                        _pool = ConnectionPoolManager.GetPool(t);
                     _requiredTypes.Enqueue(t);
 					sTable map = _pool.Mapping[t];
 					ret += map.Name + " ";

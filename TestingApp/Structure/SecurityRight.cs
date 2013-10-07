@@ -40,7 +40,7 @@ namespace TestingApp.Structure
 		private static Connection conn
 		{
 			get{
-				return ConnectionPoolManager.GetConnection(typeof(SecurityRight)).getConnection();
+				return ConnectionPoolManager.GetConnection(typeof(SecurityRight));
 			}
 		}
 		
