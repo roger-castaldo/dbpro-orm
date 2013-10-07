@@ -90,6 +90,11 @@ namespace Org.Reddragonit.Dbpro.Connections
                     }
 				}
 			}
+            foreach (Type t in Utility.LocateTypeInstances(typeof(ITrigger)))
+            {
+                foreach (TriggerRegisterAttribute tra in t.GetCustomAttributes(typeof(TriggerRegisterAttribute), false))
+                    RegisterTrigger(tra.Table, (ITrigger)t.GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
+            }
 			Utility.Release(_connectionPools);
 		}
 
