@@ -127,11 +127,14 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     string orig = "";
                     for (int x = subqueryIndex + y; x < subqueryIndex + y + _subQueryIndexes[subqueryIndex + y]; x++)
                         orig += _tokenizer.Tokens[x].Value + " ";
-                    string start = ret.Substring(0,ret.IndexOf(orig));
-                    string end = ret.Substring(start.Length + orig.Length);
-                    ret = start +
-                    _RecurBuildOutputSubquery(subqueryIndex + y, subQueryTranlsations) +
-                    end;
+                    if (ret.Contains(orig))
+                    {
+                        string start = ret.Substring(0, ret.IndexOf(orig));
+                        string end = ret.Substring(start.Length + orig.Length);
+                        ret = start +
+                        _RecurBuildOutputSubquery(subqueryIndex + y, subQueryTranlsations) +
+                        end;
+                    }
                     y += _subQueryIndexes[subqueryIndex + y];
                 }
             }

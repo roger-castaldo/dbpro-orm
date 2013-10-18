@@ -257,32 +257,38 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 			// read numbers while we can
 			while ( isDigit( currentCode() ) && currentCode() != 0 ) {
 				input += ch;
-				next();
+                if (next() == null)
+                    return new QueryToken(input, TokenType.NUMBER, start, input.Length);
 			}
 			
 			// check for a decimal value
 			if ( currentCode() == 46 ) { // 46 is .
 				input += ".";
-				next();
+                if (next() == null)
+                    return new QueryToken(input, TokenType.NUMBER, start, input.Length);
 				while ( isDigit( currentCode() ) ) {
 					input += ch;
-					next();
+                    if (next() == null)
+                        return new QueryToken(input, TokenType.NUMBER, start, input.Length);
 				}
 			}
 			
 			// check for scientific notation
 			if ( currentCode() == 101 || currentCode() == 69 ) { // 101 is e, 69 is E
                 input += "e";
-				next();
+                if (next() == null)
+                    return new QueryToken(input, TokenType.NUMBER, start, input.Length);
 				// check for sign
 				if ( currentCode() == 43 || currentCode() == 45 ) { // 43 is +, 45 is -
 					input += ch;
-					next();
+                    if (next() == null)
+                        return new QueryToken(input, TokenType.NUMBER, start, input.Length);
 				}
 				// read in the exponent
 				while ( isDigit( currentCode() ) ) {
 					input += ch;
-					next();
+                    if (next() == null)
+                        return new QueryToken(input, TokenType.NUMBER, start, input.Length);
 				}
 			}
 			

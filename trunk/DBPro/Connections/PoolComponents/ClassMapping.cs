@@ -70,8 +70,8 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                                 string eName = _pool.Translator.GetTableName(etype, conn);
                                 sTable etbl = new sTable(eName,
                                     new sTableField[]{
-                                        new sTableField(_pool.Translator.GetEnumIDFieldName(etype,conn),null,null,FieldType.INTEGER,4,false),
-                                        new sTableField(_pool.Translator.GetEnumValueFieldName(etype,conn),null,null,FieldType.STRING,500,false)
+                                        new sTableField(_pool.Translator.GetEnumIDFieldName(etype,conn),null,null,FieldType.INTEGER,4,false,null),
+                                        new sTableField(_pool.Translator.GetEnumValueFieldName(etype,conn),null,null,FieldType.STRING,500,false,null)
                                     },
                                     null,
                                     new sTableRelation[0],
@@ -85,7 +85,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                             || pi.PropertyType.Equals(typeof(byte[])))
                         {
                             Logger.LogLine("Adding Field (" + pi.Name + ")");
-                            fields.Add(new sTableField(_pool.Translator.GetFieldName(tbl,pi,conn), pi.Name, (Utility.IsEnum(pi.PropertyType) ? "ID" : null),((IField)obj).Type,((IField)obj).Length,((IField)obj).Nullable));
+                            fields.Add(new sTableField(_pool.Translator.GetFieldName(tbl,pi,conn), pi.Name, (Utility.IsEnum(pi.PropertyType) ? "ID" : null),((IField)obj).Type,((IField)obj).Length,((IField)obj).Nullable,(obj is ComputedField ? ((ComputedField)obj).Code : null)));
                             if (obj is IPrimaryKeyField)
                             {
                                 primaryKeyFields.Add(fields[fields.Count - 1].Name);
@@ -121,7 +121,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                                 {
                                     foreach (sTableField fld in ext[prop])
                                     {
-                                        fields.Add(new sTableField(_pool.Translator.GetFieldName(tbl,pi,fld.Name,conn),pi.Name,fld.Name,fld.Type,fld.Length,fld.Nullable));
+                                        fields.Add(new sTableField(_pool.Translator.GetFieldName(tbl,pi,fld.Name,conn),pi.Name,fld.Name,fld.Type,fld.Length,fld.Nullable,fld.ComputedCode));
                                         if (obj is IPrimaryKeyField)
                                             primaryKeyFields.Add(fields[fields.Count - 1].Name);
                                     }
@@ -176,7 +176,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                     {
                         sTableField fld = fields[x];
                         if (fld.Name==str)
-                            fields.Add(new sTableField(_pool.Translator.GetFieldName(tbl,pi,fld.Name,conn), pi.Name, str,fld.Type,fld.Length,fld.Nullable));
+                            fields.Add(new sTableField(_pool.Translator.GetFieldName(tbl,pi,fld.Name,conn), pi.Name, str,fld.Type,fld.Length,fld.Nullable,fld.ComputedCode));
                     }
                 }
                 foreach (object obj in pi.GetCustomAttributes(true))
@@ -198,9 +198,9 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                     foreach (sTableField sf in fields)
                     {
                         if (primaryKeyFields.Contains(sf.Name))
-                            afields.Add(new sTableField(_pool.Translator.GetIntermediateFieldName(tbl,pi,sf.Name,true,conn),"PARENT", sf.Name, sf.Type, sf.Length, sf.Nullable));
+                            afields.Add(new sTableField(_pool.Translator.GetIntermediateFieldName(tbl,pi,sf.Name,true,conn),"PARENT", sf.Name, sf.Type, sf.Length, sf.Nullable,sf.ComputedCode));
                     }
-                    afields.Add(new sTableField(_pool.Translator.GetIntermediateIndexFieldName(tbl,pi), null, null, FieldType.INTEGER, 4, false));
+                    afields.Add(new sTableField(_pool.Translator.GetIntermediateIndexFieldName(tbl,pi), null, null, FieldType.INTEGER, 4, false,null));
                     List<string> apKeys = new List<string>();
                     for (int x = 0; x <= afields.Count - 1; x++)
                         apKeys.Add(afields[x].Name);
@@ -219,7 +219,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                         }
                         if (Utility.IsEnum(pi.PropertyType.GetElementType()))
                         {
-                            afields.Add(new sTableField(_pool.Translator.GetIntermediateValueFieldName(tbl,pi), "CHILD", _classMaps[pi.PropertyType.GetElementType()].Fields[0].Name, fld.Type, fld.Length, fld.Nullable));
+                            afields.Add(new sTableField(_pool.Translator.GetIntermediateValueFieldName(tbl,pi), "CHILD", _classMaps[pi.PropertyType.GetElementType()].Fields[0].Name, fld.Type, fld.Length, fld.Nullable,null));
                             intermediates.Add(pi.Name, new sTable(itblName, afields.ToArray(),null,
                                 new sTableRelation[] { 
                                     new sTableRelation(tbl.Name,"PARENT",ForeignField.UpdateDeleteAction.CASCADE,ForeignField.UpdateDeleteAction.CASCADE,false),
@@ -228,7 +228,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                         }
                         else
                         {
-                            afields.Add(new sTableField(_pool.Translator.GetIntermediateValueFieldName(tbl, pi), null, null, fld.Type, fld.Length, fld.Nullable));
+                            afields.Add(new sTableField(_pool.Translator.GetIntermediateValueFieldName(tbl, pi), null, null, fld.Type, fld.Length, fld.Nullable,(fld is ComputedField ? ((ComputedField)fld).Code : null)));
                             intermediates.Add(pi.Name, new sTable(itblName, afields.ToArray(),null, null, apKeys.ToArray(), afields[afields.Count - 2].Name));
                         }
                         afields.RemoveAt(afields.Count - 1);
@@ -254,7 +254,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                                 foreach(sTableField f in fields){
                                     if (f.Name == str)
                                     {
-                                        extFields.Add(new sTableField(_pool.Translator.GetIntermediateFieldName(tbl, pi, f.Name, false, conn), "CHILD", f.Name, f.Type, f.Length, f.Nullable));
+                                        extFields.Add(new sTableField(_pool.Translator.GetIntermediateFieldName(tbl, pi, f.Name, false, conn), "CHILD", f.Name, f.Type, f.Length, f.Nullable,f.ComputedCode));
                                         break;
                                     }
                                 }
@@ -275,7 +275,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                             foreach (string str in sExt.PrimaryKeyProperties)
                             {
                                 foreach (sTableField f in sExt[str])
-                                    extFields.Add(new sTableField(_pool.Translator.GetIntermediateFieldName(tbl, pi, f.Name, false, conn), "CHILD", f.Name, f.Type, f.Length, f.Nullable));
+                                    extFields.Add(new sTableField(_pool.Translator.GetIntermediateFieldName(tbl, pi, f.Name, false, conn), "CHILD", f.Name, f.Type, f.Length, f.Nullable,f.ComputedCode));
                             }
                         }
                         intermediates.Add(pi.Name, new sTable(itblName, extFields.ToArray(), null,
@@ -297,10 +297,10 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                 switch (_versionType.Value)
                 {
                     case VersionField.VersionTypes.NUMBER:
-                        vfields.Add(new sTableField(_pool.Translator.GetVersionFieldIDName(tbl, conn), null, null, FieldType.INTEGER, 4, false));
+                        vfields.Add(new sTableField(_pool.Translator.GetVersionFieldIDName(tbl, conn), null, null, FieldType.INTEGER, 4, false,null));
                         break;
                     case VersionField.VersionTypes.DATESTAMP:
-                        vfields.Add(new sTableField(_pool.Translator.GetVersionFieldIDName(tbl, conn), null, null, FieldType.DATETIME, 12, false));
+                        vfields.Add(new sTableField(_pool.Translator.GetVersionFieldIDName(tbl, conn), null, null, FieldType.DATETIME, 12, false,null));
                         break;
                 }
                 vpkeys.Add(vfields[vfields.Count - 1].Name);
@@ -311,7 +311,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                         if (!primaryKeyFields.Contains(stf.Name))
                         {
                             if (Utility.StringsEqual(stf.ClassProperty, pi.Name))
-                                vfields.Add(new sTableField(stf.Name,null,null,stf.Type,stf.Length,stf.Nullable));
+                                vfields.Add(new sTableField(stf.Name,null,null,stf.Type,stf.Length,stf.Nullable,stf.ComputedCode));
                         }
                     }
                 }
@@ -319,7 +319,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                 foreach (sTableField f in fields)
                 {
                     if (vpkeys.Contains(f.Name))
-                        vfields.Add(new sTableField(f.Name,"PARENT",f.Name,f.Type,f.Length,f.Nullable));
+                        vfields.Add(new sTableField(f.Name,"PARENT",f.Name,f.Type,f.Length,f.Nullable,f.ComputedCode));
                 }
                 _versionMaps.Add(tbl, new sTable(vtblName, vfields.ToArray(),null,new sTableRelation[]{new sTableRelation(tblName,"PARENT",ForeignField.UpdateDeleteAction.CASCADE,ForeignField.UpdateDeleteAction.CASCADE,false)}, vpkeys.ToArray(), vfields[vfields.Count - 1].Name));
             }

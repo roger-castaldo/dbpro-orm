@@ -44,13 +44,20 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             get { return _nullable; }
         }
 
-        public sTableField(string name,string classProperty,string externalField,FieldType type,int length,bool nullable){
+        private string _computedCode;
+        public string ComputedCode
+        {
+            get { return _computedCode; }
+        }
+
+        public sTableField(string name,string classProperty,string externalField,FieldType type,int length,bool nullable,string computedCode){
             _name = name;
             _classProperty = classProperty;
             _externalField = externalField;
             _type = type;
             _length = length;
             _nullable = nullable;
+            _computedCode = computedCode;
         }
     }
 

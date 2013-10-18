@@ -20,7 +20,14 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		public FBQueryBuilder(ConnectionPool pool): base(pool)
 		{
 		}
-		
+
+        internal override string CreateColumn(string table, ExtractedFieldMap field)
+        {
+            if (field.ComputedCode != null)
+                return string.Format("ALTER TABLE {0} ADD {1} {2} COMPUTED BY {3}", table, field.FieldName, field.FullFieldType, field.ComputedCode);
+            return base.CreateColumn(table, field);
+        }
+
 		protected override string DropNotNullString {
 			get { return "SELECT 'ALTER TABLE {0} DROP CONSTRAINT '||r.rdb$constraint_name "+
 					"FROM rdb$relation_constraints r, "+
@@ -157,7 +164,8 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 					(CASE WHEN rfr.rdb$null_flag IS null or rfr.rdb$null_flag=0 THEN 'true' else 'false' END) AS NullFlag, 
 					(CASE WHEN (SELECT COUNT(*)  
 					FROM RDB$GENERATORS gens  
-					where (gens.RDB$SYSTEM_FLAG is null or gens.RDB$SYSTEM_FLAG=0) AND gens.RDB$GENERATOR_NAME = 'GEN_'||rfr.rdb$field_name) = 0 THEN 'false' ELSE 'true' END) AS AUTOGEN 
+					where (gens.RDB$SYSTEM_FLAG is null or gens.RDB$SYSTEM_FLAG=0) AND gens.RDB$GENERATOR_NAME = 'GEN_'||rfr.rdb$field_name) = 0 THEN 'false' ELSE 'true' END) AS AUTOGEN,
+                    fld.RDB$COMPUTED_SOURCE AS COMPUTED_CODE 
 					 FROM  
 					rdb$relation_fields rfr  
 					LEFT JOIN rdb$fields fld ON rfr.rdb$field_source = fld.rdb$field_name  
@@ -254,10 +262,14 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 
         internal override string  AlterFieldType(string table, ExtractedFieldMap field, ExtractedFieldMap oldFieldInfo)
         {
-            if ((field.FullFieldType.ToUpper().Contains("BLOB"))||(oldFieldInfo.FullFieldType.ToUpper().Contains("BLOB")))
-                return DropColumn(table, field.FieldName) + ";" + CreateColumn(table, field)+";";
+            if ((field.FullFieldType.ToUpper().Contains("BLOB")) || (oldFieldInfo.FullFieldType.ToUpper().Contains("BLOB")))
+                return DropColumn(table, field.FieldName) + ";" + CreateColumn(table, field) + ";";
             else
-                return base.AlterFieldType(table, field,oldFieldInfo);
+            {
+                if (field.ComputedCode != null)
+                    return string.Format("ALTER TABLE {0} ALTER COLUMN {1} TYPE {2} COMPUTED BY {3}", table, field.FieldName, field.FullFieldType, field.ComputedCode);
+                return base.AlterFieldType(table, field, oldFieldInfo);
+            }
         }
 
         protected override string DropTableIndexString
