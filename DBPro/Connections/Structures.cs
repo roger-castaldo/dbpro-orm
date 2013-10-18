@@ -543,8 +543,9 @@ namespace Org.Reddragonit.Dbpro.Connections
 		private bool _primaryKey;
 		private bool _nullable;
 		private bool _autogen;
+        private string _computedCode;
 		
-		public ExtractedFieldMap(string fieldName,string type, long size, bool primary, bool nullable,bool autogen)
+		public ExtractedFieldMap(string fieldName,string type, long size, bool primary, bool nullable,bool autogen,string computedCode)
 		{
 			_fieldName = fieldName;
 			_type = type;
@@ -565,9 +566,10 @@ namespace Org.Reddragonit.Dbpro.Connections
 			_primaryKey = primary;
 			_nullable = nullable;
 			_autogen=autogen;
+            _computedCode = computedCode;
 		}
 
-		public ExtractedFieldMap(string fieldName, string type, long size, bool primary, bool nullable) : this(fieldName,type,size,primary,nullable,false)
+		public ExtractedFieldMap(string fieldName, string type, long size, bool primary, bool nullable,string computedCode) : this(fieldName,type,size,primary,nullable,false,computedCode)
 		{
 		}
 
@@ -577,6 +579,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		public bool PrimaryKey { get { return _primaryKey; } }
 		public bool Nullable { get { return _nullable; } }
 		public bool AutoGen {get {return _autogen;} set{_autogen=value;}}
+        public string ComputedCode { get { return _computedCode; } }
 		public string FullFieldType{
 			get{
 				if (Type.ToUpper().Contains("CHAR"))

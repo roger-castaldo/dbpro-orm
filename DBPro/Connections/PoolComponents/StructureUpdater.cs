@@ -72,7 +72,8 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                 {
                     etm.Fields.Add(new ExtractedFieldMap(conn[0].ToString(), conn[1].ToString(),
                                                          long.Parse(conn[2].ToString()), bool.Parse(conn[3].ToString()), bool.Parse(conn[4].ToString()),
-                                                         bool.Parse(conn[5].ToString())));
+                                                         bool.Parse(conn[5].ToString()),
+                                                         (conn.IsDBNull(6) ? null : conn[6].ToString())));
                 }
                 conn.Close();
                 conn.ExecuteQuery(conn.queryBuilder.SelectForeignKeys(etm.TableName));
@@ -420,7 +421,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                     if (Utility.IsEnum(type))
                     {
                         foreach (sTableField f in tm.Fields)
-                            etm.Fields.Add(new ExtractedFieldMap(f.Name, conn.TranslateFieldType(f.Type, f.Length), f.Length, tm.AutoGenField == f.Name, false, tm.AutoGenField == f.Name));
+                            etm.Fields.Add(new ExtractedFieldMap(f.Name, conn.TranslateFieldType(f.Type, f.Length), f.Length, tm.AutoGenField == f.Name, false, tm.AutoGenField == f.Name,f.ComputedCode));
                     }
                     else
                     {
@@ -450,7 +451,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                                 sTableRelation? rel = tm.GetRelationForProperty(prop);
                                 foreach (sTableField f in tm[prop])
                                 {
-                                    etm.Fields.Add(new ExtractedFieldMap(f.Name, conn.TranslateFieldType(f.Type, f.Length), f.Length, pProps.Contains(prop), (rel.HasValue ? rel.Value.Nullable : f.Nullable), (tm.AutoGenField != null ? f.Name == tm.AutoGenField : false)));
+                                    etm.Fields.Add(new ExtractedFieldMap(f.Name, conn.TranslateFieldType(f.Type, f.Length), f.Length, pProps.Contains(prop), (rel.HasValue ? rel.Value.Nullable : f.Nullable), (tm.AutoGenField != null ? f.Name == tm.AutoGenField : false),f.ComputedCode));
                                     if (rel.HasValue)
                                         etm.ForeignFields.Add(new ForeignRelationMap(type.Name + "_" + prop, f.Name, rel.Value.ExternalTable, f.ExternalField, rel.Value.OnDelete.ToString(), rel.Value.OnUpdate.ToString()));
                                 }
@@ -463,7 +464,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                                 List<string> piKeys = new List<string>(iMap.PrimaryKeyFields);
                                 foreach (sTableField f in iMap.Fields)
                                 {
-                                    ietm.Fields.Add(new ExtractedFieldMap(f.Name, conn.TranslateFieldType(f.Type, f.Length), f.Length, piKeys.Contains(f.Name), false, (iMap.AutoGenField != null ? iMap.AutoGenField == f.Name : false)));
+                                    ietm.Fields.Add(new ExtractedFieldMap(f.Name, conn.TranslateFieldType(f.Type, f.Length), f.Length, piKeys.Contains(f.Name), false, (iMap.AutoGenField != null ? iMap.AutoGenField == f.Name : false),f.ComputedCode));
                                     if (Utility.StringsEqual("PARENT", f.ClassProperty))
                                         ietm.ForeignFields.Add(new ForeignRelationMap(type.Name + "_" + prop + (_pool.Mapping.IsMappableType(pi.PropertyType.GetElementType()) ? "_intermediate" : ""), f.Name, etm.TableName, f.ExternalField, ForeignField.UpdateDeleteAction.CASCADE.ToString(), ForeignField.UpdateDeleteAction.CASCADE.ToString()));
                                     if (Utility.StringsEqual("CHILD", f.ClassProperty))
@@ -488,7 +489,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                             List<string> vpkeys = new List<string>(tm.PrimaryKeyFields);
                             foreach (sTableField f in vtm.Fields)
                             {
-                                vetm.Fields.Add(new ExtractedFieldMap(f.Name, conn.TranslateFieldType(f.Type, f.Length), f.Length, vpkeys.Contains(f.Name), !vpkeys.Contains(f.Name), vtm.AutoGenField == f.Name));
+                                vetm.Fields.Add(new ExtractedFieldMap(f.Name, conn.TranslateFieldType(f.Type, f.Length), f.Length, vpkeys.Contains(f.Name), !vpkeys.Contains(f.Name), vtm.AutoGenField == f.Name,f.ComputedCode));
                                 if (vpkeys.Contains(f.Name))
                                     vetm.ForeignFields.Add(new ForeignRelationMap(type.Name + "_version", f.Name, tm.Name, f.Name, ForeignField.UpdateDeleteAction.CASCADE.ToString(), ForeignField.UpdateDeleteAction.CASCADE.ToString()));
                             }
@@ -581,7 +582,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                             ptm = new ExtractedTableMap(ptbl.Name);
                             List<string> pkeys = new List<string>(ptbl.PrimaryKeyFields);
                             foreach (sTableField f in ptbl.Fields)
-                                ptm.Fields.Add(new ExtractedFieldMap(f.Name, conn.TranslateFieldType(f.Type, f.Length), f.Length, pkeys.Contains(f.Name), f.Nullable));
+                                ptm.Fields.Add(new ExtractedFieldMap(f.Name, conn.TranslateFieldType(f.Type, f.Length), f.Length, pkeys.Contains(f.Name), f.Nullable,f.ComputedCode));
                         }
                         triggers.AddRange(conn.GetDeleteParentTrigger(etm, ptm));
                     }
@@ -665,7 +666,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                                 if (efm.FieldName == ee.FieldName)
                                 {
                                     foundField = true;
-                                    if (((efm.Type != ee.Type) || (efm.Size != ee.Size)) &&
+                                    if (((efm.Type != ee.Type) || (efm.Size != ee.Size) || !Utility.StringsEqual(ee.ComputedCode,efm.ComputedCode)) &&
                                         !((efm.Type == "BLOB") && (ee.Type == "BLOB")))
                                     {
                                         if (efm.PrimaryKey && ee.PrimaryKey)

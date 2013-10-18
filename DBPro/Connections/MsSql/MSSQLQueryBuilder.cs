@@ -24,32 +24,48 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 		{
 			get
 			{
-				return "SELECT  c.column_name 'name', " +
-					" UPPER(c.data_type) 'type', " +
-					" (CASE WHEN c.character_maximum_length is null then "+
-					" (CASE WHEN UPPER(c.data_type) = 'BIT' THEN 1 "+
-					" WHEN UPPER(c.data_type) = 'DATETIME' OR UPPER(c.data_type) = 'DECIMAL' OR UPPER(c.data_type) = 'FLOAT' OR UPPER(c.data_type) = 'BIGINT' OR UPPER(c.data_type) = 'MONEY' THEN 8  "+
-					" WHEN UPPER(c.data_type) = 'INT' THEN 4 "+
-					" WHEN UPPER(c.data_type) = 'SMALLINT' THEN 2 "+
-					" END) "+
-					" ELSE  "+
-					" (CASE WHEN UPPER(c.data_type)='IMAGE' OR UPPER(c.data_type) = 'TEXT' THEN -1 ELSE c.character_maximum_length END) END) 'length'," +
-					" (CASE WHEN primarys.IsPrimary is null THEN 'false' ELSE 'true' END) as IsPrimary, " +
-					" (CASE WHEN c.is_nullable='NO' THEN 'false' ELSE 'true' END) as IsNullable, " +
-					" (CASE WHEN COLUMNPROPERTY( OBJECT_ID('{0}'),c.column_name,'IsIdentity') = 0 THEN 'false' else 'true' END) as IsIdentity " +
-					" FROM INFORMATION_SCHEMA.COLUMNS c " +
-					" LEFT JOIN (SELECT k.column_name,1 as IsPrimary FROM  " +
-					" INFORMATION_SCHEMA.KEY_COLUMN_USAGE k, INFORMATION_SCHEMA.TABLE_CONSTRAINTS c " +
-					" WHERE  " +
-					" k.table_name = c.table_name " +
-					" AND c.table_name = '{0}' " +
-					" AND k.table_schema = c.table_schema " +
-					" AND k.table_catalog = c.table_catalog " +
-					" AND k.constraint_catalog = c.constraint_catalog " +
-					" AND k.constraint_name = c.constraint_name  " +
-					" AND c.constraint_type = 'PRIMARY KEY') primarys ON  " +
-					" c.column_name = primarys.column_name " +
-					" WHERE c.table_name = '{0}'";
+                return @"SELECT  c.column_name 'name',
+					UPPER(c.data_type) 'type',
+					(CASE WHEN c.character_maximum_length is null then 
+					(CASE WHEN UPPER(c.data_type) = 'BIT' THEN 1 
+					WHEN UPPER(c.data_type) = 'DATETIME' OR UPPER(c.data_type) = 'DECIMAL' OR UPPER(c.data_type) = 'FLOAT' OR UPPER(c.data_type) = 'BIGINT' OR UPPER(c.data_type) = 'MONEY' THEN 8  
+					WHEN UPPER(c.data_type) = 'INT' THEN 4 
+					WHEN UPPER(c.data_type) = 'SMALLINT' THEN 2 
+					END) 
+					ELSE  
+					(CASE WHEN UPPER(c.data_type)='IMAGE' OR UPPER(c.data_type) = 'TEXT' THEN -1 ELSE c.character_maximum_length END) END) 'length',+
+					(CASE WHEN primarys.IsPrimary is null THEN 'false' ELSE 'true' END) as IsPrimary,
+					(CASE WHEN c.is_nullable='NO' THEN 'false' ELSE 'true' END) as IsNullable,
+					(CASE WHEN COLUMNPROPERTY( OBJECT_ID('{0}'),c.column_name,'IsIdentity') = 0 THEN 'false' else 'true' END) as IsIdentity,
+					comCalls.COMPUTED_CODE AS COMPUTED_CODE
+					FROM INFORMATION_SCHEMA.COLUMNS c
+					LEFT JOIN (SELECT k.column_name,1 as IsPrimary FROM 
+					INFORMATION_SCHEMA.KEY_COLUMN_USAGE k, INFORMATION_SCHEMA.TABLE_CONSTRAINTS c
+					WHERE 
+					k.table_name = c.table_name
+					AND c.table_name = '{0}'
+					AND k.table_schema = c.table_schema
+					AND k.table_catalog = c.table_catalog
+					AND k.constraint_catalog = c.constraint_catalog
+					AND k.constraint_name = c.constraint_name 
+					AND c.constraint_type = 'PRIMARY KEY') primarys ON 
+					c.column_name = primarys.column_name
+					LEFT JOIN (
+						SELECT 
+							sysobjects.name AS TableName, 
+							syscolumns.name AS ColumnName,
+							com_cols.definition AS COMPUTED_CODE
+						FROM syscolumns
+							INNER JOIN sysobjects
+							ON syscolumns.id = sysobjects.id
+							AND sysobjects.xtype = 'U',
+							sys.computed_columns com_cols
+						WHERE syscolumns.iscomputed = 1
+						AND syscolumns.id=com_cols.object_id
+						AND syscolumns.name=com_cols.name
+					) comCalls ON c.TABLE_NAME=comCalls.TableName
+					AND c.COLUMN_NAME = comCalls.ColumnName
+					WHERE c.table_name = '{0}'";
 			}
 		}
 
@@ -161,6 +177,20 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 		protected override string DropPrimaryKeyString {
         	get { return "SELECT 'ALTER TABLE ['+OBJECT_NAME(parent_object_id)+'] DROP CONSTRAINT ['+OBJECT_NAME(OBJECT_ID)+']' AS DROP_STRING FROM sys.objects WHERE type_desc = 'PRIMARY_KEY_CONSTRAINT' AND OBJECT_NAME(parent_object_id)="+CreateParameterName("TableName"); }
 		}
+
+        internal override string CreateColumn(string table, ExtractedFieldMap field)
+        {
+            if (field.ComputedCode != null)
+                return string.Format("ALTER TABLE[{0}] ADD {1} AS {2} PERSISTED", table, field.FullFieldType, field.ComputedCode);
+            return base.CreateColumn(table, field);
+        }
+
+        internal override string AlterFieldType(string table, ExtractedFieldMap field, ExtractedFieldMap oldFieldInfo)
+        {
+            if (field.ComputedCode != null)
+                return string.Format("ALTER TABLE[{0}] ALTER COLUMN [{1}] AS {2} PERSISTED", table, field.FullFieldType, field.ComputedCode);
+            return base.AlterFieldType(table, field,oldFieldInfo);
+        }
 
 		internal override string DropPrimaryKey(PrimaryKey key)
 		{

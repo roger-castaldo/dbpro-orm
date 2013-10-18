@@ -52,29 +52,34 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 		{
 			get
 			{
-				return "SELECT UPPER(COLUMN_NAME), "+
-                    " (CASE UPPER(DATA_TYPE) WHEN 'INT' THEN 'INTEGER' ELSE UPPER(DATA_TYPE) END) dtype, " +
-					" (CASE " +
-					"   WHEN CHARACTER_MAXIMUM_LENGTH IS NOT NULL THEN CHARACTER_MAXIMUM_LENGTH " +
-					"   ELSE " +
-					"     (CASE UPPER(DATA_TYPE) " +
-					"       WHEN 'INT' THEN 4 " +
-					"       WHEN 'BIGINT' THEN 8 " +
-					"       WHEN 'TINYINT' THEN 1 " +
-					"       WHEN 'TEXT' THEN -1 " +
-					"       WHEN 'BLOB' THEN -1 " +
-					"       WHEN 'BIT' THEN 1 " +
-					"       WHEN 'FLOAT' THEN 8 " +
-					"       WHEN 'DOUBLE' THEN 8 " +
-					"       WHEN 'DECIMAL' THEN 8 " +
-					"       WHEN 'SMALLINT' THEN 2 " +
-                    "       WHEN 'DATETIME' THEN 8 "+
-					"     END) " +
-					" END) dataLength, " +
-					" (CASE WHEN COLUMN_KEY = 'PRI' THEN 'true' ELSE 'false' END) isPrimary, " +
-					" (CASE WHEN IS_NULLABLE = 'NO' THEN 'false' ELSE 'true' END) isNullable, " +
-					" (CASE WHEN EXTRA LIKE '%auto_increment%' THEN 'true' ELSE 'false' END) isIndentity " +
-					"  from information_schema.COLUMNS WHERE TABLE_SCHEMA='"+((MySqlConnectionPool)pool).DbName+"' AND TABLE_NAME='{0}'";
+                return @"SELECT UPPER(COLUMN_NAME), 
+                    (CASE UPPER(DATA_TYPE) WHEN 'INT' THEN 'INTEGER' ELSE UPPER(DATA_TYPE) END) dtype, 
+					(CASE 
+					  WHEN CHARACTER_MAXIMUM_LENGTH IS NOT NULL THEN CHARACTER_MAXIMUM_LENGTH 
+					  ELSE 
+					    (CASE UPPER(DATA_TYPE) 
+					      WHEN 'INT' THEN 4 
+					      WHEN 'BIGINT' THEN 8 
+					      WHEN 'TINYINT' THEN 1 
+					      WHEN 'TEXT' THEN -1 
+					      WHEN 'BLOB' THEN -1 
+					      WHEN 'BIT' THEN 1 
+					      WHEN 'FLOAT' THEN 8 
+					      WHEN 'DOUBLE' THEN 8 
+					      WHEN 'DECIMAL' THEN 8 
+					      WHEN 'SMALLINT' THEN 2 
+                          WHEN 'DATETIME' THEN 8 
+					    END) 
+					END) dataLength, 
+					(CASE WHEN COLUMN_KEY = 'PRI' THEN 'true' ELSE 'false' END) isPrimary, 
+					(CASE WHEN IS_NULLABLE = 'NO' THEN 'false' ELSE 'true' END) isNullable, 
+					(CASE WHEN EXTRA LIKE '%auto_increment%' THEN 'true' ELSE 'false' END) isIndentity,
+        (SELECT SUBSTR(ACTION_STATEMENT,INSTR(ACTION_STATEMENT,CONCAT('NEW.',information_schema.COLUMNS.COLUMN_NAME)))
+					from information_schema.TRIGGERS 
+					WHERE TRIGGER_SCHEMA=information_schema.COLUMNS.TABLE_SCHEMA AND information_schema.TRIGGERS.TRIGGER_NAME = CONCAT('{0}_',information_schema.COLUMNS.COLUMN_NAME,'_UPDATE') ) code
+					from information_schema.TRIGGERS 
+					WHERE TRIGGER_SCHEMA=information_schema.TABLE_SCHEMA AND information_schema.TRIGGERS.TRIGGER_NAME = CONCAT('{0}_',information_schema.COLUMN,'_UPDATE') ) code
+					 from information_schema.COLUMNS WHERE TABLE_SCHEMA='" + ((MySqlConnectionPool)pool).DbName+"' AND TABLE_NAME='{0}'";
 			}
 		}
 
@@ -101,11 +106,11 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 		protected override string SelectTriggersString {
 			get
 			{
-				return "SELECT TRIGGER_NAME, "+
-					" UPPER(CONCAT(ACTION_TIMING,' ',EVENT_MANIPULATION,' ON ',EVENT_OBJECT_TABLE)) comm_string, "+
-					" CONCAT('FOR EACH ROW ',ACTION_STATEMENT) code "+
-					" from information_schema.TRIGGERS "+
-					" WHERE TRIGGER_SCHEMA='"+((MySqlConnectionPool)pool).DbName+"'";
+				return @"SELECT TRIGGER_NAME, 
+					UPPER(CONCAT(ACTION_TIMING,' ',EVENT_MANIPULATION,' ON ',EVENT_OBJECT_TABLE)) comm_string, 
+					CONCAT('FOR EACH ROW ',ACTION_STATEMENT) code 
+					from information_schema.TRIGGERS 
+					WHERE TRIGGER_SCHEMA='"+((MySqlConnectionPool)pool).DbName+"'";
 			}
 		}
 		
@@ -233,11 +238,52 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 			get { return "ALTER TABLE {0} MODIFY COLUMN {1} {2} {3} NULL";}
 		}
 
+        private const string _CREATE_COMPUTED_TRIGGERS = @"DELIMITER |
+
+CREATE TRIGGER {0}_{1}_insert BEFORE INSERT ON {0}
+  FOR EACH ROW BEGIN
+    SET NEW.{1} = {2};
+  END;
+|
+
+CREATE TRIGGER {0}_{1}_update BEFORE UPDATE ON {0}
+  FOR EACH ROW BEGIN
+    SET NEW.{1} = {2};
+  END;
+|
+
+DELIMITER ;";
+
         internal override string AlterFieldType(string table, ExtractedFieldMap field, ExtractedFieldMap oldFieldInfo)
         {
+            string ret = "";
             if (!field.Nullable)
-                return string.Format(AlterFieldTypeString, table, field.FieldName, field.FullFieldType, "NOT");
-            return string.Format(AlterFieldTypeString, table, field.FieldName, field.FullFieldType, "");
+                ret = string.Format(AlterFieldTypeString, table, field.FieldName, field.FullFieldType, "NOT");
+            else
+                ret = string.Format(AlterFieldTypeString, table, field.FieldName, field.FullFieldType, "");
+            if (field.ComputedCode!=null)
+            {
+                if (oldFieldInfo.ComputedCode != null)
+                {
+                    if (oldFieldInfo.ComputedCode != field.ComputedCode)
+                    {
+                        ret += "\n" + this.DropTrigger(table + "_" + field.FieldName + "_UPDATE") + "\n" + this.DropTrigger(table + "_" + field.FieldName + "_DELETE");
+                        ret += "\n" + string.Format(_CREATE_COMPUTED_TRIGGERS, table, field.FieldName, field.ComputedCode);
+                    }
+                }
+                else
+                    ret += "\n" + string.Format(_CREATE_COMPUTED_TRIGGERS, table, field.FieldName, field.ComputedCode);
+
+            }else if (oldFieldInfo.ComputedCode!=null)
+                ret += "\n" + this.DropTrigger(table + "_" + field.FieldName + "_UPDATE") + "\n" + this.DropTrigger(table + "_" + field.FieldName + "_DELETE");
+            return ret;
+        }
+
+        internal override string CreateColumn(string table, ExtractedFieldMap field)
+        {
+            if (field.ComputedCode!=null)
+                return base.CreateColumn(table, field) + "\n" + string.Format(_CREATE_COMPUTED_TRIGGERS, table, field.FieldName, field.ComputedCode);
+            return base.CreateColumn(table, field);
         }
 
         protected override string CreateTableIndexString
@@ -327,7 +373,7 @@ AND rtns.ROUTINE_NAME = prc.`NAME`";
             List<string> pkeys = new List<string>(tbl.PrimaryKeyFields);
             foreach (sTableField fld in tbl.Fields){
                 if (fld.Name == fieldName){
-                    ExtractedFieldMap efm = new ExtractedFieldMap(fieldName, MySqlConnection._TranslateFieldType(fld.Type, fld.Length), fld.Length, pkeys.Contains(fieldName), fld.Nullable);
+                    ExtractedFieldMap efm = new ExtractedFieldMap(fieldName, MySqlConnection._TranslateFieldType(fld.Type, fld.Length), fld.Length, pkeys.Contains(fieldName), fld.Nullable,fld.ComputedCode);
                     return string.Format(
                         AlterFieldType(tableName,efm,efm)+(tbl.AutoGenField==fld.Name && pkeys.Count==1 ? " AUTO_INCREMENT ":"")+" COMMENT '{0}'",
                             description.Replace("'", "''")

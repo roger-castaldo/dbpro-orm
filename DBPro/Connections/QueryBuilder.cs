@@ -526,9 +526,9 @@ namespace Org.Reddragonit.Dbpro.Connections
 		#endregion
 		
 		#region TableAltering
-		internal string CreateColumn(string table,ExtractedFieldMap field)
+		internal virtual string CreateColumn(string table,ExtractedFieldMap field)
 		{
-			return string.Format(CreateColumnString,table,field.FieldName,field.FullFieldType);
+			return string.Format(CreateColumnString,table,field.FieldName,field.FullFieldType,field.ComputedCode);
 		}
 		
 		internal virtual string AlterFieldType(string table, ExtractedFieldMap field,ExtractedFieldMap oldFieldInfo)
