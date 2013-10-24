@@ -5,11 +5,14 @@ using System.Reflection;
 using Org.Reddragonit.Dbpro.Connections.ClassSQL;
 using Org.Reddragonit.Dbpro.Structure.Attributes;
 using Org.Reddragonit.Dbpro.Virtual;
+using Org.Reddragonit.Dbpro.Connections.MsSql;
 
 namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 {
     internal class StructureUpdater
     {
+        private const string _COMMIT_STRING = "COMMIT;";
+
         private List<Type> _createdTypes;
         public List<Type> CreatedTypes
         {
@@ -542,11 +545,18 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                     }
                 }
             }
-            foreach (ExtractedTableMap etm in tables)
+            for(int x=0;x<tables.Count;x++)
             {
+                ExtractedTableMap etm = tables[x];
                 Logger.LogLine(etm.TableName + ":");
                 foreach (ExtractedFieldMap efm in etm.Fields)
                     Logger.LogLine("\t" + efm.FieldName + " - " + efm.PrimaryKey.ToString());
+                if (conn is MsSqlConnection)
+                {
+                    ((MsSqlConnection)conn).MaskComplicatedRelations(x, ref tables, ref triggers);
+                    if (tmpTriggers != null)
+                        triggers.AddRange(tmpTriggers);
+                }
                 if (!_pool.Mapping.IsVersionTable(etm.TableName))
                 {
                     foreach (ExtractedFieldMap efm in etm.PrimaryKeys)
@@ -612,9 +622,24 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
         {
             List<string> ret = new List<string>();
 
+            List<string> alteredTables = new List<string>();
+            foreach (ExtractedTableMap map in tables)
+            {
+                foreach (ExtractedTableMap cmap in _tables)
+                {
+                    if (map.TableName == cmap.TableName)
+                    {
+                        if (map.ToString() != cmap.ToString())
+                            alteredTables.Add(map.TableName);
+                        break;
+                    }
+                }
+            }
+
             List<Trigger> dropTriggers = new List<Trigger>();
             List<Trigger> createTriggers = new List<Trigger>();
             List<StoredProcedure> createProcedures = new List<StoredProcedure>();
+            List<StoredProcedure> dropProcedures = new List<StoredProcedure>();
             List<StoredProcedure> updateProcedures = new List<StoredProcedure>();
             List<Generator> createGenerators = new List<Generator>();
             List<string> constraintDrops = new List<string>();
@@ -632,9 +657,11 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
             _ExtractPrimaryKeyCreationsDrops(tables, out primaryKeyDrops, out primaryKeyCreations);
 
-            _CompareTriggers(triggers, out dropTriggers, out createTriggers);
+            _CompareViews(views, alteredTables, out createViews, out dropViews);
 
-            _CompareStoredProcedures(procedures, out createProcedures, out updateProcedures);
+            _CompareStoredProcedures(procedures, alteredTables,dropViews, out createProcedures, out updateProcedures,out dropProcedures);
+
+            _CompareTriggers(triggers,alteredTables,dropViews,dropProcedures, out dropTriggers, out createTriggers);
 
             _CompareGenerators(generators, out createGenerators);
 
@@ -646,10 +673,10 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
             _ExtractIndexCreationsDrops(tables, out dropIndexes, out createIndexes);
 
-            _CompareViews(views, out createViews, out dropViews);
-
             List<string> tableCreations = new List<string>();
             List<string> tableAlterations = new List<string>();
+            List<string> computedFieldDeletions = new List<string>();
+            List<string> computedFieldAdditions = new List<string>();
 
             foreach (ExtractedTableMap map in tables)
             {
@@ -666,51 +693,70 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                                 if (efm.FieldName == ee.FieldName)
                                 {
                                     foundField = true;
-                                    if (((efm.Type != ee.Type) || (efm.Size != ee.Size) || !Utility.StringsEqual(ee.ComputedCode,efm.ComputedCode)) &&
-                                        !((efm.Type == "BLOB") && (ee.Type == "BLOB")))
+                                    if (efm.ComputedCode != null)
                                     {
-                                        if (efm.PrimaryKey && ee.PrimaryKey)
+                                        if ((efm.Type != ee.Type) || (efm.Size != ee.Size) || !Utility.StringsEqualIgnoreWhitespace(efm.ComputedCode,ee.ComputedCode))
                                         {
-                                            primaryKeyDrops.Add(new PrimaryKey(map));
-                                            primaryKeyCreations.Add(new PrimaryKey(map));
+                                            computedFieldDeletions.Add(conn.queryBuilder.DropColumn(map.TableName, efm.FieldName));
+                                            computedFieldAdditions.Add(conn.queryBuilder.CreateColumn(map.TableName, efm));
                                         }
-                                        else 
-                                        {
-                                            foreach (ForeignRelationMap frms in _tables[x].ForeignFields)
-                                            {
-                                                if (frms.InternalField == efm.FieldName)
-                                                {
-                                                    foreignKeyDrops.Add(new ForeignKey(_tables[x], frms.ExternalTable, frms.ID));
-                                                    foreignKeyCreations.Add(new ForeignKey(_tables[x], frms.ExternalTable, frms.ID));
-                                                    break;
-                                                }
-                                            }
-                                        }
-                                        tableAlterations.Add(conn.queryBuilder.AlterFieldType(map.TableName, efm, ee));
                                     }
-                                    if (efm.Nullable != ee.Nullable)
+                                    else
                                     {
-                                        if (efm.PrimaryKey && ee.PrimaryKey)
+                                        if (((efm.Type != ee.Type) || (efm.Size != ee.Size)) &&
+                                            !((efm.Type == "BLOB") && (ee.Type == "BLOB")))
                                         {
-                                            primaryKeyDrops.Add(new PrimaryKey(map));
-                                            primaryKeyCreations.Add(new PrimaryKey(map));
-                                        }
-                                        else
-                                        {
-                                            foreach (ForeignRelationMap frms in _tables[x].ForeignFields)
+                                            if (efm.PrimaryKey && ee.PrimaryKey)
                                             {
-                                                if (frms.InternalField == efm.FieldName)
+                                                primaryKeyDrops.Add(new PrimaryKey(map));
+                                                primaryKeyCreations.Add(new PrimaryKey(map));
+                                            }
+                                            else
+                                            {
+                                                foreach (ForeignRelationMap frms in _tables[x].ForeignFields)
                                                 {
-                                                    foreignKeyDrops.Add(new ForeignKey(_tables[x], frms.ExternalTable, frms.ID));
-                                                    foreignKeyCreations.Add(new ForeignKey(_tables[x], frms.ExternalTable, frms.ID));
-                                                    break;
+                                                    if (frms.InternalField == efm.FieldName)
+                                                    {
+                                                        foreignKeyDrops.Add(new ForeignKey(_tables[x], frms.ExternalTable, frms.ID));
+                                                        foreignKeyCreations.Add(new ForeignKey(_tables[x], frms.ExternalTable, frms.ID));
+                                                        break;
+                                                    }
                                                 }
                                             }
+                                            foreach (ExtractedFieldMap cefm in _tables[x].GetComputedFieldsForField(efm.FieldName))
+                                                computedFieldDeletions.Add(conn.queryBuilder.DropColumn(map.TableName, cefm.FieldName));
+                                            tableAlterations.Add(conn.queryBuilder.AlterFieldType(map.TableName, efm, ee));
+                                            foreach (ExtractedFieldMap cefm in map.GetComputedFieldsForField(efm.FieldName))
+                                                computedFieldAdditions.Add(conn.queryBuilder.CreateColumn(map.TableName, cefm));
                                         }
-                                        if (!efm.Nullable)
-                                            constraintCreations.Add(conn.queryBuilder.CreateNullConstraint(map.TableName, efm));
-                                        else
-                                            constraintDrops.Add(conn.queryBuilder.DropNullConstraint(map.TableName, efm));
+                                        if (efm.Nullable != ee.Nullable)
+                                        {
+                                            foreach (ExtractedFieldMap cefm in _tables[x].GetComputedFieldsForField(efm.FieldName))
+                                                computedFieldDeletions.Add(conn.queryBuilder.DropColumn(map.TableName, cefm.FieldName));
+                                            foreach (ExtractedFieldMap cefm in map.GetComputedFieldsForField(efm.FieldName))
+                                                computedFieldAdditions.Add(conn.queryBuilder.CreateColumn(map.TableName, cefm));
+                                            if (efm.PrimaryKey && ee.PrimaryKey)
+                                            {
+                                                primaryKeyDrops.Add(new PrimaryKey(map));
+                                                primaryKeyCreations.Add(new PrimaryKey(map));
+                                            }
+                                            else
+                                            {
+                                                foreach (ForeignRelationMap frms in _tables[x].ForeignFields)
+                                                {
+                                                    if (frms.InternalField == efm.FieldName)
+                                                    {
+                                                        foreignKeyDrops.Add(new ForeignKey(_tables[x], frms.ExternalTable, frms.ID));
+                                                        foreignKeyCreations.Add(new ForeignKey(_tables[x], frms.ExternalTable, frms.ID));
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                            if (!efm.Nullable)
+                                                constraintCreations.Add(conn.queryBuilder.CreateNullConstraint(map.TableName, efm));
+                                            else
+                                                constraintDrops.Add(conn.queryBuilder.DropNullConstraint(map.TableName, efm));
+                                        }
                                     }
                                     break;
                                 }
@@ -777,93 +823,104 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             _CleanUpForeignKeys(ref foreignKeyCreations);
 
             List<string> alterations = new List<string>();
-            foreach (View vw in dropViews)
-                alterations.Add(conn.queryBuilder.DropView(vw.Name));
-            alterations.Add(" COMMIT;");
-
-            //add drops to alterations
-            alterations.AddRange(constraintDrops);
-            alterations.Add(" COMMIT;");
 
             foreach (Trigger trig in dropTriggers)
                 alterations.Add(conn.queryBuilder.DropTrigger(trig.Name));
-            alterations.Add(" COMMIT;");
+            alterations.Add(_COMMIT_STRING);
+
+            foreach (StoredProcedure sp in dropProcedures)
+                alterations.Add(conn.queryBuilder.DropProcedure(sp.ProcedureName));
+            alterations.Add(_COMMIT_STRING);
+
+            foreach (View vw in dropViews)
+                alterations.Add(conn.queryBuilder.DropView(vw.Name));
+            alterations.Add(_COMMIT_STRING);
+
+            //add drops to alterations
+            alterations.AddRange(constraintDrops);
+            alterations.Add(_COMMIT_STRING);
 
             foreach (string str in dropIndexes.Keys)
             {
                 foreach (Index ind in dropIndexes[str])
                     alterations.Add(conn.queryBuilder.DropTableIndex(str, ind.Name));
             }
-            alterations.Add(" COMMIT;");
+            alterations.Add(_COMMIT_STRING);
 
             foreach (ForeignKey fk in foreignKeyDrops)
                 alterations.Add(conn.queryBuilder.DropForeignKey(fk.InternalTable, fk.ExternalTable, fk.ExternalFields[0], fk.InternalFields[0]));
-            alterations.Add(" COMMIT;");
+            alterations.Add(_COMMIT_STRING);
 
             foreach (PrimaryKey pk in primaryKeyDrops)
             {
                 foreach (string field in pk.Fields)
                     alterations.Add(conn.queryBuilder.DropPrimaryKey(pk));
             }
-            alterations.Add(" COMMIT;");
+            alterations.Add(_COMMIT_STRING);
+
+            alterations.AddRange(computedFieldDeletions);
+            alterations.Add(_COMMIT_STRING);
 
             alterations.AddRange(tableAlterations);
-            alterations.Add(" COMMIT;");
+            alterations.Add(_COMMIT_STRING);
 
             alterations.AddRange(tableCreations);
-            alterations.Add(" COMMIT;");
-
-            foreach (View vw in createViews)
-                alterations.Add(conn.queryBuilder.CreateView(vw));
-            alterations.Add(" COMMIT;");
+            alterations.Add(_COMMIT_STRING);
 
             //add creations to alterations
             alterations.AddRange(constraintCreations);
-            alterations.Add(" COMMIT;");
+            alterations.Add(_COMMIT_STRING);
+
+            alterations.AddRange(computedFieldAdditions);
+            alterations.Add(_COMMIT_STRING);
+
+            foreach (View vw in createViews)
+                alterations.Add(conn.queryBuilder.CreateView(vw));
+            alterations.Add(_COMMIT_STRING);
 
             foreach (PrimaryKey pk in primaryKeyCreations)
                 alterations.Add(conn.queryBuilder.CreatePrimaryKey(pk));
-            alterations.Add(" COMMIT;");
+            alterations.Add(_COMMIT_STRING);
 
             foreach (ForeignKey fk in foreignKeyCreations)
                 alterations.Add(conn.queryBuilder.CreateForeignKey(fk));
-            alterations.Add(" COMMIT;");
+            alterations.Add(_COMMIT_STRING);
 
             foreach (string str in createIndexes.Keys)
             {
                 foreach (Index ind in createIndexes[str])
                     alterations.Add(conn.queryBuilder.CreateTableIndex(str, ind.Fields, ind.Name, ind.Unique, ind.Ascending));
             }
-            alterations.Add(" COMMIT;");
+            alterations.Add(_COMMIT_STRING);
 
             foreach (StoredProcedure proc in updateProcedures)
                 alterations.Add(conn.queryBuilder.UpdateProcedure(proc));
-            alterations.Add(" COMMIT;");
+            alterations.Add(_COMMIT_STRING);
 
             foreach (StoredProcedure proc in createProcedures)
                 alterations.Add(conn.queryBuilder.CreateProcedure(proc));
-            alterations.Add(" COMMIT;");
+            alterations.Add(_COMMIT_STRING);
 
             foreach (Generator gen in createGenerators)
             {
                 alterations.Add(conn.queryBuilder.CreateGenerator(gen.Name));
                 alterations.Add(conn.queryBuilder.SetGeneratorValue(gen.Name, gen.Value));
             }
-            alterations.Add(" COMMIT;");
+            alterations.Add(_COMMIT_STRING);
 
             foreach (Trigger trig in createTriggers)
             {
                 alterations.Add(conn.queryBuilder.CreateTrigger(trig));
             }
-            alterations.Add(" COMMIT;");
+            alterations.Add(_COMMIT_STRING);
 
             foreach (IdentityField idf in createIdentities)
                 alterations.Add(conn.queryBuilder.CreateIdentityField(idf));
-            alterations.Add(" COMMIT;");
+            alterations.Add(_COMMIT_STRING);
 
             foreach (IdentityField idf in setIdentities)
                 alterations.Add(conn.queryBuilder.SetIdentityFieldValue(idf));
-            alterations.Add(" COMMIT;");
+            alterations.Add(_COMMIT_STRING);
 
             for (int x = 0; x < alterations.Count; x++)
             {
@@ -887,7 +944,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                 }
             }
 
-            Utility.RemoveDuplicateStrings(ref alterations, new string[] { " COMMIT;" });
+            Utility.RemoveDuplicateStrings(ref alterations, new string[] { _COMMIT_STRING });
             for (int x = 0; x < alterations.Count; x++)
             {
                 if (x + 1 < alterations.Count)
@@ -900,9 +957,9 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                 }
             }
 
-            if (!Utility.OnlyContains(alterations,new string[]{"COMMIT;"}))
+            if (!Utility.OnlyContains(alterations,new string[]{_COMMIT_STRING}))
             {
-                if (alterations[0].Trim() == "COMMIT;")
+                if (alterations[0].Trim() == _COMMIT_STRING)
                     alterations.RemoveAt(0);
                 try
                 {
@@ -922,9 +979,9 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                         {
                             if (str.Length > 0)
                             {
-                                if (str == " COMMIT;")
+                                if (str == _COMMIT_STRING)
                                     conn.Commit();
-                                else if (str.EndsWith(" COMMIT;"))
+                                else if (str.EndsWith(_COMMIT_STRING))
                                 {
                                     conn.ExecuteNonQuery(str.Substring(0, str.Length - 8));
                                     conn.Commit();
@@ -943,7 +1000,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                 }
             }
             conn.Commit();
-
+            conn.Reset();
             _pool.Translator.ApplyAllDescriptions(tables, triggers, generators, identities, views, procedures,conn);
             conn.Commit();
 
@@ -985,7 +1042,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             }
         }
 
-        private void _CompareViews(List<View> views, out List<View> createViews, out List<View> dropViews)
+        private void _CompareViews(List<View> views,List<string> alteredTables, out List<View> createViews, out List<View> dropViews)
         {
             createViews = new List<View>();
             dropViews = new List<View>();
@@ -1002,6 +1059,18 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                         {
                             dropViews.Add(views[x]);
                             createViews.Add(views[x]);
+                        }
+                        else
+                        {
+                            foreach (string str in alteredTables)
+                            {
+                                if (views[x].Query.Contains(str))
+                                {
+                                    dropViews.Add(views[x]);
+                                    createViews.Add(views[x]);
+                                    break;
+                                }
+                            }
                         }
                         _views.RemoveAt(y);
                         break;
@@ -1089,8 +1158,8 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                         && (idf.FieldType == _identities[x].FieldType))
                     {
                         create = false;
-                        if (idf.CurValue != _identities[x].CurValue)
-                            setIdentities.Add(idf);
+                        //if (idf.CurValue != _identities[x].CurValue && idf.CurValue != "" && idf.CurValue != "1")
+                        //    setIdentities.Add(idf);
                         _identities.RemoveAt(x);
                         break;
                     }
@@ -1279,10 +1348,11 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             }
         }
 
-        private void _CompareStoredProcedures(List<StoredProcedure> procedures, out List<StoredProcedure> createProcedures, out List<StoredProcedure> updateProcedures)
+        private void _CompareStoredProcedures(List<StoredProcedure> procedures,List<string> alteredTables,List<View> droppedViews, out List<StoredProcedure> createProcedures, out List<StoredProcedure> updateProcedures,out List<StoredProcedure> dropProcedures)
         {
             createProcedures = new List<StoredProcedure>();
             updateProcedures = new List<StoredProcedure>();
+            dropProcedures = new List<StoredProcedure>();
 
             foreach (StoredProcedure proc in procedures)
             {
@@ -1297,6 +1367,31 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                             || !Utility.StringsEqualIgnoreWhitespace(proc.ParameterLines, _procedures[x].ParameterLines)
                             || !Utility.StringsEqualIgnoreWhitespace(proc.Code, _procedures[x].Code))
                             updateProcedures.Add(proc);
+                        else {
+                            bool checkViews = true;
+                            foreach (string str in alteredTables)
+                            {
+                                if (proc.Code.Contains(str))
+                                {
+                                    dropProcedures.Add(proc);
+                                    createProcedures.Add(proc);
+                                    checkViews = false;
+                                    break;
+                                }
+                            }
+                            if (checkViews)
+                            {
+                                foreach (View vw in droppedViews)
+                                {
+                                    if (proc.Code.Contains(vw.Name))
+                                    {
+                                        dropProcedures.Add(proc);
+                                        createProcedures.Add(proc);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
                         if (!_pool.IsCoreStoredProcedure(_procedures[x]))
                             _procedures.RemoveAt(x);
                     }
@@ -1306,7 +1401,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             }
         }
 
-        private void _CompareTriggers(List<Trigger> triggers, out List<Trigger> dropTriggers, out List<Trigger> createTriggers)
+        private void _CompareTriggers(List<Trigger> triggers,List<string> alteredTables,List<View> dropViews,List<StoredProcedure> dropProcedures, out List<Trigger> dropTriggers, out List<Trigger> createTriggers)
         {
             createTriggers = new List<Trigger>();
             dropTriggers = new List<Trigger>();
@@ -1321,7 +1416,42 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                             || !Utility.StringsEqualIgnoreCaseWhitespace(t.Code, _triggers[y].Code))
                             dropTriggers.Add(_triggers[y]);
                         else
+                        {
                             create = false;
+                            foreach (string tbl in alteredTables)
+                            {
+                                if (t.Conditions.Contains(tbl) || t.Code.Contains(tbl))
+                                {
+                                    create = true;
+                                    dropTriggers.Add(_triggers[y]);
+                                    break;
+                                }
+                            }
+                            if (!create)
+                            {
+                                foreach (View vw in dropViews)
+                                {
+                                    if (t.Conditions.Contains(vw.Name) || t.Code.Contains(vw.Name))
+                                    {
+                                        create = true;
+                                        dropTriggers.Add(_triggers[y]);
+                                        break;
+                                    }
+                                }
+                            }
+                            if (!create)
+                            {
+                                foreach (StoredProcedure sp in dropProcedures)
+                                {
+                                    if (t.Conditions.Contains(sp.ProcedureName) || t.Conditions.Contains(sp.ProcedureName))
+                                    {
+                                        create = false;
+                                        dropTriggers.Add(_triggers[y]);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
                         _triggers.RemoveAt(y);
                         break;
                     }

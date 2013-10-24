@@ -1837,22 +1837,31 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS);
                         if (pi == null)
                             pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS_WITH_INHERITANCE);
-                        if (_pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) && !Utility.IsEnum(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType))
+                        if (pi == null && field.Type == TokenType.NUMBER)
                         {
-                            ret = "";
-                            if (ordinal != -1)
-                            {
-                                _tableFieldCounts.Add(ordinal, fieldList[field.Value].Count);
-                                _tableFields.Add(fieldAlias, (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType));
-                            }
-                            foreach (string str in fieldList[field.Value])
-                            {
-                                ret += field.Value.Replace(".", "_") + "." + str + " AS " + _pool.WrapAlias(fieldAlias + "_" + str) + ", ";
-                            }
+                            ret = field.Value;
+                            tableAlias = "";
+                            fieldAlias = "";
                         }
                         else
                         {
-                            ret = TranslateParentFieldName(tableAlias, fieldName, t,ordinal);
+                            if (_pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) && !Utility.IsEnum(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType))
+                            {
+                                ret = "";
+                                if (ordinal != -1)
+                                {
+                                    _tableFieldCounts.Add(ordinal, fieldList[field.Value].Count);
+                                    _tableFields.Add(fieldAlias, (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType));
+                                }
+                                foreach (string str in fieldList[field.Value])
+                                {
+                                    ret += field.Value.Replace(".", "_") + "." + str + " AS " + _pool.WrapAlias(fieldAlias + "_" + str) + ", ";
+                                }
+                            }
+                            else
+                            {
+                                ret = TranslateParentFieldName(tableAlias, fieldName, t, ordinal);
+                            }
                         }
 					}
 				}

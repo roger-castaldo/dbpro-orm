@@ -263,7 +263,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
             }
         }
 
-        protected override string CreateProcedureString
+        protected override string CreateProcedureStringWithReturn
         {
             get
             {
@@ -271,11 +271,27 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
             }
         }
 
-        protected override string UpdateProcedureString
+        protected override string UpdateProcedureStringWithReturn
         {
             get
             {
                 return "REPLACE FUNCTION {0} ({1}) RETURNS {2} AS $$ {3} BEGIN {4} END; $$";
+            }
+        }
+
+        protected override string CreateProcedureString
+        {
+            get
+            {
+                return "CREATE FUNCTION {0} ({1}) AS $$ {2} BEGIN {3} END; $$";
+            }
+        }
+
+        protected override string UpdateProcedureString
+        {
+            get
+            {
+                return "REPLACE FUNCTION {0} ({1}) AS $$ {2} BEGIN {3} END; $$";
             }
         }
 

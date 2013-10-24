@@ -8,6 +8,7 @@ using VersionTypes = Org.Reddragonit.Dbpro.Structure.Attributes.VersionField.Ver
 using System.Reflection;
 using System.Xml;
 using System.IO;
+using Org.Reddragonit.Dbpro.Structure.Attributes;
 
 namespace Org.Reddragonit.Dbpro.Connections.MsSql
 {
@@ -47,6 +48,10 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 		internal override void GetAddAutogen(ExtractedTableMap map, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers,out List<StoredProcedure> procedures)
 		{
             Type t = Pool.Mapping[map.TableName];
+            PropertyInfo pi = Pool.Mapping[map.TableName, map.PrimaryKeys[0].FieldName];
+            bool imediate = t == null;
+            if (imediate)
+                t = Pool.Mapping.GetTypeForIntermediateTable(map.TableName, out pi);
 			identities=new List<IdentityField>();
 			generators=null;
 			triggers = new List<Trigger>();
@@ -75,7 +80,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 			primarys = primarys.Substring(0,primarys.Length-4);
 			if (field.Type.ToUpper().Contains("DATE")||field.Type.ToUpper().Contains("TIME"))
 			{
-				triggers.Add(new Trigger(Pool.Translator.GetInsertTriggerName(t,this),
+				triggers.Add(new Trigger((imediate ? Pool.Translator.GetInsertIntermediateTriggerName(t,pi,this) : Pool.Translator.GetInsertTriggerName(t,this)),
 				                         "ON "+map.TableName+" INSTEAD OF INSERT\n",
 				                         "AS "+
 				                         "BEGIN SET NOCOUNT ON;\n"+
@@ -108,7 +113,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 					code+="\tSET "+queryBuilder.CreateParameterName(field.FieldName)+" = -1;\n";
 					code+="INSERT INTO "+map.TableName+"("+field.FieldName+fields+") SELECT "+queryBuilder.CreateParameterName(field.FieldName)+"+1"+fields.Replace(",",",tbl.")+" from INSERTED ins,"+map.TableName+" tbl WHERE "+primarys+";\n";
 					code+="END";
-					triggers.Add(new Trigger(Pool.Translator.GetInsertTriggerName(t,this),"ON "+map.TableName+" INSTEAD OF INSERT\n",code));
+                    triggers.Add(new Trigger((imediate ? Pool.Translator.GetInsertIntermediateTriggerName(t, pi, this) : Pool.Translator.GetInsertTriggerName(t, this)), "ON " + map.TableName + " INSTEAD OF INSERT\n", code));
 				}
             }
             else if (field.Type.ToUpper().Contains("VARCHAR")){
@@ -121,22 +126,22 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
                         proc.ChildNodes[3].InnerText,
                         proc.ChildNodes[4].InnerText));
                 string code = "AS \n";
-                code += "DECLARE @IDVAL VARCHAR(38),\n" +
-                "@cnt BIGINT;\n" +
-                "SET @cnt = 1;\n" +
-                "WHILE (@cnt>0)\n" +
-                "BEGIN\n" +
-                "	SET @IDVAL = (SELECT [dbo].[Org_Reddragonit_Dbpro_Connections_MsSql_GeneateUniqueID] (\n" +
-                "		   CEILING(RAND( (DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()) )*((DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()))*(Year(GetDate())*Month(GetDate())*Day(GetDate())*RAND()))\n" +
-                "		  ,CEILING(RAND( (DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()) )*((DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()))*(Year(GetDate())*Month(GetDate())*Day(GetDate())*RAND()))\n" +
-                "		  ,CEILING(RAND( (DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()) )*((DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()))*(Year(GetDate())*Month(GetDate())*Day(GetDate())*RAND()))\n" +
-                "		  ,CEILING(RAND( (DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()) )*((DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()))*(Year(GetDate())*Month(GetDate())*Day(GetDate())*RAND()))\n" +
-                "		  ,CEILING(RAND( (DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()) )*((DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()))*(Year(GetDate())*Month(GetDate())*Day(GetDate())*RAND()))));\n" +
-                "	SET @cnt = (SELECT COUNT(*) FROM " + map.TableName + " WHERE " + field.FieldName + " = @IDVAL);\n" +
-                "END\n" +
-                "INSERT INTO " + map.TableName + "(" + field.FieldName + fields + ") SELECT @IDVAL" + fields.Replace(",", ",tbl.") + " from INSERTED ins;\n" +
-                "END";
-                triggers.Add(new Trigger(Pool.Translator.GetInsertTriggerName(t,this),
+                code += string.Format(@"DECLARE @IDVAL VARCHAR(38),
+                @cnt BIGINT;
+                SET @cnt = 1;
+                WHILE (@cnt>0)
+                BEGIN
+                	SET @IDVAL = (SELECT [dbo].[Org_Reddragonit_Dbpro_Connections_MsSql_GeneateUniqueID] (
+                		   CEILING(RAND( (DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()) )*((DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()))*(Year(GetDate())*Month(GetDate())*Day(GetDate())*RAND()))
+                		  ,CEILING(RAND( (DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()) )*((DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()))*(Year(GetDate())*Month(GetDate())*Day(GetDate())*RAND()))
+                		  ,CEILING(RAND( (DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()) )*((DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()))*(Year(GetDate())*Month(GetDate())*Day(GetDate())*RAND()))
+                		  ,CEILING(RAND( (DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()) )*((DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()))*(Year(GetDate())*Month(GetDate())*Day(GetDate())*RAND()))
+                		  ,CEILING(RAND( (DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()) )*((DATEPART(mm, GETDATE()) * 100000 )+ (DATEPART(ss, GETDATE()) * 1000 )+ DATEPART(ms, GETDATE()))*(Year(GetDate())*Month(GetDate())*Day(GetDate())*RAND()))));
+                	SET @cnt = (SELECT COUNT(*) FROM {0} WHERE {1} = @IDVAL);
+                END
+                INSERT INTO {0}({1}{2}) SELECT @IDVAL{3} from INSERTED tbl;",
+                new object[]{map.TableName,field.FieldName, fields, fields.Replace(",", ",tbl.")});
+                triggers.Add(new Trigger((imediate ? Pool.Translator.GetInsertIntermediateTriggerName(t, pi, this) : Pool.Translator.GetInsertTriggerName(t, this)),
                                          "ON " + map.TableName + " INSTEAD OF INSERT\n",
                                          code));
             }else
@@ -146,6 +151,10 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 		internal override void GetDropAutogenStrings(ExtractedTableMap map, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers)
 		{
             Type t = Pool.Mapping[map.TableName];
+            PropertyInfo pi = Pool.Mapping[map.TableName, map.PrimaryKeys[0].FieldName];
+            bool imediate = t == null;
+            if (imediate)
+                t = Pool.Mapping.GetTypeForIntermediateTable(map.TableName, out pi);
 			identities=new List<IdentityField>();
 			generators=null;
 			triggers = new List<Trigger>();
@@ -163,7 +172,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 			}
             if (field.Type.ToUpper().Contains("DATE") || field.Type.ToUpper().Contains("TIME") || (map.PrimaryKeys.Count > 0) || (field.Type.ToUpper().Contains("VARCHAR")))
 			{
-				triggers.Add(new Trigger(Pool.Translator.GetInsertTriggerName(t,this),"",""));
+                triggers.Add(new Trigger((imediate ? Pool.Translator.GetInsertIntermediateTriggerName(t, pi, this) : Pool.Translator.GetInsertTriggerName(t, this)), "", ""));
 			}
 			else if (field.Type.ToUpper().Contains("INT"))
 			{
@@ -216,12 +225,12 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
         internal override List<Trigger> GetDeleteParentTrigger(ExtractedTableMap table, ExtractedTableMap parent)
         {
             List<Trigger> ret = new List<Trigger>();
-            string tmp = "AS \n BEGIN \n DELETE FROM " + parent.TableName + " WHERE ";
-            string fields = "CONCAT(";
+            string tmp = "AS \n BEGIN \n IF ((SELECT COUNT(*) FROM DELETED)>0) BEGIN DELETE FROM " + parent.TableName + " WHERE ";
+            string fields = "(";
             foreach (ExtractedFieldMap efm in parent.PrimaryKeys)
-                fields += efm.FieldName + ",";
-            fields = fields.Substring(0, fields.Length - 1) + ")";
-            tmp += fields + " IN (SELECT " + fields + " FROM DELETED);\nEND\n\n";
+                fields += string.Format("CAST({0} AS VARCHAR(MAX))+'-'+",efm.FieldName);
+            fields = fields.Substring(0, fields.Length - 5) + ")";
+            tmp += fields + " IN (SELECT " + fields + " FROM DELETED);\nEND\nEND\n\n";
             ret.Add(new Trigger(Pool.Translator.GetDeleteParentTriggerName(Pool.Mapping[table.TableName],this),
                 "ON " + table.TableName + " AFTER DELETE",
                 tmp));
@@ -238,13 +247,13 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 					break;
 				case FieldType.BYTE:
 					if ((fieldLength == -1)||(fieldLength>8000))
-						ret = "IMAGE";
+						ret = "VARBINARY(MAX)";
 					else
 						ret = "VARBINARY(" + fieldLength.ToString() + ")";
 					break;
 				case FieldType.CHAR:
 					if ((fieldLength == -1)||(fieldLength>8000))
-						ret = "TEXT";
+						ret = "VARCHAR(MAX)";
 					else
 						ret = "VARCHAR(" + fieldLength.ToString() + ")";
 					break;
@@ -255,7 +264,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 					break;
 				case FieldType.DECIMAL:
 				case FieldType.DOUBLE:
-					ret = "DECIMAL";
+                    ret = "DECIMAL(18,9)";
 					break;
 				case FieldType.FLOAT:
 					ret = "FLOAT";
@@ -287,7 +296,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
                     break;
 				case FieldType.STRING:
 					if ((fieldLength == -1)||(fieldLength>8000))
-						ret = "TEXT";
+						ret = "VARCHAR(MAX)";
 					else
 						ret = "VARCHAR(" + fieldLength.ToString() + ")";
 					break;
@@ -354,5 +363,179 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
             }
         }
 
+        private const string _DEL_TRIGGER_NAME = "TRIG_DEL_{0}";
+        private const string _UPDATE_TRIGGER_NAME = "TRIG_UPDATE_{0}";
+
+        internal void MaskComplicatedRelations(int index, ref List<ExtractedTableMap> tables, ref List<Trigger> triggers)
+        {
+            ExtractedTableMap map = tables[index];
+            foreach (string tblName in map.RelatedTables)
+            {
+                bool createTriggers = false;
+                List<List<ForeignRelationMap>> maps = map.RelatedFieldsForTable(tblName);
+                if (maps.Count > 1)
+                {
+                    foreach (List<ForeignRelationMap> rel in maps)
+                    {
+                        foreach (ForeignRelationMap frm in rel)
+                        {
+                            if (map.GetField(frm.InternalField).PrimaryKey && (
+                                frm.OnUpdate == ForeignField.UpdateDeleteAction.CASCADE.ToString().Replace("_","")||
+                                frm.OnDelete == ForeignField.UpdateDeleteAction.CASCADE.ToString().Replace("_", "")))
+                            {
+                                createTriggers = true;
+                                break;
+                            }
+                        }
+                        if (createTriggers)
+                            break;
+                    }
+                }
+                if (!createTriggers&&
+                    (maps[0][0].OnUpdate == ForeignField.UpdateDeleteAction.CASCADE.ToString().Replace("_", "")
+                        || maps[0][0].OnUpdate == ForeignField.UpdateDeleteAction.CASCADE.ToString().Replace("_", "")))
+                {
+                    foreach (ExtractedTableMap etm in tables)
+                    {
+                        if (etm.TableName == tblName)
+                        {
+                            foreach (string cstr in map.RelatedTables)
+                            {
+                                if (cstr != tblName && etm.RelatesToTable(cstr,tables))
+                                {
+                                    createTriggers = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                if (!createTriggers &&
+                    (maps[0][0].OnUpdate == ForeignField.UpdateDeleteAction.CASCADE.ToString().Replace("_", "")
+                        || maps[0][0].OnUpdate == ForeignField.UpdateDeleteAction.CASCADE.ToString().Replace("_", "")))
+                {
+                    foreach (Trigger t in triggers)
+                    {
+                        if (t.Conditions.Contains("INSTEAD OF") 
+                            && (t.Conditions.Contains(tblName)||t.Conditions.Contains(map.TableName))
+                            && (t.Conditions.Contains("UPDATE")||t.Conditions.Contains("DELETE")))
+                        {
+                            createTriggers = true;
+                            break;
+                        }
+                    }
+                }
+                if (createTriggers)
+                {
+                    for (int x = 0; x < map.ForeignFields.Count; x++)
+                    {
+                        if (map.ForeignFields[x].ExternalTable == tblName)
+                        {
+                            map.ForeignFields[x] = new ForeignRelationMap(map.ForeignFields[x].ID, map.ForeignFields[x].InternalField,
+                                map.ForeignFields[x].ExternalTable,
+                                map.ForeignFields[x].ExternalField,
+                                ForeignField.UpdateDeleteAction.NO_ACTION.ToString(),
+                                ForeignField.UpdateDeleteAction.NO_ACTION.ToString());
+                        }
+                    }
+                    string delCode = "AS\nBEGIN\nSET NOCOUNT ON;\n";
+                    for(int x=0;x<triggers.Count;x++){
+                        Trigger t = triggers[x];
+                        if (t.Conditions==string.Format("ON {0} INSTEAD OF DELETE",tblName)){
+                            triggers.RemoveAt(x);
+                            delCode = t.Code;
+                            if (delCode.Contains("DELETE FROM " + tblName+" WHERE "))
+                                delCode = delCode.Substring(0, delCode.LastIndexOf("DELETE FROM " + tblName+" WHERE "));
+                            break;
+                        }
+                    }
+                    for(int x=0;x<maps.Count;x++)
+                    {
+                        List<ForeignRelationMap> rel = maps[x];
+                        delCode+=string.Format("IF ((SELECT COUNT(*) FROM DELETED)>0) BEGIN DELETE FROM {0} WHERE (",map.TableName);
+                        string fields = "";
+                        foreach (ForeignRelationMap frm in rel)
+                        {
+                            delCode += string.Format("CAST({0} AS VARCHAR(MAX))+'-'+",frm.InternalField);
+                            fields += string.Format("CAST({0} AS VARCHAR(MAX))+'-'+", frm.ExternalField);
+                        }
+                        delCode = delCode.Substring(0,delCode.Length-5);
+                        delCode += string.Format(") IN (SELECT ({0}) FROM DELETED); END\n",
+                            fields.Substring(0, fields.Length - 5));
+                        if (x == maps.Count - 1)
+                        {
+                            delCode += string.Format("DELETE FROM {0} WHERE ({1}) IN (SELECT ({1}) FROM DELETED);\nEND\n\n",
+                                tblName,
+                                fields.Substring(0, fields.Length - 5));
+                        }
+                    }
+                    triggers.Add(new Trigger(string.Format(_DEL_TRIGGER_NAME, tblName),
+                        string.Format("ON {0} INSTEAD OF DELETE", tblName),
+                        Utility.RemoveDuplicateStrings(delCode,new string []{"COMMIT;"})));
+                    string updCode = "AS\nBEGIN\nSET NOCOUNT ON;\n";
+                    for (int x = 0; x < triggers.Count; x++)
+                    {
+                        Trigger t = triggers[x];
+                        if (t.Conditions == string.Format("ON {0} INSTEAD OF UPDATE", tblName))
+                        {
+                            triggers.RemoveAt(x);
+                            updCode = t.Code;
+                            if (updCode.Contains("UPDATE " + tblName))
+                                updCode = updCode.Substring(0, updCode.IndexOf("UPDATE " + tblName));
+                            break;
+                        }
+                    }
+                    foreach (List<ForeignRelationMap> rel in maps)
+                    {
+                        updCode += string.Format("\nALTER TABLE {0} NOCHECK CONSTRAINT ALL;UPDATE {0} SET ", map.TableName);
+                        string where = " WHERE ";
+                        foreach (ForeignRelationMap frm in rel)
+                        {
+                            updCode += string.Format("{0} = (SELECT {1} FROM INSERTED),",
+                                frm.InternalField,
+                                frm.ExternalField);
+                            where+=string.Format("{0} = (SELECT {1} FROM DELETED) AND ",
+                                frm.InternalField,
+                                frm.ExternalField);
+                        }
+                        updCode = updCode.Substring(0, updCode.Length - 1) +
+                            where.Substring(0, where.Length - 4);
+                        updCode += string.Format(";\nALTER TABLE {0} CHECK CONSTRAINT ALL;\n", map.TableName);
+                    }
+                    foreach (ExtractedTableMap etm in tables)
+                    {
+                        if (etm.TableName == tblName)
+                        {
+                            updCode += string.Format("UPDATE {0} SET ", tblName);
+                            string where = " WHERE ";
+                            foreach (ExtractedFieldMap efm in etm.Fields)
+                            {
+                                if (efm.ComputedCode == null)
+                                {
+                                    if (!efm.PrimaryKey || etm.PrimaryKeys.Count>1)
+                                        updCode += string.Format("{0} = (SELECT {0} FROM INSERTED),",
+                                            efm.FieldName);
+                                    if (efm.PrimaryKey)
+                                        where += string.Format("{0} = (SELECT {0} FROM DELETED) AND ",
+                                            efm.FieldName);
+                                }
+                            }
+                            updCode = updCode.Substring(0,updCode.Length-1)+
+                                where.Substring(0,where.Length-4)+";\nEND\n\n";;
+                            break;
+                        }
+                    }
+                    triggers.Add(new Trigger(string.Format(_UPDATE_TRIGGER_NAME, tblName),
+                        string.Format("ON {0} INSTEAD OF UPDATE", tblName),
+                        Utility.RemoveDuplicateStrings(updCode, new string[] { "COMMIT;" })));
+                    //recurse back through first ones checked to adjust relationships accordingly
+                    //once using INSTEAD OF, all relationship cascades MUST be done in the trigger
+                    for (int x = 0; x < index; x++)
+                    {
+                        MaskComplicatedRelations(x, ref tables, ref triggers);
+                    }
+                }
+            }
+        }
 	}
 }

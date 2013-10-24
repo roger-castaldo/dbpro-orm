@@ -16,29 +16,28 @@
     SET @StringToHash = CAST(@IntVal as VARCHAR(4000));
     WHILE (@counter &lt; LEN(@StringToHash))
 	BEGIN
-		IF ((@counter+1)&lt;LEN(@StringToHash
-		BEGIN=""
-			SET="" @numVal = "CAST(SUBSTRING(@StringToHash,@Counter,2") AS="" INT=""
-		END=""
-		ELSE=""
-		BEGIN=""
-			SET="" @numVal = "CAST(SUBSTRING(@StringToHash,@Counter,1") AS="" INT=""
-		END=""
-		SET="" @numVal = "@numVal" + 20=""
-		IF="" (@numVal=""&lt;48
-		BEGIN=""
-			SET="" @numVal = "@numVal" + 28=""
-		END=""
-		IF="" (@numVal="" BETWEEN="" 58="" AND="" 64=""
-		BEGIN=""
-			SET="" @numVal = "@numVal" + 12=""
-		END=""
-		IF="" (@numVal="" BETWEEN="" 91="" AND="" 97=""
-		BEGIN=""
-			SET="" @numVal = "@numVal" + 12=""
-		END=""
-		IF="" (@numVal="">
-      122)
+		IF ((@counter+1)&lt;LEN(@StringToHash))
+		BEGIN
+			SET @numVal = CAST(SUBSTRING(@StringToHash,@Counter,2) AS INT);
+		END
+		ELSE
+		BEGIN
+			SET @numVal = CAST(SUBSTRING(@StringToHash,@Counter,1) AS INT);
+		END
+		SET @numVal = @numVal + 20;
+		IF (@numVal&lt;48)
+		BEGIN
+			SET @numVal = @numVal + 28;
+		END
+		IF (@numVal BETWEEN 58 AND 64)
+		BEGIN
+			SET @numVal = @numVal + 12;
+		END
+		IF (@numVal BETWEEN 91 AND 97)
+		BEGIN
+			SET @numVal = @numVal + 12;
+		END
+		IF (@numVal&gt;122)
       BEGIN
       SET @numVal = @numVal - 20;
       END

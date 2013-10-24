@@ -326,7 +326,7 @@ AND rtns.ROUTINE_NAME = prc.`NAME`";
             }
         }
 
-        protected override string CreateProcedureString
+        protected override string CreateProcedureStringWithReturn
         {
             get
             {
@@ -334,11 +334,27 @@ AND rtns.ROUTINE_NAME = prc.`NAME`";
             }
         }
 
-        protected override string UpdateProcedureString
+        protected override string UpdateProcedureStringWithReturn
         {
             get
             {
                 return "ALTER FUNCTION {0} ({1}) RETURNS {2} BEGIN {3} {4} END";
+            }
+        }
+
+        protected override string CreateProcedureString
+        {
+            get
+            {
+                return "CREATE FUNCTION {0} ({1}) BEGIN {2} {3} END";
+            }
+        }
+
+        protected override string UpdateProcedureString
+        {
+            get
+            {
+                return "ALTER FUNCTION {0} ({1}) BEGIN {2} {3} END";
             }
         }
 

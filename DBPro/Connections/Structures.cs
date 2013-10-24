@@ -10,6 +10,7 @@ using Org.Reddragonit.Dbpro.Structure.Attributes;
 using System;
 using System.Collections.Generic;
 using Org.Reddragonit.Dbpro.Connections.ClassSQL;
+using System.Text;
 
 namespace Org.Reddragonit.Dbpro.Connections
 {
@@ -533,7 +534,91 @@ namespace Org.Reddragonit.Dbpro.Connections
             }
             return new ExtractedFieldMap();
         }
-	}
+
+        public List<ExtractedFieldMap> ComputedFields
+        {
+            get
+            {
+                List<ExtractedFieldMap> ret = new List<ExtractedFieldMap>();
+                foreach (ExtractedFieldMap efm in Fields)
+                {
+                    if (efm.ComputedCode != null)
+                        ret.Add(efm);
+                }
+                return ret;
+            }
+        }
+
+        public List<ExtractedFieldMap> GetComputedFieldsForField(string fieldName)
+        {
+            List<ExtractedFieldMap> ret = new List<ExtractedFieldMap>();
+            foreach (ExtractedFieldMap efm in ComputedFields)
+            {
+                if (efm.ComputedCode.Contains(fieldName))
+                    ret.Add(efm);
+            }
+            return ret;
+        }
+
+        public override string ToString()
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine(string.Format("CREATE TABLE {0}(", TableName));
+            foreach (ExtractedFieldMap efm in Fields)
+                sb.AppendLine(string.Format("{0} {1} {2},", efm.FieldName, efm.FullFieldType, (efm.Nullable ? "NULL" : "NOT NULL")));
+            if (PrimaryKeys.Count > 0)
+            {
+                sb.Append("PRIMARY KEY(");
+                foreach (ExtractedFieldMap efm in PrimaryKeys)
+                    sb.Append(string.Format("{0},", efm.FieldName));
+                sb.Remove(sb.Length - 1, 1);
+                sb.AppendLine("),");
+            }
+            foreach (string tbl in RelatedTables)
+            {
+                foreach (List<ForeignRelationMap> maps in RelatedFieldsForTable(tbl))
+                {
+                    sb.Append("FOREIGN KEY(");
+                    foreach (ForeignRelationMap frm in maps)
+                        sb.Append(frm.InternalField + ",");
+                    sb.Remove(sb.Length - 1, 1);
+                    sb.Append(string.Format(") RELATES TO {0}(", maps[0].ExternalTable));
+                    foreach (ForeignRelationMap frm in maps)
+                        sb.Append(frm.ExternalField + ",");
+                    sb.Remove(sb.Length - 1, 1);
+                    sb.AppendLine(string.Format("ON UPDATE {0} ON DELETE {1},",
+                        maps[0].OnUpdate,
+                        maps[0].OnDelete));
+                }
+            }
+            if (sb.ToString().EndsWith(","))
+                sb.Remove(sb.Length - 1, 1);
+            sb.Append(");");
+            return sb.ToString();
+        }
+
+        //used for tracing down relations when overriding the CASCADE conditions
+        internal bool RelatesToTable(string cstr,List<ExtractedTableMap> maps)
+        {
+            if (RelatedTables.Contains(cstr))
+                return true;
+            else
+            {
+                foreach (string str in RelatedTables)
+                {
+                    if (str != TableName)
+                    {
+                        foreach (ExtractedTableMap etm in maps)
+                        {
+                            if (etm.TableName == str && etm.RelatesToTable(str, maps))
+                                return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+    }
 
 	internal struct ExtractedFieldMap
 	{
@@ -551,16 +636,24 @@ namespace Org.Reddragonit.Dbpro.Connections
 			_type = type;
 			if (type.Contains("CHAR("))
 			{
-				_size = long.Parse(type.Substring(type.IndexOf("CHAR(")+5).Replace(")",""));
-				_type = _type.Replace("("+_size.ToString()+")","");
+                if (type.Substring(type.IndexOf("CHAR(") + 5).Replace(")", "").ToUpper() == "MAX")
+                    _size = -1;
+                else
+				    _size = long.Parse(type.Substring(type.IndexOf("CHAR(")+5).Replace(")",""));
+                _type = _type.Substring(0,_type.IndexOf("("));
 			}else if (type.Contains("VARBINARY(")){
-                _size = long.Parse(type.Substring(type.IndexOf("VARBINARY(")+10).Replace(")",""));
-				_type = _type.Replace("("+_size.ToString()+")","");
+                if (type.Substring(type.IndexOf("VARBINARY(")+10).Replace(")","").ToUpper() == "MAX")
+                    _size = -1;
+                else
+                    _size = long.Parse(type.Substring(type.IndexOf("VARBINARY(") + 10).Replace(")", ""));
+                _type = _type.Substring(0,_type.IndexOf("("));
 			}
 			else if (type.Contains("VARYING(")){
-				_size = long.Parse(type.Substring(type.IndexOf("VARYING(")+8).Replace(")",""));
-				_type = _type.Replace("("+_size.ToString()+")","");
-			
+                if (type.Substring(type.IndexOf("VARYING(") + 8).Replace(")", "").ToUpper() == "MAX")
+                    _size = -1;
+                else
+                    _size = long.Parse(type.Substring(type.IndexOf("VARYING(") + 8).Replace(")", ""));
+                _type = _type.Substring(0,_type.IndexOf("("));
             }else
 				_size = size;
 			_primaryKey = primary;
@@ -582,8 +675,8 @@ namespace Org.Reddragonit.Dbpro.Connections
         public string ComputedCode { get { return _computedCode; } }
 		public string FullFieldType{
 			get{
-				if (Type.ToUpper().Contains("CHAR"))
-					return Type+"("+Size.ToString()+")";
+				if (Type.ToUpper().Contains("CHAR")||Type.Contains("VARBINARY")||Type.Contains("VARYING"))
+					return Type+"("+(Size==-1 ? "MAX" : Size.ToString())+")";
 				return Type;
 			}
 		}
