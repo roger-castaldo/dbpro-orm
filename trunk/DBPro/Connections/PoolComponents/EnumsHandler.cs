@@ -102,12 +102,13 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             t = (t.IsGenericType ? t.GetGenericArguments()[0] : t);
             foreach (string str in Enum.GetNames(t))
             {
-                conn.ExecuteNonQuery("INSERT INTO " + _enumTableMaps[t] + " VALUES(" + conn.CreateParameterName("id") + "," + conn.CreateParameterName("value") + ");",
-                    new System.Data.IDbDataParameter[]{
-                                conn.Pool.CreateParameter(conn.CreateParameterName("id"),null,Org.Reddragonit.Dbpro.Structure.Attributes.FieldType.INTEGER,4),
-                                conn.CreateParameter(conn.CreateParameterName("value"),str)
-                            });
+                conn.ExecuteNonQuery(string.Format("INSERT INTO {0}({1}) VALUES({2});",
+                        _enumTableMaps[t],
+                        _pool.Translator.GetEnumValueFieldName(t, conn),
+                        conn.CreateParameterName("value")),
+                    new System.Data.IDbDataParameter[]{conn.CreateParameter(conn.CreateParameterName("value"),str)});
             }
+            conn.Commit();
             LoadEnumsFromTable(t, conn);
         }
 

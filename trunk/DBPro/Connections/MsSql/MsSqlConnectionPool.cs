@@ -219,13 +219,6 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
                 }
             }
             IDbDataParameter ret = CreateParameter(parameterName, parameterValue);
-            if (((type == FieldType.CHAR) || (type == FieldType.STRING))
-                && ((fieldLength == -1) || (fieldLength > 8000)))
-            {
-                Type t = Utility.LocateType(_PARAMETER_TYPE_NAME);
-                PropertyInfo pi = t.GetProperty("SqlDbType", Utility._BINDING_FLAGS);
-                pi.SetValue(ret, SqlDbType.Text, new object[] { });
-            }
             return ret;
         }
 
@@ -244,6 +237,14 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
                 return "0";
             }
         }
-        
-	}
+
+
+        internal List<IDbDataParameter> DuplicateParameters(List<IDbDataParameter> parameters)
+        {
+            List<IDbDataParameter> ret = new List<IDbDataParameter>();
+            foreach (IDbDataParameter par in parameters)
+                ret.Add(CreateParameter(par.ParameterName, par.Value));
+            return ret;
+        }
+    }
 }

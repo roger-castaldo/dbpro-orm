@@ -2,7 +2,7 @@
 -- Author:		Roger Castaldo
 -- Create date: March 8, 2009
 -- Description:	This procedure is designed to add or remove identity from a column
--- Version: 1.2
+-- Version: 1.3
 -- =============================================
 CREATE PROCEDURE Org_Reddragonit_DbPro_Create_Remove_Identity
 	@table VARCHAR(250),
@@ -36,7 +36,7 @@ BEGIN
 			--extract query to create temp table
 			DECLARE tblSelect CURSOR FOR 
 				SELECT  '['+c.column_name+'] '+UPPER(c.data_type)+  
-					(CASE WHEN c.character_maximum_length is not null AND UPPER(c.data_type)<>'TEXT' AND UPPER(c.data_type)<>'IMAGE' then  '('+cast(c.character_maximum_length as varchar(MAX))+')' ELSE '' END)+' '+
+					(CASE WHEN c.character_maximum_length is not null AND c.character_maximum_length<>-1 AND UPPER(c.data_type)<>'TEXT' AND UPPER(c.data_type)<>'IMAGE' then  '('+cast(c.character_maximum_length as varchar(MAX))+')' WHEN c.character_maximum_length IS NOT NULL AND c.character_maximum_length=-1 THEN '(MAX)' ELSE '' END)+' '+
 					(CASE WHEN c.column_name = @field AND @createIdent=1 THEN 'IDENTITY('+CAST(@curValue as VARCHAR(MAX))+',1)' ELSE '' END)+
 					(CASE WHEN c.is_nullable='NO' THEN ' NOT NULL ' ELSE ' NULL ' END),
 					(CASE WHEN primarys.IsPrimary is null THEN NULL ELSE '['+c.column_name+']' END),
@@ -111,6 +111,7 @@ BEGIN
 			DECLARE @externalFields varchar(MAX);
 			DECLARE @internalFields varchar(MAX);
 			DECLARE @tableName varchar(MAX);
+			DECLARE @conName VARCHAR(MAX);
 			DECLARE @internalField varchar(MAX);
 			DECLARE @externalField varchar(MAX);
 			DECLARE @update varchar(MAX);
@@ -118,11 +119,13 @@ BEGIN
 			DECLARE @lastUpdate varchar(MAX);
 			DECLARE @lastDelete varchar(MAX);
 			DECLARE @lastTable varchar(MAX);
+			DECLARE @lastConName varchar(MAX);
 			DECLARE curKeys CURSOR FOR 
 				SELECT k.table_name,k.column_name, 
 				ccu.column_name 'references_field', 
 								rc.update_rule 'on_update', 
-								rc.delete_rule 'on_delete' 
+								rc.delete_rule 'on_delete',
+								rc.CONSTRAINT_NAME 'con_name'
 								FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE k 
 								LEFT JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS c 
 								ON k.table_name = c.table_name 
@@ -148,12 +151,13 @@ BEGIN
 			OPEN curKeys;
 
 			FETCH NEXT FROM curKeys
-			INTO @tableName,@internalField,@externalField,@update,@delete;
+			INTO @tableName,@internalField,@externalField,@update,@delete,@conName;
 
 			SET @lastUpdate=@update;
 			SET @lastDelete=@delete;
 			SET @lastTable=@tableName;
-
+			SET @lastConName=@conName;
+			
 			WHILE @@FETCH_STATUS = 0
 			BEGIN
 
@@ -161,28 +165,19 @@ BEGIN
 				SET @externalFields=@externalFields+@externalField+',';
 
 				FETCH NEXT FROM curKeys
-				INTO @tableName,@internalField,@externalField,@update,@delete;
+				INTO @tableName,@internalField,@externalField,@update,@delete,@conName;
 
-				if (@lastTable<>@tableName)
+				if (@lastConName<>@conName)
 					BEGIN
-						INSERT INTO #updates select 'ALTER TABLE '+@lastTable+' DROP CONSTRAINT '+ cast(f.name  as varchar(255))+';' 
-								from sysobjects f 
-								inner join sysobjects c on  f.parent_obj = c.id 
-								inner join sysreferences r on f.id =  r.constid 
-								inner join sysobjects p on r.rkeyid = p.id 
-								inner  join syscolumns rc on r.rkeyid = rc.id and r.rkey1 = rc.colid 
-								inner  join syscolumns fc on r.fkeyid = fc.id and r.fkey1 = fc.colid 
-								left join  syscolumns rc2 on r.rkeyid = rc2.id and r.rkey2 = rc.colid 
-								left join  syscolumns fc2 on r.fkeyid = fc2.id and r.fkey2 = fc.colid 
-								where f.type =  'F' AND cast(c.name as  varchar(255))=@lastTable
-								AND cast(p.name as varchar(255)) = @table;
+						INSERT INTO #updates VALUES('ALTER TABLE '+@lastTable+' DROP CONSTRAINT '+@lastConName);
 						INSERT INTO #updates VALUES('ALTER TABLE '+@lastTable+' ADD FOREIGN KEY('+
 							SUBSTRING(@internalFields,0,LEN(@internalFields))+') REFERENCES '+
 							'TEMP_'+@table+'('+SUBSTRING(@externalFields,0,LEN(@externalFields))+')'+
-							'ON UPDATE '+@lastUpdate+' ON DELETE '+@lastDelete);
+							' ON UPDATE '+@lastUpdate+' ON DELETE '+@lastDelete);
 						SET @lastTable=@tableName;
 						SET @lastUpdate=@update;
 						SET @lastDelete=@delete;
+						SET @lastConName=@conName;
 						SET @internalFields='';
 						SET @externalFields='';
 					END
@@ -190,17 +185,7 @@ BEGIN
 
 			CLOSE curKeys;
 
-			INSERT INTO #updates select 'ALTER TABLE '+@lastTable+' DROP CONSTRAINT '+ cast(f.name  as varchar(255))+';' 
-								from sysobjects f 
-								inner join sysobjects c on  f.parent_obj = c.id 
-								inner join sysreferences r on f.id =  r.constid 
-								inner join sysobjects p on r.rkeyid = p.id 
-								inner  join syscolumns rc on r.rkeyid = rc.id and r.rkey1 = rc.colid 
-								inner  join syscolumns fc on r.fkeyid = fc.id and r.fkey1 = fc.colid 
-								left join  syscolumns rc2 on r.rkeyid = rc2.id and r.rkey2 = rc.colid 
-								left join  syscolumns fc2 on r.fkeyid = fc2.id and r.fkey2 = fc.colid 
-								where f.type =  'F' AND cast(c.name as  varchar(255))=@lastTable
-								AND cast(p.name as varchar(255)) = @table;
+			INSERT INTO #updates VALUES('ALTER TABLE '+@lastTable+' DROP CONSTRAINT '+@lastConName);
 			INSERT INTO #updates select 'ALTER TABLE '+@tableName+' DROP CONSTRAINT '+ cast(f.name  as varchar(255))+';' 
 								from sysobjects f 
 								inner join sysobjects c on  f.parent_obj = c.id 
@@ -215,7 +200,13 @@ BEGIN
 			INSERT INTO #updates VALUES('ALTER TABLE '+@lastTable+' ADD FOREIGN KEY('+
 							SUBSTRING(@internalFields,0,LEN(@internalFields))+') REFERENCES '+
 							'TEMP_'+@table+'('+SUBSTRING(@externalFields,0,LEN(@externalFields))+')'+
-							'ON UPDATE '+@lastUpdate+' ON DELETE '+@lastDelete);
+							' ON UPDATE '+@lastUpdate+' ON DELETE '+@lastDelete);
+							
+			--get and set the iden value if necessary
+			IF (@createIdent = 1)
+			BEGIN
+				INSERT INTO #updates SELECT 'DECLARE @ID BIGINT; SET @ID = (SELECT MAX('+@field+') FROM '+@table+'); DBCC CHECKIDENT('''+@table+''', RESEED, @ID)';
+			END
 
 			--executing relationship updates
 			DECLARE @updateString varchar(MAX);
@@ -229,7 +220,7 @@ BEGIN
 
 			WHILE @@FETCH_STATUS = 0
 			BEGIN
-
+			
 				EXEC(@updateString);	
 
 				FETCH NEXT FROM curUpdates
@@ -238,9 +229,60 @@ BEGIN
 
 			CLOSE curUpdates;
 
+			--extract all triggers
+			delete from #updates;
+			
+			INSERT INTO #updates SELECT 'CREATE TRIGGER ' + sys1.name	+ ' ON '+sys2.name+' '+ 
+					 (CASE WHEN OBJECTPROPERTY(sys1.id, 'ExecIsInsteadOfTrigger') = 1 
+					 THEN ' INSTEAD OF ' ELSE 'AFTER' 
+					 END 
+					 )+' '+ 
+					 ( 
+					 CASE 
+					 WHEN OBJECTPROPERTY(sys1.id, 'ExecIsInsertTrigger') = 1 THEN 
+					 (CASE WHEN OBJECTPROPERTY(sys1.id, 'ExecIsUpdateTrigger') = 1 THEN 
+						(CASE WHEN OBJECTPROPERTY(sys1.id, 'ExecIsDeleteTrigger')=1 THEN ' INSERT, UPDATE, DELETE '
+						ELSE ' INSERT, UPDATE ' END)
+					  ELSE 
+						(CASE WHEN OBJECTPROPERTY(sys1.id, 'ExecIsDeleteTrigger')=1 THEN ' INSERT, DELETE '
+					  	ELSE ' INSERT ' END)
+					 END)
+					 WHEN OBJECTPROPERTY(sys1.id, 'ExecIsUpdateTrigger') = 1 THEN 
+					 (CASE WHEN OBJECTPROPERTY(sys1.id, 'ExecIsDeleteTrigger') = 1 THEN ' UPDATE, DELETE ' 
+					 ELSE ' UPDATE ' END) 
+					 WHEN OBJECTPROPERTY(sys1.id, 'ExecIsDeleteTrigger') = 1 THEN ' DELETE ' 
+					 END 
+					 ) +
+					 RIGHT(c.text,LEN(c.text)-PATINDEX('%AS%BEGIN%',c.text)+2) as code 
+					 FROM sysobjects sys1 
+					 JOIN sysobjects sys2 ON sys1.parent_obj = sys2.id 
+					 JOIN syscomments c ON sys1.id = c.id 
+					 WHERE sys1.xtype = 'TR' AND sys2.name = @table;
+
 			--delete existing table and then move temp table to replace it
 			EXEC('DROP TABLE '+@table+';');
-			EXEC('EXEC sp_rename ''TEMP_'+@table+''', '''+@table+''';');
+			EXEC('EXEC sp_rename @objname = ''TEMP_'+@table+''', @newname = '''+@table+''';');
+			
+			--recreate triggers
+			DEALLOCATE curUpdates;
+			DECLARE curUpdates CURSOR FOR 
+				SELECT * FROM #updates;
+
+			OPEN curUpdates;
+
+			FETCH NEXT FROM curUpdates
+			INTO @updateString;
+
+			WHILE @@FETCH_STATUS = 0
+			BEGIN
+			
+				EXEC(@updateString);	
+
+				FETCH NEXT FROM curUpdates
+					INTO @updateString;
+			END
+
+			CLOSE curUpdates;
 
 			--cleanup
 			DROP TABLE #updates;
@@ -250,4 +292,3 @@ BEGIN
 			DEALLOCATE curUpdates;
 		END
 END
-

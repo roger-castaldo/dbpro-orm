@@ -18,6 +18,7 @@ using FieldType = Org.Reddragonit.Dbpro.Structure.Attributes.FieldType;
 using VersionTypes = Org.Reddragonit.Dbpro.Structure.Attributes.VersionField.VersionTypes;
 using Org.Reddragonit.Dbpro.Connections.PoolComponents;
 using System.Reflection;
+using Org.Reddragonit.Dbpro.Connections.MsSql;
 
 namespace Org.Reddragonit.Dbpro.Connections
 {
@@ -176,6 +177,22 @@ namespace Org.Reddragonit.Dbpro.Connections
         }
 
         protected virtual string UpdateProcedureString
+        {
+            get
+            {
+                throw new Exception("Method Not Implemented");
+            }
+        }
+
+        protected virtual string CreateProcedureStringWithReturn
+        {
+            get
+            {
+                throw new Exception("Method Not Implemented");
+            }
+        }
+
+        protected virtual string UpdateProcedureStringWithReturn
         {
             get
             {
@@ -385,12 +402,16 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         internal virtual string CreateProcedure(StoredProcedure procedure)
         {
-            return string.Format(CreateProcedureString, new object[]{procedure.ProcedureName,procedure.ParameterLines,procedure.ReturnLine,procedure.DeclareLines,procedure.Code});
+            if (procedure.ReturnLine != null)
+                return string.Format(CreateProcedureStringWithReturn, new object[] { procedure.ProcedureName, procedure.ParameterLines, procedure.ReturnLine, procedure.DeclareLines, procedure.Code });
+            return string.Format(CreateProcedureString, new object[] { procedure.ProcedureName, procedure.ParameterLines, procedure.DeclareLines, procedure.Code });
         }
 
         internal virtual string UpdateProcedure(StoredProcedure procedure)
         {
-            return string.Format(UpdateProcedureString, new object[] { procedure.ProcedureName, procedure.ParameterLines, procedure.ReturnLine, procedure.DeclareLines, procedure.Code });
+            if (procedure.ReturnLine!=null)
+                return string.Format(UpdateProcedureStringWithReturn, new object[] { procedure.ProcedureName, procedure.ParameterLines, procedure.ReturnLine, procedure.DeclareLines, procedure.Code });
+            return string.Format(UpdateProcedureString, new object[] { procedure.ProcedureName, procedure.ParameterLines, procedure.DeclareLines, procedure.Code });
         }
 
         internal string DropProcedure(string procedureName)
@@ -743,7 +764,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                                 }
                             }
                         }
-                        else if (!Utility.StringsEqual(prop,tbl.AutoGenProperty))
+                        else if (!Utility.StringsEqual(prop,tbl.AutoGenProperty) && flds[0].ComputedCode==null)
                         {
                             values += flds[0].Name + ",";
                             parameters += "," + CreateParameterName(prop);
@@ -766,7 +787,10 @@ namespace Org.Reddragonit.Dbpro.Connections
 				if (tbl.AutoGenProperty!=null)
 				{
                     select = string.Format(SelectMaxWithConditions, tbl[tbl.AutoGenProperty][0].Name, tbl.Name, whereConditions);
-                    selectParameters.AddRange(insertParameters);
+                    if (pool is MsSqlConnectionPool)
+                        selectParameters.AddRange(((MsSqlConnectionPool)pool).DuplicateParameters(insertParameters));
+                    else
+                        selectParameters.AddRange(insertParameters);
 				}
 				return string.Format(InsertString,tbl.Name,values,parameters);
 			}catch (Exception e)
@@ -949,7 +973,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                             }
                             pars.Add(pool.CreateParameter(CreateParameterName("index"), index, FieldType.INTEGER, 4));
                         }
-                        ret[insertString].Add(new List<IDbDataParameter>(pars.ToArray()));
+                        ret[insertString].Add(new List<IDbDataParameter>((this.pool is MsSqlConnectionPool ? ((MsSqlConnectionPool)pool).DuplicateParameters(pars).ToArray() : pars.ToArray())));
                         index++;
 					}
 				}
@@ -1072,7 +1096,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                                 }
                             }
                         }
-                        else
+                        else if (flds[0].ComputedCode==null)
                         {
                             fields += flds[0].Name + " = " + CreateParameterName(flds[0].Name) + ", ";
                             if (updateFields[flds[0].ClassProperty] == null)

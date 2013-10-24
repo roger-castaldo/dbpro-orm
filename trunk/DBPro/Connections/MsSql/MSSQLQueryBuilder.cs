@@ -97,54 +97,54 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 		protected override string SelectTriggersString {
 			get
 			{
-				return "SELECT sys1.name trigger_name, " +
-					" 'ON '+sys2.name+' '+ " +
-					" (CASE WHEN OBJECTPROPERTY(sys1.id, 'ExecIsInsteadOfTrigger') = 1 " +
-					" THEN 'INSTEAD OF' ELSE 'AFTER' " +
-					" END " +
-					" )+' '+ " +
-					" ( " +
-					" CASE " +
-					" WHEN OBJECTPROPERTY(sys1.id, 'ExecIsInsertTrigger') = 1 THEN "+
-					" (CASE WHEN OBJECTPROPERTY(sys1.id, 'ExecIsUpdateTrigger') = 1 THEN " +
-					"	(CASE WHEN OBJECTPROPERTY(sys1.id, 'ExecIsDeleteTrigger')=1 THEN 'INSERT, UPDATE, DELETE'" +
-					"	ELSE 'INSERT, UPDATE' END)" +
-					"  ELSE " +
-					"	(CASE WHEN OBJECTPROPERTY(sys1.id, 'ExecIsDeleteTrigger')=1 THEN 'INSERT, DELETE'" +
-					"  	ELSE 'INSERT' END)" +
-					" END)" +
-					" WHEN OBJECTPROPERTY(sys1.id, 'ExecIsUpdateTrigger') = 1 THEN " +
-					" (CASE WHEN OBJECTPROPERTY(sys1.id, 'ExecIsDeleteTrigger') = 1 THEN 'UPDATE, DELETE' " +
-					" ELSE 'UPDATE' END) " +
-					" WHEN OBJECTPROPERTY(sys1.id, 'ExecIsDeleteTrigger') = 1 THEN 'DELETE' " +
-					" END " +
-					" )	comm_string, " +
-					" RIGHT(c.text,LEN(c.text)-PATINDEX('%AS%BEGIN%',c.text)+2) as code " +
-					" FROM sysobjects sys1 " +
-					" JOIN sysobjects sys2 ON sys1.parent_obj = sys2.id " +
-					" JOIN syscomments c ON sys1.id = c.id " +
-					" WHERE sys1.xtype = 'TR'";
+				return @"SELECT sys1.name trigger_name, 
+					 'ON '+sys2.name+' '+ 
+					 (CASE WHEN OBJECTPROPERTY(sys1.id, 'ExecIsInsteadOfTrigger') = 1 
+					 THEN 'INSTEAD OF' ELSE 'AFTER' 
+					 END 
+					 )+' '+ 
+					 ( 
+					 CASE 
+					 WHEN OBJECTPROPERTY(sys1.id, 'ExecIsInsertTrigger') = 1 THEN 
+					 (CASE WHEN OBJECTPROPERTY(sys1.id, 'ExecIsUpdateTrigger') = 1 THEN 
+						(CASE WHEN OBJECTPROPERTY(sys1.id, 'ExecIsDeleteTrigger')=1 THEN 'INSERT, UPDATE, DELETE'
+						ELSE 'INSERT, UPDATE' END)
+					  ELSE 
+						(CASE WHEN OBJECTPROPERTY(sys1.id, 'ExecIsDeleteTrigger')=1 THEN 'INSERT, DELETE'
+					  	ELSE 'INSERT' END)
+					 END)
+					 WHEN OBJECTPROPERTY(sys1.id, 'ExecIsUpdateTrigger') = 1 THEN 
+					 (CASE WHEN OBJECTPROPERTY(sys1.id, 'ExecIsDeleteTrigger') = 1 THEN 'UPDATE, DELETE' 
+					 ELSE 'UPDATE' END) 
+					 WHEN OBJECTPROPERTY(sys1.id, 'ExecIsDeleteTrigger') = 1 THEN 'DELETE' 
+					 END 
+					 )	comm_string, 
+					 RIGHT(c.text,LEN(c.text)-PATINDEX('%AS%BEGIN%',c.text)+2) as code 
+					 FROM sysobjects sys1 
+					 JOIN sysobjects sys2 ON sys1.parent_obj = sys2.id 
+					 JOIN syscomments c ON sys1.id = c.id 
+					 WHERE sys1.xtype = 'TR'";
 			}
 		}
 		
 		protected override string SelectCurrentIdentities {
 			get {
-				return "SELECT DISTINCT c.table_name 'tableName', " +
-					" c.column_name 'fieldName', " +
-					" UPPER(c.data_type) 'type', " +
-					" CAST(IDENT_CURRENT(c.table_name) as varchar(MAX)) 'curValue' " +
-					" FROM INFORMATION_SCHEMA.COLUMNS c " +
-					" LEFT JOIN (SELECT k.column_name,1 as IsPrimary FROM  " +
-					" INFORMATION_SCHEMA.KEY_COLUMN_USAGE k, INFORMATION_SCHEMA.TABLE_CONSTRAINTS c " +
-					" WHERE  " +
-					" k.table_name = c.table_name " +
-					" AND k.table_schema = c.table_schema " +
-					" AND k.table_catalog = c.table_catalog " +
-					" AND k.constraint_catalog = c.constraint_catalog " +
-					" AND k.constraint_name = c.constraint_name  " +
-					" AND c.constraint_type = 'PRIMARY KEY') primarys ON  " +
-					" c.column_name = primarys.column_name " +
-					" WHERE COLUMNPROPERTY( OBJECT_ID(c.table_name),c.column_name,'IsIdentity') = 1";
+				return @"SELECT DISTINCT c.table_name 'tableName', 
+					c.column_name 'fieldName', 
+					UPPER(c.data_type) 'type', 
+					CAST(IDENT_CURRENT(c.table_name) as varchar(MAX)) 'curValue' 
+					FROM INFORMATION_SCHEMA.COLUMNS c 
+					LEFT JOIN (SELECT k.column_name,1 as IsPrimary FROM  
+					INFORMATION_SCHEMA.KEY_COLUMN_USAGE k, INFORMATION_SCHEMA.TABLE_CONSTRAINTS c 
+					WHERE  
+					k.table_name = c.table_name 
+					AND k.table_schema = c.table_schema 
+					AND k.table_catalog = c.table_catalog 
+					AND k.constraint_catalog = c.constraint_catalog 
+					AND k.constraint_name = c.constraint_name  
+					AND c.constraint_type = 'PRIMARY KEY') primarys ON  
+					c.column_name = primarys.column_name 
+					WHERE COLUMNPROPERTY( OBJECT_ID(c.table_name),c.column_name,'IsIdentity') = 1";
 			}
 		}
 		
@@ -181,15 +181,8 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
         internal override string CreateColumn(string table, ExtractedFieldMap field)
         {
             if (field.ComputedCode != null)
-                return string.Format("ALTER TABLE[{0}] ADD {1} AS {2} PERSISTED", table, field.FullFieldType, field.ComputedCode);
+                return string.Format("ALTER TABLE[{0}] ADD [{1}] AS CAST({3} AS {2}) PERSISTED", table, field.FieldName, field.FullFieldType, field.ComputedCode);
             return base.CreateColumn(table, field);
-        }
-
-        internal override string AlterFieldType(string table, ExtractedFieldMap field, ExtractedFieldMap oldFieldInfo)
-        {
-            if (field.ComputedCode != null)
-                return string.Format("ALTER TABLE[{0}] ALTER COLUMN [{1}] AS {2} PERSISTED", table, field.FullFieldType, field.ComputedCode);
-            return base.AlterFieldType(table, field,oldFieldInfo);
         }
 
 		internal override string DropPrimaryKey(PrimaryKey key)
@@ -224,8 +217,8 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
             List<Index> ret = new List<Index>();
             Dictionary<string, string> objIds = new Dictionary<string, string>();
             List<string> indexIds = new List<string>();
-            conn.ExecuteQuery("select ind.object_id,ind.index_id,ind.name,ind.is_unique from sys.indexes ind, sysobjects tbl "+
-                "WHERE ind.object_id = tbl.id AND tbl.xtype='U' AND ind.is_primary_key=0 AND tbl.name = '"+tableName+"'");
+            conn.ExecuteQuery(@"select ind.object_id,ind.index_id,ind.name,ind.is_unique from sys.indexes ind, sysobjects tbl 
+                WHERE ind.object_id = tbl.id AND tbl.xtype='U' AND ind.name IS NOT NULL AND ind.is_primary_key=0 AND tbl.name = '"+tableName+"'");
             while (conn.Read())
             {
                 ret.Add(new Index(conn[2].ToString(), null, conn[3].ToString() == "1", false));
@@ -262,8 +255,9 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
             conn.CloseConnection();
 			return ret;
 		}
-		
-		protected override string SelectCountString {
+
+        protected override string SelectWithPagingIncludeOffset
+        {
 			get {
                 return "SELECT * FROM (SELECT *,ROW_NUMBER() OVER (ORDER BY {3}) RowNum" +
 					" FROM ({0}) internalTbl) cntTbl WHERE RowNum BETWEEN {1} AND {1}+{2}";
@@ -336,7 +330,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
         {
             get
             {
-                return "DROP INDEX {1}";
+                return "DROP INDEX {1} ON {0}";
             }
         }
 
@@ -374,18 +368,20 @@ ISNULL((SELECT STUFF( (SELECT ',' + PARAMETER_NAME + ' '+UPPER(DATA_TYPE+(CASE W
                              ORDER BY ORDINAL_POSITION
                              FOR XML PATH('')), 
                             1, 1, '')),'') as pars,
+                            (CASE pro.ROUTINE_TYPE WHEN 'FUNCTION' THEN 
 ISNULL((SELECT STUFF( (SELECT ',' +UPPER(DATA_TYPE+(CASE WHEN CHARACTER_MAXIMUM_LENGTH = -1 THEN '(MAX)' WHEN CHARACTER_MAXIMUM_LENGTH IS NOT NULL THEN '('+CAST(CHARACTER_MAXIMUM_LENGTH AS VARCHAR(MAX))+')' ELSE '' END))
                              FROM information_schema.PARAMETERS
                              where SPECIFIC_NAME = pro.SPECIFIC_NAME
 							 AND PARAMETER_MODE = 'OUT'
                              ORDER BY ORDINAL_POSITION
                              FOR XML PATH('')), 
-                            1, 1, '')),'') as returnCode,
+                            1, 1, '')),'')
+                            ELSE null END) as returnCode,
 '',
 LTRIM(RTRIM(SUBSTRING(pro.ROUTINE_DEFINITION,CHARINDEX('BEGIN',pro.ROUTINE_DEFINITION)+6,
 LEN(pro.ROUTINE_DEFINITION)-(CHARINDEX('BEGIN',pro.ROUTINE_DEFINITION)+6)-(CHARINDEX('DNE',REVERSE(pro.ROUTINE_DEFINITION))+3)))) as code
 from information_schema.routines pro where 
-pro.routine_type = 'FUNCTION' AND
+pro.routine_type IN ('FUNCTION','PROCEDURE') AND
 pro.SPECIFIC_CATALOG = '{0}'";
             }
         }
@@ -395,7 +391,7 @@ pro.SPECIFIC_CATALOG = '{0}'";
             return string.Format(SelectProceduresString, ((MsSqlConnectionPool)this.pool).Catalog);
         }
 
-        protected override string CreateProcedureString
+        protected override string CreateProcedureStringWithReturn
         {
             get
             {
@@ -403,7 +399,7 @@ pro.SPECIFIC_CATALOG = '{0}'";
             }
         }
 
-        protected override string UpdateProcedureString
+        protected override string UpdateProcedureStringWithReturn
         {
             get
             {
@@ -411,11 +407,27 @@ pro.SPECIFIC_CATALOG = '{0}'";
             }
         }
 
+        protected override string CreateProcedureString
+        {
+            get
+            {
+                return "CREATE PROCEDURE {0} ({1}) AS BEGIN {2} {3} END";
+            }
+        }
+
+        protected override string UpdateProcedureString
+        {
+            get
+            {
+                return "ALTER PROCEDURE {0} ({1}) AS BEGIN {2} {3} END";
+            }
+        }
+
         protected override string DropProcedureString
         {
             get
             {
-                return "DROP FUNCTION {0}";
+                return "IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE type = 'FN' AND name = '{0}') BEGIN DROP FUNCTION {0}; END IF NOT EXISTS (SELECT 1 FROM sys.objects WHERE type='P' AND name='{0}') BEGIN DROP PROCEDURE {0}; END";
             }
         }
 
@@ -429,43 +441,48 @@ FROM INFORMATION_SCHEMA.VIEWS vws";
             }
         }
 
+        protected override string DropColumnString
+        {
+            get { return "ALTER TABLE {0} DROP COLUMN {1}"; }
+        }
+
         #region Description
         internal override string GetAllObjectDescriptions()
         {
-            return @"SELECT p.value,t.name FROM sys.extended_properties p inner join sys.tables t on p.major_id = t.object_id where p.name='Description' And t.type = 'U' AND t.type_desc = 'USER_TABLE'
+            return @"SELECT p.value,t.name FROM sys.extended_properties p inner join sys.tables t on p.major_id = t.object_id where p.minor_id = 0 AND p.name='Description' And t.type = 'U' AND t.type_desc = 'USER_TABLE' AND p.class_desc = 'OBJECT_OR_COLUMN'
+					UNION
+                    SELECT p.value,c.name FROM sys.extended_properties p inner join sys.columns c on p.major_id = c.object_id AND p.minor_id = c.column_id inner join sys.tables t on p.major_id = t.object_id AND c.object_id = t.object_id where p.name='Description' AND t.type_desc = 'USER_TABLE' AND t.type = 'U' AND p.class_desc = 'OBJECT_OR_COLUMN'
+					UNION 
+                    SELECT p.value,t.name FROM sys.extended_properties p inner join sys.triggers t on p.major_id = t.object_id where p.name='Description' AND t.type = 'TR'
                     UNION
-                    SELECT p.value,c.name FROM sys.extended_properties p inner join sys.columns c on p.major_id = c.object_id AND p.minor_id = c.column_id inner join sys.tables t on p.major_id = t.object_id AND c.object_id = t.object_id where p.name='Description' AND t.type_desc = 'USER_TABLE' AND t.type = 'U'
-                    UNION 
-                    SELECT p.value,t.name FROM sys.extended_properties p inner join sys.triggers t on p.major_id = t.object_id where p.name='Description' AND t.type = 'U'
+                    SELECT p.value,v.name FROM sys.extended_properties p inner join sys.views v on p.major_id = v.object_id where p.name='Description' AND v.type = 'V'
                     UNION
-                    SELECT p.value,v.name FROM sys.extended_properties p inner join sys.views v on p.major_id = v.object_id where p.name='Description' AND v.type = 'U'
-                    UNION
-                    SELECT p.value,i.name FROM sys.extended_properties p inner join sys.indexes i on p.major_id = i.object_id where p.name='Description'"; 
+                    SELECT p.value,i.name FROM sys.extended_properties p inner join sys.indexes i on p.major_id = i.object_id where p.name='Description' AND i.is_primary_key=0 AND p.class_desc='INDEX'"; 
         }
 
         internal override string SetTableDescription(string tableName, string description)
         {
-            return string.Format("EXEC sys.sp_addextendedproperty @name = N'DESCRIPTION', @value = N'{1}', @level0type = N'TABLE', @level0name = '{0}'", tableName, description.Replace("'", "''"));
+            return string.Format("EXEC sys.sp_addextendedproperty @name = N'DESCRIPTION', @value = N'{1}', @level0type='SCHEMA', @level0name='dbo',@level1type = N'TABLE', @level1name = '{0}'", tableName, description.Replace("'", "''"));
         }
 
         internal override string SetFieldDescription(string tableName, string fieldName, string description)
         {
-            return string.Format("EXEC sys.sp_addextendedproperty @name = N'DESCRIPTION', @value = N'{2}', @level0type = N'TABLE', @level0name = '{0}', @level1type = N'COLUMN', @level1name = N'{1}'", new object[] { tableName, fieldName, description.Replace("'", "''") });
+            return string.Format("EXEC sys.sp_addextendedproperty @name = N'DESCRIPTION', @value = N'{2}', @level0type='SCHEMA', @level0name='dbo',@level1type = N'TABLE', @level1name = '{0}', @level2type = N'COLUMN', @level2name = N'{1}'", new object[] { tableName, fieldName, description.Replace("'", "''") });
         }
 
         internal override string SetTriggerDescription(string triggerName, string description)
         {
-            return string.Format("EXEC sys.sp_addextendedproperty @name = N'DESCRIPTION', @value = N'{1}', @level0type = N'TRIGGER', @level0name = '{0}'", triggerName, description.Replace("'", "''"));
+            return string.Format("DECLARE @tblname VARCHAR(MAX); select @tblName=tbl.name from sys.triggers trig, sysobjects tbl WHERE trig.parent_id = tbl.id AND tbl.xtype='U' AND trig.name IS NOT NULL AND trig.name = '{0}';EXEC sys.sp_addextendedproperty @name = N'DESCRIPTION', @value = N'{1}', @level0type='SCHEMA', @level0name='dbo',@level1type = 'TABLE',@level1name=@tblname,@level2type = N'TRIGGER', @level2name = '{0}'", triggerName, description.Replace("'", "''"));
         }
 
         internal override string SetViewDescription(string viewName, string description)
         {
-            return string.Format("EXEC sys.sp_addextendedproperty @name = N'DESCRIPTION', @value = N'{1}', @level0type = N'VIEW', @level0name = '{0}'", viewName, description.Replace("'", "''"));
+            return string.Format("EXEC sys.sp_addextendedproperty @name = N'DESCRIPTION', @value = N'{1}', @level0type='SCHEMA', @level0name='dbo',@level1type = N'VIEW', @level1name = '{0}'", viewName, description.Replace("'", "''"));
         }
 
         internal override string SetIndexDescription(string indexName, string description)
         {
-            return string.Format("EXEC sys.sp_addextendedproperty @name = N'DESCRIPTION', @value = N'{1}', @level0type = N'INDEX', @level0name = '{0}'", indexName, description.Replace("'", "''"));
+            return string.Format("DECLARE @tblname VARCHAR(MAX); select @tblname = tbl.name from sys.indexes ind, sysobjects tbl WHERE ind.object_id = tbl.id AND tbl.xtype='U' AND ind.name IS NOT NULL AND ind.is_primary_key=0 AND ind.name = '{0}'; EXEC sys.sp_addextendedproperty @name = N'DESCRIPTION', @value = N'{1}', @level0type='SCHEMA', @level0name='dbo',@level1type = 'TABLE',@level1name=@tblname,@level2type = N'INDEX', @level2name = '{0}'", indexName, description.Replace("'", "''"));
         }
         #endregion
 	}

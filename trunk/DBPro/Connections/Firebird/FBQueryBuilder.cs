@@ -260,16 +260,11 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 			get{ return "SELECT FIRST {2} SKIP {1} * FROM ({0}) tbl"; }
 		}
 
-        internal override string  AlterFieldType(string table, ExtractedFieldMap field, ExtractedFieldMap oldFieldInfo)
+        internal override string AlterFieldType(string table, ExtractedFieldMap field, ExtractedFieldMap oldFieldInfo)
         {
             if ((field.FullFieldType.ToUpper().Contains("BLOB")) || (oldFieldInfo.FullFieldType.ToUpper().Contains("BLOB")))
                 return DropColumn(table, field.FieldName) + ";" + CreateColumn(table, field) + ";";
-            else
-            {
-                if (field.ComputedCode != null)
-                    return string.Format("ALTER TABLE {0} ALTER COLUMN {1} TYPE {2} COMPUTED BY {3}", table, field.FieldName, field.FullFieldType, field.ComputedCode);
-                return base.AlterFieldType(table, field, oldFieldInfo);
-            }
+            return base.AlterFieldType(table, field, oldFieldInfo);
         }
 
         protected override string DropTableIndexString

@@ -13,6 +13,7 @@ using System.Text.RegularExpressions;
 using System.Reflection;
 using System.Threading;
 using System.Data;
+using System.Text;
 
 namespace Org.Reddragonit.Dbpro
 {
@@ -195,17 +196,31 @@ namespace Org.Reddragonit.Dbpro
 			}
 		}
 
+        //called to clean up mssql db code for duplicate lines
+        public static string RemoveDuplicateStrings(string code, string[] ignores)
+        {
+            List<string> tmp = new List<string>(code.Split('\n'));
+            RemoveDuplicateStrings(ref tmp, ignores);
+            RemoveEmptyStrings(ref tmp);
+            StringBuilder ret = new StringBuilder();
+            foreach (string str in tmp)
+                ret.AppendLine(str);
+            return ret.ToString();
+        }
+
         //called to clean up empty strings from an array.  Used through connection pools
         //running massive updates/inserts/etc
         public static void RemoveEmptyStrings(ref List<string> list)
         {
             for (int x = 0; x < list.Count; x++)
             {
-                if (list[x].Trim().Length == 0)
+                if (list[x].Trim(new char[] { '\n', '\t', ' ', '\r' }).Length == 0)
                 {
                     list.RemoveAt(x);
                     x--;
                 }
+                else
+                    list[x] = list[x].Trim(new char[] { '\n', '\t', ' ', '\r' });
             }
         }
 
