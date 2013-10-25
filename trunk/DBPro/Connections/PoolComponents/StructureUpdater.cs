@@ -552,11 +552,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                 foreach (ExtractedFieldMap efm in etm.Fields)
                     Logger.LogLine("\t" + efm.FieldName + " - " + efm.PrimaryKey.ToString());
                 if (conn is MsSqlConnection)
-                {
                     ((MsSqlConnection)conn).MaskComplicatedRelations(x, ref tables, ref triggers);
-                    if (tmpTriggers != null)
-                        triggers.AddRange(tmpTriggers);
-                }
                 if (!_pool.Mapping.IsVersionTable(etm.TableName))
                 {
                     foreach (ExtractedFieldMap efm in etm.PrimaryKeys)

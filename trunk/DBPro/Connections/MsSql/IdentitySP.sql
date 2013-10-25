@@ -205,7 +205,7 @@ BEGIN
 			--get and set the iden value if necessary
 			IF (@createIdent = 1)
 			BEGIN
-				INSERT INTO #updates SELECT 'DECLARE @ID BIGINT; SET @ID = (SELECT MAX('+@field+') FROM '+@table+'); DBCC CHECKIDENT('''+@table+''', RESEED, @ID)';
+				INSERT INTO #updates SELECT 'DECLARE @ID BIGINT; SET @ID = (SELECT MAX('+@field+') FROM '+@table+'); SET @ID = (CASE WHEN @ID IS NULL THEN 0 ELSE @ID END); DBCC CHECKIDENT(''TEMP_'+@table+''', RESEED, @ID)';
 			END
 
 			--executing relationship updates

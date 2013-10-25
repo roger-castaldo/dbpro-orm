@@ -95,14 +95,20 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 					string declares="";
 					string sets="";
 					string queryFields="";
-					foreach (ExtractedFieldMap efm in map.PrimaryKeys)
+                    string valueSets = "";
+					foreach (ExtractedFieldMap efm in map.Fields)
 					{
-						declares+="DECLARE "+queryBuilder.CreateParameterName(efm.FieldName)+" "+efm.Type+";\n";
-						if (!efm.AutoGen)
-						{
-							sets+=" SET "+queryBuilder.CreateParameterName(efm.FieldName)+" = (SELECT "+efm.FieldName+" FROM INSERTED);\n";
-							queryFields+=" AND "+efm.FieldName+" = "+queryBuilder.CreateParameterName(efm.FieldName);
-						}
+                        if (efm.ComputedCode == null)
+                        {
+                            declares += "DECLARE " + queryBuilder.CreateParameterName(efm.FieldName) + " " + efm.FullFieldType+ ";\n";
+                            if (!efm.AutoGen)
+                            {
+                                sets += " SET " + queryBuilder.CreateParameterName(efm.FieldName) + " = (SELECT " + efm.FieldName + " FROM INSERTED);\n";
+                                valueSets += "," + queryBuilder.CreateParameterName(efm.FieldName);
+                                if (efm.PrimaryKey)
+                                    queryFields += " AND " + efm.FieldName + " = " + queryBuilder.CreateParameterName(efm.FieldName);
+                            }
+                        }
 					}
 					code+=declares;
 					code+="BEGIN \n";
@@ -111,7 +117,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 					code+=queryFields.Substring(4)+");\n";
 					code+="IF ("+queryBuilder.CreateParameterName(field.FieldName)+" is NULL)\n";
 					code+="\tSET "+queryBuilder.CreateParameterName(field.FieldName)+" = -1;\n";
-					code+="INSERT INTO "+map.TableName+"("+field.FieldName+fields+") SELECT "+queryBuilder.CreateParameterName(field.FieldName)+"+1"+fields.Replace(",",",tbl.")+" from INSERTED ins,"+map.TableName+" tbl WHERE "+primarys+";\n";
+					code+="INSERT INTO "+map.TableName+"("+field.FieldName+fields+") VALUES("+queryBuilder.CreateParameterName(field.FieldName)+"+1"+valueSets+");\n";
 					code+="END";
                     triggers.Add(new Trigger((imediate ? Pool.Translator.GetInsertIntermediateTriggerName(t, pi, this) : Pool.Translator.GetInsertTriggerName(t, this)), "ON " + map.TableName + " INSTEAD OF INSERT\n", code));
 				}
