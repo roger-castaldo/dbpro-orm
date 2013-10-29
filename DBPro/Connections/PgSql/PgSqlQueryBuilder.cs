@@ -8,6 +8,8 @@
  */
 using System;
 using System.Collections.Generic;
+using Org.Reddragonit.Dbpro.Connections.PoolComponents;
+using System.Data;
 
 namespace Org.Reddragonit.Dbpro.Connections.PgSql
 {
@@ -341,5 +343,11 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
             return string.Format("COMMENT ON INDEX {0} IS '{1}'", indexName, description.Replace("'", "''"));
         }
         #endregion
+
+        protected override string _GenerateAutogenIDQuery(sTable tbl, ref List<IDbDataParameter> parameters)
+        {
+            parameters[parameters.Count - 1].Direction = ParameterDirection.ReturnValue;
+            return "RETURNING " + tbl.AutoGenField;
+        }
 	}
 }

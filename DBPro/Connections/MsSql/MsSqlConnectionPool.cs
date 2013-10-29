@@ -6,12 +6,20 @@ using System.Reflection;
 using System.Xml;
 using System.Data;
 using Org.Reddragonit.Dbpro.Structure.Attributes;
+using System.Text.RegularExpressions;
 
 namespace Org.Reddragonit.Dbpro.Connections.MsSql
 {
 	class MsSqlConnectionPool : ConnectionPool
 	{
         private const string _PARAMETER_TYPE_NAME = "System.Data.SqlClient.SqlParameter";
+        private static readonly Regex _regVersion = new Regex("^Microsoft SQL Server (\\d{4})", RegexOptions.Compiled | RegexOptions.ECMAScript);
+
+        private long _version;
+        public long Version
+        {
+            get { return _version; }
+        }
 
         private string _connectionString;
         protected override string connectionString
@@ -55,6 +63,12 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
                    "User ID=" + username + ";" +
                    "Password=" + password + ";";
             _catalog = database;
+            Connection conn = CreateConnection(false);
+            conn.ExecuteQuery("Select @@version");
+            conn.Read();
+            string res = conn[0].ToString();
+            conn.CloseConnection();
+            _version = long.Parse(_regVersion.Match(res).Groups[1].Value);
         }
 
         private string _catalog;

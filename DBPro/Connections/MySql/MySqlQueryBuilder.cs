@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using Org.Reddragonit.Dbpro.Connections.PoolComponents;
 using Org.Reddragonit.Dbpro.Structure.Attributes;
+using System.Data;
 
 namespace Org.Reddragonit.Dbpro.Connections.MySql
 {
@@ -446,5 +447,27 @@ AND rtns.ROUTINE_NAME = prc.`NAME`";
             return ret;
         }
         #endregion
+
+        protected override string _GenerateAutogenIDQuery(sTable tbl, ref List<IDbDataParameter> parameters)
+        {
+            parameters[parameters.Count - 1].Direction = ParameterDirection.Output;
+            string ret = "; SET "+CreateParameterName(tbl.AutoGenField)+" = (SELECT MAX(" + tbl.AutoGenField + ") FROM " + tbl.Name;
+            if (tbl.PrimaryKeyFields.Length > 1)
+            {
+                ret += " WHERE ";
+                foreach (string prop in tbl.PrimaryKeyProperties)
+                {
+                    foreach (sTableField fld in tbl[prop])
+                    {
+                        if (!Utility.StringsEqual(fld.Name,tbl.AutoGenField))
+                            ret += fld.Name + " = " + CreateParameterName(fld.Name) + " AND ";
+                    }
+                }
+                if (ret.EndsWith("WHERE "))
+                    ret = ret.Substring(0, ret.Length - 6);
+                return (ret.EndsWith("AND ") ? ret.Substring(0, ret.Length - 4) : ret)+")";
+            }
+            return ret+")";
+        }
     }
 }

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Text;
 using Org.Reddragonit.Dbpro.Connections.PoolComponents;
+using Org.Reddragonit.Dbpro.Structure.Attributes;
 
 namespace Org.Reddragonit.Dbpro.Connections.MsSql
 {
@@ -485,5 +486,34 @@ FROM INFORMATION_SCHEMA.VIEWS vws";
             return string.Format("DECLARE @tblname VARCHAR(MAX); select @tblname = tbl.name from sys.indexes ind, sysobjects tbl WHERE ind.object_id = tbl.id AND tbl.xtype='U' AND ind.name IS NOT NULL AND ind.is_primary_key=0 AND ind.name = '{0}'; EXEC sys.sp_addextendedproperty @name = N'DESCRIPTION', @value = N'{1}', @level0type='SCHEMA', @level0name='dbo',@level1type = 'TABLE',@level1name=@tblname,@level2type = N'INDEX', @level2name = '{0}'", indexName, description.Replace("'", "''"));
         }
         #endregion
-	}
+
+        protected override string _GenerateAutogenIDQuery(sTable tbl, ref List<IDbDataParameter> parameters)
+        {
+            parameters[parameters.Count - 1].Direction = ParameterDirection.Output;
+            if (((MsSqlConnectionPool)pool).Version >= 2005 && tbl.PrimaryKeyFields.Length==1
+                && tbl[tbl.AutoGenProperty][0].Type != FieldType.DATETIME
+                && tbl[tbl.AutoGenProperty][0].Type != FieldType.TIME
+                && tbl[tbl.AutoGenProperty][0].Type != FieldType.STRING)
+                return "OUTPUT INSERTED." + tbl.AutoGenField;
+            else
+            {
+                string select = "; SET "+CreateParameterName(tbl.AutoGenField)+" = (SELECT MAX("+tbl.AutoGenField+") FROM "+tbl.Name;
+                if (tbl.PrimaryKeyFields.Length > 1)
+                {
+                    select+=" WHERE ";
+                    foreach (string prop in tbl.PrimaryKeyProperties)
+                    {
+                        foreach (sTableField fld in tbl[prop]){
+                            if (!Utility.StringsEqual(tbl.AutoGenField, fld.Name))
+                                select += fld.Name + " = " + CreateParameterName(fld.Name) + " AND ";
+                        }
+                    }
+                    select = select.Substring(0, select.Length - 4);
+                    if (select.EndsWith("WHERE "))
+                        select = select.Substring(0, select.Length - 6);
+                }
+                return select+")";
+            }
+        }
+    }
 }

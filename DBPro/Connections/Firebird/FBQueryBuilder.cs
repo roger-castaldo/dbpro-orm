@@ -9,6 +9,8 @@
 
 using System;
 using System.Collections.Generic;
+using Org.Reddragonit.Dbpro.Connections.PoolComponents;
+using System.Data;
 
 namespace Org.Reddragonit.Dbpro.Connections.Firebird
 {
@@ -438,5 +440,11 @@ WHERE vw.RDB$VIEW_SOURCE IS NOT NULL";
             return string.Format("UPDATE RDB$INDICES SET RDB$DESCRIPTION = '{1}' WHERE RDB$INDEX_NAME = '{0}'", indexName, description.Replace("'", "''"));
         }
         #endregion
+
+        protected override string _GenerateAutogenIDQuery(sTable tbl,ref List<IDbDataParameter> parameters)
+        {
+            parameters[parameters.Count - 1].Direction = ParameterDirection.ReturnValue;
+            return "returning " + tbl.AutoGenField;
+        }
     }
 }

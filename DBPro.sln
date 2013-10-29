@@ -1,7 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 10.00
 # Visual Studio 2008
-# SharpDevelop 3.0.0.3437
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DBPro", "DBPro\DBPro.csproj", "{804A5915-5770-4B62-AF13-E10AE65B5901}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestingApp", "TestingApp\TestingApp.csproj", "{BA852BCE-1638-464A-9DBB-47E5ABE48BEF}"
@@ -9,15 +8,45 @@ EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
+		Release_35|Any CPU = Release_35|Any CPU
+		Release_40_EF6|Any CPU = Release_40_EF6|Any CPU
+		Release_40|Any CPU = Release_40|Any CPU
+		Release_45_EF6|Any CPU = Release_45_EF6|Any CPU
+		Release_45|Any CPU = Release_45|Any CPU
+		Release_Mono_w_Linux|Any CPU = Release_Mono_w_Linux|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{804A5915-5770-4B62-AF13-E10AE65B5901}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{804A5915-5770-4B62-AF13-E10AE65B5901}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{804A5915-5770-4B62-AF13-E10AE65B5901}.Release_35|Any CPU.ActiveCfg = Release|Any CPU
+		{804A5915-5770-4B62-AF13-E10AE65B5901}.Release_35|Any CPU.Build.0 = Release|Any CPU
+		{804A5915-5770-4B62-AF13-E10AE65B5901}.Release_40_EF6|Any CPU.ActiveCfg = Release|Any CPU
+		{804A5915-5770-4B62-AF13-E10AE65B5901}.Release_40_EF6|Any CPU.Build.0 = Release|Any CPU
+		{804A5915-5770-4B62-AF13-E10AE65B5901}.Release_40|Any CPU.ActiveCfg = Release|Any CPU
+		{804A5915-5770-4B62-AF13-E10AE65B5901}.Release_40|Any CPU.Build.0 = Release|Any CPU
+		{804A5915-5770-4B62-AF13-E10AE65B5901}.Release_45_EF6|Any CPU.ActiveCfg = Release|Any CPU
+		{804A5915-5770-4B62-AF13-E10AE65B5901}.Release_45_EF6|Any CPU.Build.0 = Release|Any CPU
+		{804A5915-5770-4B62-AF13-E10AE65B5901}.Release_45|Any CPU.ActiveCfg = Release|Any CPU
+		{804A5915-5770-4B62-AF13-E10AE65B5901}.Release_45|Any CPU.Build.0 = Release|Any CPU
+		{804A5915-5770-4B62-AF13-E10AE65B5901}.Release_Mono_w_Linux|Any CPU.ActiveCfg = Release|Any CPU
+		{804A5915-5770-4B62-AF13-E10AE65B5901}.Release_Mono_w_Linux|Any CPU.Build.0 = Release|Any CPU
 		{804A5915-5770-4B62-AF13-E10AE65B5901}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{804A5915-5770-4B62-AF13-E10AE65B5901}.Release|Any CPU.Build.0 = Release|Any CPU
 		{BA852BCE-1638-464A-9DBB-47E5ABE48BEF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{BA852BCE-1638-464A-9DBB-47E5ABE48BEF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BA852BCE-1638-464A-9DBB-47E5ABE48BEF}.Release_35|Any CPU.ActiveCfg = Release|Any CPU
+		{BA852BCE-1638-464A-9DBB-47E5ABE48BEF}.Release_35|Any CPU.Build.0 = Release|Any CPU
+		{BA852BCE-1638-464A-9DBB-47E5ABE48BEF}.Release_40_EF6|Any CPU.ActiveCfg = Release|Any CPU
+		{BA852BCE-1638-464A-9DBB-47E5ABE48BEF}.Release_40_EF6|Any CPU.Build.0 = Release|Any CPU
+		{BA852BCE-1638-464A-9DBB-47E5ABE48BEF}.Release_40|Any CPU.ActiveCfg = Release|Any CPU
+		{BA852BCE-1638-464A-9DBB-47E5ABE48BEF}.Release_40|Any CPU.Build.0 = Release|Any CPU
+		{BA852BCE-1638-464A-9DBB-47E5ABE48BEF}.Release_45_EF6|Any CPU.ActiveCfg = Release|Any CPU
+		{BA852BCE-1638-464A-9DBB-47E5ABE48BEF}.Release_45_EF6|Any CPU.Build.0 = Release|Any CPU
+		{BA852BCE-1638-464A-9DBB-47E5ABE48BEF}.Release_45|Any CPU.ActiveCfg = Release|Any CPU
+		{BA852BCE-1638-464A-9DBB-47E5ABE48BEF}.Release_45|Any CPU.Build.0 = Release|Any CPU
+		{BA852BCE-1638-464A-9DBB-47E5ABE48BEF}.Release_Mono_w_Linux|Any CPU.ActiveCfg = Release|Any CPU
+		{BA852BCE-1638-464A-9DBB-47E5ABE48BEF}.Release_Mono_w_Linux|Any CPU.Build.0 = Release|Any CPU
 		{BA852BCE-1638-464A-9DBB-47E5ABE48BEF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BA852BCE-1638-464A-9DBB-47E5ABE48BEF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection

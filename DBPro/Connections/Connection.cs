@@ -11,6 +11,7 @@ using System.Threading;
 using Org.Reddragonit.Dbpro.Connections.PoolComponents;
 using System.ComponentModel;
 using Org.Reddragonit.Dbpro.Virtual;
+using Org.Reddragonit.Dbpro.Connections.MsSql;
 
 namespace Org.Reddragonit.Dbpro.Connections
 {
@@ -80,7 +81,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		public ConnectionPool Pool{
 			get{return pool;}
 		}
-		
+
 		protected abstract IDbConnection EstablishConnection();
 		protected abstract IDbCommand EstablishCommand();
 		internal abstract string DefaultTableString{
@@ -502,23 +503,18 @@ namespace Org.Reddragonit.Dbpro.Connections
                 }
             }
             string query = "";
-            string select = "";
             List<IDbDataParameter> pars = new List<IDbDataParameter>();
-            List<IDbDataParameter> selectPars = new List<IDbDataParameter>();
             Org.Reddragonit.Dbpro.Structure.Attributes.Table tbl = (Org.Reddragonit.Dbpro.Structure.Attributes.Table)table.GetType().GetCustomAttributes(typeof(Org.Reddragonit.Dbpro.Structure.Attributes.Table),false)[0];
             if (tbl.AlwaysInsert)
-                query = queryBuilder.Insert(table, out pars, out select, out selectPars);
+                query = queryBuilder.Insert(table, out pars);
             else
                 query = queryBuilder.Update(table, out pars);
             if (query.Length > 0)
             {
                 ExecuteNonQuery(query, pars);
-                if ((select != null) && (tbl.AlwaysInsert))
+                if ((pars[pars.Count-1].Direction!=ParameterDirection.Input) && (tbl.AlwaysInsert))
                 {
-                    ExecuteQuery(select, selectPars);
-                    Read();
-                    table.SetField(map.AutoGenProperty, this[0]);
-                    Close();
+                    table.SetField(map.AutoGenProperty, pars[pars.Count-1].Value);
                     table._isSaved = true;
                     table.LoadStatus = LoadStatus.Complete;
                 }
@@ -701,20 +697,32 @@ namespace Org.Reddragonit.Dbpro.Connections
                 }
             }
 			string query = "";
-			string select="";
 			List<IDbDataParameter> pars = new List<IDbDataParameter>();
-			List<IDbDataParameter> selectPars = new List<IDbDataParameter>();
             if (ignoreAutogen)
                 query = queryBuilder.InsertWithIdentity(table, out pars);
             else
-                query = queryBuilder.Insert(table, out pars, out select, out selectPars);
+                query = queryBuilder.Insert(table, out pars);
 			ExecuteNonQuery(query,pars);
-			if ((select!=null)&&(!ignoreAutogen))
+			if ((pars[pars.Count-1].Direction!=ParameterDirection.Input)&&(!ignoreAutogen))
 			{
-				ExecuteQuery(select,selectPars);
-				Read();
-                table.SetField(map.AutoGenProperty,this[0]);
-				Close();
+                if (pars[pars.Count - 1].Value == DBNull.Value)
+                {
+                    string parsError = "";
+                    if (pars != null)
+                    {
+                        foreach (IDbDataParameter param in pars)
+                        {
+                            if (param.Value != null)
+                                parsError += param.ParameterName + ": " + param.Value.ToString() + "\n";
+                            else
+                                parsError += param.ParameterName + ": NULL" + "\n";
+                        }
+                    }
+                    Close();
+                    throw new Exception("An error occured in executing the query: " + comm.CommandText + "\nwith the parameters: " + parsError);
+                }
+                table.SetField(map.AutoGenProperty, pars[pars.Count - 1].Value);
+                Close();
 			}
 			table._isSaved=true;
 			table.LoadStatus= LoadStatus.Complete;
@@ -1344,11 +1352,17 @@ namespace Org.Reddragonit.Dbpro.Connections
 				List<IDbDataParameter> pars = new List<IDbDataParameter>();
 				foreach (IDbDataParameter par in parameters)
 				{
-					if (Utility.IsParameterNull(par))
-					{
-						ret = Utility.StripNullParameter(ret,par.ParameterName);
-					}else
-						pars.Add(par);
+                    if (par.Direction == ParameterDirection.Input)
+                    {
+                        if (Utility.IsParameterNull(par))
+                        {
+                            ret = Utility.StripNullParameter(ret, par.ParameterName);
+                        }
+                        else
+                            pars.Add(par);
+                    }
+                    else
+                        pars.Add(par);
 				}
 				parameters=pars.ToArray();
 				return ret;
@@ -1390,7 +1404,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			return ExecuteNonQuery(queryString, parameters.ToArray());
 		}
 
-		public int ExecuteNonQuery(string queryString, IDbDataParameter[] parameters)
+		public virtual int ExecuteNonQuery(string queryString, IDbDataParameter[] parameters)
 		{
             if (_readonly)
             {
@@ -1438,7 +1452,21 @@ namespace Org.Reddragonit.Dbpro.Connections
             }
             try
             {
-                int ret = comm.ExecuteNonQuery();
+                int ret;
+                if (pool is MsSqlConnectionPool
+                    && comm.CommandText.StartsWith("INSERT ") &&
+                    comm.CommandText.Contains(" OUTPUT ") && 
+                    parameters != null)
+                {
+                    if (parameters[parameters.Length - 1].Direction != ParameterDirection.Input)
+                    {
+                        object id = comm.ExecuteScalar();
+                        ret = (id == null ? 0 : 1);
+                        parameters[parameters.Length - 1].Value = id;
+                    }else
+                        ret = comm.ExecuteNonQuery();
+                }else
+                    ret = comm.ExecuteNonQuery();
                 Logger.LogLine("Successfully executed: "+comm.CommandText);
                 return ret;
             }

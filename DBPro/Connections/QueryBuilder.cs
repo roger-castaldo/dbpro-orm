@@ -25,7 +25,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 	/// <summary>
 	/// Description of QueryBuilder.
 	/// </summary>
-	internal class QueryBuilder
+	internal abstract class QueryBuilder
 	{
 		
 		private ConnectionPool _pool;
@@ -703,14 +703,11 @@ namespace Org.Reddragonit.Dbpro.Connections
             }
         }
 
-		internal string Insert(Table table,out List<IDbDataParameter> insertParameters,out string select,out List<IDbDataParameter> selectParameters)
+		internal string Insert(Table table,out List<IDbDataParameter> insertParameters)
 		{
             sTable tbl = _pool.Mapping[table.GetType()];
 			insertParameters=new List<IDbDataParameter>();
-			selectParameters=new List<IDbDataParameter>();
-			string whereConditions = "";
-			select=null;
-            List<string> fprops = new List<string>(tbl.ForeignTableProperties);
+			List<string> fprops = new List<string>(tbl.ForeignTableProperties);
 			try{
 				string values="";
 				string parameters="";
@@ -732,7 +729,6 @@ namespace Org.Reddragonit.Dbpro.Connections
                                     values += fld.Name + ",";
                                     parameters += "," + CreateParameterName(fld.Name);
                                     insertParameters.Add(pool.CreateParameter(CreateParameterName(fld.Name), null, fld.Type, fld.Length));
-                                    whereConditions += " AND " + fld.Name + " IS NULL ";
                                 }
                             }
                             else
@@ -741,7 +737,6 @@ namespace Org.Reddragonit.Dbpro.Connections
                                 {
                                     values += fld.Name + ",";
                                     parameters += "," + CreateParameterName(fld.Name);
-                                    whereConditions += " AND " + fld.Name + " = " + CreateParameterName(fld.Name) + " ";
                                 }
                                 Type etype = pi.PropertyType;
                                 while (true)
@@ -767,31 +762,34 @@ namespace Org.Reddragonit.Dbpro.Connections
                         else if (!Utility.StringsEqual(prop,tbl.AutoGenProperty) && flds[0].ComputedCode==null)
                         {
                             values += flds[0].Name + ",";
-                            parameters += "," + CreateParameterName(prop);
-                            whereConditions += " AND "+flds[0].Name+" = " + CreateParameterName(prop) + " ";
+                            parameters += "," + CreateParameterName(flds[0].Name);
                             if (table.IsFieldNull(prop))
-                                insertParameters.Add(pool.CreateParameter(CreateParameterName(prop), null, flds[0].Type, flds[0].Length));
+                                insertParameters.Add(pool.CreateParameter(CreateParameterName(flds[0].Name), null, flds[0].Type, flds[0].Length));
                             else
                             {
                                 if (flds[0].Type == FieldType.ENUM)
-                                    insertParameters.Add(pool.CreateParameter(CreateParameterName(prop), pool.GetEnumID(table.GetType().GetProperty(prop, Utility._BINDING_FLAGS_WITH_INHERITANCE).PropertyType, table.GetField(prop).ToString())));
+                                    insertParameters.Add(pool.CreateParameter(CreateParameterName(flds[0].Name), pool.GetEnumID(table.GetType().GetProperty(prop, Utility._BINDING_FLAGS_WITH_INHERITANCE).PropertyType, table.GetField(prop).ToString())));
                                 else
-                                    insertParameters.Add(pool.CreateParameter(CreateParameterName(prop), table.GetField(prop), flds[0].Type, flds[0].Length));
+                                    insertParameters.Add(pool.CreateParameter(CreateParameterName(flds[0].Name), table.GetField(prop), flds[0].Type, flds[0].Length));
                             }
                         }
                     }
                 }
 				values=values.Substring(0,values.Length-1);
 				parameters=parameters.Substring(1);
-				whereConditions=whereConditions.Substring(4);
-				if (tbl.AutoGenProperty!=null)
-				{
-                    select = string.Format(SelectMaxWithConditions, tbl[tbl.AutoGenProperty][0].Name, tbl.Name, whereConditions);
-                    if (pool is MsSqlConnectionPool)
-                        selectParameters.AddRange(((MsSqlConnectionPool)pool).DuplicateParameters(insertParameters));
+                if (tbl.AutoGenProperty != null)
+                {
+                    string select = "";
+                    insertParameters.Add(pool.CreateParameter(CreateParameterName(tbl.AutoGenField), table.GetField(tbl.AutoGenProperty),
+                        tbl[tbl.AutoGenProperty][0].Type, tbl[tbl.AutoGenProperty][0].Length));
+                    if (tbl[tbl.AutoGenProperty][0].Type == FieldType.STRING)
+                        insertParameters[insertParameters.Count - 1].Size = int.MaxValue;
+                    select = _GenerateAutogenIDQuery(tbl,ref insertParameters);
+                    if (pool is MsSqlConnectionPool && select.StartsWith("OUTPUT"))
+                        return string.Format(InsertString, tbl.Name, values, parameters).Replace(" VALUES "," " + select+" VALUES ");
                     else
-                        selectParameters.AddRange(insertParameters);
-				}
+                        return string.Format(InsertString, tbl.Name, values, parameters) + " " + select;
+                }
 				return string.Format(InsertString,tbl.Name,values,parameters);
 			}catch (Exception e)
 			{
@@ -799,6 +797,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 				return null;
 			}
 		}
+
+        protected abstract string _GenerateAutogenIDQuery(sTable tbl,ref List<IDbDataParameter> parameters);
 		
 		internal string Insert(string table,string fields,string parameters)
 		{
