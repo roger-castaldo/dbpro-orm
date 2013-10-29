@@ -84,7 +84,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 				                         "ON "+map.TableName+" INSTEAD OF INSERT\n",
 				                         "AS "+
 				                         "BEGIN SET NOCOUNT ON;\n"+
-                                         "INSERT INTO " + map.TableName + "(" + field.FieldName + fields + ") SELECT GETDATE()" + fields.Replace(",", ",tbl.") + " from INSERTED ins;\n" +
+                                         "INSERT INTO " + map.TableName + "(" + field.FieldName + fields + ") SELECT GETDATE()" + fields.Replace(",", ",tbl.") + " from INSERTED tbl;\n" +
 				                         "END"));
 			}else if (field.Type.ToUpper().Contains("INT")){
 				if (map.PrimaryKeys.Count==1)
