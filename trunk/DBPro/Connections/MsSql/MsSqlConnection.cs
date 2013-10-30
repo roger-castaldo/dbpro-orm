@@ -586,7 +586,7 @@ DEALLOCATE DeleteCursor;
                         checks += string.Format("\nALTER TABLE {0} CHECK CONSTRAINT ALL;", m.Groups[1].Value);
                     triggers.Add(new Trigger(string.Format(_UPDATE_TRIGGER_NAME, tblName),
                         string.Format("ON {0} INSTEAD OF UPDATE", tblName),
-                        Utility.RemoveDuplicateStrings(updCode + checks + "\nEND\n\n", new string[] { "COMMIT;", "END", "BEGIN" })));
+                        Utility.RemoveDuplicateStrings(updCode + checks + "\nEND\n\n", new string[] { "COMMIT;", "END", "BEGIN", string.Format("FETCH NEXT FROM InsertCursor INTO @NEW_{0};", fields.Replace(",", ",@NEW_")), string.Format("FETCH NEXT FROM DeleteCursor INTO @OLD_{0};", fields.Replace(",", ",@OLD_")) })));
                     //recurse back through first ones checked to adjust relationships accordingly
                     //once using INSTEAD OF, all relationship cascades MUST be done in the trigger
                     for (int x = 0; x < index; x++)
