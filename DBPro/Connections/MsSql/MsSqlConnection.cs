@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Xml;
 using System.IO;
 using Org.Reddragonit.Dbpro.Structure.Attributes;
+using System.Text.RegularExpressions;
 
 namespace Org.Reddragonit.Dbpro.Connections.MsSql
 {
@@ -445,6 +446,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
                         }
                     }
                     string delCode = "AS\nBEGIN\nSET NOCOUNT ON;\n";
+                    string fields = "";
                     for(int x=0;x<triggers.Count;x++){
                         Trigger t = triggers[x];
                         if (t.Conditions==string.Format("ON {0} INSTEAD OF DELETE",tblName)){
@@ -459,7 +461,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
                     {
                         List<ForeignRelationMap> rel = maps[x];
                         delCode+=string.Format("IF ((SELECT COUNT(*) FROM DELETED)>0) BEGIN DELETE FROM {0} WHERE (",map.TableName);
-                        string fields = "";
+                        fields = "";
                         foreach (ForeignRelationMap frm in rel)
                         {
                             delCode += string.Format("CAST({0} AS VARCHAR(MAX))+'-'+",frm.InternalField);
@@ -477,8 +479,43 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
                     }
                     triggers.Add(new Trigger(string.Format(_DEL_TRIGGER_NAME, tblName),
                         string.Format("ON {0} INSTEAD OF DELETE", tblName),
-                        Utility.RemoveDuplicateStrings(delCode,new string []{"COMMIT;"})));
-                    string updCode = "AS\nBEGIN\nSET NOCOUNT ON;\n";
+                        Utility.RemoveDuplicateStrings(delCode,new string []{"COMMIT;","END","BEGIN"})));
+                    string updCode = @"AS
+BEGIN
+    SET NOCOUNT ON;
+    ";
+                    fields = "";
+                    string compares = "";
+                    foreach (ExtractedTableMap etm in tables)
+                    {
+                        if (etm.TableName == tblName)
+                        {
+                            foreach (ExtractedFieldMap efm in etm.Fields)
+                            {
+                                if (efm.ComputedCode == null){
+                                    updCode+=string.Format("DECLARE @NEW_{0} AS {1};\nDECLARE @OLD_{0} AS {1};\n",
+                                        efm.FieldName,
+                                        efm.FullFieldType);
+                                    fields += string.Format("{0},", efm.FieldName);
+                                    if (efm.PrimaryKey)
+                                        compares += string.Format("@NEW_{0}<>@OLD_{0} OR ", efm.FieldName);
+                                }
+                            }
+                            fields = fields.Substring(0,fields.Length-1);
+                            updCode += string.Format(@"DECLARE InsertCursor CURSOR LOCAL FOR SELECT {0} FROM INSERTED;
+DECLARE DeleteCursor CURSOR LOCAL FOR SELECT {0} FROM DELETED;
+OPEN InsertCursor;
+OPEN DeleteCursor;
+FETCH NEXT FROM InsertCursor INTO @NEW_{1};
+FETCH NEXT FROM DeleteCursor INTO @OLD_{2};
+WHILE @@FETCH_STATUS = 0
+BEGIN
+IF ({3})
+BEGIN
+", new object[]{fields,fields.Replace(",",",@NEW_"),fields.Replace(",",",@OLD_"),compares.Substring(0,compares.Length-3)});
+                            break;
+                        }
+                    }
                     for (int x = 0; x < triggers.Count; x++)
                     {
                         Trigger t = triggers[x];
@@ -486,54 +523,70 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
                         {
                             triggers.RemoveAt(x);
                             updCode = t.Code;
-                            if (updCode.Contains("UPDATE " + tblName))
-                                updCode = updCode.Substring(0, updCode.IndexOf("UPDATE " + tblName));
+                            if (updCode.Contains("END\r\nUPDATE " + tblName+" "))
+                                updCode = updCode.Substring(0, updCode.IndexOf("END\r\nUPDATE " + tblName+" "));
                             break;
                         }
                     }
                     foreach (List<ForeignRelationMap> rel in maps)
                     {
-                        updCode += string.Format("\nALTER TABLE {0} NOCHECK CONSTRAINT ALL;UPDATE {0} SET ", map.TableName);
+                        updCode = updCode.Replace("WHILE @@FETCH_STATUS = 0",
+                            string.Format(@"ALTER TABLE {0} NOCHECK CONSTRAINT ALL;
+WHILE @@FETCH_STATUS = 0", map.TableName));
+                        updCode += string.Format(@"
+UPDATE {0} SET ", map.TableName);
                         string where = " WHERE ";
                         foreach (ForeignRelationMap frm in rel)
                         {
-                            updCode += string.Format("{0} = (SELECT {1} FROM INSERTED),",
+                            updCode += string.Format("{0} = @NEW_{1},",
                                 frm.InternalField,
                                 frm.ExternalField);
-                            where+=string.Format("{0} = (SELECT {1} FROM DELETED) AND ",
+                            where+=string.Format("{0} = @OLD_{1} AND ",
                                 frm.InternalField,
                                 frm.ExternalField);
                         }
                         updCode = updCode.Substring(0, updCode.Length - 1) +
                             where.Substring(0, where.Length - 4);
-                        updCode += string.Format(";\nALTER TABLE {0} CHECK CONSTRAINT ALL;\n", map.TableName);
+                        updCode += ";\n";
                     }
                     foreach (ExtractedTableMap etm in tables)
                     {
                         if (etm.TableName == tblName)
                         {
-                            updCode += string.Format("UPDATE {0} SET ", tblName);
+                            updCode += string.Format("END\nUPDATE {0} SET ", tblName);
                             string where = " WHERE ";
                             foreach (ExtractedFieldMap efm in etm.Fields)
                             {
                                 if (efm.ComputedCode == null)
                                 {
                                     if (!efm.PrimaryKey || etm.PrimaryKeys.Count>1)
-                                        updCode += string.Format("{0} = (SELECT {0} FROM INSERTED),",
+                                        updCode += string.Format("{0} = @NEW_{0},",
                                             efm.FieldName);
                                     if (efm.PrimaryKey)
-                                        where += string.Format("{0} = (SELECT {0} FROM DELETED) AND ",
+                                        where += string.Format("{0} = @OLD_{0} AND ",
                                             efm.FieldName);
                                 }
                             }
                             updCode = updCode.Substring(0,updCode.Length-1)+
-                                where.Substring(0,where.Length-4)+";\nEND\n\n";;
+                                where.Substring(0,where.Length-4)+string.Format(@";
+FETCH NEXT FROM InsertCursor INTO @NEW_{0};
+FETCH NEXT FROM DeleteCursor INTO @OLD_{1};
+END
+CLOSE InsertCursor;
+DEALLOCATE InsertCursor;
+CLOSE DeleteCursor;
+DEALLOCATE DeleteCursor;
+", fields.Replace(",",",@NEW_"),fields.Replace(",",",@OLD_"));
                             break;
                         }
                     }
+                    Regex reg = new Regex("ALTER TABLE (.+) NOCHECK CONSTRAINT ALL;", RegexOptions.ECMAScript | RegexOptions.Compiled);
+                    string checks = "";
+                    foreach (Match m in reg.Matches(updCode))
+                        checks += string.Format("\nALTER TABLE {0} CHECK CONSTRAINT ALL;", m.Groups[1].Value);
                     triggers.Add(new Trigger(string.Format(_UPDATE_TRIGGER_NAME, tblName),
                         string.Format("ON {0} INSTEAD OF UPDATE", tblName),
-                        Utility.RemoveDuplicateStrings(updCode, new string[] { "COMMIT;" })));
+                        Utility.RemoveDuplicateStrings(updCode + checks + "\nEND\n\n", new string[] { "COMMIT;", "END", "BEGIN" })));
                     //recurse back through first ones checked to adjust relationships accordingly
                     //once using INSTEAD OF, all relationship cascades MUST be done in the trigger
                     for (int x = 0; x < index; x++)
