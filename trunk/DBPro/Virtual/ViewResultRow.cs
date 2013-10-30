@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using Org.Reddragonit.Dbpro.Connections;
 using System.Data;
+using Org.Reddragonit.Dbpro.Connections.MsSql;
 
 namespace Org.Reddragonit.Dbpro.Virtual
 {
@@ -167,6 +168,14 @@ namespace Org.Reddragonit.Dbpro.Virtual
 
         public virtual object GetValue(int i)
         {
+            if (_conn is MsSqlConnection
+                && _conn.GetDataTypeName(i).ToUpper()=="DECIMAL")
+            {
+                double ret = 0;
+                if (double.TryParse(_conn[i].ToString(), out ret))
+                    return ret;
+                return _conn[i];
+            }
             return _conn.GetValue(i);
         }
 
