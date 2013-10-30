@@ -718,11 +718,9 @@ namespace Org.Reddragonit.Dbpro.Connections
                                 parsError += param.ParameterName + ": NULL" + "\n";
                         }
                     }
-                    Close();
                     throw new Exception("An error occured in executing the query: " + comm.CommandText + "\nwith the parameters: " + parsError);
                 }
                 table.SetField(map.AutoGenProperty, pars[pars.Count - 1].Value);
-                Close();
 			}
 			table._isSaved=true;
 			table.LoadStatus= LoadStatus.Complete;
