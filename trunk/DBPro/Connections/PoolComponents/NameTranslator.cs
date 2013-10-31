@@ -162,6 +162,9 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             conn.ExecuteQuery(conn.queryBuilder.GetAllObjectDescriptions());
             while (conn.Read())
             {
+                Logger.LogLine(string.Format("Adding Description: {0} = {1}",
+                    conn[0].ToString(),
+                    conn[1].ToString()));
                 if (conn[0].ToString().Trim().StartsWith(string.Format(_VIEW_DESCRIPTION,""))&&conn[0].ToString().Trim().EndsWith("]"))
                     _nameTranslations.Add(conn[0].ToString().Trim().Substring(0,conn[0].ToString().Trim().IndexOf("\t")), conn[1].ToString().Trim());
                 else
