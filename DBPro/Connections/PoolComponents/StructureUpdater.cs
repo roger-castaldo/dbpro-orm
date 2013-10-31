@@ -920,14 +920,16 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
             for (int x = 0; x < alterations.Count; x++)
             {
-                if (alterations[x].Contains(";ALTER"))
+                if (alterations[x].Contains(";ALTER")&&!alterations[x].StartsWith("CREATE TRIGGER")
+                    && !alterations[x].StartsWith("ALTER TRIGGER"))
                 {
                     string tmp = alterations[x];
                     alterations.RemoveAt(x);
                     alterations.Insert(x, tmp.Substring(0, tmp.IndexOf(";ALTER") + 1));
                     alterations.Insert(x + 1, tmp.Substring(tmp.IndexOf(";ALTER") + 1));
                 }
-                else if (alterations[x].Contains(";\nALTER"))
+                else if (alterations[x].Contains(";\nALTER") && !alterations[x].StartsWith("CREATE TRIGGER")
+                    && !alterations[x].StartsWith("ALTER TRIGGER"))
                 {
                     string tmp = alterations[x];
                     alterations.RemoveAt(x);

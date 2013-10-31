@@ -523,8 +523,11 @@ BEGIN
                         {
                             triggers.RemoveAt(x);
                             updCode = t.Code;
-                            if (updCode.Contains("END\r\nUPDATE " + tblName+" "))
-                                updCode = updCode.Substring(0, updCode.IndexOf("END\r\nUPDATE " + tblName+" "));
+                            if (updCode.Contains("UPDATE " + tblName + " "))
+                            {
+                                updCode = updCode.Substring(0, updCode.IndexOf("UPDATE " + tblName + " ")).Trim();
+                                updCode = updCode.Substring(0, updCode.LastIndexOf("END"));
+                            }
                             break;
                         }
                     }
