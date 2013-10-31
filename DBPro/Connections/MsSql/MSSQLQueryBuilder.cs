@@ -450,15 +450,15 @@ FROM INFORMATION_SCHEMA.VIEWS vws";
         #region Description
         internal override string GetAllObjectDescriptions()
         {
-            return @"SELECT p.value,t.name FROM sys.extended_properties p inner join sys.tables t on p.major_id = t.object_id where p.minor_id = 0 AND p.name='Description' And t.type = 'U' AND t.type_desc = 'USER_TABLE' AND p.class_desc = 'OBJECT_OR_COLUMN'
-					UNION
-                    SELECT p.value,c.name FROM sys.extended_properties p inner join sys.columns c on p.major_id = c.object_id AND p.minor_id = c.column_id inner join sys.tables t on p.major_id = t.object_id AND c.object_id = t.object_id where p.name='Description' AND t.type_desc = 'USER_TABLE' AND t.type = 'U' AND p.class_desc = 'OBJECT_OR_COLUMN'
-					UNION 
-                    SELECT p.value,t.name FROM sys.extended_properties p inner join sys.triggers t on p.major_id = t.object_id where p.name='Description' AND t.type = 'TR'
+            return @"SELECT CONVERT(VARCHAR(MAX),p.value),CONVERT(VARCHAR(MAX),t.name) FROM sys.extended_properties p inner join sys.tables t on p.major_id = t.object_id where p.minor_id = 0 AND p.name='Description' And t.type = 'U' AND t.type_desc = 'USER_TABLE' AND p.class_desc = 'OBJECT_OR_COLUMN'
+                                        UNION
+                    SELECT CONVERT(VARCHAR(MAX),p.value),CONVERT(VARCHAR(MAX),c.name) FROM sys.extended_properties p inner join sys.columns c on p.major_id = c.object_id AND p.minor_id = c.column_id inner join sys.tables t on p.major_id = t.object_id AND c.object_id = t.object_id where p.name='Description' AND t.type_desc = 'USER_TABLE' AND t.type = 'U' AND p.class_desc = 'OBJECT_OR_COLUMN'
+                                        UNION
+                    SELECT CONVERT(VARCHAR(MAX),p.value),CONVERT(VARCHAR(MAX),t.name) FROM sys.extended_properties p inner join sys.triggers t on p.major_id = t.object_id where p.name='Description' AND t.type = 'TR'
                     UNION
-                    SELECT p.value,v.name FROM sys.extended_properties p inner join sys.views v on p.major_id = v.object_id where p.name='Description' AND v.type = 'V'
+                    SELECT CONVERT(VARCHAR(MAX),p.value),CONVERT(VARCHAR(MAX),v.name) FROM sys.extended_properties p inner join sys.views v on p.major_id = v.object_id where p.name='Description' AND v.type = 'V'
                     UNION
-                    SELECT p.value,i.name FROM sys.extended_properties p inner join sys.indexes i on p.major_id = i.object_id where p.name='Description' AND i.is_primary_key=0 AND p.class_desc='INDEX'"; 
+                    SELECT CONVERT(VARCHAR(MAX),p.value),CONVERT(VARCHAR(MAX),i.name) FROM sys.extended_properties p inner join sys.indexes i on p.major_id = i.object_id where p.name='Description' AND i.is_primary_key=0 AND p.class_desc='INDEX'"; 
         }
 
         internal override string SetTableDescription(string tableName, string description)
