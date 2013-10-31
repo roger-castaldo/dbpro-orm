@@ -107,6 +107,14 @@ namespace Org.Reddragonit.Dbpro.Virtual
 
         public double GetDouble(int i)
         {
+            if (_conn is MsSqlConnection
+                && _conn.GetDataTypeName(i).ToUpper() == "DECIMAL")
+            {
+                double ret = 0;
+                if (double.TryParse(_conn[i].ToString(), out ret))
+                    return ret;
+                return _conn.GetDouble(i);
+            }
             return _conn.GetDouble(i);
         }
 
