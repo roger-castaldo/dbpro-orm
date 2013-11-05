@@ -106,18 +106,8 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
             }
         }
 
-        internal override IDbDataParameter CreateParameter(string parameterName, object parameterValue)
+        protected override IDbDataParameter _CreateParameter(string parameterName, object parameterValue)
         {
-            if (parameterValue != null)
-            {
-                if (Utility.IsEnum(parameterValue.GetType()))
-                {
-                    if (parameterValue != null)
-                        parameterValue = GetEnumID(parameterValue.GetType(), parameterValue.ToString());
-                    else
-                        parameterValue = (int?)null;
-                }
-            }
             if ((parameterValue is uint) || (parameterValue is UInt32))
             {
                 parameterValue = System.Text.ASCIIEncoding.ASCII.GetString(System.BitConverter.GetBytes(uint.Parse(parameterValue.ToString()))).ToCharArray();

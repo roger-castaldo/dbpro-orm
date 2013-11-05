@@ -26,7 +26,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 			get
 			{
                 return @"SELECT  c.column_name 'name',
-					UPPER(c.data_type) 'type',
+					(CASE WHEN UPPER(c.data_type) = 'DECIMAL' THEN 'DECIMAL('+CAST(c.NUMERIC_PRECISION AS VARCHAR(4))+','+CAST(c.NUMERIC_SCALE AS VARCHAR(4))+')' ELSE UPPER(c.DATA_TYPE) END) 'type',
 					(CASE WHEN c.character_maximum_length is null then 
 					(CASE WHEN UPPER(c.data_type) = 'BIT' THEN 1 
 					WHEN UPPER(c.data_type) = 'DATETIME' OR UPPER(c.data_type) = 'DECIMAL' OR UPPER(c.data_type) = 'FLOAT' OR UPPER(c.data_type) = 'BIGINT' OR UPPER(c.data_type) = 'MONEY' THEN 8  
@@ -38,7 +38,10 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 					(CASE WHEN primarys.IsPrimary is null THEN 'false' ELSE 'true' END) as IsPrimary,
 					(CASE WHEN c.is_nullable='NO' THEN 'false' ELSE 'true' END) as IsNullable,
 					(CASE WHEN COLUMNPROPERTY( OBJECT_ID('{0}'),c.column_name,'IsIdentity') = 0 THEN 'false' else 'true' END) as IsIdentity,
-					comCalls.COMPUTED_CODE AS COMPUTED_CODE
+					(CASE 
+					WHEN SUBSTRING(comCalls.COMPUTED_CODE,1,25) = '(CONVERT([decimal](18,9),' THEN SUBSTRING(comCalls.COMPUTED_CODE,26,LEN(comCalls.COMPUTED_CODE)-29)
+					WHEN comCalls.COMPUTED_CODE LIKE '(CONVERT(%' THEN SUBSTRING(comCalls.COMPUTED_CODE,CHARINDEX(',',comCalls.COMPUTED_CODE)+1,LEN(comCalls.COMPUTED_CODE)-CHARINDEX(',',comCalls.COMPUTED_CODE)-4)
+					ELSE comCalls.COMPUTED_CODE END) AS COMPUTED_CODE
 					FROM INFORMATION_SCHEMA.COLUMNS c
 					LEFT JOIN (SELECT k.column_name,1 as IsPrimary FROM 
 					INFORMATION_SCHEMA.KEY_COLUMN_USAGE k, INFORMATION_SCHEMA.TABLE_CONSTRAINTS c
@@ -74,31 +77,34 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 		{
             get
             {
-                return "select DISTINCT " +
-                " convert(sysname,COL2.name) as field_name, " +
-                " OBJECT_NAME(FKEYS.referenced_object_id) as references_table, " +
-                " convert(sysname,col1.name) as references_field, " +
-                " FKEYS.update_referential_action_desc as on_update, " +
-                " FKEYS.delete_referential_action_desc as on_delete, " +
-                " CAST(FKEYS.object_id as VARCHAR(MAX)) as unique_id " +
-                " from " +
-                " sys.columns COL1, " +
-                " sys.columns COL2, " +
-                " sys.foreign_keys FKEYS " +
-                " inner join sys.foreign_key_columns KEY_COLUMN on (KEY_COLUMN.constraint_object_id = FKEYS.object_id) " +
-                " where " +
-                " COL1.object_id = FKEYS.referenced_object_id " +
-                " AND COL2.object_id = FKEYS.parent_object_id " +
-                " AND COL1.column_id = KEY_COLUMN.referenced_column_id " +
-                " AND COL2.column_id = KEY_COLUMN.parent_column_id " +
-                " AND OBJECT_NAME(FKEYS.PARENT_OBJECT_ID)='{0}'";
+                return @"select DISTINCT 
+                 convert(sysname,COL2.name) as field_name, 
+                 OBJECT_NAME(FKEYS.referenced_object_id) as references_table, 
+                 convert(sysname,col1.name) as references_field, 
+                 FKEYS.update_referential_action_desc as on_update, 
+                 FKEYS.delete_referential_action_desc as on_delete, 
+                 CAST(FKEYS.object_id as VARCHAR(MAX)) as unique_id 
+                 from 
+                 sys.columns COL1, 
+                 sys.columns COL2, 
+                 sys.foreign_keys FKEYS 
+                 inner join sys.foreign_key_columns KEY_COLUMN on (KEY_COLUMN.constraint_object_id = FKEYS.object_id) 
+                 where 
+                 COL1.object_id = FKEYS.referenced_object_id 
+                 AND COL2.object_id = FKEYS.parent_object_id 
+                 AND COL1.column_id = KEY_COLUMN.referenced_column_id 
+                 AND COL2.column_id = KEY_COLUMN.parent_column_id 
+                 AND OBJECT_NAME(FKEYS.PARENT_OBJECT_ID)='{0}'";
             }
 		}
 		
 		protected override string SelectTriggersString {
 			get
 			{
-				return @"SELECT sys1.name trigger_name, 
+                return @"SELECT tbl.trigger_name,
+tbl.comm_string,
+RIGHT(tbl.code,LEN(tbl.code)-LEN('CREATER TRIGGER '+tbl.trigger_name+tbl.comm_string)) code
+FROM (SELECT sys1.name trigger_name, 
 					 'ON '+sys2.name+' '+ 
 					 (CASE WHEN OBJECTPROPERTY(sys1.id, 'ExecIsInsteadOfTrigger') = 1 
 					 THEN 'INSTEAD OF' ELSE 'AFTER' 
@@ -120,11 +126,11 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 					 WHEN OBJECTPROPERTY(sys1.id, 'ExecIsDeleteTrigger') = 1 THEN 'DELETE' 
 					 END 
 					 )	comm_string, 
-					 RIGHT(c.text,LEN(c.text)-PATINDEX('%AS%BEGIN%',c.text)+2) as code 
+					 c.text as code
 					 FROM sysobjects sys1 
 					 JOIN sysobjects sys2 ON sys1.parent_obj = sys2.id 
 					 JOIN syscomments c ON sys1.id = c.id 
-					 WHERE sys1.xtype = 'TR'";
+					 WHERE sys1.xtype = 'TR') tbl";
 			}
 		}
 		
@@ -182,7 +188,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
         internal override string CreateColumn(string table, ExtractedFieldMap field)
         {
             if (field.ComputedCode != null)
-                return string.Format("ALTER TABLE[{0}] ADD [{1}] AS CAST({3} AS {2}) PERSISTED", table, field.FieldName, field.FullFieldType, field.ComputedCode);
+                return string.Format("ALTER TABLE[{0}] ADD [{1}] AS CONVERT({2},{3}) PERSISTED", table, field.FieldName, field.FullFieldType, field.ComputedCode);
             return base.CreateColumn(table, field);
         }
 
@@ -436,9 +442,11 @@ pro.SPECIFIC_CATALOG = '{0}'";
         {
             get
             {
-                return @"SELECT vws.TABLE_NAME,
-SUBSTRING(vws.VIEW_DEFINITION,CHARINDEX('AS',vws.VIEW_DEFINITION)+3,LEN(vws.VIEW_DEFINITION)-CHARINDEX('AS',vws.VIEW_DEFINITION))
-FROM INFORMATION_SCHEMA.VIEWS vws";
+                return @"select o.name,
+LTRIM(RTRIM(SUBSTRING(m.[definition],CHARINDEX(' AS ',m.[definition])+3,LEN(m.[definition])-CHARINDEX(' AS ',m.[definition]))))
+from sys.objects     o
+JOIN sys.sql_modules m on m.object_id = o.object_id
+where o.type      = 'V'";
             }
         }
 

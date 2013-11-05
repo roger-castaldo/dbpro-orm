@@ -14,6 +14,7 @@ using System.Reflection;
 using System.Threading;
 using System.Data;
 using System.Text;
+using System.Collections;
 
 namespace Org.Reddragonit.Dbpro
 {
@@ -164,6 +165,23 @@ namespace Org.Reddragonit.Dbpro
 			Regex r = new Regex("\\s+");
 			return r.Replace(str1,"").Equals(r.Replace(str2,""));
 		}
+
+        //called to compare string while ignoring whitespaces and brackets and case (used to handle mssql computed columns)
+        public static bool StringsEqualIgnoreWhitespaceBracketsCase(string str1, string str2)
+        {
+            if (str1 == null)
+            {
+                if (str2 != null)
+                    return false;
+                return true;
+            }
+            else if (str2 == null)
+            {
+                return false;
+            }
+            Regex r = new Regex("(\\s+|\\(|\\)|\\[|\\]|\\{|\\})");
+            return r.Replace(str1.ToUpper(), "").Equals(r.Replace(str2.ToUpper(), ""));
+        }
 		
         //called to clean up duplicate strings from a string array.  This
         //is used to clean up the keyword arrays made by the connections.
@@ -334,7 +352,20 @@ namespace Org.Reddragonit.Dbpro
         {
             return (t.IsGenericType ? t.IsGenericType &&
                    t.GetGenericTypeDefinition() == typeof(Nullable<>) &&
-                   t.GetGenericArguments()[0].IsEnum : t.IsEnum);
+                   t.GetGenericArguments()[0].IsEnum : (t.IsArray ? IsEnum(t.GetElementType()) : t.IsEnum));
+        }
+
+        internal static object ConvertEnumParameter(object value,ConnectionPool pool)
+        {
+            if ((value.GetType().IsArray) || (value is IEnumerable))
+            {
+                ArrayList tmp = new ArrayList();
+                foreach (Enum en in (IEnumerable)value)
+                    tmp.Add(pool.GetEnumID(en.GetType(), en.ToString()));
+                return tmp;
+            }
+            else
+                return pool.GetEnumID(value.GetType(), value.ToString());
         }
     }
 }

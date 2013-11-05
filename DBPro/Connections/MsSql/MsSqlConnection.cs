@@ -112,14 +112,12 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
                         }
 					}
 					code+=declares;
-					code+="BEGIN \n";
 					code+=sets;
 					code+="SET "+queryBuilder.CreateParameterName(field.FieldName)+" = (SELECT MAX("+field.FieldName+") FROM "+map.TableName+" WHERE ";
 					code+=queryFields.Substring(4)+");\n";
 					code+="IF ("+queryBuilder.CreateParameterName(field.FieldName)+" is NULL)\n";
 					code+="\tSET "+queryBuilder.CreateParameterName(field.FieldName)+" = -1;\n";
 					code+="INSERT INTO "+map.TableName+"("+field.FieldName+fields+") VALUES("+queryBuilder.CreateParameterName(field.FieldName)+"+1"+valueSets+");\n";
-					code+="END";
                     triggers.Add(new Trigger((imediate ? Pool.Translator.GetInsertIntermediateTriggerName(t, pi, this) : Pool.Translator.GetInsertTriggerName(t, this)), "ON " + map.TableName + " INSTEAD OF INSERT\n", code));
 				}
             }
@@ -272,6 +270,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 				case FieldType.DECIMAL:
 				case FieldType.DOUBLE:
                     ret = "DECIMAL(18,9)";
+                    fieldLength = 8;
 					break;
 				case FieldType.FLOAT:
 					ret = "FLOAT";
@@ -443,6 +442,29 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
                                 map.ForeignFields[x].ExternalField,
                                 ForeignField.UpdateDeleteAction.NO_ACTION.ToString(),
                                 ForeignField.UpdateDeleteAction.NO_ACTION.ToString());
+                        }
+                    }
+                    List<ForeignRelationMap> frms;
+                    for (int x = 0; x < maps.Count; x++)
+                    {
+                        for (int y = x + 1; y < maps.Count; y++)
+                        {
+                            if (maps[x][0].ExternalTable.Equals(maps[y][0].ExternalTable))
+                            {
+                                if (maps[x][0].InternalField.CompareTo(maps[y][0].InternalField) > 0)
+                                {
+                                    frms = maps[y];
+                                    maps[y] = maps[x];
+                                    maps[x] = frms;
+                                }
+                            }
+                            else if (maps[x][0].ExternalTable.CompareTo(maps[y][0].ExternalTable) > 0)
+                            {
+                                frms = maps[y];
+                                maps[y] = maps[x];
+                                maps[x] = frms;
+                            }
+
                         }
                     }
                     string delCode = "AS\nBEGIN\nSET NOCOUNT ON;\n";
