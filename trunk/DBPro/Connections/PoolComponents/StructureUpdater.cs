@@ -627,6 +627,8 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                     {
                         if (map.ToString() != cmap.ToString())
                             alteredTables.Add(map.TableName);
+                        else if (!(conn is MsSqlConnection ? Utility.StringsEqualIgnoreWhitespaceBracketsCase(map.ToComputedString(), cmap.ToComputedString()) : Utility.StringsEqualIgnoreWhitespace(map.ToComputedString(), cmap.ToComputedString())))
+                            alteredTables.Add(map.TableName);
                         break;
                     }
                 }
@@ -691,7 +693,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                                     foundField = true;
                                     if (efm.ComputedCode != null)
                                     {
-                                        if ((efm.Type != ee.Type) || (efm.Size != ee.Size) || !Utility.StringsEqualIgnoreWhitespace(efm.ComputedCode,ee.ComputedCode))
+                                        if ((efm.FullFieldType != ee.FullFieldType) || !(conn is MsSqlConnection ? Utility.StringsEqualIgnoreWhitespaceBracketsCase(efm.ComputedCode, ee.ComputedCode) : Utility.StringsEqualIgnoreWhitespace(efm.ComputedCode, ee.ComputedCode)))
                                         {
                                             computedFieldDeletions.Add(conn.queryBuilder.DropColumn(map.TableName, efm.FieldName));
                                             computedFieldAdditions.Add(conn.queryBuilder.CreateColumn(map.TableName, efm));
@@ -699,7 +701,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                                     }
                                     else
                                     {
-                                        if (((efm.Type != ee.Type) || (efm.Size != ee.Size)) &&
+                                        if ((efm.FullFieldType!=ee.FullFieldType) &&
                                             !((efm.Type == "BLOB") && (ee.Type == "BLOB")))
                                         {
                                             if (efm.PrimaryKey && ee.PrimaryKey)
@@ -1053,7 +1055,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                     if (views[x].Name == _views[y].Name)
                     {
                         add = false;
-                        if (_views[y].Query != views[x].Query)
+                        if (!Utility.StringsEqualIgnoreWhitespace(views[x].Query,_views[y].Query))
                         {
                             dropViews.Add(views[x]);
                             createViews.Add(views[x]);
@@ -1062,7 +1064,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                         {
                             foreach (string str in alteredTables)
                             {
-                                if (views[x].Query.Contains(str))
+                                if (views[x].Query.Contains(" "+str+" "))
                                 {
                                     dropViews.Add(views[x]);
                                     createViews.Add(views[x]);
@@ -1208,10 +1210,8 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                                         {
                                             foundRelation = true;
                                             break;
-                                        }else
-                                            foreignKeyDrops.Add(new ForeignKey(etm.TableName,new List<string>(new string[]{curfrms[0].InternalField}),tableName,new List<string>(new string[]{curfrms[0].ExternalField}),curfrms[0].OnUpdate,curfrms[0].OnDelete));
-                                    }else
-                                        foreignKeyDrops.Add(new ForeignKey(etm,tableName,exfrms[0].ID));
+                                        }
+                                    }
                                 }
                                 if (!foundRelation)
                                     foreignKeyCreations.Add(new ForeignKey(etm, tableName, exfrms[0].ID));
@@ -1228,6 +1228,51 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                         {
                             foreignKeyCreations.Add(new ForeignKey(etm, tableName, frms[0].ID));
                         }
+                    }
+                }
+            }
+            foreach (ExtractedTableMap etm in _tables)
+            {
+                foreach (ExtractedTableMap e in tables)
+                {
+                    if (etm.TableName == e.TableName)
+                    {
+                        foreach (string tableName in etm.RelatedTables)
+                        {
+                            foreach (List<ForeignRelationMap> exfrms in etm.RelatedFieldsForTable(tableName))
+                            {
+                                bool foundRelation = false;
+                                foreach (List<ForeignRelationMap> curfrms in e.RelatedFieldsForTable(tableName))
+                                {
+                                    if (exfrms.Count == curfrms.Count)
+                                    {
+                                        bool foundField = true;
+                                        foreach (ForeignRelationMap exfrm in exfrms)
+                                        {
+                                            foundField = false;
+                                            foreach (ForeignRelationMap curfrm in curfrms)
+                                            {
+                                                if ((exfrm.InternalField == curfrm.InternalField) && (exfrm.ExternalField == curfrm.ExternalField))
+                                                {
+                                                    foundField = ((etm.GetField(exfrm.InternalField).Type == e.GetField(curfrm.InternalField).Type) && (etm.GetField(exfrm.InternalField).Size == e.GetField(curfrm.InternalField).Size) && (etm.GetField(exfrm.InternalField).Nullable == e.GetField(curfrm.InternalField).Nullable) && (etm.GetField(exfrm.InternalField).PrimaryKey == e.GetField(curfrm.InternalField).PrimaryKey));
+                                                    break;
+                                                }
+                                            }
+                                            if (!foundField)
+                                                break;
+                                        }
+                                        if (foundField)
+                                        {
+                                            foundRelation = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                if (!foundRelation)
+                                    foreignKeyDrops.Add(new ForeignKey(etm, tableName, exfrms[0].ID));
+                            }
+                        }
+                        break;
                     }
                 }
             }

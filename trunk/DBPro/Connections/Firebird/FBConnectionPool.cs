@@ -13,6 +13,7 @@ using System.IO;
 using System.Reflection;
 using System.Xml;
 using Org.Reddragonit.Dbpro.Structure.Attributes;
+using System.Data;
 
 namespace Org.Reddragonit.Dbpro.Connections.Firebird
 {
@@ -149,23 +150,13 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
             }
         }
 
-        internal override System.Data.IDbDataParameter CreateParameter(string parameterName, object parameterValue, FieldType type, int fieldLength)
+        internal override IDbDataParameter CreateParameter(string parameterName, object parameterValue, FieldType type, int fieldLength)
         {
             return CreateParameter(parameterName, parameterValue);
         }
 
-        internal override System.Data.IDbDataParameter CreateParameter(string parameterName, object parameterValue)
+        protected override IDbDataParameter _CreateParameter(string parameterName, object parameterValue)
         {
-            if (parameterValue != null)
-            {
-                if (Utility.IsEnum(parameterValue.GetType()))
-                {
-                    if (parameterValue != null)
-                        parameterValue = GetEnumID(parameterValue.GetType(), parameterValue.ToString());
-                    else
-                        parameterValue = (int?)null;
-                }
-            }
             if (parameterValue is bool)
             {
                 if ((bool)parameterValue)

@@ -79,6 +79,7 @@
     <Compile Include="Connections\Connection.cs" />
     <Compile Include="Connections\ConnectionPool.cs" />
     <Compile Include="Connections\ConnectionPoolManager.cs" />
+    <Compile Include="Connections\MsSql\MsSqlMonoArrayParameter.cs" />
     <Compile Include="Connections\MsSql\MSSQLQueryBuilder.cs" />
     <Compile Include="Connections\MySql\MySqlConnection.cs" />
     <Compile Include="Connections\MySql\MySqlConnectionPool.cs" />

@@ -331,7 +331,7 @@ namespace Org.Reddragonit.Dbpro.Connections
         }
     }
 	
-	internal struct ForeignRelationMap
+	internal struct ForeignRelationMap : IComparable
 	{
 		private string _internalField;
 		private string _externalTable;
@@ -379,7 +379,16 @@ namespace Org.Reddragonit.Dbpro.Connections
         {
             get { return _id; }
         }
-	}
+
+        #region IComparable Members
+
+        public int CompareTo(object obj)
+        {
+            return InternalField.CompareTo(((ForeignRelationMap)obj).InternalField);
+        }
+
+        #endregion
+    }
 
     internal struct Index
     {
@@ -449,6 +458,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 
 		public ExtractedTableMap(string tableName)
 		{
+            _toString = null;
+            _toComputedString = null;
 			_tableName=tableName;
 			_fields=new List<ExtractedFieldMap>();
 			_ForeignFields=new List<ForeignRelationMap>();
@@ -479,6 +490,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 					if (!ret.Contains(frm.ExternalTable))
 						ret.Add(frm.ExternalTable);
 				}
+                ret.Sort();
 				return ret;
 			}
 		}
@@ -560,41 +572,88 @@ namespace Org.Reddragonit.Dbpro.Connections
             return ret;
         }
 
+        private string _toString;
         public override string ToString()
         {
-            StringBuilder sb = new StringBuilder();
-            sb.AppendLine(string.Format("CREATE TABLE {0}(", TableName));
-            foreach (ExtractedFieldMap efm in Fields)
-                sb.AppendLine(string.Format("{0} {1} {2},", efm.FieldName, efm.FullFieldType, (efm.Nullable ? "NULL" : "NOT NULL")));
-            if (PrimaryKeys.Count > 0)
+            if (_toString == null)
             {
-                sb.Append("PRIMARY KEY(");
-                foreach (ExtractedFieldMap efm in PrimaryKeys)
-                    sb.Append(string.Format("{0},", efm.FieldName));
-                sb.Remove(sb.Length - 1, 1);
-                sb.AppendLine("),");
-            }
-            foreach (string tbl in RelatedTables)
-            {
-                foreach (List<ForeignRelationMap> maps in RelatedFieldsForTable(tbl))
+                StringBuilder sb = new StringBuilder();
+                sb.AppendLine(string.Format("CREATE TABLE {0}(", TableName));
+                foreach (ExtractedFieldMap efm in Fields)
+                    sb.AppendLine(string.Format("{0} {1} {2},", efm.FieldName, efm.FullFieldType, (efm.Nullable ? "NULL" : "NOT NULL")));
+                if (PrimaryKeys.Count > 0)
                 {
-                    sb.Append("FOREIGN KEY(");
-                    foreach (ForeignRelationMap frm in maps)
-                        sb.Append(frm.InternalField + ",");
+                    sb.Append("PRIMARY KEY(");
+                    foreach (ExtractedFieldMap efm in PrimaryKeys)
+                        sb.Append(string.Format("{0},", efm.FieldName));
                     sb.Remove(sb.Length - 1, 1);
-                    sb.Append(string.Format(") RELATES TO {0}(", maps[0].ExternalTable));
-                    foreach (ForeignRelationMap frm in maps)
-                        sb.Append(frm.ExternalField + ",");
-                    sb.Remove(sb.Length - 1, 1);
-                    sb.AppendLine(string.Format("ON UPDATE {0} ON DELETE {1},",
-                        maps[0].OnUpdate,
-                        maps[0].OnDelete));
+                    sb.AppendLine("),");
                 }
+                foreach (string tbl in RelatedTables)
+                {
+                    List<ForeignRelationMap> frms;
+                    List<List<ForeignRelationMap>> rels = RelatedFieldsForTable(tbl);
+                    for (int x = 0; x < rels.Count; x++)
+                    {
+                        for (int y = x + 1; y < rels.Count; y++)
+                        {
+                            if (rels[x][0].ExternalTable.Equals(rels[y][0].ExternalTable))
+                            {
+                                if (rels[x][0].InternalField.CompareTo(rels[y][0].InternalField) > 0)
+                                {
+                                    frms = rels[y];
+                                    rels[y] = rels[x];
+                                    rels[x] = frms;
+                                }
+                            }
+                            else if (rels[x][0].ExternalTable.CompareTo(rels[y][0].ExternalTable) > 0)
+                            {
+                                frms = rels[y];
+                                rels[y] = rels[x];
+                                rels[x] = frms;
+                            }
+
+                        }
+                    }
+                    foreach (List<ForeignRelationMap> maps in rels)
+                    {
+                        maps.Sort();
+                        sb.Append("FOREIGN KEY(");
+                        foreach (ForeignRelationMap frm in maps)
+                            sb.Append(frm.InternalField + ",");
+                        sb.Remove(sb.Length - 1, 1);
+                        sb.Append(string.Format(") RELATES TO {0}(", maps[0].ExternalTable));
+                        foreach (ForeignRelationMap frm in maps)
+                            sb.Append(frm.ExternalField + ",");
+                        sb.Remove(sb.Length - 1, 1);
+                        sb.AppendLine(string.Format("ON UPDATE {0} ON DELETE {1},",
+                            maps[0].OnUpdate,
+                            maps[0].OnDelete));
+                    }
+                }
+                if (sb.ToString().EndsWith(","))
+                    sb.Remove(sb.Length - 1, 1);
+                sb.Append(");");
+                _toString = sb.ToString();
             }
-            if (sb.ToString().EndsWith(","))
-                sb.Remove(sb.Length - 1, 1);
-            sb.Append(");");
-            return sb.ToString();
+            return _toString;
+        }
+
+        private string _toComputedString;
+        public string ToComputedString(){
+            if (_toComputedString == null)
+            {
+                StringBuilder sb = new StringBuilder();
+                foreach (ExtractedFieldMap efm in Fields)
+                {
+                    if (efm.ComputedCode != null)
+                        sb.AppendLine(string.Format("{0} AS ({1}),",
+                            efm.FieldName,
+                            efm.ComputedCode));
+                }
+                _toComputedString = sb.ToString();
+            }
+            return _toComputedString;
         }
 
         //used for tracing down relations when overriding the CASCADE conditions

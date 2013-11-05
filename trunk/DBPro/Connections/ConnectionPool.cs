@@ -67,7 +67,17 @@ namespace Org.Reddragonit.Dbpro.Connections
         protected abstract void _InitClass();
         protected abstract bool _IsCoreStoredProcedure(StoredProcedure storedProcedure);
         internal abstract IDbDataParameter CreateParameter(string parameterName, object parameterValue, Org.Reddragonit.Dbpro.Structure.Attributes.FieldType type, int fieldLength);
-        internal abstract IDbDataParameter CreateParameter(string parameterName, object parameterValue);
+        protected abstract IDbDataParameter _CreateParameter(string parameterName, object parameterValue);
+        
+        internal IDbDataParameter CreateParameter(string parameterName, object parameterValue)
+        {
+            if (parameterValue != null)
+            {
+                if (Utility.IsEnum(parameterValue.GetType()))
+                    parameterValue = Utility.ConvertEnumParameter(parameterValue, this);
+            }
+            return _CreateParameter(parameterName, parameterValue);
+        }
 
         internal virtual string TrueString
         {

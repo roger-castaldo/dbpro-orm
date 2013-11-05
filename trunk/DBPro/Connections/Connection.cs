@@ -1352,10 +1352,33 @@ namespace Org.Reddragonit.Dbpro.Connections
 				{
                     if (par.Direction == ParameterDirection.Input)
                     {
-                        if (Utility.IsParameterNull(par))
+                        if ((par.Value is IEnumerable) && !(par.Value is string))
                         {
-                            ret = Utility.StripNullParameter(ret, par.ParameterName);
+                            string newPar = "";
+                            int cnt = 0;
+                            foreach (object obj in (IEnumerable)par.Value)
+                            {
+                                newPar += par.ParameterName + "_" + cnt.ToString() + ", ";
+                                if (obj == null)
+                                    newPar = newPar.Replace(par.ParameterName + "_" + cnt.ToString() + ", ", "NULL, ");
+                                else if (obj is Table)
+                                {
+                                    sTable tm = pool.Mapping[obj.GetType()];
+                                    if (tm.PrimaryKeyFields.Length == 1)
+                                    {
+                                        pars.Add(this.CreateParameter(par.ParameterName + "_" + cnt.ToString(), ((Table)obj).GetField(tm.PrimaryKeyProperties[0])));
+                                    }
+                                    else
+                                        throw new Exception("Unable to handle arrayed parameter with complex primary key.");
+                                }
+                                else
+                                    pars.Add(this.CreateParameter(par.ParameterName + "_" + cnt.ToString(), obj));
+                                cnt++;
+                            }
+                            ret = ret.Replace(par.ParameterName, newPar.Substring(0, newPar.Length - 2));
                         }
+                        else if (Utility.IsParameterNull(par))
+                            ret = Utility.StripNullParameter(ret, par.ParameterName);
                         else
                             pars.Add(par);
                     }

@@ -7,6 +7,7 @@ using System.Xml;
 using System.Data;
 using Org.Reddragonit.Dbpro.Structure.Attributes;
 using System.Text.RegularExpressions;
+using System.Collections;
 
 namespace Org.Reddragonit.Dbpro.Connections.MsSql
 {
@@ -193,16 +194,17 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
             }
         }
 
-        internal override System.Data.IDbDataParameter CreateParameter(string parameterName, object parameterValue)
+        private static bool _IsMono = Type.GetType ("Mono.Runtime") != null;
+
+        protected override IDbDataParameter _CreateParameter(string parameterName, object parameterValue)
         {
             if (parameterValue != null)
             {
-                if (Utility.IsEnum(parameterValue.GetType()))
+                if (_IsMono) 
                 {
-                    if (parameterValue != null)
-                        parameterValue = GetEnumID(parameterValue.GetType(), parameterValue.ToString());
-                    else
-                        parameterValue = (int?)null;
+                    if (parameterValue.GetType().IsArray || (parameterValue is IEnumerable
+                    && !(parameterValue is string) && !(parameterValue is byte[]) && !(parameterValue is char[])))
+                        return new MsSqlMonoArrayParameter(parameterName, parameterValue);
                 }
             }
             if ((parameterValue is uint) || (parameterValue is UInt32))

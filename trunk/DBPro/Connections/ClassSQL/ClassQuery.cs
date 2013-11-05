@@ -153,20 +153,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         _pool.Updater.InitType(_requiredTypes.Dequeue(), _conn);
                 }
             }
-            if ((value != null) && Utility.IsEnum(value.GetType()))
-            {
-                if ((value.GetType().IsArray) || (value is IEnumerable))
-                {
-                    ArrayList tmp = new ArrayList();
-                    foreach (Enum en in (IEnumerable)value)
-                    {
-                        tmp.Add(_pool.GetEnumID(value.GetType(), value.ToString()));
-                    }
-                    return _conn.CreateParameter(name, tmp);
-                }
-                else
-                    return _conn.CreateParameter(name, _pool.GetEnumID(value.GetType(), value.ToString()));
-            }else if (value==null)
+            if (value==null)
                 return _conn.CreateParameter(name, DBNull.Value);
             else
                 return _conn.CreateParameter(name, value);
@@ -178,30 +165,8 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             foreach (IDbDataParameter par in parameters)
             {
                 if ((par.Value is IEnumerable) && !(par.Value is string))
-                {
-                    string newPar = "";
-                    int cnt = 0;
-                    foreach (object obj in (IEnumerable)par.Value)
-                    {
-                        newPar += par.ParameterName + "_" + cnt.ToString()+", ";
-                        if (obj == null)
-                            newPar = newPar.Replace(par.ParameterName + "_" + cnt.ToString() + ", ", "NULL, ");
-                        else if (obj is Table)
-                        {
-                            sTable tm = _pool.Mapping[obj.GetType()];
-                            if (tm.PrimaryKeyFields.Length== 1)
-                            {
-                                ret.Add(_conn.CreateParameter(par.ParameterName + "_" + cnt.ToString(), ((Table)obj).GetField(tm.PrimaryKeyProperties[0])));
-                            }
-                            else
-                                throw new Exception("Unable to handle arrayed parameter with complex primary key.");
-                        }
-                        else
-                            ret.Add(_conn.CreateParameter(par.ParameterName + "_" + cnt.ToString(), obj));
-                        cnt++;
-                    }
-                    outputQuery = outputQuery.Replace(par.ParameterName, newPar.Substring(0,newPar.Length-2));
-                }else{
+                    ret.Add(par);
+                else{
                     if (par.Value is Table)
                     {
                         sTable tm = _pool.Mapping[par.Value.GetType()];
