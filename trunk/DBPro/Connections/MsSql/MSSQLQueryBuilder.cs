@@ -278,8 +278,8 @@ FROM (SELECT sys1.name trigger_name,
             if (!recordCount.HasValue)
                 recordCount = 0;
             string baseQuery = Select(type, parameters, out queryParameters, OrderByFields);
-            queryParameters.Add(pool.CreateParameter(CreateParameterName("startIndex"), start.Value));
-            queryParameters.Add(pool.CreateParameter(CreateParameterName("rowCount"), recordCount.Value));
+            queryParameters.Add(pool.CreateParameter(CreateParameterName("startIndex"), (long)start.Value));
+            queryParameters.Add(pool.CreateParameter(CreateParameterName("rowCount"), (long)recordCount.Value));
             string primarys = "";
             if ((OrderByFields == null) || (OrderByFields.Length == 0))
             {
@@ -307,7 +307,7 @@ FROM (SELECT sys1.name trigger_name,
             }
             if (primarys.StartsWith(","))
                 primarys = primarys.Substring(1);
-            return String.Format(SelectWithPagingIncludeOffset, baseQuery, CreateParameterName("startIndex"), CreateParameterName("rowCount"), primarys);
+            return String.Format(SelectWithPagingIncludeOffset, (baseQuery.Contains("ORDER BY") ? baseQuery.Substring(0, baseQuery.IndexOf("ORDER BY")) : baseQuery), CreateParameterName("startIndex"), CreateParameterName("rowCount"), primarys);
         }
 
         internal override string SelectPaged(string baseQuery, ref List<IDbDataParameter> queryParameters, ulong? start, ulong? recordCount, string[] OrderByFields)
@@ -316,8 +316,8 @@ FROM (SELECT sys1.name trigger_name,
                 start = 0;
             if (!recordCount.HasValue)
                 recordCount = 0;
-            queryParameters.Add(pool.CreateParameter(CreateParameterName("startIndex"), start.Value));
-            queryParameters.Add(pool.CreateParameter(CreateParameterName("rowCount"), recordCount.Value));
+            queryParameters.Add(pool.CreateParameter(CreateParameterName("startIndex"), (long)start.Value));
+            queryParameters.Add(pool.CreateParameter(CreateParameterName("rowCount"), (long)recordCount.Value));
             string primarys = "";
             if (baseQuery.Contains("ORDER BY"))
                 primarys = baseQuery.Substring(baseQuery.IndexOf("ORDER BY") + "ORDER BY".Length);
@@ -330,7 +330,7 @@ FROM (SELECT sys1.name trigger_name,
                 throw new Exception("Unable to selected Paged query without order by fields.");
             if (primarys.StartsWith(","))
                 primarys = primarys.Substring(1);
-            return String.Format(SelectWithPagingIncludeOffset, baseQuery, CreateParameterName("startIndex"), CreateParameterName("rowCount"), primarys);
+            return String.Format(SelectWithPagingIncludeOffset, (baseQuery.Contains("ORDER BY") ? baseQuery.Substring(0,baseQuery.IndexOf("ORDER BY")) : baseQuery), CreateParameterName("startIndex"), CreateParameterName("rowCount"), primarys);
         }
 
         protected override string DropTableIndexString
