@@ -926,7 +926,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             return SelectClassView(type, null, OrderByFields);
         }
 
-        public List<IClassView> SelectClassView(System.Type type,SelectParameter[] pars,string[] OrderByFields)
+        public virtual List<IClassView> SelectClassView(System.Type type,SelectParameter[] pars,string[] OrderByFields)
         {
             if (type.GetCustomAttributes(typeof(ClassViewAttribute), true).Length == 0 || !new List<Type>(type.GetInterfaces()).Contains(typeof(IClassView)))
                 throw new Exception("Unable to execute a Class View Query from a class that does not have a ClassViewAttributes attached to it as well as has the interface IClassView.");
@@ -1088,7 +1088,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             return ret;
         }
 
-        public List<IClassView> SelectPagedClassView(System.Type type, List<SelectParameter> parameters, ulong? StartIndex, ulong? RowCount,string[] OrderByFields)
+        public virtual List<IClassView> SelectPagedClassView(System.Type type, List<SelectParameter> parameters, ulong? StartIndex, ulong? RowCount,string[] OrderByFields)
         {
             if (type.GetCustomAttributes(typeof(ClassViewAttribute), true).Length == 0 || !new List<Type>(type.GetInterfaces()).Contains(typeof(IClassView)))
                 throw new Exception("Unable to execute a Class View Query from a class that does not have a ClassViewAttribute attached to it and inherits IClassView.");
@@ -1352,7 +1352,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 				{
                     if (par.Direction == ParameterDirection.Input)
                     {
-                        if ((par.Value is IEnumerable) && !(par.Value is string))
+                        if ((par.Value is IEnumerable) && !(par.Value is string) && !(par.Value is byte[]) && !(par.Value is char[]))
                         {
                             string newPar = "";
                             int cnt = 0;
