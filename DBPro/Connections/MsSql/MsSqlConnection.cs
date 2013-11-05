@@ -10,6 +10,8 @@ using System.Xml;
 using System.IO;
 using Org.Reddragonit.Dbpro.Structure.Attributes;
 using System.Text.RegularExpressions;
+using Org.Reddragonit.Dbpro.Virtual;
+using Org.Reddragonit.Dbpro.Connections.Parameters;
 
 namespace Org.Reddragonit.Dbpro.Connections.MsSql
 {
@@ -621,5 +623,128 @@ DEALLOCATE DeleteCursor;
                 }
             }
         }
-	}
+
+        #region ClassView
+        public override List<Org.Reddragonit.Dbpro.Virtual.IClassView> SelectClassView(Type type, Org.Reddragonit.Dbpro.Connections.Parameters.SelectParameter[] pars, string[] OrderByFields)
+        {
+            if (OrderByFields != null && OrderByFields.Length > 0)
+            {
+                if (type.GetCustomAttributes(typeof(ClassViewAttribute), true).Length == 0 || !new List<Type>(type.GetInterfaces()).Contains(typeof(IClassView)))
+                    throw new Exception("Unable to execute a Class View Query from a class that does not have a ClassViewAttributes attached to it as well as has the interface IClassView.");
+                Pool.Updater.InitType(type, this);
+                List<IClassView> ret = new List<IClassView>();
+                ClassViewAttribute cva = (ClassViewAttribute)type.GetCustomAttributes(typeof(ClassViewAttribute), false)[0];
+                int parCount = 0;
+                List<IDbDataParameter> queryParameters = new List<IDbDataParameter>();
+                string parString = "";
+                string orderByString = "";
+                if (pars != null)
+                {
+                    foreach (SelectParameter par in pars)
+                    {
+                        foreach (string str in par.Fields)
+                        {
+                            if (cva.Query.GetOrdinal(str) == -1)
+                                throw new Exception("Unable to execute a Class View Query with parameters that are not fields in the Class View");
+                        }
+                        parString += " AND ( " + par.ConstructClassViewString(cva, Pool, queryBuilder, ref queryParameters, ref parCount) + " ) ";
+                    }
+                }
+                if (OrderByFields != null)
+                {
+                    foreach (string str in OrderByFields)
+                    {
+                        if (str.EndsWith(" ASC") || str.EndsWith(" DESC"))
+                        {
+                            if (cva.Query.GetOrdinal(str.Split(new char[] { ' ' })[0]) == -1)
+                                throw new Exception("Unable to execute a Class View Query with Order By Fields that are not fields in the Class View");
+                        }
+                        else
+                        {
+                            if (cva.Query.GetOrdinal(str) == -1)
+                                throw new Exception("Unable to execute a Class View Query with Order By Fields that are not fields in the Class View");
+                        }
+                        orderByString += "," + str;
+                    }
+                }
+                this.ExecuteQuery("SELECT * FROM ("+cva.Query.QueryString+") tbl "+ (parString == "" ? "" : " WHERE " + parString.Substring(4)) + (orderByString == "" ? "" : " ORDER BY " + orderByString.Substring(1)), queryParameters.ToArray());
+                ViewResultRow vrr = new ViewResultRow(this);
+                while (Read())
+                {
+                    IClassView icv = (IClassView)type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
+                    icv.LoadFromRow(vrr);
+                    ret.Add(icv);
+                }
+                Close();
+                return ret;
+            }
+            return base.SelectClassView(type, pars, OrderByFields);
+        }
+
+        public override List<IClassView> SelectPagedClassView(Type type, List<SelectParameter> parameters, ulong? StartIndex, ulong? RowCount, string[] OrderByFields)
+        {
+            if (type.GetCustomAttributes(typeof(ClassViewAttribute), true).Length == 0 || !new List<Type>(type.GetInterfaces()).Contains(typeof(IClassView)))
+                throw new Exception("Unable to execute a Class View Query from a class that does not have a ClassViewAttribute attached to it and inherits IClassView.");
+            if (OrderByFields == null)
+                throw new Exception("Unable to execute a Paged Class View Query without specifying the OrderByFields");
+            Pool.Updater.InitType(type, this);
+            if (!StartIndex.HasValue)
+                StartIndex = 0;
+            if (!RowCount.HasValue)
+                RowCount = 0;
+            List<IClassView> ret = new List<IClassView>();
+            ClassViewAttribute cva = (ClassViewAttribute)type.GetCustomAttributes(typeof(ClassViewAttribute), false)[0];
+            int parCount = 0;
+            List<IDbDataParameter> queryParameters = new List<IDbDataParameter>();
+            string parString = "";
+            string orderByString = "";
+            if (parameters != null)
+            {
+                foreach (SelectParameter par in parameters)
+                {
+                    foreach (string str in par.Fields)
+                    {
+                        if (cva.Query.GetOrdinal(str) == -1)
+                            throw new Exception("Unable to execute a Class View Query with parameters that are not fields in the Class View");
+                    }
+                    parString += " AND ( " + par.ConstructClassViewString(cva, Pool, queryBuilder, ref queryParameters, ref parCount) + " ) ";
+                }
+            }
+            foreach (string str in OrderByFields)
+            {
+                if (str.EndsWith(" ASC") || str.EndsWith(" DESC"))
+                {
+                    if (cva.Query.GetOrdinal(str.Split(new char[] { ' ' })[0]) == -1)
+                        throw new Exception("Unable to execute a Class View Query with Order By Fields that are not fields in the Class View");
+                }
+                else
+                {
+                    if (cva.Query.GetOrdinal(str) == -1)
+                        throw new Exception("Unable to execute a Class View Query with Order By Fields that are not fields in the Class View");
+                }
+                orderByString += "," + str;
+            }
+            queryParameters.Add(Pool.CreateParameter(queryBuilder.CreateParameterName("startIndex"), (long)StartIndex.Value));
+            queryParameters.Add(Pool.CreateParameter(queryBuilder.CreateParameterName("rowCount"), (long)RowCount.Value));
+            this.ExecuteQuery(string.Format(@"SELECT * FROM (SELECT *,ROW_NUMBER() OVER (ORDER BY {3}) RowNum
+					 FROM ({0}) internalTbl) cntTbl WHERE RowNum BETWEEN {1} AND {1}+{2}",
+                        new object[]{
+                            cva.Query.QueryString,
+                            queryBuilder.CreateParameterName("startIndex"),
+                            queryBuilder.CreateParameterName("rowCount"),
+                            orderByString.Substring(1)
+                        })
+                , queryParameters.ToArray());
+            ViewResultRow vrr = new ViewResultRow(this);
+            while (Read())
+            {
+                IClassView icv = (IClassView)type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
+                icv.LoadFromRow(vrr);
+                ret.Add(icv);
+            }
+            Close();
+            return ret;
+        }
+        #endregion
+    }
 }
