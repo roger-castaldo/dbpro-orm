@@ -138,6 +138,11 @@ namespace Org.Reddragonit.Dbpro.Virtual
             return _conn.IsDBNull(i);
         }
 
+        public bool IsDBNull(string name)
+        {
+            return IsDBNull(GetOrdinal(name));
+        }
+
         public virtual bool GetBoolean(int i)
         {
             return _conn.GetBoolean(i);
