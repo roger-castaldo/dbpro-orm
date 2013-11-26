@@ -1616,14 +1616,11 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         if (_fieldNames.ContainsKey(ordinal))
                         {
                             if (_fieldNames[ordinal] == fieldAlias)
-                            {
                                 _fieldNames.Remove(ordinal);
-                                ordinal--;
-                            }
                         }
                         fieldAlias = "";
-                    }
-                    preOrdinal = ordinal;
+                    }else
+                        preOrdinal = ordinal;
                 }
                 else
                 {
