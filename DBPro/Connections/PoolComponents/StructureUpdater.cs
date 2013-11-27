@@ -133,7 +133,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             types.Add(type);
             if (new List<Type>(type.GetInterfaces()).Contains(typeof(IClassView)))
             {
-                ClassViewAttribute cva = (ClassViewAttribute)type.GetCustomAttributes(typeof(ClassViewAttribute), false)[0];
+                ClassViewAttribute cva = conn.Pool[type];
                 foreach (Type t in cva.Query.RequiredTypes)
                 {
                     if (!types.Contains(t))
@@ -338,7 +338,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             {
                 if (!types.Contains(tp))
                 {
-                    ClassViewAttribute cva = (ClassViewAttribute)tp.GetCustomAttributes(typeof(ClassViewAttribute), false)[0];
+                    ClassViewAttribute cva = _pool[tp];
                     foreach (Type tpe in cva.Query.RequiredTypes)
                     {
                         if (types.Contains(tpe))
@@ -402,9 +402,9 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                     if (!types.Contains(t) && !_createdTypes.Contains(t))
                         types.Add(t);
                 }
-                if (type.GetCustomAttributes(typeof(ClassViewAttribute),false).Length>0)
+                ClassViewAttribute cva = _pool[type];
+                if (cva!=null)
                 {
-                    ClassViewAttribute cva = (ClassViewAttribute)type.GetCustomAttributes(typeof(ClassViewAttribute), false)[0];
                     View vw = new View(_pool.Translator.GetViewName(type), cva.Query);
                     views.Add(vw);
                     if (vw.RequiredTypes != null)
@@ -610,7 +610,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
         private View _CreateViewForVirtualTable(Type virtualTable, Connection conn)
         {
-            ClassViewAttribute cva = (ClassViewAttribute)virtualTable.GetCustomAttributes(typeof(ClassViewAttribute), false)[0];
+            ClassViewAttribute cva = _pool[virtualTable];
             return new View(conn.Pool.Translator.GetViewName(virtualTable), cva.Query);
         }
 

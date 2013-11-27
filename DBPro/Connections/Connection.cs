@@ -928,12 +928,12 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         public virtual List<IClassView> SelectClassView(System.Type type,SelectParameter[] pars,string[] OrderByFields)
         {
-            if (type.GetCustomAttributes(typeof(ClassViewAttribute), true).Length == 0 || !new List<Type>(type.GetInterfaces()).Contains(typeof(IClassView)))
+            ClassViewAttribute cva = Pool[type];
+            if (cva==null || !new List<Type>(type.GetInterfaces()).Contains(typeof(IClassView)))
                 throw new Exception("Unable to execute a Class View Query from a class that does not have a ClassViewAttributes attached to it as well as has the interface IClassView.");
             pool.Updater.InitType(type, this);
             List<IClassView> ret = new List<IClassView>();
             string viewName = Pool.Translator.GetViewName(type);
-            ClassViewAttribute cva = (ClassViewAttribute)type.GetCustomAttributes(typeof(ClassViewAttribute), false)[0];
             int parCount = 0;
             List<IDbDataParameter> queryParameters = new List<IDbDataParameter>();
             string parString = "";
@@ -987,11 +987,11 @@ namespace Org.Reddragonit.Dbpro.Connections
         public object SelectMaxClassView(string fieldName, System.Type type, SelectParameter[] pars)
         {
             object ret = null;
-            if (type.GetCustomAttributes(typeof(ClassViewAttribute), true).Length == 0 || !new List<Type>(type.GetInterfaces()).Contains(typeof(IClassView)))
+            ClassViewAttribute cva = Pool[type];
+            if (cva==null || !new List<Type>(type.GetInterfaces()).Contains(typeof(IClassView)))
                 throw new Exception("Unable to execute a Class View Query from a class that does not have a ClassViewAttribute attached to it and does not inherit IClassView.");
             pool.Updater.InitType(type, this);
             string viewName = Pool.Translator.GetViewName(type);
-            ClassViewAttribute cva = (ClassViewAttribute)type.GetCustomAttributes(typeof(ClassViewAttribute), false)[0];
             if (cva.Query.GetOrdinal(fieldName) == -1)
                 throw new Exception("Unable to execute a Max Class View Query without specificying a Field in the Class View");
             int parCount = 0;
@@ -1024,11 +1024,11 @@ namespace Org.Reddragonit.Dbpro.Connections
         public object SelectMinClassView(string fieldName, System.Type type, SelectParameter[] pars)
         {
             object ret = null;
-            if (type.GetCustomAttributes(typeof(ClassViewAttribute), true).Length == 0 || !new List<Type>(type.GetInterfaces()).Contains(typeof(IClassView)))
+            ClassViewAttribute cva = Pool[type];
+            if (cva==null || !new List<Type>(type.GetInterfaces()).Contains(typeof(IClassView)))
                 throw new Exception("Unable to execute a Class View Query from a class that does not have a ClassViewAttribute attached to it and inheriting IClassView interface.");
             pool.Updater.InitType(type, this);
             string viewName = Pool.Translator.GetViewName(type);
-            ClassViewAttribute cva = (ClassViewAttribute)type.GetCustomAttributes(typeof(ClassViewAttribute), false)[0];
             if (cva.Query.GetOrdinal(fieldName)==-1)
                 throw new Exception("Unable to execute a Min Class View Query without specificying a Field in the Class View");
             int parCount = 0;
@@ -1061,11 +1061,11 @@ namespace Org.Reddragonit.Dbpro.Connections
         public object SelectCountClassView(System.Type type, SelectParameter[] pars)
         {
             object ret = null;
-            if (type.GetCustomAttributes(typeof(ClassViewAttribute), true).Length == 0 || !new List<Type>(type.GetInterfaces()).Contains(typeof(IClassView)))
+            ClassViewAttribute cva = Pool[type];
+            if (cva==null || !new List<Type>(type.GetInterfaces()).Contains(typeof(IClassView)))
                 throw new Exception("Unable to execute a Class View Query from a class that does not have a ClassViewAttibute attached to it and inherits IClassView.");
             pool.Updater.InitType(type, this);
             string viewName = Pool.Translator.GetViewName(type);
-            ClassViewAttribute cva = (ClassViewAttribute)type.GetCustomAttributes(typeof(ClassViewAttribute), false)[0];
             int parCount = 0;
             List<IDbDataParameter> queryParameters = new List<IDbDataParameter>();
             string parString = "";
@@ -1090,14 +1090,14 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         public virtual List<IClassView> SelectPagedClassView(System.Type type, List<SelectParameter> parameters, ulong? StartIndex, ulong? RowCount,string[] OrderByFields)
         {
-            if (type.GetCustomAttributes(typeof(ClassViewAttribute), true).Length == 0 || !new List<Type>(type.GetInterfaces()).Contains(typeof(IClassView)))
+            ClassViewAttribute cva = Pool[type];
+            if (cva==null || !new List<Type>(type.GetInterfaces()).Contains(typeof(IClassView)))
                 throw new Exception("Unable to execute a Class View Query from a class that does not have a ClassViewAttribute attached to it and inherits IClassView.");
             if (OrderByFields == null)
                 throw new Exception("Unable to execute a Paged Class View Query without specifying the OrderByFields");
             pool.Updater.InitType(type, this);
             List<IClassView> ret = new List<IClassView>();
             string viewName = Pool.Translator.GetViewName(type);
-            ClassViewAttribute cva = (ClassViewAttribute)type.GetCustomAttributes(typeof(ClassViewAttribute), false)[0];
             int parCount = 0;
             List<IDbDataParameter> queryParameters = new List<IDbDataParameter>();
             string parString = "";
