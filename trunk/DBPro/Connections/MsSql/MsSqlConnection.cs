@@ -629,11 +629,11 @@ DEALLOCATE DeleteCursor;
         {
             if (OrderByFields != null && OrderByFields.Length > 0)
             {
-                if (type.GetCustomAttributes(typeof(ClassViewAttribute), true).Length == 0 || !new List<Type>(type.GetInterfaces()).Contains(typeof(IClassView)))
+                ClassViewAttribute cva = Pool[type];
+                if (cva == null || !new List<Type>(type.GetInterfaces()).Contains(typeof(IClassView)))
                     throw new Exception("Unable to execute a Class View Query from a class that does not have a ClassViewAttributes attached to it as well as has the interface IClassView.");
                 Pool.Updater.InitType(type, this);
                 List<IClassView> ret = new List<IClassView>();
-                ClassViewAttribute cva = (ClassViewAttribute)type.GetCustomAttributes(typeof(ClassViewAttribute), false)[0];
                 int parCount = 0;
                 List<IDbDataParameter> queryParameters = new List<IDbDataParameter>();
                 string parString = "";
@@ -683,7 +683,8 @@ DEALLOCATE DeleteCursor;
 
         public override List<IClassView> SelectPagedClassView(Type type, List<SelectParameter> parameters, ulong? StartIndex, ulong? RowCount, string[] OrderByFields)
         {
-            if (type.GetCustomAttributes(typeof(ClassViewAttribute), true).Length == 0 || !new List<Type>(type.GetInterfaces()).Contains(typeof(IClassView)))
+            ClassViewAttribute cva = Pool[type];
+            if (cva == null || !new List<Type>(type.GetInterfaces()).Contains(typeof(IClassView)))
                 throw new Exception("Unable to execute a Class View Query from a class that does not have a ClassViewAttribute attached to it and inherits IClassView.");
             if (OrderByFields == null)
                 throw new Exception("Unable to execute a Paged Class View Query without specifying the OrderByFields");
@@ -693,7 +694,6 @@ DEALLOCATE DeleteCursor;
             if (!RowCount.HasValue)
                 RowCount = 0;
             List<IClassView> ret = new List<IClassView>();
-            ClassViewAttribute cva = (ClassViewAttribute)type.GetCustomAttributes(typeof(ClassViewAttribute), false)[0];
             int parCount = 0;
             List<IDbDataParameter> queryParameters = new List<IDbDataParameter>();
             string parString = "";

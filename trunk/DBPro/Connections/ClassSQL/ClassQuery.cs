@@ -99,7 +99,14 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 index = (m.Index + m.Length>_outputQuery.Length ? _outputQuery.Length-1 : m.Index+m.Length);
             }
             for (int x = 0; x < _fieldNames.Count; x++)
+            {
+                if (!_fieldNames.ContainsKey(x))
+                {
+                    _fieldNames.Add(x, _fieldNames[x + 1]);
+                    _fieldNames.Remove(x + 1);
+                }
                 _fieldNames[x] = _fieldNames[x].Trim("'\"".ToCharArray());
+            }
             Logger.LogLine("Class Query: " + query + "\nTranslated To:" + _outputQuery);
         }
 		
@@ -1712,8 +1719,13 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
         private string TranslateFieldName(int ordinal, int index, out string fieldAlias, List<int> tableDeclarations, Dictionary<int, string> fieldAliases, Dictionary<string, string> tableAliases, Dictionary<string, List<string>> fieldList, Dictionary<string, string> parentTableAliases)
 		{
 			QueryToken field = _tokenizer.Tokens[index];
+            if (field.Type == TokenType.KEYWORD && field.Value.ToUpper() == "NULL")
+            {
+                fieldAlias = null;
+                return field.Value;
+            }
 			string tableName = "";
-			string fieldName = _tokenizer.Tokens[index].Value;
+			string fieldName = field.Value;
 			if (field.Value.Contains("."))
 			{
 				fieldAlias = field.Value.Substring(field.Value.LastIndexOf(".") + 1);

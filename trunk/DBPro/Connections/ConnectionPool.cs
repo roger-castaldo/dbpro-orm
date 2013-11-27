@@ -68,6 +68,25 @@ namespace Org.Reddragonit.Dbpro.Connections
         protected abstract bool _IsCoreStoredProcedure(StoredProcedure storedProcedure);
         internal abstract IDbDataParameter CreateParameter(string parameterName, object parameterValue, Org.Reddragonit.Dbpro.Structure.Attributes.FieldType type, int fieldLength);
         protected abstract IDbDataParameter _CreateParameter(string parameterName, object parameterValue);
+
+        private Dictionary<Type, ClassViewAttribute> _classViewAttributes;
+        internal ClassViewAttribute this[Type type]
+        {
+            get
+            {
+                if (_classViewAttributes == null)
+                    _classViewAttributes = new Dictionary<Type, ClassViewAttribute>();
+                if (!_classViewAttributes.ContainsKey(type))
+                {
+                    if (new List<Type>(type.GetInterfaces()).Contains(typeof(IClassView))
+                        && type.GetCustomAttributes(typeof(ClassViewAttribute), false).Length > 0)
+                        _classViewAttributes.Add(type, (ClassViewAttribute)type.GetCustomAttributes(typeof(ClassViewAttribute), false)[0]);
+                }
+                if (_classViewAttributes.ContainsKey(type))
+                    return _classViewAttributes[type];
+                return null;
+            }
+        }
         
         internal IDbDataParameter CreateParameter(string parameterName, object parameterValue)
         {
