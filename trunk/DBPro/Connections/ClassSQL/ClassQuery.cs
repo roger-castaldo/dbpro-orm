@@ -1721,7 +1721,12 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 			QueryToken field = _tokenizer.Tokens[index];
             if (field.Type == TokenType.KEYWORD && field.Value.ToUpper() == "NULL")
             {
-                fieldAlias = null;
+                if (_tokenizer.Tokens.Count > index + 2)
+                    fieldAlias = (_tokenizer.Tokens[index + 1].Value.ToUpper() == "AS" ? _tokenizer.Tokens[index + 2].Value : null);
+                else
+                    fieldAlias = null;
+                if (fieldAlias != null && ordinal!=-1)
+                    _fieldNames.Add(ordinal, fieldAlias);
                 return field.Value;
             }
 			string tableName = "";
