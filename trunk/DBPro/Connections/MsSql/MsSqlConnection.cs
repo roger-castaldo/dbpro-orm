@@ -374,7 +374,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
         private const string _DEL_TRIGGER_NAME = "TRIG_DEL_{0}";
         private const string _UPDATE_TRIGGER_NAME = "TRIG_UPDATE_{0}";
 
-        internal void MaskComplicatedRelations(int index, ref List<ExtractedTableMap> tables, ref List<Trigger> triggers)
+        internal void MaskComplicatedRelations(int index, ref List<ExtractedTableMap> tables, ref List<Trigger> triggers,Dictionary<string,string> AutoDeleteParentTables)
         {
             ExtractedTableMap map = tables[index];
             foreach (string tblName in map.RelatedTables)
@@ -484,7 +484,14 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
                     for(int x=0;x<maps.Count;x++)
                     {
                         List<ForeignRelationMap> rel = maps[x];
-                        delCode+=string.Format("IF ((SELECT COUNT(*) FROM DELETED)>0) BEGIN DELETE FROM {0} WHERE (",map.TableName);
+                        string disableTrigger = "";
+                        string enableTrigger = "";
+                        if (AutoDeleteParentTables.ContainsKey(map.TableName))
+                        {
+                            disableTrigger = string.Format("ALTER TABLE {0} DISABLE TRIGGER {0}_DEL;\n", map.TableName);
+                            enableTrigger = string.Format("ALTER TABLE {0} ENABLE TRIGGER {0}_DEL;\n", map.TableName);
+                        }
+                        delCode+=string.Format("IF ((SELECT COUNT(*) FROM DELETED)>0) BEGIN {1} DELETE FROM {0} WHERE (",map.TableName,disableTrigger);
                         fields = "";
                         foreach (ForeignRelationMap frm in rel)
                         {
@@ -492,8 +499,9 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
                             fields += string.Format("CAST({0} AS VARCHAR(MAX))+'-'+", frm.ExternalField);
                         }
                         delCode = delCode.Substring(0,delCode.Length-5);
-                        delCode += string.Format(") IN (SELECT ({0}) FROM DELETED); END\n",
-                            fields.Substring(0, fields.Length - 5));
+                        delCode += string.Format(") IN (SELECT ({0}) FROM DELETED); {1} END\n",
+                            fields.Substring(0, fields.Length - 5),
+                            enableTrigger);
                         if (x == maps.Count - 1)
                         {
                             delCode += string.Format("DELETE FROM {0} WHERE ({1}) IN (SELECT ({1}) FROM DELETED);\nEND\n\n",
@@ -618,7 +626,7 @@ DEALLOCATE DeleteCursor;
                     //once using INSTEAD OF, all relationship cascades MUST be done in the trigger
                     for (int x = 0; x < index; x++)
                     {
-                        MaskComplicatedRelations(x, ref tables, ref triggers);
+                        MaskComplicatedRelations(x, ref tables, ref triggers,AutoDeleteParentTables);
                     }
                 }
             }

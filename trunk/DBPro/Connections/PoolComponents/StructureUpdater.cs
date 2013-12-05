@@ -551,8 +551,6 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                 Logger.LogLine(etm.TableName + ":");
                 foreach (ExtractedFieldMap efm in etm.Fields)
                     Logger.LogLine("\t" + efm.FieldName + " - " + efm.PrimaryKey.ToString());
-                if (conn is MsSqlConnection)
-                    ((MsSqlConnection)conn).MaskComplicatedRelations(x, ref tables, ref triggers);
                 if (!_pool.Mapping.IsVersionTable(etm.TableName))
                 {
                     foreach (ExtractedFieldMap efm in etm.PrimaryKeys)
@@ -593,6 +591,8 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                         triggers.AddRange(conn.GetDeleteParentTrigger(etm, ptm));
                     }
                 }
+                if (conn is MsSqlConnection)
+                    ((MsSqlConnection)conn).MaskComplicatedRelations(x, ref tables, ref triggers, AutoDeleteParentTables);
             }
 
             for (int x = 0; x < procedures.Count; x++)
