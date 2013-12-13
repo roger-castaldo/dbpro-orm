@@ -314,9 +314,9 @@ namespace Org.Reddragonit.Dbpro
                         outVal = true;
                     if ((pi != null) && (pi.Name == "ChangedFields"))
                         outVal = _changedFields;
-                    else if (((pi != null) && (pi.Name == "OriginalArrayLengths"))||mi.Name=="get_OriginalArrayLengths")
+                    else if (((pi != null) && (pi.Name == "OriginalArrayLengths")) || mi.Name == "get_OriginalArrayLengths")
                         outVal = _originalArrayLengths;
-                    else if (((pi != null) && (pi.Name == "ReplacedArrayIndexes"))||mi.Name=="get_ReplacedArrayIndexes")
+                    else if (((pi != null) && (pi.Name == "ReplacedArrayIndexes")) || mi.Name == "get_ReplacedArrayIndexes")
                         outVal = _replacedArrayIndexes;
                     else if (mi.Name == "get_ChangedFields")
                         outVal = _changedFields;
@@ -326,6 +326,8 @@ namespace Org.Reddragonit.Dbpro
                         ((Table)owner)._isSaved = (bool)mc.Args[2];
                     else if ((mi.Name == "FieldGetter") && (mc.Args.Length == 2) && (mc.Args[1].ToString().Trim() == "_isSaved"))
                         outVal = ((Table)owner)._isSaved;
+                    else if ((mi.Name == "FieldSetter") && (mc.Args.Length == 3) && (mc.Args[1].ToString().Trim() == "_changedFields"))
+                        ((Table)owner)._changedFields = (List<string>)mc.Args[2];
                     else if ((pi != null) && (!isGet) && (fieldsAffected != null) && ((Table)owner)._isSaved)
                     {
                         object curVal = pi.GetValue(owner, new object[0]);
