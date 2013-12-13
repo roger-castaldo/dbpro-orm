@@ -1541,6 +1541,8 @@ namespace Org.Reddragonit.Dbpro.Connections
             {
                 foreach (IDbDataParameter param in parameters)
                 {
+                    if (param.Value == null)
+                        param.Value = DBNull.Value;
                     comm.Parameters.Add(param);
                 }
             }
@@ -1733,6 +1735,8 @@ namespace Org.Reddragonit.Dbpro.Connections
             {
                 foreach (IDbDataParameter param in parameters)
                 {
+                    if (param.Value == null)
+                        param.Value = DBNull.Value;
                     comm.Parameters.Add(param);
                 }
             }
