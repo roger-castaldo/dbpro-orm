@@ -27,7 +27,18 @@ namespace TestingApp
 		[STAThread]
 		static void Main(string[] args)
 		{
-            /*Group grp = new Group();
+            Connection conn = ConnectionPoolManager.GetConnection(typeof(Group));
+            IDbDataParameter[] pars = new IDbDataParameter[]{
+                    conn.CreateParameter("@Name","Test2"),
+                    conn.CreateParameter("@Inherit",false),
+                    conn.CreateParameter("@Parent",null),
+                    conn.CreateParameter("@ID",(long?)null)
+                };
+            pars[pars.Length - 1].Direction = ParameterDirection.ReturnValue;
+            conn.ExecuteNonQuery("INSERT INTO RES_GROUP(NAME,INHERIT_PARENT_RIGHTS,PARENT_GROUP_ID) VALUES(@Name,@Inherit,@Parent) RETURNING ID",
+                pars);
+            Console.WriteLine(pars[pars.Length - 1].Value);
+            Group grp = new Group();
             grp.Name = "Testing";
             grp.ParentGroup = null;
             grp.Rights = SecurityRight.LoadAll().ToArray();
@@ -43,8 +54,8 @@ namespace TestingApp
 			u.Type=UserTypes.Normal;
 			u.UserGroup=Group.LoadAllGroups()[0];
 			u.UserName="rcastaldo";
-			u=User.Save(u);*/
-            Connection conn = ConnectionPoolManager.GetConnection(typeof(User));
+			u=User.Save(u);
+            conn = ConnectionPoolManager.GetConnection(typeof(User));
             foreach (UserGroupList ugl in conn.SelectClassView(typeof(UserGroupList))){
                 Console.WriteLine("FirstName: "+ugl.FirstName+"\tLastName: "+ugl.LastName+"\tGroup: "+ugl.GroupName);
             }

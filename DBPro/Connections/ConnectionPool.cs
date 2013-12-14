@@ -61,6 +61,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		private bool isClosed=false;
 		private bool isReady=false;
 		private string _connectionName;
+        private List<Type> _tables;
 
         internal abstract QueryBuilder queryBuilder { get; }
 		protected abstract Connection CreateConnection(bool exclusiveLock);
@@ -325,7 +326,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 _translator = new NameTranslator(this, conn);
                 _enums = new EnumsHandler(this);
                 _updater = new StructureUpdater(this, translations);
-                List<Type> tables = new List<Type>();
+                _tables = new List<Type>();
 
                 if (!_debugMode)
                 {
@@ -333,9 +334,9 @@ namespace Org.Reddragonit.Dbpro.Connections
                     {
                         Table tbl = (Table)t.GetCustomAttributes(typeof(Table), false)[0];
                         if (Utility.StringsEqual(tbl.ConnectionName, ConnectionName))
-                            tables.Add(t);
+                            _tables.Add(t);
                     }
-                    _mapping = new ClassMapping(conn, tables);
+                    _mapping = new ClassMapping(conn, _tables);
                     PreInit();
                     _updater.Init(conn);
                 }
@@ -348,6 +349,22 @@ namespace Org.Reddragonit.Dbpro.Connections
             }
 			isReady=true;
 		}
+
+        internal void AssemblyAdded()
+        {
+            List<Type> newTypes = new List<Type>();
+            foreach (Type t in Utility.LocateAllTypesWithAttribute(typeof(Table)))
+            {
+                if (!_tables.Contains(t))
+                {
+                    Table tbl = (Table)t.GetCustomAttributes(typeof(Table), false)[0];
+                    if (Utility.StringsEqual(tbl.ConnectionName, ConnectionName))
+                        newTypes.Add(t);
+                }
+            }
+            _mapping.AddTypes(newTypes);
+            _tables.AddRange(newTypes);
+        }
 		
 		public Connection GetConnection()
 		{
