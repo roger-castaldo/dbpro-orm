@@ -34,6 +34,26 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             }
         }
 
+
+        internal void AddTypes(List<Type> newTypes)
+        {
+            if (newTypes.Count > 0)
+            {
+                Connection conn = _pool.GetConnection();
+                Dictionary<string, sTable> intermediates;
+                foreach (Type tbl in newTypes)
+                {
+                    if (!_classMaps.ContainsKey(tbl))
+                    {
+                        _classMaps.Add(tbl, _ConstructTable(tbl, conn, out intermediates));
+                        if (intermediates.Count > 0)
+                            _intermediateTables.Add(tbl, intermediates);
+                    }
+                }
+                conn.CloseConnection();
+            }
+        }
+
         private sTable _ConstructTable(Type tbl,Connection conn, out Dictionary<string, sTable> intermediates)
         {
             List<sTableField> fields = new List<sTableField>(); 

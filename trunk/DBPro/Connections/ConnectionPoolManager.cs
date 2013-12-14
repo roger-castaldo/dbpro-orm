@@ -98,6 +98,14 @@ namespace Org.Reddragonit.Dbpro.Connections
 			Utility.Release(_connectionPools);
 		}
 
+        public static void AssemblyAdded()
+        {
+            Utility.WaitOne(_connectionPools);
+            foreach (string str in _connectionPools.Keys)
+                _connectionPools[str].AssemblyAdded();
+            Utility.Release(_connectionPools);
+        }
+
         public static void RegisterPreInitDelegate(string poolName, delPreInit preInit)
         {
             Utility.WaitOne(_preInits);
