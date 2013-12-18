@@ -207,39 +207,6 @@ namespace Org.Reddragonit.Dbpro
 					if (isGet)
 					{
 						outVal = mi.Invoke(owner, mc.Args);
-                        /*if ((new List<string>(_map.ForeignTableProperties).Contains(pi.Name))&&(outVal!=null)&&!Utility.IsEnum(pi.PropertyType))
-                        {
-                            if (pi.PropertyType.IsArray)
-                            {
-                                Table[] vals = (Table[])outVal;
-                                sTable map = _pool.Mapping[pi.PropertyType.GetElementType()];
-                                Connection conn = ConnectionPoolManager.GetConnection(pi.PropertyType.GetElementType()).getConnection();
-                                for (int x=0;x<vals.Length;x++)
-                                {
-                                    List<SelectParameter> pars = new List<SelectParameter>();
-                                    foreach (string prop in map.PrimaryKeyProperties)
-                                        pars.Add(new EqualParameter(prop, ((Table)vals[x]).GetField(prop)));
-                                    vals[x]=conn.Select(pi.PropertyType.GetElementType(),pars)[0];
-                                }
-                                pi.SetValue(owner,vals,new object[0]);
-                                outVal=vals;
-                                conn.CloseConnection();
-                            }else{
-                                Table t = (Table)outVal;
-                                if (t.LoadStatus== LoadStatus.Partial)
-                                {
-                                    List<SelectParameter> pars = new List<SelectParameter>();
-                                    sTable map = _pool.Mapping[pi.PropertyType];
-                                    foreach (string prop in map.PrimaryKeyProperties)
-                                        pars.Add(new EqualParameter(prop,t.GetField(prop)));
-                                    Connection conn = ConnectionPoolManager.GetConnection(pi.PropertyType).getConnection();
-                                    t = conn.Select(outVal.GetType(),pars)[0];
-                                    pi.SetValue(owner,t,new object[0]);
-                                    outVal=t;
-                                    conn.CloseConnection();
-                                }
-                            }
-                        }*/
 					}else
 					{
                         sTable map = ConnectionPoolManager.GetPool(owner.GetType()).Mapping[owner.GetType()];
@@ -394,7 +361,7 @@ namespace Org.Reddragonit.Dbpro
                 Type btype = owner.GetType().BaseType;
                 while (_pool.Mapping.IsMappableType(btype))
                 {
-                    if (_pool.Mapping[btype][p].Length > 0)
+                    if (_pool.Mapping[btype][p].Length > 0 || _pool.Mapping[btype].ArrayProperties.Contains(p))
                         return true;
                     btype = btype.BaseType;
                 }

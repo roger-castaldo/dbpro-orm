@@ -664,12 +664,25 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             if (existingNames.Contains(ret))
             {
                 int _nameCounter = 0;
-                while (existingNames.Contains(ret.Substring(0, _pool.MaxFieldNameLength - 1 - (_nameCounter.ToString().Length)) + "_" + _nameCounter.ToString()))
+                string name = ret+"_"+_nameCounter.ToString();
+                int sub=0;
+                while (name.Length>_pool.MaxFieldNameLength)
+                {
+                    sub++;
+                    name = ret.Substring(0,ret.Length-sub)+"_"+_nameCounter.ToString();
+                }
+                while (existingNames.Contains(name))
                 {
                     _nameCounter++;
+                    name = ret + "_" + _nameCounter.ToString();
+                    sub = 0;
+                    while (name.Length > _pool.MaxFieldNameLength)
+                    {
+                        sub++;
+                        name = ret.Substring(0, ret.Length - sub) + "_" + _nameCounter.ToString();
+                    }
                 }
-                ret = ret.Substring(0, _pool.MaxFieldNameLength - 1 - (_nameCounter.ToString().Length));
-                ret += "_" + _nameCounter.ToString();
+                ret = name;
             }
             return ret.ToUpper();
         }
