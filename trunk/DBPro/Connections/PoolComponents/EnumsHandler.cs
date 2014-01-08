@@ -153,7 +153,10 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             {
                 if (!vals.ContainsKey(str))
                 {
-                    conn.ExecuteNonQuery("INSERT INTO " + _enumTableMaps[t] + " VALUES(" + conn.CreateParameterName("id") + "," + conn.CreateParameterName("value") + ");",
+                    conn.ExecuteNonQuery(string.Format("INSERT INTO {0}({1}) VALUES({2});",new object[]{ 
+                        _enumTableMaps[t],
+                        _pool.Translator.GetEnumValueFieldName(t, conn),
+                        conn.CreateParameterName("value")}),
                     new System.Data.IDbDataParameter[]{
                                 conn.Pool.CreateParameter(conn.CreateParameterName("id"),null,Org.Reddragonit.Dbpro.Structure.Attributes.FieldType.INTEGER,4),
                                 conn.CreateParameter(conn.CreateParameterName("value"),str)

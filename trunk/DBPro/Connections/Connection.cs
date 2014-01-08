@@ -19,7 +19,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 	
 	public abstract class Connection : IDataReader
 	{
-		private const int MAX_COMM_QUERIES = 5;
+		private const int MAX_COMM_QUERIES = 15;
         private const int MAX_READCHECK_TRIES = 5;
 		
 		private ConnectionPool pool;
