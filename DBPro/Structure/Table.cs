@@ -280,6 +280,13 @@ namespace Org.Reddragonit.Dbpro.Structure
                 {
                     if (fld.ExternalField == null)
                         table.SetField(fld.ClassProperty, conn[queryFieldName]);
+                    else if (fld.Type == FieldType.ENUM)
+                    {
+                        PropertyInfo pi = table.GetType().GetProperty(fld.ClassProperty, Utility._BINDING_FLAGS);
+                        if (pi == null)
+                            pi = table.GetType().GetProperty(fld.ClassProperty, Utility._BINDING_FLAGS_WITH_INHERITANCE);
+                        table.SetField(fld.ClassProperty, conn.GetEnum(pi.PropertyType, queryFieldName));
+                    }
                     else
                     {
                         if (table.GetField(fld.ClassProperty) == null)
@@ -290,7 +297,7 @@ namespace Org.Reddragonit.Dbpro.Structure
                             Table t = (Table)pi.PropertyType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
                             t._loadStatus = LoadStatus.Partial;
                             t = (Table)LazyProxy.Instance(t);
-                            table.SetField(fld.Name,t);
+                            table.SetField(fld.Name, t);
                         }
                         RecurSetPropertyValue(fld.ExternalField, conn, queryFieldName, (Table)table.GetField(fld.Name));
                     }

@@ -19,7 +19,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 	
 	public abstract class Connection : IDataReader
 	{
-		private const int MAX_COMM_QUERIES = 15;
+		//private const int MAX_COMM_QUERIES = 15;
         private const int MAX_READCHECK_TRIES = 5;
 		
 		private ConnectionPool pool;
@@ -31,7 +31,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		private bool isConnected=false;
 		private DateTime creationTime;
 		protected string connectionString;
-		private int commCntr;
+		//private int commCntr;
         private bool firstRead = false;
         private bool exitReadLock = false;
         private bool firstReadResult;
@@ -208,7 +208,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 comm.Transaction = trans;
             }
             isConnected = true;
-            commCntr = 0;
+            //commCntr = 0;
         }
 		
 		internal string ConnectionName
@@ -1436,13 +1436,13 @@ namespace Org.Reddragonit.Dbpro.Connections
                 else if (queryString.ToUpper().StartsWith("UPDATE"))
                     throw new Exception("Unable to update into a readonly database.");
             }
-			commCntr++;
+			/*commCntr++;
 			if (commCntr>=MAX_COMM_QUERIES){
 				commCntr=0;
 				comm = EstablishCommand();
 				if (trans!=null)
 					comm.Transaction=trans;
-			}
+			}*/
 			if ((trans == null)&&!queryString.ToUpper().StartsWith("SELECT"))
             {
                 Logger.LogLine("Opening transaction for query since it is not performing a select");
@@ -1520,13 +1520,13 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         public int ExecuteStoredProcedureNoReturn(string procedureName,IDbDataParameter[] parameters)
         {
-        	commCntr++;
+        	/*commCntr++;
 			if (commCntr>=MAX_COMM_QUERIES){
 				commCntr=0;
 				comm = EstablishCommand();
 				if (trans!=null)
 					comm.Transaction=trans;
-			}
+			}*/
         	if (trans == null)
             {
                 Logger.LogLine("Opening transaction for query since it is not performing a select");
@@ -1621,13 +1621,13 @@ namespace Org.Reddragonit.Dbpro.Connections
                 else if (queryString.ToUpper().StartsWith("UPDATE"))
                     throw new Exception("Unable to update into a readonly database.");
             }
-			commCntr++;
+			/*commCntr++;
 			if (commCntr>=MAX_COMM_QUERIES){
 				commCntr=0;
 				comm = EstablishCommand();
 				if (trans!=null)
 					comm.Transaction=trans;
-			}
+			}*/
             if ((trans == null)&&!queryString.ToUpper().StartsWith("SELECT"))
             {
                 Logger.LogLine("Opening transaction for query since it is not performing a select");
@@ -1713,13 +1713,13 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         public void ExecuteStoredProcedureReturn(string procedureName, IDbDataParameter[] parameters)
         {
-        	commCntr++;
+        	/*commCntr++;
 			if (commCntr>=MAX_COMM_QUERIES){
 				commCntr=0;
 				comm = EstablishCommand();
 				if (trans!=null)
 					comm.Transaction=trans;
-			}
+			}*/
             if (trans == null)
             {
                 Logger.LogLine("Opening transaction for query since it is not performing a select");
