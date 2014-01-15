@@ -94,33 +94,38 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 					identities.Add(new IdentityField(map.TableName,field.FieldName,field.FullFieldType,"1"));
 				else
 				{
-					string code = "AS \n";
-					string declares="";
-					string sets="";
-					string queryFields="";
-                    string valueSets = "";
-					foreach (ExtractedFieldMap efm in map.Fields)
-					{
+					string code = "AS \nINSERT INTO "+map.TableName+"(";
+                    string selCode = "SELECT ";
+                    string condCode = "";
+                    string partCode = "";
+                    string autogenField="";
+                    foreach (ExtractedFieldMap efm in map.Fields)
+                    {
                         if (efm.ComputedCode == null)
                         {
-                            declares += "DECLARE " + queryBuilder.CreateParameterName(efm.FieldName) + " " + efm.FullFieldType+ ";\n";
                             if (!efm.AutoGen)
                             {
-                                sets += " SET " + queryBuilder.CreateParameterName(efm.FieldName) + " = (SELECT " + efm.FieldName + " FROM INSERTED);\n";
-                                valueSets += "," + queryBuilder.CreateParameterName(efm.FieldName);
+                                code += efm.FieldName + ",";
+                                selCode += "ins." + efm.FieldName + ",";
                                 if (efm.PrimaryKey)
-                                    queryFields += " AND " + efm.FieldName + " = " + queryBuilder.CreateParameterName(efm.FieldName);
-                            }
+                                {
+                                    condCode += string.Format("ins.{0}=tbl.{0} AND ", efm.FieldName);
+                                    partCode += efm.FieldName + ",";
+                                }
+                            }else
+                                autogenField=efm.FieldName;
                         }
-					}
-					code+=declares;
-					code+=sets;
-					code+="SET "+queryBuilder.CreateParameterName(field.FieldName)+" = (SELECT MAX("+field.FieldName+") FROM "+map.TableName+" WHERE ";
-					code+=queryFields.Substring(4)+");\n";
-					code+="IF ("+queryBuilder.CreateParameterName(field.FieldName)+" is NULL)\n";
-					code+="\tSET "+queryBuilder.CreateParameterName(field.FieldName)+" = -1;\n";
-					code+="INSERT INTO "+map.TableName+"("+field.FieldName+fields+") VALUES("+queryBuilder.CreateParameterName(field.FieldName)+"+1"+valueSets+");\n";
-                    triggers.Add(new Trigger((imediate ? Pool.Translator.GetInsertIntermediateTriggerName(t, pi, this) : Pool.Translator.GetInsertTriggerName(t, this)), "ON " + map.TableName + " INSTEAD OF INSERT\n", code));
+                    }
+                    code = code.Substring(0, code.Length) +autogenField+ ") " + selCode;
+                    code += string.Format("ISNULL((SELECT MAX(tbl.{0}) FROM {1} tbl WHERE {2}),-1)+1+ins.ROWNUM FROM (SELECT *,ROW_NUMBER() OVER(PARTITION BY {3} ORDER BY {3}) AS ROWNUM FROM inserted) ins;",
+                        new object[]{
+                            autogenField,
+                            map.TableName,
+                            condCode.Substring(0,condCode.Length-4),
+                            partCode.Substring(0,partCode.Length-1)
+                        });
+
+					triggers.Add(new Trigger((imediate ? Pool.Translator.GetInsertIntermediateTriggerName(t, pi, this) : Pool.Translator.GetInsertTriggerName(t, this)), "ON " + map.TableName + " INSTEAD OF INSERT\n", code));
 				}
             }
             else if (field.Type.ToUpper().Contains("VARCHAR")){
