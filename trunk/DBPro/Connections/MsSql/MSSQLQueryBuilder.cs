@@ -103,7 +103,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 			{
                 return @"SELECT tbl.trigger_name,
 tbl.comm_string,
-RIGHT(tbl.code,LEN(tbl.code)-LEN('CREATER TRIGGER '+tbl.trigger_name+tbl.comm_string)) code
+(CASE WHEN tbl.code LIKE 'CREATE TRIGGER%' THEN RIGHT(tbl.code,LEN(tbl.code)-LEN('CREATER TRIGGER '+tbl.trigger_name+tbl.comm_string)) ELSE tbl.code END) code
 FROM (SELECT sys1.name trigger_name, 
 					 'ON '+sys2.name+' '+ 
 					 (CASE WHEN OBJECTPROPERTY(sys1.id, 'ExecIsInsteadOfTrigger') = 1 
