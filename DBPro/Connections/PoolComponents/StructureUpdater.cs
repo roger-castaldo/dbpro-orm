@@ -47,7 +47,15 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             conn.ExecuteQuery(conn.Pool.queryBuilder.SelectTriggers());
             while (conn.Read())
             {
-                _triggers.Add(new Trigger((string)conn[0], (string)conn[1], (string)conn[2]));
+                //patch to handle long trigger code from mssql
+                if (_triggers.Count > 0)
+                {
+                    if (_triggers[_triggers.Count - 1].Name == (string)conn[0])
+                        _triggers[_triggers.Count - 1] = new Trigger((string)conn[0], (string)conn[1], _triggers[_triggers.Count - 1].Code + (string)conn[2]);
+                    else
+                        _triggers.Add(new Trigger((string)conn[0], (string)conn[1], (string)conn[2]));
+                }else
+                    _triggers.Add(new Trigger((string)conn[0], (string)conn[1], (string)conn[2]));
             }
             conn.Close();
             conn.ExecuteQuery(conn.Pool.queryBuilder.SelectProcedures());
