@@ -442,13 +442,29 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                             List<string> tfields = new List<string>();
                             foreach (string str in ti.Fields)
                             {
-                                sTableField[] flds = tm[str];
-                                if (flds.Length == 0)
-                                    tfields.Add(str);
+                                if (str.Contains("."))
+                                {
+                                    if (!new List<string>(tm.PrimaryKeyProperties).Contains(str.Substring(0, str.IndexOf("."))))
+                                        throw new Exception("Unable to create table index for non-table field");
+                                    else
+                                    {
+                                        foreach (sTableField fld in tm[str.Substring(0, str.IndexOf("."))])
+                                        {
+                                            if (_IsTracedProperty(tm, str.Substring(str.IndexOf(".") + 1), fld, str.Substring(0, str.IndexOf("."))))
+                                                tfields.Add(fld.Name);
+                                        }
+                                    }
+                                }
                                 else
                                 {
-                                    foreach (sTableField f in flds)
-                                        tfields.Add(f.Name);
+                                    sTableField[] flds = tm[str];
+                                    if (flds.Length == 0)
+                                        tfields.Add(str);
+                                    else
+                                    {
+                                        foreach (sTableField f in flds)
+                                            tfields.Add(f.Name);
+                                    }
                                 }
                             }
                             etm.Indices.Add(new Index(_pool.Translator.GetIndexName(type, ti.Name, conn), tfields.ToArray(), ti.Unique, ti.Ascending));
@@ -614,6 +630,28 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                     }
                 }
             }
+        }
+
+        private bool _IsTracedProperty(sTable tm, string fieldName, sTableField fld, string property)
+        {
+            sTable map = _pool.Mapping[_pool.Mapping[tm.GetRelationForProperty(property).Value.ExternalTable]];
+            if (fieldName.Contains("."))
+            {
+                foreach (sTableField stf in map[fieldName.Substring(0, fieldName.IndexOf("."))])
+                {
+                    if (stf.Name == fld.ExternalField)
+                        return _IsTracedProperty(map, fieldName.Substring(fieldName.IndexOf(".") + 1), stf, fieldName.Substring(0, fieldName.IndexOf(".")));
+                }
+            }
+            else
+            {
+                foreach (sTableField stf in map[fieldName])
+                {
+                    if (stf.Name == fld.ExternalField)
+                        return true;
+                }
+            }
+            return false;
         }
 
         private View _CreateViewForVirtualTable(Type virtualTable, Connection conn)

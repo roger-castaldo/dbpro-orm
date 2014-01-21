@@ -338,6 +338,7 @@ namespace Org.Reddragonit.Dbpro
                                 Logger.LogLine(e.StackTrace);
                                 e = e.InnerException;
                             }
+                            throw ex;
                         }
                     }
 				}
