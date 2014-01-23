@@ -212,7 +212,7 @@ namespace Org.Reddragonit.Dbpro
                         sTable map = ConnectionPoolManager.GetPool(owner.GetType()).Mapping[owner.GetType()];
 						if (((Table)owner).IsSaved&&new List<string>(map.PrimaryKeyProperties).Contains(pi.Name)&&Utility.StringsEqual(pi.Name,map.AutoGenProperty))
 							throw new AlterPrimaryKeyException(owner.GetType().ToString(),pi.Name);
-						if (((Table)owner)._isSaved)
+						if (((Table)owner).IsSaved)
 						{
 							object curVal = pi.GetValue(owner,new object[0]);
                             if (map.ArrayProperties.Contains(pi.Name))
@@ -235,7 +235,7 @@ namespace Org.Reddragonit.Dbpro
                                         {
                                             if (arCur.GetValue(x) is Table)
                                             {
-                                                if (!((Table)arNew.GetValue(x))._isSaved)
+                                                if (!((Table)arNew.GetValue(x)).IsSaved)
                                                     indexes.Add(x);
                                                 if (((Table)arNew.GetValue(x)).ChangedFields.Count > 0)
                                                     indexes.Add(x);
@@ -292,7 +292,7 @@ namespace Org.Reddragonit.Dbpro
                     else if ((mi.Name == "FieldSetter") && (mc.Args.Length == 3) && (mc.Args[1].ToString().Trim() == "_isSaved"))
                         ((Table)owner)._isSaved = (bool)mc.Args[2];
                     else if ((mi.Name == "FieldGetter") && (mc.Args.Length == 2) && (mc.Args[1].ToString().Trim() == "_isSaved"))
-                        outVal = ((Table)owner)._isSaved;
+                        outVal = ((Table)owner).IsSaved;
                     else if ((mi.Name == "FieldSetter") && (mc.Args.Length == 3) && (mc.Args[1].ToString().Trim() == "_changedFields"))
                         ((Table)owner)._changedFields = (List<string>)mc.Args[2];
                     else if ((pi != null) && (!isGet) && (fieldsAffected != null) && ((Table)owner)._isSaved)

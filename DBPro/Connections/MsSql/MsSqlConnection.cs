@@ -117,7 +117,7 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
                         }
                     }
                     code = code.Substring(0, code.Length) +autogenField+ ") " + selCode;
-                    code += string.Format("ISNULL((SELECT MAX(tbl.{0}) FROM {1} tbl WHERE {2}),-1)+1+ins.ROWNUM FROM (SELECT *,ROW_NUMBER() OVER(PARTITION BY {3} ORDER BY {3}) AS ROWNUM FROM inserted) ins;",
+                    code += string.Format("ISNULL((SELECT MAX(tbl.{0}) FROM {1} tbl WHERE {2}),-1)+ins.ROWNUM FROM (SELECT *,ROW_NUMBER() OVER(PARTITION BY {3} ORDER BY {3}) AS ROWNUM FROM inserted) ins;",
                         new object[]{
                             autogenField,
                             map.TableName,
