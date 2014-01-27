@@ -250,6 +250,8 @@ namespace Org.Reddragonit.Dbpro
                                         indexes.Add(x);
                                     if (indexes.Count > 0 && !_changedFields.Contains(pi.Name))
                                         _changedFields.Add(pi.Name);
+                                    else if (arNew.Length!=arCur.Length && !_changedFields.Contains(pi.Name))
+                                        _changedFields.Add(pi.Name);
                                     _replacedArrayIndexes.Add(pi.Name, indexes);
                                 }
                                 else if (!_changedFields.Contains(pi.Name))
