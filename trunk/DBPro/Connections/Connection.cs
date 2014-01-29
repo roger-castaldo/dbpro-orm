@@ -26,7 +26,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		protected IDbConnection conn=null;
 		protected IDbCommand comm=null;
 		protected IDataReader reader=null;
-		protected IDbTransaction trans=null;
+        private IDbTransaction trans = null;
         private bool _exclusiveLock;
 		private bool isConnected=false;
 		private DateTime creationTime;
