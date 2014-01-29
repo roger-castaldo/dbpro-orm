@@ -69,7 +69,8 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                     ConnectionPool pool = ConnectionPoolManager.GetPool(tableType);
                     sTable map = pool.Mapping[tableType];
                     sTable subMap = pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
-                    if (new List<string>(map.PrimaryKeyProperties).Contains(fieldName.Substring(0, fieldName.IndexOf(".")))
+                    if ((new List<string>(map.PrimaryKeyProperties).Contains(fieldName.Substring(0, fieldName.IndexOf(".")))||
+                        new List<string>(map.ForeignTableProperties).Contains(fieldName.Substring(0, fieldName.IndexOf("."))))
                         && new List<string>(subMap.PrimaryKeyProperties).Contains(fieldName.Substring(fieldName.IndexOf(".") + 1)))
                     {
                         foreach (sTableField fld in map[newField])

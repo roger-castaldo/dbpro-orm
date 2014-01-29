@@ -376,11 +376,10 @@ namespace Org.Reddragonit.Dbpro.Connections
 				return null;
 			Connection ret=null;
             int count = 0;
-			while(true)
-			{
-                try
+            while (true)
+            {
+                if (Utility.WaitOne(this, MaxMutexTimeout))
                 {
-                    Utility.WaitOne(this, MaxMutexTimeout);
                     Logger.LogLine("Obtaining Connection: " + this.ConnectionName + " from pool with " + unlocked.Count.ToString() + " unlocked and " + locked.Count.ToString() + " locked connections");
                     while (unlocked.Count > 0)
                     {
@@ -397,7 +396,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                     }
                     if (ret != null)
                         break;
-                    if (!checkMin()&&!isClosed)
+                    if (!checkMin() && !isClosed)
                     {
                         ret = CreateConnection();
                         break;
@@ -411,16 +410,15 @@ namespace Org.Reddragonit.Dbpro.Connections
                     }
                     Utility.Release(this);
                 }
-                catch (Exception e)
+                try
                 {
+                    Thread.Sleep(100);
                 }
-				try{
-					Thread.Sleep(100);
-				}catch (Exception e){}
+                catch (Exception e) { }
                 count++;
                 if (count > MaxGetConnectionTrials)
                     throw new Exception("Unable to obtain a connection after " + MaxGetConnectionTrials.ToString() + " tries.  Assuming deadlock.");
-			}
+            }
 			if (ret!=null)
 				locked.Add(ret);
             Utility.Release(this);
