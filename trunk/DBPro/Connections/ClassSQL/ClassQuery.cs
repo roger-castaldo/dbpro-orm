@@ -664,7 +664,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     }
                     if (fieldName != "*")
                     {
-                        if (map.GetRelationForProperty(fieldName).HasValue)
+                        if (map.GetRelationForProperty(fieldName).HasValue && !map.IsEnumProperty(fieldName))
                         {
                             ret = "";
                             foreach (string str in fieldList[field.Value])
