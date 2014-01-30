@@ -58,35 +58,45 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
             ClassBased = false;
             isExternal = false;
             newType = tableType;
+            ConnectionPool pool = ConnectionPoolManager.GetPool(tableType);
             alias = null;
             linkedType = tableType;
             if (fieldName.Contains("."))
             {
-                string newField = fieldName.Substring(0, fieldName.IndexOf("."));
-                PropertyInfo pi = tableType.GetProperty(newField, Utility._BINDING_FLAGS_WITH_INHERITANCE);
-                if (fieldName.Split('.').Length - 1 == 1)
+                if (_RecurIsPrimaryKeyField(fieldName, tableType, pool))
+                    return _RecurLocateTranslatePrimaryKeyField(fieldName, tableType, pool);
+                else
                 {
-                    ConnectionPool pool = ConnectionPoolManager.GetPool(tableType);
-                    sTable map = pool.Mapping[tableType];
-                    sTable subMap = pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
-                    if ((new List<string>(map.PrimaryKeyProperties).Contains(fieldName.Substring(0, fieldName.IndexOf(".")))||
-                        new List<string>(map.ForeignTableProperties).Contains(fieldName.Substring(0, fieldName.IndexOf("."))))
-                        && new List<string>(subMap.PrimaryKeyProperties).Contains(fieldName.Substring(fieldName.IndexOf(".") + 1)))
+                    string newField = fieldName.Substring(0, fieldName.IndexOf("."));
+                    PropertyInfo pi = tableType.GetProperty(newField, Utility._BINDING_FLAGS_WITH_INHERITANCE);
+                    if (fieldName.Split('.').Length - 1 == 1)
                     {
-                        foreach (sTableField fld in map[newField])
+                        sTable map = pool.Mapping[tableType];
+                        sTable subMap = pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
+                        if ((new List<string>(map.PrimaryKeyProperties).Contains(fieldName.Substring(0, fieldName.IndexOf("."))) ||
+                            new List<string>(map.ForeignTableProperties).Contains(fieldName.Substring(0, fieldName.IndexOf("."))))
+                            && new List<string>(subMap.PrimaryKeyProperties).Contains(fieldName.Substring(fieldName.IndexOf(".") + 1)))
                         {
-                            bool done = false;
-                            foreach (sTableField sfld in subMap[fieldName.Substring(fieldName.IndexOf(".") + 1)])
+                            foreach (sTableField fld in map[newField])
                             {
-                                if (fld.ExternalField == sfld.Name)
+                                bool done = false;
+                                foreach (sTableField sfld in subMap[fieldName.Substring(fieldName.IndexOf(".") + 1)])
                                 {
-                                    ret = fld.Name;
-                                    done = true;
-                                    break;
+                                    if (fld.ExternalField == sfld.Name)
+                                    {
+                                        ret = fld.Name;
+                                        done = true;
+                                        break;
+                                    }
                                 }
+                                if (done)
+                                    break;
                             }
-                            if (done)
-                                break;
+                        }
+                        else
+                        {
+                            ret = LocateTableField(fieldName.Substring(fieldName.IndexOf(".") + 1), (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType), out ClassBased, out isExternal, out newType, out alias, out linkedType);
+                            alias = fieldName.Substring(0, fieldName.IndexOf(".")) + ((alias == null) ? "" : "_" + alias);
                         }
                     }
                     else
@@ -95,18 +105,12 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                         alias = fieldName.Substring(0, fieldName.IndexOf(".")) + ((alias == null) ? "" : "_" + alias);
                     }
                 }
-                else
-                {
-                    ret = LocateTableField(fieldName.Substring(fieldName.IndexOf(".") + 1), (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType), out ClassBased, out isExternal, out newType, out alias, out linkedType);
-                    alias = fieldName.Substring(0, fieldName.IndexOf(".")) + ((alias == null) ? "" : "_" + alias);
-                }
             }
             else
             {
                 newType = tableType;
                 ClassBased = false;
                 isExternal = false;
-                ConnectionPool pool = ConnectionPoolManager.GetPool(tableType);
                 sTable map = pool.Mapping[tableType];
                 if (pool.Mapping.PropertyHasIntermediateTable(newType, fieldName))
                 {
@@ -159,6 +163,45 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
                 }
             }
             return ret;
+        }
+
+        private string _RecurLocateTranslatePrimaryKeyField(string fieldName, Type tableType, ConnectionPool pool)
+        {
+            string ret = "";
+            sTable map = pool.Mapping[tableType];
+            if (fieldName.Contains("."))
+            {
+                Type newType = tableType.GetProperty(fieldName.Substring(0, fieldName.IndexOf(".")), Utility._BINDING_FLAGS_WITH_INHERITANCE).PropertyType;
+                if (newType.IsArray)
+                    newType = newType.GetElementType();
+                foreach (sTableField fld in map[fieldName.Substring(0, fieldName.IndexOf("."))])
+                {
+                    if (fld.ExternalField == _RecurLocateTranslatePrimaryKeyField(fieldName.Substring(fieldName.IndexOf(".") + 1), newType, pool))
+                    {
+                        ret = fld.Name;
+                        break;
+                    }
+                }
+            }
+            else
+                ret = map[fieldName][0].Name;
+            return ret;
+        }
+
+        private bool _RecurIsPrimaryKeyField(string fieldName, Type tableType,ConnectionPool pool)
+        {
+            sTable map = pool.Mapping[tableType];
+            if (fieldName.Contains("."))
+            {
+                if (new List<string>(map.PrimaryKeyProperties).Contains(fieldName.Substring(0, fieldName.IndexOf("."))))
+                {
+                    Type newType = tableType.GetProperty(fieldName.Substring(0, fieldName.IndexOf(".")), Utility._BINDING_FLAGS_WITH_INHERITANCE).PropertyType;
+                    if (newType.IsArray)
+                        newType = newType.GetElementType();
+                    return _RecurIsPrimaryKeyField(fieldName.Substring(fieldName.IndexOf(".") + 1), newType, pool);
+                }
+            }
+            return new List<string>(map.PrimaryKeyProperties).Contains(fieldName);
         }
 
         internal sealed override List<string> Fields
