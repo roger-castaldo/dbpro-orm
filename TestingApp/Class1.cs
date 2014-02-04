@@ -28,6 +28,8 @@ namespace TestingApp
 		static void Main(string[] args)
 		{
             Connection conn = ConnectionPoolManager.GetConnection(typeof(Group));
+            conn.SelectAll(typeof(Group));
+            _RunThreadTests();
             IDbDataParameter[] pars = new IDbDataParameter[]{
                     conn.CreateParameter("@Name","Test2"),
                     conn.CreateParameter("@Inherit",false),
@@ -95,14 +97,22 @@ namespace TestingApp
 			Console.ReadLine();
 		}
 
+        private static void _RunThreadTests()
+        {
+            List<Thread> threads = new List<Thread>();
+            for (int x = 0; x < 50; x++)
+                threads.Add(new Thread(new ThreadStart(SecondaryThreadStart)));
+            for (int x = 0; x < 50; x++)
+                threads[x].Start();
+            threads[threads.Count - 1].Join();
+        }
+
         private static void SecondaryThreadStart()
         {
-            Connection conn = ConnectionPoolManager.GetConnection("Security");
-            for (int x = 0; x < 50; x++)
-            {
-                conn.SelectAll(typeof(User));
-            }
+            Connection conn = ConnectionPoolManager.GetConnection(typeof(Group));
+            Console.WriteLine("Obtained Connection ID:" + conn.ID);
             conn.CloseConnection();
+            Console.WriteLine("Closed Connection ID:" + conn.ID);
         }
 
         public static Stream LocateEmbededResource(string name)

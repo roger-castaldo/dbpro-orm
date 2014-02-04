@@ -35,13 +35,11 @@ namespace Org.Reddragonit.Dbpro.Connections
         private const int MaxGetConnectionTrials = 20;
         private const int MaxMutexTimeout = 1000;
         internal const int DEFAULT_READ_TIMEOUT = 60;
-		
-		private List<Connection> locked=new List<Connection>();
-		private Queue<Connection> unlocked=new Queue<Connection>();
+
+        private List<Connection> _conns = new List<Connection>();
 
         protected abstract string connectionString{get;}
 		
-		private int minPoolSize=0;
 		private int maxPoolSize=0;
 		private long maxKeepAlive=0;
         internal int readTimeout=300;
@@ -261,7 +259,6 @@ namespace Org.Reddragonit.Dbpro.Connections
 		{
 			Logger.LogLine("Establishing Connection with string: "+connectionString);
             //set up default values
-            minPoolSize = 5;
             maxPoolSize = 10;
             maxKeepAlive = 600;
             _debugMode = false;
@@ -275,10 +272,6 @@ namespace Org.Reddragonit.Dbpro.Connections
                 if (node.Name == "ConnectionParameter")
                 {
                     switch(node.Attributes["parameter_name"].Value){
-                        case "minPoolSize":
-                            if (node.Attributes["parameter_value"].Value != "null")
-                                minPoolSize = int.Parse(node.Attributes["parameter_value"].Value);
-                            break;
                         case "maxPoolSize":
                             if (node.Attributes["parameter_value"].Value != "null")
                                 maxPoolSize = int.Parse(node.Attributes["parameter_value"].Value);
@@ -342,12 +335,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 }
             }
             conn.CloseConnection();
-            for (int x=0;x<minPoolSize;x++){
-            	if (unlocked.Count>=minPoolSize)
-            		break;
-				unlocked.Enqueue(CreateConnection());
-            }
-			isReady=true;
+            isReady=true;
 		}
 
         internal void AssemblyAdded()
@@ -380,32 +368,12 @@ namespace Org.Reddragonit.Dbpro.Connections
             {
                 if (Utility.WaitOne(this, MaxMutexTimeout))
                 {
-                    Logger.LogLine("Obtaining Connection: " + this.ConnectionName + " from pool with " + unlocked.Count.ToString() + " unlocked and " + locked.Count.ToString() + " locked connections");
-                    while (unlocked.Count > 0)
-                    {
-                        Logger.LogLine("Obtaining connection from unlocked queue.");
-                        ret = unlocked.Dequeue();
-                        if (ret.isPastKeepAlive(maxKeepAlive))
-                        {
-                            Logger.LogLine("Closing obtained connection that is past keep alive to clean up unlocked queue.");
-                            ret.Disconnect();
-                            ret = null;
-                        }
-                        else
-                            break;
-                    }
-                    if (ret != null)
-                        break;
-                    if (!checkMin() && !isClosed)
+                    Logger.LogLine("Obtaining Connection: " + this.ConnectionName + " from pool with " + _conns.Count.ToString() + " unlocked and " + _conns.Count.ToString() + " locked connections");
+                    if (checkMax(1))
                     {
                         ret = CreateConnection();
-                        break;
-                    }
-                    if (isClosed)
-                        break;
-                    if (checkMax())
-                    {
-                        ret = CreateConnection();
+                        _conns.Add(ret);
+                        Utility.Release(this);
                         break;
                     }
                     Utility.Release(this);
@@ -419,101 +387,47 @@ namespace Org.Reddragonit.Dbpro.Connections
                 if (count > MaxGetConnectionTrials)
                     throw new Exception("Unable to obtain a connection after " + MaxGetConnectionTrials.ToString() + " tries.  Assuming deadlock.");
             }
-			if (ret!=null)
-				locked.Add(ret);
-            Utility.Release(this);
-			if (ret!=null)
-				ret.Reset();
 			return ret;
 		}
 		
 		public void ClosePool()
 		{
             Utility.WaitOne(this);
-			while (unlocked.Count>0)
-				unlocked.Dequeue().Disconnect();
-			foreach (Connection conn in locked)
+			foreach (Connection conn in _conns)
 				conn.Disconnect();
+            _conns.Clear();
 			isClosed=true;
             Utility.WaitOne(this);
 		}
 
-        internal void CleanConnection(string id)
-        {
+        internal void returnConnection(Connection conn)
+		{
+            Logger.LogLine(string.Format("Connection {0} return to pool", conn.ID));
             Utility.WaitOne(this);
-            if (locked.Count > 0)
+            for (int x = 0; x < _conns.Count; x++)
             {
-                for (int x = 0; x < locked.Count; x++)
+                if (conn.ID==_conns[x].ID)
                 {
-                    if (locked[x].ID == id)
-                    {
-                        locked.RemoveAt(x);
-                        break;
-                    }
+                    _conns.RemoveAt(x);
+                    break;
                 }
             }
             Utility.Release(this);
-        }
-		
-		internal void returnConnection(Connection conn)
-		{
-            Utility.WaitOne(this);
-			locked.Remove(conn);
-            Utility.Release(this);
-            Logger.LogLine("Checking max queue size against " + locked.Count.ToString() + "+" + unlocked.Count.ToString() + " < " + maxPoolSize.ToString());
-			if (checkMax(1)&&!isClosed&&!conn.isPastKeepAlive(maxKeepAlive))
-			{
-                Logger.LogLine("Returning connection "+conn.ID+" to queue");
-                Utility.WaitOne(this);
-				unlocked.Enqueue(conn);
-                Utility.Release(this);
-			}else
-			{
-				if (isClosed)
-					Logger.LogLine("Closing returned connection since pool is closed.");
-				else if (conn.isPastKeepAlive(maxKeepAlive))
-				    Logger.LogLine("Closing returned connection since it is passed keep alive");
-				else
- 	               	Logger.LogLine("Closing returned connection since it exceeds the maximum queue");
-				conn.Disconnect();
-			}
-            while (!checkMin())
-            {
-                Utility.WaitOne(this);
-                unlocked.Enqueue(CreateConnection());
-                Utility.Release(this);
-            }
+            conn.Disconnect();
 		}
 
         private bool checkMax(int addition)
         {
             if (maxPoolSize <= 0) return true;
-            else return maxPoolSize > (locked.Count + unlocked.Count+addition);
+            else return maxPoolSize > _conns.Count+addition;
         }
 		
-		private bool checkMax()
-		{
-			if (maxPoolSize<=0) return true;
-			else return maxPoolSize>(locked.Count+unlocked.Count);
-		}
-		
-		private bool checkMin()
-		{
-			if (minPoolSize<=0) return true;
-			else return minPoolSize<(locked.Count+unlocked.Count);
-		}
-
-        internal Connection LockDownForBackupRestore()
+		internal Connection LockDownForBackupRestore()
         {
             Logger.LogLine("Attempting to Lock down connection pool: " + ConnectionName + " for BackupRestore...");
             Utility.WaitOne(this);
             Logger.LogLine("Closing down all connections in pool: " + ConnectionName + " for BackupRestore...");
-            while (unlocked.Count > 0)
-            {
-                Logger.LogLine("Disconnecting and closing connection " + unlocked.Peek().ID + " from unlocked queue in pool " + ConnectionName);
-                unlocked.Dequeue().Disconnect();
-            }
-            foreach (Connection conn in locked)
+            foreach (Connection conn in _conns)
             {
                 Logger.LogLine("Locking connection " + conn.ID + " for backup in pool " + ConnectionName);
                 conn.LockForBackup();
@@ -523,27 +437,11 @@ namespace Org.Reddragonit.Dbpro.Connections
             Logger.LogLine("Returning new connection from pool: " + ConnectionName + " for BackupRestore process");
             return CreateConnection(true);
         }
-        
-        internal void ReinstateConnection(Connection conn){
-            Logger.LogLine("Attempting to reinstate connection "+conn.ID+" for pool: " + ConnectionName);
-            Utility.WaitOne(this);
-            Logger.LogLine("Checking to see if the pool("+ConnectionName+") is closed while trying to reinstate connection");
-        	if (isClosed)
-        		throw new Exception("Unable to restore the connection for pool: "+ConnectionName+" as the pool is closed.  Trying to commit the transaction.");
-        	locked.Add(conn);
-            Utility.Release(this);
-        }
 
         internal void UnlockPoolPostBackupRestore()
         {
             Logger.LogLine("Reopening connection pool: " + ConnectionName + " to indicate that the BackupRestore has been completed.");
-            for (int x = 0; x < minPoolSize+locked.Count; x++)
-            {
-                if (!checkMin())
-                    break;
-                unlocked.Enqueue(CreateConnection());
-            }
-            foreach (Connection conn in locked)
+           foreach (Connection conn in _conns)
             {
                 Logger.LogLine("Unlocking connection " + conn.ID + " in pool: " + ConnectionName + " to release the pool from backup.");
                 conn.UnlockForBackup();

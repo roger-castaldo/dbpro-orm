@@ -74,10 +74,9 @@
     <Compile Include="Structure\User.cs" />
     <Compile Include="UserGroupList.cs" />
   </ItemGroup>
-  <ItemGroup />
   <ItemGroup>
     <ProjectReference Include="..\DBPro\DBPro.csproj">
-      <Project>{804A5915-5770-4B62-AF13-E10AE65B5901}</Project>
+      <Project>{804a5915-5770-4b62-af13-e10ae65b5901}</Project>
       <Name>DBPro</Name>
     </ProjectReference>
   </ItemGroup>
