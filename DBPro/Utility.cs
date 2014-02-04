@@ -260,50 +260,6 @@ namespace Org.Reddragonit.Dbpro
             return ret;
         }
 
-        #region locking
-        private static Dictionary<object, ManualResetEvent> _resets = new Dictionary<object,ManualResetEvent>();
-        
-        internal static bool WaitOne(object obj)
-        {
-            ManualResetEvent mre;
-            lock (_resets)
-            {
-                if (_resets.ContainsKey(obj))
-                    mre = _resets[obj];
-                else
-                {
-                    mre = new ManualResetEvent(true);
-                    _resets.Add(obj, mre);
-                }
-            }
-            return mre.WaitOne();
-        }
-
-        internal static bool WaitOne(object obj, int timeout)
-        {
-            ManualResetEvent mre;
-            lock (_resets)
-            {
-                if (_resets.ContainsKey(obj))
-                    mre = _resets[obj];
-                else
-                {
-                    mre = new ManualResetEvent(true);
-                    _resets.Add(obj, mre);
-                }
-            }
-            return mre.WaitOne(timeout);
-        }
-
-        internal static void Release(object obj)
-        {
-            lock (_resets)
-            {
-                _resets[obj].Set();
-            }
-        }
-        #endregion
-
         internal static bool IsParameterNull(IDbDataParameter par)
         {
             return (par.Value == null ||

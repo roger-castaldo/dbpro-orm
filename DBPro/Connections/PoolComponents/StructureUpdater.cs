@@ -6,6 +6,7 @@ using Org.Reddragonit.Dbpro.Connections.ClassSQL;
 using Org.Reddragonit.Dbpro.Structure.Attributes;
 using Org.Reddragonit.Dbpro.Virtual;
 using Org.Reddragonit.Dbpro.Connections.MsSql;
+using System.Threading;
 
 namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 {
@@ -19,6 +20,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
             get { return _createdTypes; }
         }
 
+        private ManualResetEvent _typesLock = new ManualResetEvent(true);
         private ConnectionPool _pool;
         private List<ExtractedTableMap> _tables;
         private List<Trigger> _triggers;
@@ -129,10 +131,10 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 
         public void InitType(Type type,Connection conn)
         {
-            Utility.WaitOne(_createdTypes);
+            _typesLock.WaitOne();
             if (!_createdTypes.Contains(type))
                 _CreateTablesForType(type,conn);
-            Utility.Release(_createdTypes);
+            _typesLock.Set();
         }
 
         private void _CreateTablesForType(Type type, Connection conn)

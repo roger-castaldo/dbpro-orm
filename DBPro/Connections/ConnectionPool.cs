@@ -36,6 +36,7 @@ namespace Org.Reddragonit.Dbpro.Connections
         private const int MaxMutexTimeout = 1000;
         internal const int DEFAULT_READ_TIMEOUT = 60;
 
+        private ManualResetEvent _lock = new ManualResetEvent(true);
         private List<Connection> _conns = new List<Connection>();
 
         protected abstract string connectionString{get;}
@@ -356,27 +357,27 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		public Connection GetConnection()
 		{
-            Utility.WaitOne(this);
+            _lock.WaitOne();
 			if (!isReady)
 				Init(ConnectionPoolManager._translations);
-            Utility.Release(this);
+            _lock.Set();
 			if (isClosed)
 				return null;
 			Connection ret=null;
             int count = 0;
             while (true)
             {
-                if (Utility.WaitOne(this, MaxMutexTimeout))
+                if (_lock.WaitOne(MaxMutexTimeout))
                 {
                     Logger.LogLine("Obtaining Connection: " + this.ConnectionName + " from pool with " + _conns.Count.ToString() + " unlocked and " + _conns.Count.ToString() + " locked connections");
                     if (checkMax(1))
                     {
                         ret = CreateConnection();
                         _conns.Add(ret);
-                        Utility.Release(this);
+                        _lock.Set();
                         break;
                     }
-                    Utility.Release(this);
+                    _lock.Set();
                 }
                 try
                 {
@@ -392,18 +393,18 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		public void ClosePool()
 		{
-            Utility.WaitOne(this);
+            _lock.WaitOne();
 			foreach (Connection conn in _conns)
 				conn.Disconnect();
             _conns.Clear();
 			isClosed=true;
-            Utility.WaitOne(this);
+            _lock.WaitOne();
 		}
 
         internal void returnConnection(Connection conn)
 		{
             Logger.LogLine(string.Format("Connection {0} return to pool", conn.ID));
-            Utility.WaitOne(this);
+            _lock.WaitOne();
             for (int x = 0; x < _conns.Count; x++)
             {
                 if (conn.ID==_conns[x].ID)
@@ -412,7 +413,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                     break;
                 }
             }
-            Utility.Release(this);
+            _lock.Set();
             conn.Disconnect();
 		}
 
@@ -425,7 +426,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		internal Connection LockDownForBackupRestore()
         {
             Logger.LogLine("Attempting to Lock down connection pool: " + ConnectionName + " for BackupRestore...");
-            Utility.WaitOne(this);
+            _lock.WaitOne();
             Logger.LogLine("Closing down all connections in pool: " + ConnectionName + " for BackupRestore...");
             foreach (Connection conn in _conns)
             {
@@ -449,7 +450,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             Logger.LogLine("Marking the pool(" + ConnectionName + ") as open and ready and releasing the lock after completing a BackupRestore.");
             isReady = true;
             isClosed = false;
-            Utility.Release(this);
+            _lock.Set();
         }
 
         private List<ForeignKey> ExtractExpectedForeignKeys(Connection conn)

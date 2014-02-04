@@ -52,6 +52,10 @@ namespace Org.Reddragonit.Dbpro.Connections
 		internal readonly static string DEFAULT_CONNECTION_NAME="Org.Reddragonit.Dbpro.Connections.DEFAULT";
 		private readonly static string CONNECTION_CONFIG_FILENAME="DbPro.xml";
 
+        private static ManualResetEvent _poolsLock = new ManualResetEvent(true);
+        private static ManualResetEvent _preInitsLock = new ManualResetEvent(true);
+        private static ManualResetEvent _postInitsLock = new ManualResetEvent(true);
+        private static ManualResetEvent _additionalsLock = new ManualResetEvent(true);
 		private static Dictionary<string, ConnectionPool> _connectionPools = new Dictionary<string, ConnectionPool>();
         private static Dictionary<Type, List<ITrigger>> _triggers = new Dictionary<Type, List<ITrigger>>();
         internal static Dictionary<Type, List<EnumTranslationPair>> _translations = new Dictionary<Type, List<EnumTranslationPair>>();
@@ -62,7 +66,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		static ConnectionPoolManager()
 		{
-			Utility.WaitOne(_connectionPools);
+            _poolsLock.WaitOne();
 			string basePath=AppDomain.CurrentDomain.SetupInformation.ConfigurationFile.Substring(0,AppDomain.CurrentDomain.SetupInformation.ConfigurationFile.LastIndexOf(Path.DirectorySeparatorChar));
 			FileInfo fi = RecurLocateConfigFile(new DirectoryInfo(basePath));
 			if (fi!=null)
@@ -95,20 +99,20 @@ namespace Org.Reddragonit.Dbpro.Connections
                 foreach (TriggerRegisterAttribute tra in t.GetCustomAttributes(typeof(TriggerRegisterAttribute), false))
                     RegisterTrigger(tra.Table, (ITrigger)t.GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
             }
-			Utility.Release(_connectionPools);
+            _poolsLock.Set();
 		}
 
         public static void AssemblyAdded()
         {
-            Utility.WaitOne(_connectionPools);
+            _poolsLock.WaitOne();
             foreach (string str in _connectionPools.Keys)
                 _connectionPools[str].AssemblyAdded();
-            Utility.Release(_connectionPools);
+            _poolsLock.Set();
         }
 
         public static void RegisterPreInitDelegate(string poolName, delPreInit preInit)
         {
-            Utility.WaitOne(_preInits);
+            _preInitsLock.WaitOne();
             poolName = (poolName == null ? DEFAULT_CONNECTION_NAME : poolName);
             List<delPreInit> inits = new List<delPreInit>();
             if (_preInits.ContainsKey(poolName))
@@ -118,12 +122,12 @@ namespace Org.Reddragonit.Dbpro.Connections
             }
             inits.Add(preInit);
             _preInits.Add(poolName, inits);
-            Utility.Release(_preInits);
+            _preInitsLock.Set();
         }
 
         public static void UnRegisterPreInitDelegate(string poolName, delPreInit preInit)
         {
-            Utility.WaitOne(_preInits);
+            _preInitsLock.WaitOne();
             poolName = (poolName == null ? DEFAULT_CONNECTION_NAME : poolName);
             List<delPreInit> inits = new List<delPreInit>();
             if (_preInits.ContainsKey(poolName))
@@ -133,12 +137,12 @@ namespace Org.Reddragonit.Dbpro.Connections
             }
             inits.Remove(preInit);
             _preInits.Add(poolName, inits);
-            Utility.Release(_preInits);
+            _preInitsLock.Set();
         }
 
         public static void RegisterPostInitDelegate(string poolName, delPostInit postInit)
         {
-            Utility.WaitOne(_postInits);
+            _postInitsLock.WaitOne();
             poolName = (poolName == null ? DEFAULT_CONNECTION_NAME : poolName);
             List<delPostInit> inits = new List<delPostInit>();
             if (_postInits.ContainsKey(poolName))
@@ -148,12 +152,12 @@ namespace Org.Reddragonit.Dbpro.Connections
             }
             inits.Add(postInit);
             _postInits.Add(poolName, inits);
-            Utility.Release(_postInits);
+            _postInitsLock.Set();
         }
 
         public static void UnRegisterPostInitDelegate(string poolName, delPostInit postInit)
         {
-            Utility.WaitOne(_postInits);
+            _postInitsLock.WaitOne();
             poolName = (poolName == null ? DEFAULT_CONNECTION_NAME : poolName);
             List<delPostInit> inits = new List<delPostInit>();
             if (_postInits.ContainsKey(poolName))
@@ -163,12 +167,12 @@ namespace Org.Reddragonit.Dbpro.Connections
             }
             inits.Remove(postInit);
             _postInits.Add(poolName, inits);
-            Utility.Release(_postInits);
+            _postInitsLock.Set();
         }
 
         public static void RegisterAdditionalsForTable(string poolName, delGetAdditionalsForTable additionals)
         {
-            Utility.WaitOne(_getAdditionals);
+            _additionalsLock.WaitOne();
             poolName = (poolName == null ? DEFAULT_CONNECTION_NAME : poolName);
             List<delGetAdditionalsForTable> adds = new List<delGetAdditionalsForTable>();
             if (_getAdditionals.ContainsKey(poolName))
@@ -178,12 +182,12 @@ namespace Org.Reddragonit.Dbpro.Connections
             }
             adds.Add(additionals);
             _getAdditionals.Add(poolName, adds);
-            Utility.Release(_getAdditionals);
+            _additionalsLock.Set();
         }
 
         public static void UnRegisterAdditionalsForTable(string poolName, delGetAdditionalsForTable additionals)
         {
-            Utility.WaitOne(_getAdditionals);
+            _additionalsLock.WaitOne();
             poolName = (poolName == null ? DEFAULT_CONNECTION_NAME : poolName);
             List<delGetAdditionalsForTable> adds = new List<delGetAdditionalsForTable>();
             if (_getAdditionals.ContainsKey(poolName))
@@ -193,7 +197,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             }
             adds.Remove(additionals);
             _getAdditionals.Add(poolName, adds);
-            Utility.Release(_getAdditionals);
+            _additionalsLock.Set();
         }
 
         public static void RegisterTrigger(Type objectType, ITrigger trigger)
@@ -365,7 +369,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		public static ConnectionPool GetPool(string name)
 		{
 			ConnectionPool ret = null;
-			Utility.WaitOne(_connectionPools);
+            _poolsLock.WaitOne();
             name = (name == null ? DEFAULT_CONNECTION_NAME : name);
 			if (_connectionPools.ContainsKey(name))
 				ret =_connectionPools[name];
@@ -373,24 +377,24 @@ namespace Org.Reddragonit.Dbpro.Connections
 				ret= _connectionPools[DEFAULT_CONNECTION_NAME];
             if (!_poolsInitted.Contains(ret.ConnectionName))
             {
-                Utility.WaitOne(_preInits);
+                _preInitsLock.WaitOne();
                 if (_preInits.ContainsKey(name))
                 {
                     foreach (delPreInit del in _preInits[name])
                         del.Invoke(ret);
                 }
-                Utility.Release(_preInits);
+                _preInitsLock.Set();
                 ret.Init(_translations);
                 _poolsInitted.Add(ret.ConnectionName);
-                Utility.WaitOne(_postInits);
+                _postInitsLock.WaitOne();
                 if (_postInits.ContainsKey(ret.ConnectionName))
                 {
                     foreach (delPostInit del in _postInits[name])
                         del.Invoke(ret);
                 }
-                Utility.Release(_postInits);
+                _postInitsLock.Set();
             }
-			Utility.Release(_connectionPools);
+            _poolsLock.Set();
 			return ret;
 		}
 
@@ -429,9 +433,9 @@ namespace Org.Reddragonit.Dbpro.Connections
 		{
 			bool ret=false;
             name = (name == null ? DEFAULT_CONNECTION_NAME : name);
-			Utility.WaitOne(_connectionPools);
+            _poolsLock.WaitOne();
 			ret=_connectionPools.ContainsKey(name);
-			Utility.Release(_connectionPools);
+            _poolsLock.Set();
 			return ret;
 		}
 
@@ -441,7 +445,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             procedures = new List<StoredProcedure>();
             types = new List<Type>();
             triggers = new List<Trigger>();
-            Utility.WaitOne(_getAdditionals);
+            _additionalsLock.WaitOne();
             if (_getAdditionals.ContainsKey(pool.ConnectionName))
             {
                 foreach (delGetAdditionalsForTable del in _getAdditionals[pool.ConnectionName])
@@ -457,7 +461,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                     triggers.AddRange(ttriggers);
                 }
             }
-            Utility.Release(_getAdditionals);
+            _additionalsLock.Set();
         }
 	}
 }

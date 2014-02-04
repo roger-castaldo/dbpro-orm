@@ -23,6 +23,7 @@ namespace Org.Reddragonit.Dbpro.Connections
         private const int MAX_READCHECK_TRIES = 5;
 		
 		private ConnectionPool pool;
+        private ManualResetEvent _lock;
 		protected IDbConnection conn=null;
 		protected IDbCommand comm=null;
 		protected IDataReader reader=null;
@@ -116,6 +117,7 @@ namespace Org.Reddragonit.Dbpro.Connections
         }
 		
 		public Connection(ConnectionPool pool,string connectionString,bool Readonly,bool exclusiveLock){
+            _lock = new ManualResetEvent(true);
 			this.connectionString=connectionString;
 			this.pool=pool;
             this._uniqueID = System.Convert.ToBase64String(Guid.NewGuid().ToByteArray());
@@ -273,18 +275,18 @@ namespace Org.Reddragonit.Dbpro.Connections
 		{
             if (trans != null)
             {
-                Utility.WaitOne(this);
+                _lock.WaitOne();
                 while (lockedForBackup)
                 {
                     Logger.LogLine("Waiting for backup lock on connection " + _uniqueID + " in pool " + pool.ConnectionName + " to release to commit transaction.");
-                    Utility.Release(this);
+                    _lock.Set();
                     Thread.Sleep(1000);
-                    Utility.WaitOne(this);
+                    _lock.WaitOne();
                 }
                 trans.Commit();
                 trans = null;
                 comm.Transaction = null;
-                Utility.Release(this);
+                _lock.Set();
             }
 		}
 		
@@ -1390,7 +1392,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         internal void LockForBackup()
         {
-            Utility.WaitOne(this);
+            _lock.WaitOne();
             lockedForBackup = true;
             try
             {
@@ -1410,7 +1412,7 @@ namespace Org.Reddragonit.Dbpro.Connections
         {
             lockedForBackup = false;
             ResetConnection(false);
-            Utility.Release(this);
+            _lock.Set();
         }
 		
 		public int ExecuteNonQuery(string queryString)
