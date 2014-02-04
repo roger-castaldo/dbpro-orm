@@ -73,7 +73,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             }
         }
 
-        internal string ID
+        public string ID
         {
             get { return _uniqueID; }
         }
@@ -119,7 +119,10 @@ namespace Org.Reddragonit.Dbpro.Connections
 			this.connectionString=connectionString;
 			this.pool=pool;
             this._uniqueID = System.Convert.ToBase64String(Guid.NewGuid().ToByteArray());
-            ResetConnection(false);
+            conn = EstablishConnection();
+            conn.Open();
+            comm = EstablishCommand();
+            isConnected = true;
 		}
 
         private void ThreadedReaderClose()
@@ -278,11 +281,6 @@ namespace Org.Reddragonit.Dbpro.Connections
                     Thread.Sleep(1000);
                     Utility.WaitOne(this);
                 }
-                if (lockedForBackup)
-                {
-                    Logger.LogLine("Attempting to reinstate connection " + _uniqueID + " for pool " + pool.ConnectionName + " to reopen it and commit transaction.");
-                    pool.ReinstateConnection(this);
-                }
                 trans.Commit();
                 trans = null;
                 comm.Transaction = null;
@@ -323,7 +321,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			{
 				Disconnect();
 			}
-            pool.CleanConnection(ID);
+            pool.returnConnection(this);
 		}
 		
 		public void SetCommandType(CommandType type)
@@ -1637,7 +1635,8 @@ namespace Org.Reddragonit.Dbpro.Connections
                 Logger.LogLine("Connection already has an open transaction");
 			if ((queryString!=null)&&(queryString.Length>0)){
 				reader = null;
-				comm.CommandText = FormatParameters(queryString + " ", ref parameters);
+				queryString = FormatParameters(queryString + " ", ref parameters);
+                comm.CommandText = queryString;
                 if (timeout.HasValue)
                     comm.CommandTimeout = timeout.Value;
 				comm.Parameters.Clear();
@@ -1677,7 +1676,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 catch (Exception e)
                 {
                     //if recieving this error, try and reset the connection and attempt to query again
-                    if (e.Message == "Connection must be valid and open")
+                    if (e.Message == "Connection must be valid and open" || e.Message=="ExecuteReader requires an open and available Connection. The connection's current state is closed.")
                     {
                         ResetConnection(true);
                         _ExecuteQuery(queryString, parameters, timeout);
