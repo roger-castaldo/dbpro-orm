@@ -27,7 +27,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 	{
 		private static readonly List<string> _conditionOperators =
 			new List<string>(new string[]{"=","NOT","IN","LIKE",">","<","<=",">=","IS"});
-        private static readonly Regex _regTrueFalse = new Regex("=\\s*(((T|t)(R|r)(U|u)(E|e))|((F|f)(A|a)(L|l)(S|s)(E|e)))(\\s*|\\))", RegexOptions.Compiled | RegexOptions.ECMAScript);
+        private static readonly Regex _regTrueFalse = new Regex("(=\\s*|\\s+)(((T|t)(R|r)(U|u)(E|e))|((F|f)(A|a)(L|l)(S|s)(E|e)))(\\s*|\\)|\\s*=)", RegexOptions.Compiled | RegexOptions.ECMAScript);
 		
 		private string _namespace;
 		private QueryTokenizer _tokenizer;
@@ -95,7 +95,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             while (_regTrueFalse.IsMatch(_outputQuery, index))
             {
                 Match m = _regTrueFalse.Match(_outputQuery, index);
-                _outputQuery = _outputQuery.Substring(0, m.Groups[1].Index) + (m.Groups[1].Value.ToLower() == "true" ? _pool.TrueString : _pool.FalseString) + _outputQuery.Substring(m.Groups[1].Index + m.Groups[1].Length);
+                _outputQuery = _outputQuery.Substring(0, m.Groups[2].Index) + (m.Groups[2].Value.ToLower() == "true" ? _pool.TrueString : _pool.FalseString) + _outputQuery.Substring(m.Groups[2].Index + m.Groups[2].Length);
                 index = (m.Index + m.Length>_outputQuery.Length ? _outputQuery.Length-1 : m.Index+m.Length);
             }
             for (int x = 0; x < _fieldNames.Count; x++)
