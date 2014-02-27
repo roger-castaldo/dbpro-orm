@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Data;
+using System.Text.RegularExpressions;
 
 namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
 {
@@ -11,13 +12,61 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
         internal Dictionary<Type, string> _enumTableMaps = new Dictionary<Type, string>();
         internal Dictionary<Type, Dictionary<string, int>> _enumValuesMap = new Dictionary<Type, Dictionary<string, int>>();
         internal Dictionary<Type, Dictionary<int, string>> _enumReverseValuesMap = new Dictionary<Type, Dictionary<int, string>>();
-
+        private Regex _regEnums = null;
         public EnumsHandler(ConnectionPool pool)
         {
             _pool = pool;
             _enumTableMaps = new Dictionary<Type, string>();
             _enumValuesMap = new Dictionary<Type, Dictionary<string, int>>();
             _enumReverseValuesMap = new Dictionary<Type, Dictionary<int, string>>();
+        }
+
+        private void _appendTypeToRegex(Type type)
+        {
+            lock (_pool)
+            {
+                if (!(_regEnums==null ? "" : _regEnums.ToString()).Contains(type.FullName.Replace(".", "\\.").Replace("+", "\\+") + "\\.("))
+                {
+                    StringBuilder sb = new StringBuilder();
+                    sb.Append("(");
+                    sb.Append((_regEnums==null ? "" : _regEnums.ToString()).EndsWith(")") ? _regEnums.ToString().Substring(1, _regEnums.ToString().Length - 2)+"|" : "");
+                    sb.Append("("+type.FullName.Replace(".", "\\.").Replace("+", "\\+") + "\\.(");
+                    string[] tmp = Enum.GetNames(type);
+                    for (int x = 0; x < tmp.Length; x++)
+                        sb.AppendFormat("{0}{1}",
+                            new object[]{
+                                (x>0 ? "|" : ""),
+                                tmp[x]
+                            });
+                    sb.Append(")))");
+                    _regEnums = new Regex(sb.ToString(), RegexOptions.Compiled | RegexOptions.ECMAScript);
+                }
+            }
+        }
+
+        internal string CorrectEnumFieldsInQuery(string query,Connection conn)
+        {
+            lock (_pool)
+            {
+                if (_regEnums != null)
+                {
+                    while (_regEnums.IsMatch(query))
+                    {
+                        Match m = _regEnums.Match(query);
+                        Type t = Utility.LocateType(m.Value.Substring(0, m.Value.LastIndexOf(".")));
+                        query = query.Substring(0, m.Index) +
+                            string.Format("(SELECT {0} FROM {1} WHERE {2} = '{3}')",
+                            new object[]{
+                            _pool.Translator.GetEnumIDFieldName(t,conn),
+                            _enumTableMaps[t],
+                            _pool.Translator.GetEnumValueFieldName(t,conn),
+                            m.Value.Substring(m.Value.LastIndexOf(".")+1)
+                        })
+                            + query.Substring(m.Index + m.Length);
+                    }
+                }
+            }
+            return query;
         }
 
         private void _initEnum(Type enumType)
@@ -28,6 +77,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                 Connection conn = _pool.GetConnection();
                 _pool.Updater.InitType(enumType, conn);
                 conn.CloseConnection();
+                _appendTypeToRegex(enumType);
             }
         }
 
@@ -85,6 +135,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
         {
             type = (type.IsGenericType ? type.GetGenericArguments()[0] : type);
             _enumTableMaps.Add(type, name);
+            _appendTypeToRegex(type);
         }
 
         public int Count
