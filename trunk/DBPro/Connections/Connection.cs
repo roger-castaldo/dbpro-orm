@@ -1342,6 +1342,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		private string FormatParameters(string queryString,ref IDbDataParameter[] parameters)
 		{
+            queryString = (pool.Enums!=null ? pool.Enums.CorrectEnumFieldsInQuery(queryString, this) : queryString);
 			if (parameters==null)
 				return queryString;
 			else
@@ -1621,13 +1622,6 @@ namespace Org.Reddragonit.Dbpro.Connections
                 else if (queryString.ToUpper().StartsWith("UPDATE"))
                     throw new Exception("Unable to update into a readonly database.");
             }
-			/*commCntr++;
-			if (commCntr>=MAX_COMM_QUERIES){
-				commCntr=0;
-				comm = EstablishCommand();
-				if (trans!=null)
-					comm.Transaction=trans;
-			}*/
             if ((trans == null)&&!queryString.ToUpper().StartsWith("SELECT"))
             {
                 Logger.LogLine("Opening transaction for query since it is not performing a select");
