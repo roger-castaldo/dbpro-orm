@@ -1945,7 +1945,15 @@ namespace Org.Reddragonit.Dbpro.Connections
 		
 		public double GetDouble(int i)
 		{
-			return reader.GetDouble(i);
+            double ret;
+            try
+            {
+                ret = reader.GetDouble(i);
+            }catch(Exception e)
+            {
+                ret = double.Parse(reader[i].ToString());
+            }
+            return ret;
 		}
 		
 		public decimal GetDecimal(int i)
