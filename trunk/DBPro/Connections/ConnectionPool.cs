@@ -682,7 +682,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         internal virtual string WrapAlias(string alias)
         {
-            return "\"" + alias + "\"";
+            return "\"" + alias.Replace("'","").Replace("\"","") + "\"";
         }
     }
 }

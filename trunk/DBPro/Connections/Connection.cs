@@ -968,7 +968,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 }
             }
             this.ExecuteQuery("SELECT * FROM " + viewName + (parString == "" ? "" : " WHERE "+parString.Substring(4))+(orderByString == "" ? "" : " ORDER BY "+orderByString.Substring(1)),queryParameters.ToArray());
-            ViewResultRow vrr = new ViewResultRow(this);
+            ViewResultRow vrr = new ViewResultRow(this,cva.Query);
             while (Read())
             {
                 IClassView icv = (IClassView)type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
@@ -1129,7 +1129,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 orderByString += "," + str;
             }
             this.ExecuteQuery(queryBuilder.SelectPaged("SELECT * FROM " + viewName + (parString == "" ? "" : " WHERE " + parString.Substring(4)) + " ORDER BY " + orderByString.Substring(1),ref queryParameters,StartIndex,RowCount,OrderByFields), queryParameters.ToArray());
-            ViewResultRow vrr = new ViewResultRow(this);
+            ViewResultRow vrr = new ViewResultRow(this,cva.Query);
             while (Read())
             {
                 IClassView icv = (IClassView)type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);

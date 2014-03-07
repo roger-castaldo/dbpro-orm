@@ -49,6 +49,14 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
         {
             get { return _requiredTypes; }
         }
+
+        internal void GetIndexTranslators(out Dictionary<string, Type> tableFields, out Dictionary<int, string> fieldNames, out Dictionary<int, int> tableFieldCounts, out Dictionary<int, Type> enumFields)
+        {
+            tableFields = _tableFields;
+            fieldNames = _fieldNames;
+            tableFieldCounts = _tableFieldCounts;
+            enumFields = _enumFields;
+        }
 	
 		public ClassQuery(string NameSpace,string query)
 		{
@@ -1785,7 +1793,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                             if (ordinal != -1)
                             {
                                 _tableFieldCounts.Add(ordinal, fieldList[field.Value].Count);
-                                _tableFields.Add(fieldAlias, (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType));
+                                _tableFields.Add(fieldAlias.Trim(new char[]{'\'','"'}), (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType));
                             }
                             ret = "";
                             foreach (string str in fieldList[field.Value])
@@ -1830,7 +1838,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                                 if (ordinal != -1)
                                 {
                                     _tableFieldCounts.Add(ordinal, fieldList[field.Value].Count);
-                                    _tableFields.Add(fieldAlias, (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType));
+                                    _tableFields.Add(fieldAlias.Trim(new char[] { '\'', '"' }), (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType));
                                 }
                                 foreach (string str in fieldList[field.Value])
                                 {
@@ -2016,7 +2024,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             if (_tableFieldCounts.ContainsKey(i))
             {
                 Table t = (Table)LazyProxy.Instance(_tableFields[_fieldNames[i]].GetConstructor(System.Type.EmptyTypes).Invoke(new object[0]));
-                sTableField[] flds = _pool.Mapping[_tableFields[_fieldNames[i]]].Fields;
+                sTableField[] flds = _conn.Pool.Mapping[_tableFields[_fieldNames[i]]].Fields;
                 int index = 0;
                 i = TranslateFieldIndex(i);
                 foreach (sTableField fld in flds)
@@ -2024,20 +2032,21 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     PropertyInfo pi = t.GetType().GetProperty(fld.ClassProperty, Utility._BINDING_FLAGS_WITH_INHERITANCE);
                     if (!pi.PropertyType.IsArray)
                     {
-                        if (_pool.Mapping.IsMappableType(pi.PropertyType) && !Utility.IsEnum(pi.PropertyType))
+                        if (_conn.Pool.Mapping.IsMappableType(pi.PropertyType) && !Utility.IsEnum(pi.PropertyType))
                         {
                             if (t.GetField(pi.Name) == null)
                             {
                                 Table tmp = (Table)LazyProxy.Instance(pi.PropertyType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
-                                tmp.LoadStatus=LoadStatus.Partial;
-                                t.SetField(fld.Name,tmp );
+                                tmp.LoadStatus = LoadStatus.Partial;
+                                t.SetField(fld.Name, tmp);
                             }
                             Table tbl = (Table)t.GetField(pi.Name);
-                            foreach (sTableField f in _pool.Mapping[tbl.GetType()].Fields)
+                            foreach (sTableField f in _conn.Pool.Mapping[tbl.GetType()].Fields)
                             {
                                 if (fld.ExternalField == f.Name)
                                 {
-                                    t.RecurSetPropertyValue(f.Name, _conn, _conn.GetName(i + index), tbl);
+                                    if (!_conn.IsDBNull(i + index))
+                                        t.RecurSetPropertyValue(f.Name, _conn, _conn.GetName(i + index), tbl);
                                     index++;
                                     break;
                                 }
@@ -2045,10 +2054,13 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         }
                         else
                         {
-                            if (Utility.IsEnum(pi.PropertyType))
-                                t.SetField(fld.ClassProperty, _pool.GetEnumValue(pi.PropertyType, _conn.GetInt32(i+index)));
-                            else
-                                t.SetField(fld.ClassProperty, _conn[i + index]);
+                            if (!_conn.IsDBNull(i + index))
+                            {
+                                if (Utility.IsEnum(pi.PropertyType))
+                                    t.SetField(fld.ClassProperty, _conn.Pool.GetEnumValue(pi.PropertyType, _conn.GetInt32(i + index)));
+                                else
+                                    t.SetField(fld.ClassProperty, _conn[i + index]);
+                            }
                             index++;
                         }
                     }

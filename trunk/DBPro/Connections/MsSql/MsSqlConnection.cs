@@ -681,7 +681,7 @@ DEALLOCATE DeleteCursor;
                     }
                 }
                 this.ExecuteQuery("SELECT * FROM ("+cva.Query.QueryString+") tbl "+ (parString == "" ? "" : " WHERE " + parString.Substring(4)) + (orderByString == "" ? "" : " ORDER BY " + orderByString.Substring(1)), queryParameters.ToArray());
-                ViewResultRow vrr = new ViewResultRow(this);
+                ViewResultRow vrr = new ViewResultRow(this,cva.Query);
                 while (Read())
                 {
                     IClassView icv = (IClassView)type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
@@ -749,7 +749,7 @@ DEALLOCATE DeleteCursor;
                             (parString=="" ? "" : "WHERE "+parString.Substring(4))
                         })
                 , queryParameters.ToArray());
-            ViewResultRow vrr = new ViewResultRow(this);
+            ViewResultRow vrr = new ViewResultRow(this,cva.Query);
             while (Read())
             {
                 IClassView icv = (IClassView)type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
