@@ -39,6 +39,14 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 		private Dictionary<int, int> _subQueryIndexes;
         private Dictionary<string, Type> _tableFields;
         private Dictionary<int, string> _fieldNames;
+        internal List<string> FieldNames
+        {
+            get { List<string> ret = new List<string>();
+            foreach (string str in _fieldNames.Values)
+                ret.Add(str);
+            return ret;
+            }
+        }
         private Dictionary<int, int> _tableFieldCounts;
         private Dictionary<int, Type> _enumFields;
         private bool _connectionPassed;
@@ -48,14 +56,6 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
         internal Queue<Type> RequiredTypes
         {
             get { return _requiredTypes; }
-        }
-
-        internal void GetIndexTranslators(out Dictionary<string, Type> tableFields, out Dictionary<int, string> fieldNames, out Dictionary<int, int> tableFieldCounts, out Dictionary<int, Type> enumFields)
-        {
-            tableFields = _tableFields;
-            fieldNames = _fieldNames;
-            tableFieldCounts = _tableFieldCounts;
-            enumFields = _enumFields;
         }
 	
 		public ClassQuery(string NameSpace,string query)
@@ -1927,7 +1927,12 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 
         public long GetBytes(int i, long fieldOffset, byte[] buffer, int bufferoffset, int length)
         {
-            return _conn.GetBytes(TranslateFieldIndex(i), fieldOffset, buffer, bufferoffset, length);
+            return GetBytes(TranslateFieldIndex(i), fieldOffset, buffer, bufferoffset, length,_conn);
+        }
+
+        internal long GetBytes(int i, long fieldOffset, byte[] buffer, int bufferoffset, int length,Connection conn)
+        {
+            return conn.GetBytes(TranslateFieldIndex(i), fieldOffset, buffer, bufferoffset, length);
         }
 
         public char GetChar(int i)
@@ -1937,7 +1942,12 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 
         public long GetChars(int i, long fieldoffset, char[] buffer, int bufferoffset, int length)
         {
-            return _conn.GetChars(TranslateFieldIndex(i), fieldoffset, buffer, bufferoffset, length);
+            return GetChars(i, fieldoffset, buffer, bufferoffset, length, _conn);
+        }
+
+        internal long GetChars(int i, long fieldoffset, char[] buffer, int bufferoffset, int length,Connection conn)
+        {
+            return conn.GetChars(TranslateFieldIndex(i), fieldoffset, buffer, bufferoffset, length);
         }
 
         public IDataReader GetData(int i)
@@ -1947,7 +1957,12 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 
         public string GetDataTypeName(int i)
         {
-            return _conn.GetDataTypeName(TranslateFieldIndex(i));
+            return GetDataTypeName(i, _conn);
+        }
+
+        internal string GetDataTypeName(int i,Connection conn)
+        {
+            return conn.GetDataTypeName(TranslateFieldIndex(i));
         }
 
         public DateTime GetDateTime(int i)
@@ -1967,10 +1982,15 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 
         public Type GetFieldType(int i)
         {
+            return GetFieldType(i, _conn);
+        }
+
+        internal Type GetFieldType(int i,Connection conn)
+        {
             if (_tableFieldCounts.ContainsKey(i))
                 return _tableFields[_fieldNames[i]];
             else
-                return _conn.GetFieldType(TranslateFieldIndex(i));
+                return conn.GetFieldType(TranslateFieldIndex(i));
         }
 
         public float GetFloat(int i)
@@ -2018,13 +2038,18 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             return _conn.GetString(TranslateFieldIndex(i));
         }
 
-        public object GetValue(int i){
-            if (IsDBNull(i))
+        public object GetValue(int i)
+        {
+            return GetValue(i, _conn);
+        }
+
+        internal object GetValue(int i,Connection conn){
+            if (IsDBNull(i,conn))
                 return null;
             if (_tableFieldCounts.ContainsKey(i))
             {
                 Table t = (Table)LazyProxy.Instance(_tableFields[_fieldNames[i]].GetConstructor(System.Type.EmptyTypes).Invoke(new object[0]));
-                sTableField[] flds = _conn.Pool.Mapping[_tableFields[_fieldNames[i]]].Fields;
+                sTableField[] flds = conn.Pool.Mapping[_tableFields[_fieldNames[i]]].Fields;
                 int index = 0;
                 i = TranslateFieldIndex(i);
                 foreach (sTableField fld in flds)
@@ -2032,9 +2057,9 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     PropertyInfo pi = t.GetType().GetProperty(fld.ClassProperty, Utility._BINDING_FLAGS_WITH_INHERITANCE);
                     if (!pi.PropertyType.IsArray)
                     {
-                        if (_conn.Pool.Mapping.IsMappableType(pi.PropertyType) && !Utility.IsEnum(pi.PropertyType))
+                        if (conn.Pool.Mapping.IsMappableType(pi.PropertyType) && !Utility.IsEnum(pi.PropertyType))
                         {
-                            if (!_conn.IsDBNull(i + index))
+                            if (!conn.IsDBNull(i + index))
                             {
                                 if (t.GetField(pi.Name) == null)
                                 {
@@ -2043,11 +2068,11 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                                     t.SetField(fld.Name, tmp);
                                 }
                                 Table tbl = (Table)t.GetField(pi.Name);
-                                foreach (sTableField f in _conn.Pool.Mapping[tbl.GetType()].Fields)
+                                foreach (sTableField f in conn.Pool.Mapping[tbl.GetType()].Fields)
                                 {
                                     if (fld.ExternalField == f.Name)
                                     {
-                                        t.RecurSetPropertyValue(f.Name, _conn, _conn.GetName(i + index), tbl);
+                                        t.RecurSetPropertyValue(f.Name, conn, conn.GetName(i + index), tbl);
                                         index++;
                                         break;
                                     }
@@ -2058,12 +2083,12 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         }
                         else
                         {
-                            if (!_conn.IsDBNull(i + index))
+                            if (!conn.IsDBNull(i + index))
                             {
                                 if (Utility.IsEnum(pi.PropertyType))
-                                    t.SetField(fld.ClassProperty, _conn.Pool.GetEnumValue(pi.PropertyType, _conn.GetInt32(i + index)));
+                                    t.SetField(fld.ClassProperty, conn.Pool.GetEnumValue(pi.PropertyType, conn.GetInt32(i + index)));
                                 else
-                                    t.SetField(fld.ClassProperty, _conn[i + index]);
+                                    t.SetField(fld.ClassProperty, conn[i + index]);
                             }
                             index++;
                         }
@@ -2074,31 +2099,46 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             }
             else if (_enumFields.ContainsKey(i))
             {
-                return _pool.GetEnumValue(_enumFields[i], _conn.GetInt32(TranslateFieldIndex(i)));
+                return _pool.GetEnumValue(_enumFields[i], conn.GetInt32(TranslateFieldIndex(i)));
             }else
-                return _conn.GetValue(TranslateFieldIndex(i));
+                return conn.GetValue(TranslateFieldIndex(i));
         }
 
         public int GetValues(object[] values)
         {
+            return GetValues(values, _conn);
+        }
+
+        internal int GetValues(object[] values,Connection conn)
+        {
             values = new object[_fieldNames.Count];
             for (int x = 0; x < values.Length; x++)
             {
-                values[x] = GetValue(x);
+                values[x] = GetValue(x,conn);
             }
             return values.Length;
         }
 
         public bool IsDBNull(int i)
         {
+            return IsDBNull(i, _conn);
+        }
+
+        internal bool IsDBNull(string name, Connection conn)
+        {
+            return IsDBNull(GetOrdinal(name), conn);
+        }
+
+        internal bool IsDBNull(int i,Connection conn)
+        {
             if (!_tableFieldCounts.ContainsKey(i))
-                return _conn.IsDBNull(TranslateFieldIndex(i));
+                return conn.IsDBNull(TranslateFieldIndex(i));
             else
             {
                 int start = TranslateFieldIndex(i);
                 for (int x = 0; x < _tableFieldCounts[i]; x++)
                 {
-                    if (!_conn.IsDBNull(x + start))
+                    if (!conn.IsDBNull(x + start))
                         return false;
                 }
                 return true;
@@ -2108,6 +2148,11 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
         public object this[string name]
         {
             get { return GetValue(GetOrdinal(name)); }
+        }
+
+        internal object this[string name,Connection conn]
+        {
+            get { return GetValue(GetOrdinal(name),conn); }
         }
 
         public object this[int i]
