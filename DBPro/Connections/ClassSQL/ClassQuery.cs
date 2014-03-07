@@ -2034,23 +2034,27 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     {
                         if (_conn.Pool.Mapping.IsMappableType(pi.PropertyType) && !Utility.IsEnum(pi.PropertyType))
                         {
-                            if (t.GetField(pi.Name) == null)
+                            if (!_conn.IsDBNull(i + index))
                             {
-                                Table tmp = (Table)LazyProxy.Instance(pi.PropertyType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
-                                tmp.LoadStatus = LoadStatus.Partial;
-                                t.SetField(fld.Name, tmp);
-                            }
-                            Table tbl = (Table)t.GetField(pi.Name);
-                            foreach (sTableField f in _conn.Pool.Mapping[tbl.GetType()].Fields)
-                            {
-                                if (fld.ExternalField == f.Name)
+                                if (t.GetField(pi.Name) == null)
                                 {
-                                    if (!_conn.IsDBNull(i + index))
+                                    Table tmp = (Table)LazyProxy.Instance(pi.PropertyType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
+                                    tmp.LoadStatus = LoadStatus.Partial;
+                                    t.SetField(fld.Name, tmp);
+                                }
+                                Table tbl = (Table)t.GetField(pi.Name);
+                                foreach (sTableField f in _conn.Pool.Mapping[tbl.GetType()].Fields)
+                                {
+                                    if (fld.ExternalField == f.Name)
+                                    {
                                         t.RecurSetPropertyValue(f.Name, _conn, _conn.GetName(i + index), tbl);
-                                    index++;
-                                    break;
+                                        index++;
+                                        break;
+                                    }
                                 }
                             }
+                            else
+                                index++;
                         }
                         else
                         {
