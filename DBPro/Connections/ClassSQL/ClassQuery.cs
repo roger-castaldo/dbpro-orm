@@ -2181,5 +2181,15 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
         {
             return _enumFields[ordinal];
         }
+
+        public object GetEnum(Type type, string name)
+        {
+            return GetEnum(type, name, _conn);
+        }
+
+        internal object GetEnum(Type type, string name,Connection conn)
+        {
+            return _pool.GetEnumValue(type, conn.GetInt32(TranslateFieldIndex(GetOrdinal(name))));
+        }
     }
 }

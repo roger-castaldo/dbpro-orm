@@ -74,7 +74,7 @@ namespace Org.Reddragonit.Dbpro.Virtual
 
         public double GetDouble(int i)
         {
-            return (double)GetValue(i);
+            return double.Parse(GetValue(i).ToString());
         }
 
         public Type GetFieldType(int i)
@@ -158,6 +158,11 @@ namespace Org.Reddragonit.Dbpro.Virtual
             {
                 return _cq.FieldNames;
             }
+        }
+
+        public object GetEnum(Type type, string name)
+        {
+            return _cq.GetEnum(type, name,_conn);
         }
     }
 }
