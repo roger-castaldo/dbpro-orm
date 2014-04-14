@@ -359,6 +359,38 @@ AND rtns.ROUTINE_NAME = prc.`NAME`";
             }
         }
 
+        protected override string CreateProcedureStringNoParametersWithReturn
+        {
+            get
+            {
+                return "CREATE FUNCTION {0} RETURNS {1} BEGIN {2} {3} END";
+            }
+        }
+
+        protected override string UpdateProcedureStringNoParametersWithReturn
+        {
+            get
+            {
+                return "ALTER FUNCTION {0} RETURNS {1} BEGIN {2} {3} END";
+            }
+        }
+
+        protected override string CreateProcedureStringNoParameters
+        {
+            get
+            {
+                return "CREATE FUNCTION {0} BEGIN {1} {2} END";
+            }
+        }
+
+        protected override string UpdateProcedureStringNoParameters
+        {
+            get
+            {
+                return "ALTER FUNCTION {0} BEGIN {1} {2} END";
+            }
+        }
+
         protected override string DropProcedureString
         {
             get
