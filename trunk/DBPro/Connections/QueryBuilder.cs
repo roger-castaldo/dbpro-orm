@@ -200,6 +200,38 @@ namespace Org.Reddragonit.Dbpro.Connections
             }
         }
 
+        protected virtual string CreateProcedureStringNoParameters
+        {
+            get
+            {
+                throw new Exception("Method Not Implemented");
+            }
+        }
+
+        protected virtual string UpdateProcedureStringNoParameters
+        {
+            get
+            {
+                throw new Exception("Method Not Implemented");
+            }
+        }
+
+        protected virtual string CreateProcedureStringNoParametersWithReturn
+        {
+            get
+            {
+                throw new Exception("Method Not Implemented");
+            }
+        }
+
+        protected virtual string UpdateProcedureStringNoParametersWithReturn
+        {
+            get
+            {
+                throw new Exception("Method Not Implemented");
+            }
+        }
+
         protected virtual string DropProcedureString
         {
             get
@@ -402,16 +434,34 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         internal virtual string CreateProcedure(StoredProcedure procedure)
         {
-            if (procedure.ReturnLine != null)
-                return string.Format(CreateProcedureStringWithReturn, new object[] { procedure.ProcedureName, procedure.ParameterLines, procedure.ReturnLine, procedure.DeclareLines, procedure.Code });
-            return string.Format(CreateProcedureString, new object[] { procedure.ProcedureName, procedure.ParameterLines, procedure.DeclareLines, procedure.Code });
+            if (procedure.ParameterLines == null || procedure.ParameterLines == "")
+            {
+                if (procedure.ReturnLine != null)
+                    return string.Format(CreateProcedureStringNoParametersWithReturn, new object[] { procedure.ProcedureName, procedure.ReturnLine, procedure.DeclareLines, procedure.Code });
+                return string.Format(CreateProcedureStringNoParameters, new object[] { procedure.ProcedureName, procedure.DeclareLines, procedure.Code });
+            }
+            else
+            {
+                if (procedure.ReturnLine != null)
+                    return string.Format(CreateProcedureStringWithReturn, new object[] { procedure.ProcedureName, procedure.ParameterLines, procedure.ReturnLine, procedure.DeclareLines, procedure.Code });
+                return string.Format(CreateProcedureString, new object[] { procedure.ProcedureName, procedure.ParameterLines, procedure.DeclareLines, procedure.Code });
+            }
         }
 
         internal virtual string UpdateProcedure(StoredProcedure procedure)
         {
-            if (procedure.ReturnLine!=null)
-                return string.Format(UpdateProcedureStringWithReturn, new object[] { procedure.ProcedureName, procedure.ParameterLines, procedure.ReturnLine, procedure.DeclareLines, procedure.Code });
-            return string.Format(UpdateProcedureString, new object[] { procedure.ProcedureName, procedure.ParameterLines, procedure.DeclareLines, procedure.Code });
+            if (procedure.ParameterLines == null || procedure.ParameterLines == "")
+            {
+                if (procedure.ReturnLine != null)
+                    return string.Format(UpdateProcedureStringNoParametersWithReturn, new object[] { procedure.ProcedureName, procedure.ReturnLine, procedure.DeclareLines, procedure.Code });
+                return string.Format(UpdateProcedureStringNoParameters, new object[] { procedure.ProcedureName, procedure.DeclareLines, procedure.Code });
+            }
+            else
+            {
+                if (procedure.ReturnLine != null)
+                    return string.Format(UpdateProcedureStringWithReturn, new object[] { procedure.ProcedureName, procedure.ParameterLines, procedure.ReturnLine, procedure.DeclareLines, procedure.Code });
+                return string.Format(UpdateProcedureString, new object[] { procedure.ProcedureName, procedure.ParameterLines, procedure.DeclareLines, procedure.Code });
+            }
         }
 
         internal string DropProcedure(string procedureName)

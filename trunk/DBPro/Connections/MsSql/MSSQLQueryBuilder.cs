@@ -430,6 +430,38 @@ pro.SPECIFIC_CATALOG = '{0}'";
             }
         }
 
+        protected override string CreateProcedureStringNoParameters
+        {
+            get
+            {
+                return "CREATE PROCEDURE {0} AS BEGIN {1} {2} END";
+            }
+        }
+
+        protected override string UpdateProcedureStringNoParameters
+        {
+            get
+            {
+                return "ALTER PROCEDURE {0} AS BEGIN {1} {2} END";
+            }
+        }
+
+        protected override string CreateProcedureStringNoParametersWithReturn
+        {
+            get
+            {
+                return "CREATE FUNCTION {0} RETURNS {1} AS BEGIN {2} {3} END";
+            }
+        }
+
+        protected override string UpdateProcedureStringNoParametersWithReturn
+        {
+            get
+            {
+                return "ALTER FUNCTION {0} RETURNS {1} AS BEGIN {2} {3} END";
+            }
+        }
+
         protected override string DropProcedureString
         {
             get

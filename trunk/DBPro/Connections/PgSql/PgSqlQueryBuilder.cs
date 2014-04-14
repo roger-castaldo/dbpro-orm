@@ -297,6 +297,38 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
             }
         }
 
+        protected override string CreateProcedureStringNoParametersWithReturn
+        {
+            get
+            {
+                return "CREATE FUNCTION {0} RETURNS {1} AS $$ {2} BEGIN {3} END; $$";
+            }
+        }
+
+        protected override string UpdateProcedureStringNoParametersWithReturn
+        {
+            get
+            {
+                return "REPLACE FUNCTION {0} RETURNS {1} AS $$ {2} BEGIN {3} END; $$";
+            }
+        }
+
+        protected override string CreateProcedureStringNoParameters
+        {
+            get
+            {
+                return "CREATE FUNCTION {0} AS $$ {1} BEGIN {2} END; $$";
+            }
+        }
+
+        protected override string UpdateProcedureStringNoParameters
+        {
+            get
+            {
+                return "REPLACE FUNCTION {0} AS $$ {1} BEGIN {2} END; $$";
+            }
+        }
+
         protected override string DropProcedureString
         {
             get
