@@ -223,7 +223,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 
         public void Execute(IDbDataParameter[] parameters)
         {
-            _conn = (_conn == null ? _pool.GetConnection() : _conn);
+            _conn = (_conn == null ? _pool.GetConnection() :  _conn);
             lock (_requiredTypes)
             {
                 if (_requiredTypes.Count > 0)
@@ -1869,7 +1869,10 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
             if (_connectionPassed)
                 _conn.Close();
             else
+            {
                 _conn.CloseConnection();
+                _conn = null;
+            }
         }
 
         public int Depth
