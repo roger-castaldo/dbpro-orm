@@ -2051,6 +2051,11 @@ namespace Org.Reddragonit.Dbpro.Connections
 			}
 		}
 		#endregion
+
+        public override bool Equals(object obj)
+        {
+            return ((Connection)obj).ID == ID;
+        }
 		
 	}
 }
