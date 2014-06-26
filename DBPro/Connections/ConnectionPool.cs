@@ -373,9 +373,12 @@ namespace Org.Reddragonit.Dbpro.Connections
                     if (checkMax(1))
                     {
                         ret = CreateConnection();
-                        _conns.Add(ret);
-                        _lock.Set();
-                        break;
+                        if (ret != null)
+                        {
+                            _conns.Add(ret);
+                            _lock.Set();
+                            break;
+                        }
                     }
                     _lock.Set();
                 }
@@ -405,14 +408,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		{
             Logger.LogLine(string.Format("Connection {0} return to pool", conn.ID));
             _lock.WaitOne();
-            for (int x = 0; x < _conns.Count; x++)
-            {
-                if (conn.ID==_conns[x].ID)
-                {
-                    _conns.RemoveAt(x);
-                    break;
-                }
-            }
+            _conns.Remove(conn);
             _lock.Set();
             conn.Disconnect();
 		}
