@@ -15,7 +15,7 @@ BEGIN
 
 	IF (@version=1)
 		BEGIN
-			SELECT '1.2';
+			SELECT '1.3';
 		END
 	ELSE
 		BEGIN

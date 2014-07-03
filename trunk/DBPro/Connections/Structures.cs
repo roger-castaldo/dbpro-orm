@@ -579,8 +579,12 @@ namespace Org.Reddragonit.Dbpro.Connections
             {
                 StringBuilder sb = new StringBuilder();
                 sb.AppendLine(string.Format("CREATE TABLE {0}(", TableName));
+                List<string> tmp = new List<string>();
                 foreach (ExtractedFieldMap efm in Fields)
-                    sb.AppendLine(string.Format("{0} {1} {2},", efm.FieldName, efm.FullFieldType, (efm.Nullable ? "NULL" : "NOT NULL")));
+                    tmp.Add(string.Format("{0} {1} {2},", efm.FieldName, efm.FullFieldType, (efm.Nullable ? "NULL" : "NOT NULL")));
+                tmp.Sort();
+                foreach (string str in tmp)
+                    sb.AppendLine(str);
                 if (PrimaryKeys.Count > 0)
                 {
                     sb.Append("PRIMARY KEY(");
