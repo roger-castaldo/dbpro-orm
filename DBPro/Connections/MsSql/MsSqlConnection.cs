@@ -481,38 +481,46 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
                         if (t.Conditions==string.Format("ON {0} INSTEAD OF DELETE",tblName)){
                             triggers.RemoveAt(x);
                             delCode = t.Code;
-                            if (delCode.Contains("DELETE FROM " + tblName+" WHERE "))
-                                delCode = delCode.Substring(0, delCode.LastIndexOf("DELETE FROM " + tblName+" WHERE "));
+                            if (delCode.Contains("DELETE FROM " + tblName + " WHERE "))
+                            {
+                                delCode = delCode.Substring(0, delCode.LastIndexOf("DELETE FROM " + tblName + " WHERE "));
+                                delCode = delCode.Substring(0, delCode.LastIndexOf("END"));
+                            }
                             break;
                         }
                     }
-                    for(int x=0;x<maps.Count;x++)
+                    if (maps.Count > 0)
                     {
-                        List<ForeignRelationMap> rel = maps[x];
-                        string disableTrigger = "";
-                        string enableTrigger = "";
-                        if (AutoDeleteParentTables.ContainsKey(map.TableName))
+                        if (!delCode.Contains("IF ((SELECT COUNT(*) FROM DELETED)>0) BEGIN"))
+                            delCode += "IF ((SELECT COUNT(*) FROM DELETED)>0) BEGIN \n";
+                        for (int x = 0; x < maps.Count; x++)
                         {
-                            disableTrigger = string.Format("ALTER TABLE {0} DISABLE TRIGGER {0}_DEL;\n", map.TableName);
-                            enableTrigger = string.Format("ALTER TABLE {0} ENABLE TRIGGER {0}_DEL;\n", map.TableName);
+                            List<ForeignRelationMap> rel = maps[x];
+                            if (!delCode.Contains(string.Format("DELETE FROM {0} WHERE (", map.TableName)))
+                            {
+                                string disableTrigger = "";
+                                string enableTrigger = "";
+                                if (AutoDeleteParentTables.ContainsKey(map.TableName))
+                                {
+                                    disableTrigger = string.Format("ALTER TABLE {0} DISABLE TRIGGER {0}_DEL;\n", map.TableName);
+                                    enableTrigger = string.Format("ALTER TABLE {0} ENABLE TRIGGER {0}_DEL;\n", map.TableName);
+                                }
+                                delCode += string.Format("{1} DELETE FROM {0} WHERE (", map.TableName, disableTrigger);
+                                fields = "";
+                                foreach (ForeignRelationMap frm in rel)
+                                {
+                                    delCode += string.Format("CAST({0} AS VARCHAR(MAX))+'-'+", frm.InternalField);
+                                    fields += string.Format("CAST({0} AS VARCHAR(MAX))+'-'+", frm.ExternalField);
+                                }
+                                delCode = delCode.Substring(0, delCode.Length - 5);
+                                delCode += string.Format(") IN (SELECT ({0}) FROM DELETED);\n {1}",
+                                    fields.Substring(0, fields.Length - 5),
+                                    enableTrigger);
+                            }
                         }
-                        delCode+=string.Format("IF ((SELECT COUNT(*) FROM DELETED)>0) BEGIN {1} DELETE FROM {0} WHERE (",map.TableName,disableTrigger);
-                        fields = "";
-                        foreach (ForeignRelationMap frm in rel)
-                        {
-                            delCode += string.Format("CAST({0} AS VARCHAR(MAX))+'-'+",frm.InternalField);
-                            fields += string.Format("CAST({0} AS VARCHAR(MAX))+'-'+", frm.ExternalField);
-                        }
-                        delCode = delCode.Substring(0,delCode.Length-5);
-                        delCode += string.Format(") IN (SELECT ({0}) FROM DELETED); {1} END\n",
-                            fields.Substring(0, fields.Length - 5),
-                            enableTrigger);
-                        if (x == maps.Count - 1)
-                        {
-                            delCode += string.Format("DELETE FROM {0} WHERE ({1}) IN (SELECT ({1}) FROM DELETED);\nEND\n\n",
-                                tblName,
-                                fields.Substring(0, fields.Length - 5));
-                        }
+                        delCode += string.Format("END\nDELETE FROM {0} WHERE ({1}) IN (SELECT ({1}) FROM DELETED);\nEND\n\n",
+                                    tblName,
+                                    fields.Substring(0, fields.Length - 5));
                     }
                     triggers.Add(new Trigger(string.Format(_DEL_TRIGGER_NAME, tblName),
                         string.Format("ON {0} INSTEAD OF DELETE", tblName),
