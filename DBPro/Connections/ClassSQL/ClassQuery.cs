@@ -972,7 +972,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         t = (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType);
 						fieldName = fieldName.Substring(fieldName.IndexOf(".") + 1);
 					}
-                    pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS);
+                    pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS_WITH_INHERITANCE);
                     if (_pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) && !Utility.IsEnum(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType))
 						return true;
 					else
@@ -1008,6 +1008,14 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 				if (tableDeclarations.Count == 1)
 				{
 					tableName = _tokenizer.Tokens[tableDeclarations[0]].Value;
+                    foreach (string str in tableAliases.Keys)
+                    {
+                        if (tableAliases[str] == tableName)
+                        {
+                            tableName = str;
+                            break;
+                        }
+                    }
 				}
 			}
 			ret.Add(field.Value);
@@ -1026,14 +1034,14 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 					while (fieldName.Contains("."))
 					{
                         pi = t.GetProperty(fieldName.Substring(0, fieldName.IndexOf(".")), Utility._BINDING_FLAGS_WITH_INHERITANCE);
-                        map = _pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
 						fieldName = fieldName.Substring(fieldName.IndexOf(".") + 1);
+                        map = _pool.Mapping[(pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)];
                         t = (pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType);
 					}
 					if (fieldName != "*")
 					{
                         pi = t.GetProperty(fieldName, Utility._BINDING_FLAGS);
-						if (_pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) && !Utility.IsEnum(pi.PropertyType))
+						if (pi!=null&&_pool.Mapping.IsMappableType((pi.PropertyType.IsArray ? pi.PropertyType.GetElementType() : pi.PropertyType)) && !Utility.IsEnum(pi.PropertyType))
 						{
 							ret.RemoveAt(0);
 							foreach (string str in fieldList[field.Value])
@@ -1540,25 +1548,34 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     return field;
                 return alias + "." + field;
             }
-            while (!pi.DeclaringType.Equals(table))
+            if (!new List<string>(_pool.Mapping[pi.DeclaringType].PrimaryKeyFields).Contains(field))
             {
-                table = table.BaseType;
-                alias += "_prnt";
-            }
-            if (pi.DeclaringType.Equals(table))
-            {
-                if ((ordinal != -1) && Utility.IsEnum(pi.PropertyType))
+                while (!pi.DeclaringType.Equals(table))
                 {
-                    if (_enumFields.ContainsKey(ordinal))
-                        _enumFields.Remove(ordinal);
-                    Logger.LogLine("Assigning field at ordinal: " + ordinal.ToString() + " as an enumeration type: " + pi.PropertyType.FullName);
-                    _enumFields.Add(ordinal, pi.PropertyType);
+                    table = table.BaseType;
+                    alias += "_prnt";
                 }
-                if (pi.PropertyType.IsArray)
-                    ret = alias + "_" + field + "." + _pool.Translator.GetIntermediateValueFieldName(table,pi);
-                else
-                    ret = alias + "." + _pool.Mapping[table][pi.Name][0].Name;
+                if (pi.DeclaringType.Equals(table))
+                {
+                    if ((ordinal != -1) && Utility.IsEnum(pi.PropertyType))
+                    {
+                        if (_enumFields.ContainsKey(ordinal))
+                            _enumFields.Remove(ordinal);
+                        Logger.LogLine("Assigning field at ordinal: " + ordinal.ToString() + " as an enumeration type: " + pi.PropertyType.FullName);
+                        _enumFields.Add(ordinal, pi.PropertyType);
+                    }
+                    if (pi.PropertyType.IsArray)
+                        ret = alias + "_" + field + "." + _pool.Translator.GetIntermediateValueFieldName(table, pi);
+                    else
+                        ret = alias + "." + _pool.Mapping[table][pi.Name][0].Name;
+                }
             }
+            else
+            {
+                if (alias == "")
+                    ret = field;
+                ret = alias + "." + field;
+            }    
             return ret;
         }
 
@@ -2120,6 +2137,11 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 values[x] = GetValue(x,conn);
             }
             return values.Length;
+        }
+
+        public bool IsDBNull(string name)
+        {
+            return IsDBNull(name, _conn);
         }
 
         public bool IsDBNull(int i)
