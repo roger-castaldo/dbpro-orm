@@ -1521,7 +1521,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         cur = pType;
                     }
                 }
-                else if (pi.PropertyType.IsArray)
+                else if (pi.PropertyType.IsArray && !pi.PropertyType.Equals(typeof(byte[])))
                 {
                     sTable iMap = _pool.Mapping[cur, pi.Name];
                     string innerJoin = (nlb.Nullable || parentIsLeftJoin ? " LEFT JOIN " : " INNER JOIN ")+iMap.Name + " " + alias + "_" + pi.Name+ " ON ";
