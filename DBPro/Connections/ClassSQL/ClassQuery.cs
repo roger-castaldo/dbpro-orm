@@ -1293,7 +1293,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     }
                     if (!fieldLists.ContainsKey(origAlias + "." + pi.Name))
                         fieldLists.Add(origAlias + "." + pi.Name, fields);
-					if (pi.PropertyType.IsArray)
+					if (pi.PropertyType.IsArray && !pi.PropertyType.Equals(typeof(byte[])))
 					{
                         sTable iMap = _pool.Mapping[cur, pi.Name];
 						innerJoin += iMap.Name + " " + alias + "_intermediate_" + className + " ON ";
@@ -1469,7 +1469,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                     }
                     if (!fieldLists.ContainsKey(origAlias + "." + origField))
                         fieldLists.Add(origAlias + "." + origField, fields);
-                    if (pi.PropertyType.IsArray)
+                    if (pi.PropertyType.IsArray && !pi.PropertyType.Equals(typeof(byte[])))
                     {
                         sTable iMap = _pool.Mapping[cur, pi.Name];
                         innerJoin += iMap.Name + " " + alias + "_intermediate_" + field + " ON ";
@@ -1564,7 +1564,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                         Logger.LogLine("Assigning field at ordinal: " + ordinal.ToString() + " as an enumeration type: " + pi.PropertyType.FullName);
                         _enumFields.Add(ordinal, pi.PropertyType);
                     }
-                    if (pi.PropertyType.IsArray)
+                    if (pi.PropertyType.IsArray && !pi.PropertyType.Equals(typeof(byte[])))
                         ret = alias + "_" + field + "." + _pool.Translator.GetIntermediateValueFieldName(table, pi);
                     else
                         ret = alias + "." + _pool.Mapping[table][pi.Name][0].Name;
@@ -2075,7 +2075,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 foreach (sTableField fld in flds)
                 {
                     PropertyInfo pi = t.GetType().GetProperty(fld.ClassProperty, Utility._BINDING_FLAGS_WITH_INHERITANCE);
-                    if (!pi.PropertyType.IsArray)
+                    if (!pi.PropertyType.IsArray || !pi.PropertyType.Equals(typeof(byte[])))
                     {
                         if (conn.Pool.Mapping.IsMappableType(pi.PropertyType) && !Utility.IsEnum(pi.PropertyType))
                         {
