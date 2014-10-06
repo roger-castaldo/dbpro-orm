@@ -1088,6 +1088,11 @@ namespace Org.Reddragonit.Dbpro.Connections
             return ret;
         }
 
+        public List<IClassView> SelectPagedClassView(System.Type type, SelectParameter[] parameters, ulong? StartIndex, ulong? RowCount, string[] OrderByFields)
+        {
+            return this.SelectPagedClassView(type,(parameters==null ? null : new List<SelectParameter>(parameters)),StartIndex,RowCount,OrderByFields);
+        }
+
         public virtual List<IClassView> SelectPagedClassView(System.Type type, List<SelectParameter> parameters, ulong? StartIndex, ulong? RowCount,string[] OrderByFields)
         {
             ClassViewAttribute cva = Pool[type];
