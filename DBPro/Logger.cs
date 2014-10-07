@@ -39,7 +39,8 @@ namespace Org.Reddragonit.Dbpro
                         }
                         catch (Exception e)
                         {
-                            if (e.Message != "The invoked member is not supported in a dynamic assembly.")
+                            if (e.Message != "The invoked member is not supported in a dynamic assembly."
+                        && e.Message != "Unable to load one or more of the requested types. Retrieve the LoaderExceptions property for more information.")
                             {
                                 throw e;
                             }
