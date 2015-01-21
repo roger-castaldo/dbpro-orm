@@ -400,6 +400,10 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 				    	(_tokenizer.Tokens[i + x - 1].Value == ",") ||
 				    	(_tokenizer.Tokens[i + x - 1].Value == "(") ||
 				    	((_tokenizer.Tokens[i + x + 1].Value.ToUpper() == "AS") && (_tokenizer.Tokens[i + x + 1].Type == TokenType.KEYWORD)) ||
+                        (_tokenizer.Tokens[i+x+1].Value.ToUpper()=="IS" && _tokenizer.Tokens[i+x+2].Value.ToUpper()=="NULL" && (
+                            _tokenizer.Tokens[i+x-1].Value.ToUpper()=="AND"||
+                            _tokenizer.Tokens[i + x - 1].Value.ToUpper() == "OR"
+                        ))||
 				    	(_tokenizer.Tokens[i + x + 1].Type == TokenType.OPERATOR) ||
 				    	(_tokenizer.Tokens[i + x - 1].Type == TokenType.OPERATOR) ||
 				    	(_tokenizer.Tokens[i + x - 1].Value.ToUpper() == "WHEN") ||

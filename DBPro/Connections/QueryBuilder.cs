@@ -830,13 +830,24 @@ namespace Org.Reddragonit.Dbpro.Connections
                 if (tbl.AutoGenProperty != null)
                 {
                     string select = "";
+                    for (int x = 0; x < insertParameters.Count; x++)
+                    {
+                        for (int y = x + 1; y < insertParameters.Count; y++)
+                        {
+                            if (insertParameters[x].ParameterName == insertParameters[y].ParameterName)
+                            {
+                                insertParameters.RemoveAt(y);
+                                y--;
+                            }
+                        }
+                    }
                     insertParameters.Add(pool.CreateParameter(CreateParameterName(tbl.AutoGenField), table.GetField(tbl.AutoGenProperty),
                         tbl[tbl.AutoGenProperty][0].Type, tbl[tbl.AutoGenProperty][0].Length));
                     if (tbl[tbl.AutoGenProperty][0].Type == FieldType.STRING)
                         insertParameters[insertParameters.Count - 1].Size = int.MaxValue;
-                    select = _GenerateAutogenIDQuery(tbl,ref insertParameters);
+                    select = _GenerateAutogenIDQuery(tbl, ref insertParameters);
                     if (pool is MsSqlConnectionPool && select.StartsWith("OUTPUT"))
-                        return string.Format(InsertString, tbl.Name, values, parameters).Replace(" VALUES "," " + select+" VALUES ");
+                        return string.Format(InsertString, tbl.Name, values, parameters).Replace(" VALUES ", " " + select + " VALUES ");
                     else
                         return string.Format(InsertString, tbl.Name, values, parameters) + " " + select;
                 }
