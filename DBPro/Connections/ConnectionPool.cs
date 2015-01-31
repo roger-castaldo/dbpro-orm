@@ -341,18 +341,21 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         internal void AssemblyAdded()
         {
-            List<Type> newTypes = new List<Type>();
-            foreach (Type t in Utility.LocateAllTypesWithAttribute(typeof(Table)))
+            if (!_classless && _tables != null)
             {
-                if (!_tables.Contains(t))
+                List<Type> newTypes = new List<Type>();
+                foreach (Type t in Utility.LocateAllTypesWithAttribute(typeof(Table)))
                 {
-                    Table tbl = (Table)t.GetCustomAttributes(typeof(Table), false)[0];
-                    if (Utility.StringsEqual(tbl.ConnectionName, ConnectionName))
-                        newTypes.Add(t);
+                    if (!_tables.Contains(t))
+                    {
+                        Table tbl = (Table)t.GetCustomAttributes(typeof(Table), false)[0];
+                        if (Utility.StringsEqual(tbl.ConnectionName, ConnectionName))
+                            newTypes.Add(t);
+                    }
                 }
+                _mapping.AddTypes(newTypes);
+                _tables.AddRange(newTypes);
             }
-            _mapping.AddTypes(newTypes);
-            _tables.AddRange(newTypes);
         }
 		
 		public Connection GetConnection()
