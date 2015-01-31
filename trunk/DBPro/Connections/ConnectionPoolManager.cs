@@ -105,7 +105,7 @@ namespace Org.Reddragonit.Dbpro.Connections
         public static void AssemblyAdded()
         {
             _poolsLock.WaitOne();
-            foreach (string str in _connectionPools.Keys)
+            foreach (string str in _connectionPools.Keys) 
                 _connectionPools[str].AssemblyAdded();
             _poolsLock.Set();
         }
