@@ -97,7 +97,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 				                                 	"SHADOW","SHARED","SHELL","SHOW","SINGULAR",
 				                                 	"SNAPSHOT","SORT","STABILITY","STARTING","STARTS",
 				                                 	"SUB_TYPE","SUSPEND","TERMINATOR","UNCOMMITTED","VERSION",
-				                                 	"WEEKDAY","YEARDAY"
+				                                 	"WEEKDAY","YEARDAY","BIN_AND","BIN_OR"
 				                                 });
 				}
 				return _words;

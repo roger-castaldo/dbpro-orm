@@ -366,6 +366,30 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                     }
                 }
             }
+            if (_pool is MsSqlConnectionPool)
+                types = _RecurLoadChildrenForTypeForMSConnection(t,tbl, types);
+            return types;
+        }
+
+        private List<Type> _RecurLoadChildrenForTypeForMSConnection(Type t,sTable tbl, List<Type> types)
+        {
+            foreach (Type st in _pool.Mapping.Types)
+            {
+                if (st != t)
+                {
+                    sTable stbl = _pool.Mapping[st];
+                    foreach (string str in stbl.ForeignTableProperties)
+                    {
+                        sTableRelation strel = stbl.GetRelationForProperty(str).Value;
+                        if (strel.ExternalTable == tbl.Name && !types.Contains(st))
+                        {
+                            types.Add(st);
+                            types = _RecurLoadChildrenForTypeForMSConnection(st, stbl, types);
+                            break;
+                        }
+                    }
+                }
+            }
             return types;
         }
 
