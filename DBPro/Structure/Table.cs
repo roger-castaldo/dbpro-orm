@@ -770,7 +770,15 @@ namespace Org.Reddragonit.Dbpro.Structure
             if (!this.IsSaved)
                 throw new Exception("Cannot delete an object from the database if it is not in the database.");
             Connection conn = ConnectionPoolManager.GetConnection(this.GetType());
-            conn.Delete(this);
+            try
+            {
+                conn.Delete(this);
+            }
+            catch (Exception e)
+            {
+                conn.CloseConnection();
+                throw e;
+            }
             conn.CloseConnection();
         }
 
@@ -780,7 +788,15 @@ namespace Org.Reddragonit.Dbpro.Structure
             if (!this.IsSaved)
                 throw new Exception("Cannot update an object that is not in the database.");
             Connection conn = ConnectionPoolManager.GetConnection(this.GetType());
-            conn.Save(this);
+            try
+            {
+                conn.Save(this);
+            }
+            catch (Exception e)
+            {
+                conn.CloseConnection();
+                throw e;
+            }
             conn.CloseConnection();
         }
 
@@ -790,8 +806,17 @@ namespace Org.Reddragonit.Dbpro.Structure
             if (this.IsSaved)
                 throw new Exception("Cannot Save an object to the database when it already exists.");
             Connection conn = ConnectionPoolManager.GetConnection(this.GetType());
-            Table tmp = conn.Save(this);
             sTable tbl = conn.Pool.Mapping[this.GetType()];
+            Table tmp = null;
+            try
+            {
+                tmp = conn.Save(this);
+            }
+            catch (Exception e)
+            {
+                conn.CloseConnection();
+                throw e;
+            }
             conn.CloseConnection();
             if (tmp == null)
                 throw new Exception("An error occured attempting to save the table.");
