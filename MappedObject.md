@@ -1,0 +1,56 @@
+#How to map a class to the database
+
+# Introduction #
+
+Mapping a Class into a database requires two simple components.  The first being that the Class MUST inherit **Org.Reddragonit.Dbpro.Structure.Table**, and it must contain properties that have tags from the **Org.Reddragonit.Dbpro.Structure.Attributes** namespace.  These attributes are explained below.
+
+
+# Attributes #
+
+## Table ##
+
+This attribute is for the class itself and must be supplied.  It defines, amongst other items, which connection this class belongs to.
+Parameters:
+  * **alwaysInsert**:  This will indicate whether to use updates or always insert when changes are made.  It is used to override basic data check behaviors.  (DEFAULT: false).
+  * **TableName**:  This indicates what to name the table in the database that represents this class.  This must be unique, however if it is not specified, the table name is generated from the class name.  (DEFAULT:  generated from classname)
+  * **ConnectionName**:  This tells the system which connection to use when interacting with this class and the database(s).  If not specified it becomes associated with the default connection.
+
+## PrimaryKeyField ##
+
+This will indicate that the property field is a primary key for the table.
+Parameters:
+  * **autogen**:  This indicated whether or not the value for this field is auto-generated.  The valid field types for this is DateTime, int, long, short, and string (the system will generate a random 32-character key, only implemented for firebirdsql).  (DEFAULT: false)
+  * **fieldLength**:  The length of the field, only required for a string when not doing autogen.
+  * **nullable**:  This indicated whether or not the field is allowed to be nullable.  This does violate basic SQL rules, and is not valid for compliant SQL servers such as Firebird SQL.  (DEFAULT: false)
+
+## ForeignPrimaryKeyField ##
+
+This will indicate that the property is another mapped class linked to this one, but its primary keys also construct the primary key property for this class.
+Parameters:
+  * **OnUpdate**:  Indicates the action the database will perform on an Update to the primary key table, found in the enum Org.Reddragonit.Dbpro.Structure.Attributes.ForeignField.UpdateDeleteAction.  (DEFAULT: NO\_ACTION)
+  * **OnDelete**:  Indicated the action the database will perform on a Delete to the primary key table, found in the enum Org.Reddragonit.Dbpro.Structure.Attributes.ForeignField.UpdateDeleteAction.  (DEFAULT: NO\_ACTION)
+
+## ForeignField ##
+
+This will indicate that the specified property is a mapped table class to be linked to the entry for this table class.
+Parameters:
+  * **NullAble**:  Indicates whether or not the field can be null.  (DEFAULT: true)
+  * **OnUpdate**:  Indicates the action the database will perform on an Update to the primary key table, found in the enum Org.Reddragonit.Dbpro.Structure.Attributes.ForeignField.UpdateDeleteAction.  (DEFAULT: NO\_ACTION)
+  * **OnDelete**:  Indicated the action the database will perform on a Delete to the primary key table, found in the enum Org.Reddragonit.Dbpro.Structure.Attributes.ForeignField.UpdateDeleteAction.  (DEFAULT: NO\_ACTION)
+
+## Field ##
+
+This will indicate that the specified property is to be mapped as a field into the table representing this class.  Array fields get mapped to a separate table linked to this class through primary keys and maintains the order of the array within the database.
+  * **FieldName**:  This is the name of the field to be used in the database, if not specified, the name is generated from the property name.  (OPTIONAL)
+  * **type**:  This is the type of field to use in the database to represent this property.  If it is not specified it is automatically determined from the property info.  The available types are specified in the enum Org.Reddragonit.Dbpro.Structure.Attributes.FieldType.  (OPTIONAL)
+  * **NullAble**:  Indicates whether or not the field can be null.  (DEFAULT: true)
+  * **fieldLength**:  Indicates the length of the field when it is a string.  -1 will indicate that the string is to be stored as a blob and is to have no set maximum length.  (OPTIONAL) (DEFAULT: -1 when string)
+
+## VersionField ##
+
+This will indicate that the fields changes should be tracked by versioning.  This is done in a table linked to this table with the version indicator.  It contains all the same parameters as **Field** with one addition.  All version fields within a class must use the same type.
+  * **VersionType**:  The type of versioning indicator to use, found in the enum Org.Reddragonit.Dbpro.Structure.Attributes.VersionField.VersionTypes.  The system is capable of using an number (long) or a datestamp (Datetime) to indicate the version number.  (OPTIONAL) (DEFAULT: datestamp)
+
+## VersionForeignField ##
+
+This will indicate that the changing of the class linked to this field must be indicated in the version table.  It runs the same as a **ForeignField** for the inputs, except with the same difference and rules that the **VersionField** uses.

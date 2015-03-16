@@ -1,0 +1,113 @@
+#Simple walkthrough with a sample on using the library.
+
+# Introduction #
+
+The instructions contained below understand that you will use the other wiki pages as reference for more details.
+
+## Classes ##
+
+Below is the code of three simple classes, Item, Owner and SpecialItem.  Each having a some fields and a primary key field.  The SpecialItem is a sub class of the Item class and Owner has multiple Item(s) attached to it.
+
+```
+namespace Sample
+{
+[Table()] //use default connection
+public class Item : Org.Reddragonit.DbPro.Structure.Table
+{
+     private long _id;
+     [PrimaryKeyField(true)]
+     public long ID{
+          get{return _id;}
+          set{return _id;}
+     }
+
+     private string _name;
+     [Field(250,false)] //max length 250, not allowed null
+     public string Name{
+          get{return _name;}
+          set{_name=value;}
+     }
+}
+
+[Table()] //use default connection
+public class SpecialItem : Item {
+     private double _price;
+     [Field("Price",FieldType.MONEY,false)] //a not null money field
+     public double Name{
+          get{return _price;}
+          set{_price=value;}
+     }
+}
+
+public class Owner : Org.Reddragonit.DbPro.Structure.Table{
+     private long _id;
+     [PrimaryKeyField(true)]
+     public long ID{
+          get{return _id;}
+          set{return _id;}
+     }
+
+     private string _firstName;
+     [Field(50,false)] //max length 50, not allowed null
+     public string FirstName{
+          get{return _firstName;}
+          set{_firstName=value;}
+     }
+
+     private string _lastName;
+     [Field(50,false)] //max length 50, not allowed null
+     public string LastName{
+          get{return _lastName;}
+          set{_lastName=value;}
+     }
+
+     private Item[] _items;
+     [ForeignField(ForeignField.UpdateDeleteAction.CASCADE, ForeignField.UpdateDeleteAction.CASCADE)] //link the list of items attached to this user
+     public Item[] Items{
+          get{return _name;}
+          set{_name=value;}
+     }
+}
+}
+```
+
+With This simple structure above, four tables will be created.  Three for the classes and the fourth to allow for the many to many link created between the owner and the Item objects.  Something to note is that when selecting from the class Item, the system will not automatically convert Item to SpecialItem, even if it is, if that is the desired behavior you must select from SpecialItem.  The logic of inheritance was designed to allow common classes to link the same fields in a single location (generics).
+
+## Inserting/Updating/Selecting ##
+
+To select items using the class themselves you first need a connection to the database in question, as seen below.
+```
+Connection conn = ConnectionPoolManager.GetConnection(typeof(Owner)).getConnection();
+```
+Once you have a connection, you can insert, update or delete from classes associated with this connection.  To insert, you create a new instance, fill in the values then call Insert, the command will return null/throw an exception if an error occurs.(When inserting or updating, new unentered classes linked with this class will also be automatically setup in the database)
+```
+Owner own = new Owner();
+own.FirstName='Bob';
+own.LastName='Loblaw';
+own = (Owner)conn.Insert(own);
+```
+Updates can be called the same as the insert above or directly from the loaded table after changing fields.
+```
+own.LastName='Rubble';
+own.Update();
+```
+To select class objects from the database, use the select command, which allows to specify order by field names, as well as conditions.  Below would be the code to find all owners whose last name contains r and first name contains b.
+```
+List<Org.Reddragonit.DbPro.Structure.Table> tbls = conn.Select(typeof(Owner),
+ new SelectParameter[]{new LikeParameter("FirstName","b"), new LikeParameter("LastName","r")});
+```
+The field names in select parameters are the field names in the class, these are automatically translated.  All conditions in the array are anded together, to or, create an ORParameter and supply the array of parameters to collect in the OR group.
+**WARNING**  All connections should have CloseConnection called when completed with operations, this both commits the transaction as well as closes the connection and returns it to the pool to allow it to be used again.
+
+## ClassQuery ##
+
+The ClassQuery class is used to run select queries written in standard sql using class Names and field associations.  An example below shows how to select all Owners who own a SpecialItem whose price is greater than the 5.  The ClassQuery constructor requires the query and the namespace that the classes are contained within.
+```
+ClassQuery cq = new ClassQuery("Sample",
+"SELECT Distinct own.FirstName,own.LastName FROM Owner own WHERE own.Items.ID IN (SELECT ID FROM SpecialItems WHERE Price > @price)");
+cq.Execute(new IDbDataParameter[]{cq.CreateParameter("@price",5)});
+while (cq.Read()){
+  Console.WriteLine(cq[1].ToString()+", "+cq[0].ToString());
+}
+cq.Close();
+```
