@@ -378,7 +378,8 @@ namespace Org.Reddragonit.Dbpro.Connections
                         ret = CreateConnection();
                         if (ret != null)
                         {
-                            _conns.Add(ret);
+                            if (maxPoolSize>0)
+                                _conns.Add(ret);
                             _lock.Set();
                             break;
                         }
@@ -411,7 +412,8 @@ namespace Org.Reddragonit.Dbpro.Connections
 		{
             Logger.LogLine(string.Format("Connection {0} return to pool", conn.ID));
             _lock.WaitOne();
-            _conns.Remove(conn);
+            if (maxPoolSize>0)
+                _conns.Remove(conn);
             _lock.Set();
             conn.Disconnect();
 		}
