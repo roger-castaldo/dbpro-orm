@@ -493,19 +493,18 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
                     {
                         if (!delCode.Contains("IF ((SELECT COUNT(*) FROM DELETED)>0) BEGIN"))
                             delCode += "IF ((SELECT COUNT(*) FROM DELETED)>0) BEGIN \n";
-                        for (int x = 0; x < maps.Count; x++)
+                        if (!delCode.Contains(string.Format("DELETE FROM {0} WHERE (", map.TableName)))
                         {
-                            List<ForeignRelationMap> rel = maps[x];
-                            if (!delCode.Contains(string.Format("DELETE FROM {0} WHERE (", map.TableName)))
+                            string enableTrigger = "";
+                            if (AutoDeleteParentTables.ContainsKey(map.TableName))
                             {
-                                string disableTrigger = "";
-                                string enableTrigger = "";
-                                if (AutoDeleteParentTables.ContainsKey(map.TableName))
-                                {
-                                    disableTrigger = string.Format("ALTER TABLE {0} DISABLE TRIGGER {0}_DEL;\n", map.TableName);
-                                    enableTrigger = string.Format("ALTER TABLE {0} ENABLE TRIGGER {0}_DEL;\n", map.TableName);
-                                }
-                                delCode += string.Format("{1} DELETE FROM {0} WHERE (", map.TableName, disableTrigger);
+                                delCode += string.Format("ALTER TABLE {0} DISABLE TRIGGER {0}_DEL;\n", map.TableName);
+                                enableTrigger = string.Format("ALTER TABLE {0} ENABLE TRIGGER {0}_DEL;\n", map.TableName);
+                            }
+                            for (int x = 0; x < maps.Count; x++)
+                            {
+                                List<ForeignRelationMap> rel = maps[x];
+                                delCode += string.Format("DELETE FROM {0} WHERE (", map.TableName);
                                 fields = "";
                                 foreach (ForeignRelationMap frm in rel)
                                 {
@@ -513,10 +512,10 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
                                     fields += string.Format("CAST({0} AS VARCHAR(MAX))+'-'+", frm.ExternalField);
                                 }
                                 delCode = delCode.Substring(0, delCode.Length - 5);
-                                delCode += string.Format(") IN (SELECT ({0}) FROM DELETED);\n {1}",
-                                    fields.Substring(0, fields.Length - 5),
-                                    enableTrigger);
+                                delCode += string.Format(") IN (SELECT ({0}) FROM DELETED);\n",
+                                    fields.Substring(0, fields.Length - 5));
                             }
+                            delCode += enableTrigger;
                         }
                         delCode += string.Format("END\nDELETE FROM {0} WHERE ({1}) IN (SELECT ({1}) FROM DELETED);\nEND\n\n",
                                     tblName,

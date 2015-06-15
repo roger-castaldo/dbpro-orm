@@ -1280,7 +1280,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                                         }
                                         if (foundField)
                                         {
-                                            foundRelation = true;
+                                            foundRelation = (curfrms[0].OnDelete==exfrms[0].OnDelete)&&(curfrms[0].OnUpdate==exfrms[0].OnUpdate);
                                             break;
                                         }
                                     }
@@ -1335,7 +1335,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                                         }
                                         if (foundField)
                                         {
-                                            foundRelation = true;
+                                            foundRelation = (curfrms[0].OnDelete == exfrms[0].OnDelete) && (curfrms[0].OnUpdate == exfrms[0].OnUpdate);
                                             break;
                                         }
                                     }
