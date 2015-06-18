@@ -378,6 +378,15 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                 if (st != t)
                 {
                     sTable stbl = _pool.Mapping[st];
+                    foreach (sTableField fld in stbl.Fields)
+                    {
+                        if (stbl.IsEnumProperty(fld.Name))
+                        {
+                            Type eType = st.GetProperty(fld.ClassProperty).PropertyType;
+                            if (!types.Contains(eType))
+                                types.Add(eType);
+                        }
+                    }
                     foreach (string str in stbl.ForeignTableProperties)
                     {
                         sTableRelation strel = stbl.GetRelationForProperty(str).Value;
