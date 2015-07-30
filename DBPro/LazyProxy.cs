@@ -249,19 +249,57 @@ namespace Org.Reddragonit.Dbpro
                                     for (int x = arCur.Length; x < arNew.Length; x++)
                                         indexes.Add(x);
                                     if (indexes.Count > 0 && !_changedFields.Contains(pi.Name))
+                                    {
                                         _changedFields.Add(pi.Name);
-                                    else if (arNew.Length!=arCur.Length && !_changedFields.Contains(pi.Name))
+                                        if (fieldsAffected != null)
+                                        {
+                                            foreach (string str in fieldsAffected)
+                                            {
+                                                if (!_changedFields.Contains(str))
+                                                    _changedFields.Add(str);
+                                            }
+                                        }
+                                    }
+                                    else if (arNew.Length != arCur.Length && !_changedFields.Contains(pi.Name))
+                                    {
                                         _changedFields.Add(pi.Name);
+                                        if (fieldsAffected != null)
+                                        {
+                                            foreach (string str in fieldsAffected)
+                                            {
+                                                if (!_changedFields.Contains(str))
+                                                    _changedFields.Add(str);
+                                            }
+                                        }
+                                    }
                                     _replacedArrayIndexes.Add(pi.Name, indexes);
                                 }
                                 else if (!_changedFields.Contains(pi.Name))
+                                {
                                     _changedFields.Add(pi.Name);
+                                    if (fieldsAffected != null)
+                                    {
+                                        foreach (string str in fieldsAffected)
+                                        {
+                                            if (!_changedFields.Contains(str))
+                                                _changedFields.Add(str);
+                                        }
+                                    }
+                                }
                             }else if (((curVal==null)&&(mc.Args[0]!=null))||
 							    ((curVal!=null)&&(mc.Args[0]==null))||
 							    ((curVal!=null)&&(mc.Args[0]!=null)&&(!curVal.Equals(mc.Args[0]))))
 							{
 								if (!_changedFields.Contains(pi.Name))
 									_changedFields.Add(pi.Name);
+                                if (fieldsAffected != null)
+                                {
+                                    foreach (string str in fieldsAffected)
+                                    {
+                                        if (!_changedFields.Contains(str))
+                                            _changedFields.Add(str);
+                                    }
+                                }
 							}
 						}
                         foreach (object obj in pi.GetCustomAttributes(true))
