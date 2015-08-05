@@ -17,6 +17,7 @@ using System.Reflection;
 using Org.Reddragonit.Dbpro.Structure.Attributes;
 using Table = Org.Reddragonit.Dbpro.Structure.Table;
 using System.Text.RegularExpressions;
+using System.Text;
 
 namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 {
@@ -129,9 +130,37 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
 			List<IDbDataParameter> parameters;
 			EstablishSubQueries(ref pos,_tokenizer.Tokens);
 			Dictionary<int, string> subQueryTranlsations = TranslateSubQueries(out parameters);
-            _outputQuery = _RecurBuildOutputSubquery(0, subQueryTranlsations);
+            _outputQuery = _MergeSubQueries(subQueryTranlsations);
         }
 
+        private string _MergeSubQueries(Dictionary<int, string> subQueryTranlsations)
+        {
+            foreach (int idx_prime in _subQueryIndexes.Keys)
+            {
+                foreach (int idx_parent in _subQueryIndexes.Keys)
+                {
+                    if (idx_parent < idx_prime && idx_parent+_subQueryIndexes[idx_parent]>idx_prime)
+                    {
+                        StringBuilder sb = new StringBuilder();
+                        for (int x = idx_prime; x < idx_prime + _subQueryIndexes[idx_prime]; x++)
+                            sb.AppendFormat("{0} ", _tokenizer.Tokens[x].Value);
+                        string trans_parent = subQueryTranlsations[idx_parent];
+                        subQueryTranlsations.Remove(idx_parent);
+                        if (trans_parent.Contains(sb.ToString()))
+                        {
+                            trans_parent = trans_parent.Substring(0, trans_parent.IndexOf(sb.ToString()))
+                                + subQueryTranlsations[idx_prime] + trans_parent.Substring(trans_parent.IndexOf(sb.ToString()) + sb.Length);
+                        }
+                        subQueryTranlsations.Add(idx_parent, trans_parent);
+                        subQueryTranlsations.Remove(idx_prime);
+                        break;
+                    }
+                }
+            }
+            return subQueryTranlsations[0];
+        }
+
+        [Obsolete]
         private string _RecurBuildOutputSubquery(int subqueryIndex, Dictionary<int, string> subQueryTranlsations)
         {
             string ret = subQueryTranlsations[subqueryIndex];
