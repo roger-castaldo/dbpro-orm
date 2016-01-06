@@ -7,6 +7,7 @@ using System.Threading;
 using System.Xml;
 using Org.Reddragonit.Dbpro.Structure;
 using Org.Reddragonit.Dbpro.Connections.Parameters;
+using Org.Reddragonit.Dbpro.Connections.Triggers;
 
 namespace Org.Reddragonit.Dbpro.Connections
 {
@@ -47,7 +48,9 @@ namespace Org.Reddragonit.Dbpro.Connections
 
         public delegate void delPreInit(ConnectionPool pool);
         public delegate void delPostInit(ConnectionPool pool);
-        public delegate void delGetAdditionalsForTable(Type tableType,out List<View> views, out List<StoredProcedure> procedures, out List<Type> additionalTypes,out List<Trigger> triggers);
+        public delegate List<View> delGetAdditionalViewsForTable(Type tableType,out List<Type> additionalTypes);
+        public delegate List<StoredProcedure> delGetAdditionalStoredProceduresForTable(Type tableType,out List<Type> additionalTypes);
+        public delegate List<Trigger> delGetAdditionalTriggersForTable(Type tableType,out List<Type> additionalTypes);
 		
 		internal readonly static string DEFAULT_CONNECTION_NAME="Org.Reddragonit.Dbpro.Connections.DEFAULT";
 		private readonly static string CONNECTION_CONFIG_FILENAME="DbPro.xml";
@@ -61,7 +64,9 @@ namespace Org.Reddragonit.Dbpro.Connections
         internal static Dictionary<Type, List<EnumTranslationPair>> _translations = new Dictionary<Type, List<EnumTranslationPair>>();
         private static Dictionary<string, List<delPreInit>> _preInits = new Dictionary<string,List<delPreInit>>();
         private static Dictionary<string, List<delPostInit>> _postInits = new Dictionary<string,List<delPostInit>>();
-        private static Dictionary<string, List<delGetAdditionalsForTable>> _getAdditionals = new Dictionary<string,List<delGetAdditionalsForTable>>();
+        private static Dictionary<string, List<delGetAdditionalViewsForTable>> _getAdditionalViews = new Dictionary<string,List<delGetAdditionalViewsForTable>>();
+        private static Dictionary<string, List<delGetAdditionalStoredProceduresForTable>> _getAdditionalStoredProcedures = new Dictionary<string,List<delGetAdditionalStoredProceduresForTable>>();
+        private static Dictionary<string, List<delGetAdditionalTriggersForTable>> _getAdditionalTriggers = new Dictionary<string,List<delGetAdditionalTriggersForTable>>();
         private static List<string> _poolsInitted = new List<string>();
 		
 		static ConnectionPoolManager()
@@ -170,36 +175,95 @@ namespace Org.Reddragonit.Dbpro.Connections
             _postInitsLock.Set();
         }
 
-        public static void RegisterAdditionalsForTable(string poolName, delGetAdditionalsForTable additionals)
-        {
+        public static void RegisterAdditionalsView(string poolName,delGetAdditionalViewsForTable additionals){
             _additionalsLock.WaitOne();
             poolName = (poolName == null ? DEFAULT_CONNECTION_NAME : poolName);
-            List<delGetAdditionalsForTable> adds = new List<delGetAdditionalsForTable>();
-            if (_getAdditionals.ContainsKey(poolName))
+            List<delGetAdditionalViewsForTable> adds = new List<delGetAdditionalViewsForTable>();
+            if (_getAdditionalViews.ContainsKey(poolName))
             {
-                adds = _getAdditionals[poolName];
-                _getAdditionals.Remove(poolName);
+                adds = _getAdditionalViews[poolName];
+                _getAdditionalViews.Remove(poolName);
             }
             adds.Add(additionals);
-            _getAdditionals.Add(poolName, adds);
+            _getAdditionalViews.Add(poolName, adds);
             _additionalsLock.Set();
         }
 
-        public static void UnRegisterAdditionalsForTable(string poolName, delGetAdditionalsForTable additionals)
+        public static void UnRegisterAdditionalsView(string poolName, delGetAdditionalViewsForTable additionals)
         {
             _additionalsLock.WaitOne();
             poolName = (poolName == null ? DEFAULT_CONNECTION_NAME : poolName);
-            List<delGetAdditionalsForTable> adds = new List<delGetAdditionalsForTable>();
-            if (_getAdditionals.ContainsKey(poolName))
+            List<delGetAdditionalViewsForTable> adds = new List<delGetAdditionalViewsForTable>();
+            if (_getAdditionalViews.ContainsKey(poolName))
             {
-                adds = _getAdditionals[poolName];
-                _getAdditionals.Remove(poolName);
+                adds = _getAdditionalViews[poolName];
+                _getAdditionalViews.Remove(poolName);
             }
             adds.Remove(additionals);
-            _getAdditionals.Add(poolName, adds);
+            _getAdditionalViews.Add(poolName, adds);
             _additionalsLock.Set();
         }
 
+        public static void RegisterAdditionalsStoredProcedure(string poolName, delGetAdditionalStoredProceduresForTable additionals)
+        {
+            _additionalsLock.WaitOne();
+            poolName = (poolName == null ? DEFAULT_CONNECTION_NAME : poolName);
+            List<delGetAdditionalStoredProceduresForTable> adds = new List<delGetAdditionalStoredProceduresForTable>();
+            if (_getAdditionalStoredProcedures.ContainsKey(poolName))
+            {
+                adds = _getAdditionalStoredProcedures[poolName];
+                _getAdditionalStoredProcedures.Remove(poolName);
+            }
+            adds.Add(additionals);
+            _getAdditionalStoredProcedures.Add(poolName, adds);
+            _additionalsLock.Set();
+        }
+
+        public static void UnRegisterAdditionalsStoredProcedure(string poolName, delGetAdditionalStoredProceduresForTable additionals)
+        {
+            _additionalsLock.WaitOne();
+            poolName = (poolName == null ? DEFAULT_CONNECTION_NAME : poolName);
+            List<delGetAdditionalStoredProceduresForTable> adds = new List<delGetAdditionalStoredProceduresForTable>();
+            if (_getAdditionalStoredProcedures.ContainsKey(poolName))
+            {
+                adds = _getAdditionalStoredProcedures[poolName];
+                _getAdditionalStoredProcedures.Remove(poolName);
+            }
+            adds.Remove(additionals);
+            _getAdditionalStoredProcedures.Add(poolName, adds);
+            _additionalsLock.Set();
+        }
+
+        public static void RegisterAdditionalsTrigger(string poolName, delGetAdditionalTriggersForTable additionals)
+        {
+            _additionalsLock.WaitOne();
+            poolName = (poolName == null ? DEFAULT_CONNECTION_NAME : poolName);
+            List<delGetAdditionalTriggersForTable> adds = new List<delGetAdditionalTriggersForTable>();
+            if (_getAdditionalTriggers.ContainsKey(poolName))
+            {
+                adds = _getAdditionalTriggers[poolName];
+                _getAdditionalTriggers.Remove(poolName);
+            }
+            adds.Add(additionals);
+            _getAdditionalTriggers.Add(poolName, adds);
+            _additionalsLock.Set();
+        }
+
+        public static void UnRegisterAdditionalsTrigger(string poolName, delGetAdditionalTriggersForTable additionals)
+        {
+            _additionalsLock.WaitOne();
+            poolName = (poolName == null ? DEFAULT_CONNECTION_NAME : poolName);
+            List<delGetAdditionalTriggersForTable> adds = new List<delGetAdditionalTriggersForTable>();
+            if (_getAdditionalTriggers.ContainsKey(poolName))
+            {
+                adds = _getAdditionalTriggers[poolName];
+                _getAdditionalTriggers.Remove(poolName);
+            }
+            adds.Remove(additionals);
+            _getAdditionalTriggers.Add(poolName, adds);
+            _additionalsLock.Set();
+        }
+        
         public static void RegisterTrigger(Type objectType, ITrigger trigger)
         {
             Monitor.Enter(_triggers);
@@ -225,10 +289,12 @@ namespace Org.Reddragonit.Dbpro.Connections
                 switch (type)
                 {
                     case TriggerTypes.PRE_DELETE_ALL:
-                        tr.PreDeleteAll(conn,out abort);
+                        if (tr is IPreDeleteTrigger)
+                            ((IPreDeleteTrigger)tr).PreDeleteAll(conn,out abort);
                         break;
                     case TriggerTypes.POST_DELETE_ALL:
-                        tr.PostDeleteAll(conn);
+                        if (tr is IPostDeleteTrigger)
+                            ((IPostDeleteTrigger)tr).PostDeleteAll(conn);
                         break;
                 }
             }
@@ -250,10 +316,12 @@ namespace Org.Reddragonit.Dbpro.Connections
                 switch (type)
                 {
                     case TriggerTypes.PRE_DELETE:
-                        tr.PreDelete(conn,tableType, parameters,out abort);
+                        if (tr is IPreDeleteTrigger)
+                            ((IPreDeleteTrigger)tr).PreDelete(conn, tableType, parameters, out abort);
                         break;
                     case TriggerTypes.POST_DELETE:
-                        tr.PostDelete(conn,tableType, parameters);
+                        if (tr is IPostDeleteTrigger)
+                            ((IPostDeleteTrigger)tr).PostDelete(conn, tableType, parameters);
                         break;
                 }
             }
@@ -275,10 +343,12 @@ namespace Org.Reddragonit.Dbpro.Connections
                 switch (type)
                 {
                     case TriggerTypes.PRE_UPDATE:
-                        tr.PreUpdate(conn,tableType, updateFields, parameters,out abort);
+                        if (tr is IPreUpdateTrigger)
+                            ((IPreUpdateTrigger)tr).PreUpdate(conn,tableType, updateFields, parameters,out abort);
                         break;
                     case TriggerTypes.POST_UPDATE:
-                        tr.PostUpdate(conn,tableType, updateFields, parameters);
+                        if (tr is IPostUpdateTrigger)
+                            ((IPostUpdateTrigger)tr).PostUpdate(conn,tableType, updateFields, parameters);
                         break;
                 }
             }
@@ -299,28 +369,36 @@ namespace Org.Reddragonit.Dbpro.Connections
                 switch (type)
                 {
                     case TriggerTypes.PRE_DELETE:
-                        tr.PreDelete(conn,tbl,out abort);
+                        if (tr is IPreDeleteTrigger)
+                            ((IPreDeleteTrigger)tr).PreDelete(conn,tbl,out abort);
                         break;
                     case TriggerTypes.POST_DELETE:
-                        tr.PostDelete(conn, tbl);
+                        if (tr is IPostDeleteTrigger)
+                            ((IPostDeleteTrigger)tr).PostDelete(conn, tbl);
                         break;
                     case TriggerTypes.PRE_INSERT:
-                        tr.PreInsert(conn, tbl, out abort);
+                        if (tr is IPreInsertTrigger)
+                            ((IPreInsertTrigger)tr).PreInsert(conn, tbl, out abort);
                         break;
                     case TriggerTypes.POST_INSERT:
-                        tr.PostInsert(conn, tbl);
+                        if (tr is IPostInsertTrigger)
+                            ((IPostInsertTrigger)tr).PostInsert(conn, tbl);
                         break;
                     case TriggerTypes.PRE_UPDATE:
-                        tr.PreUpdate(conn, original, tbl, tbl.ChangedFields, out abort);
+                        if (tr is IPreUpdateTrigger)
+                            ((IPreUpdateTrigger)tr).PreUpdate(conn, original, tbl, tbl.ChangedFields, out abort);
                         break;
                     case TriggerTypes.POST_UPDATE:
-                        tr.PostUpdate(conn, original, tbl, tbl.ChangedFields);
+                        if (tr is IPostUpdateTrigger)
+                            ((IPostUpdateTrigger)tr).PostUpdate(conn, original, tbl, tbl.ChangedFields);
                         break;
                     case TriggerTypes.PRE_DELETE_ALL:
-                        tr.PreDeleteAll(conn, out abort);
+                        if (tr is IPreDeleteTrigger)
+                            ((IPreDeleteTrigger)tr).PreDeleteAll(conn, out abort);
                         break;
                     case TriggerTypes.POST_DELETE_ALL:
-                        tr.PostDeleteAll(conn);
+                        if (tr is IPostDeleteTrigger)
+                            ((IPostDeleteTrigger)tr).PostDeleteAll(conn);
                         break;
                 }
             }
@@ -445,20 +523,36 @@ namespace Org.Reddragonit.Dbpro.Connections
             procedures = new List<StoredProcedure>();
             types = new List<Type>();
             triggers = new List<Trigger>();
+            List<Type> ttypes;
             _additionalsLock.WaitOne();
-            if (_getAdditionals.ContainsKey(pool.ConnectionName))
+            if (_getAdditionalViews.ContainsKey(pool.ConnectionName))
             {
-                foreach (delGetAdditionalsForTable del in _getAdditionals[pool.ConnectionName])
+                foreach (delGetAdditionalViewsForTable del in _getAdditionalViews[pool.ConnectionName])
                 {
-                    List<View> tviews;
-                    List<StoredProcedure> tprocedures;
-                    List<Type> ttypes;
-                    List<Trigger> ttriggers;
-                    del.Invoke(type, out tviews, out tprocedures, out ttypes,out ttriggers);
-                    views.AddRange(tviews);
-                    procedures.AddRange(tprocedures);
-                    types.AddRange(ttypes);
-                    triggers.AddRange(ttriggers);
+                    views.AddRange(del.Invoke(type,out ttypes));
+                    if (ttypes != null)
+                        types.AddRange(ttypes);
+                    ttypes = null;
+                }
+            }
+            if (_getAdditionalStoredProcedures.ContainsKey(pool.ConnectionName))
+            {
+                foreach (delGetAdditionalStoredProceduresForTable del in _getAdditionalStoredProcedures[pool.ConnectionName])
+                {
+                    procedures.AddRange(del.Invoke(type, out ttypes));
+                    if (ttypes != null)
+                        types.AddRange(ttypes);
+                    ttypes = null;
+                }
+            }
+            if (_getAdditionalTriggers.ContainsKey(pool.ConnectionName))
+            {
+                foreach (delGetAdditionalTriggersForTable del in _getAdditionalTriggers[pool.ConnectionName])
+                {
+                    triggers.AddRange(del.Invoke(type, out ttypes));
+                    if (ttypes != null)
+                        types.AddRange(ttypes);
+                    ttypes = null;
                 }
             }
             _additionalsLock.Set();

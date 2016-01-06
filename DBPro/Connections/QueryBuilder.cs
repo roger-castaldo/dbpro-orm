@@ -798,7 +798,15 @@ namespace Org.Reddragonit.Dbpro.Connections
                                         {
                                             if (fld.ExternalField == efld.Name)
                                             {
-                                                insertParameters.Add(pool.CreateParameter(CreateParameterName(fld.Name),QueryBuilder.LocateFieldValue(eTable,efld,pool)));
+                                                for (int x = 0; x < insertParameters.Count; x++)
+                                                {
+                                                    if (insertParameters[x].ParameterName == CreateParameterName(fld.Name))
+                                                    {
+                                                        insertParameters.RemoveAt(x);
+                                                        break;
+                                                    }
+                                                }
+                                                insertParameters.Add(pool.CreateParameter(CreateParameterName(fld.Name), QueryBuilder.LocateFieldValue(eTable, efld, pool)));
                                                 break;
                                             }
                                         }
