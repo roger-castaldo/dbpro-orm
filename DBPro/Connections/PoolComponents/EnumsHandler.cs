@@ -33,7 +33,7 @@ namespace Org.Reddragonit.Dbpro.Connections.PoolComponents
                     sb.Append("("+type.FullName.Replace(".", "\\.").Replace("+", "\\+") + "\\.(");
                     string[] tmp = Enum.GetNames(type);
                     for (int x = 0; x < tmp.Length; x++)
-                        sb.AppendFormat("{0}{1}",
+                        sb.AppendFormat("{0}{1}(\\s|,|\\))",
                             new object[]{
                                 (x>0 ? "|" : ""),
                                 tmp[x]
