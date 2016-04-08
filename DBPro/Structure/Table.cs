@@ -479,6 +479,10 @@ namespace Org.Reddragonit.Dbpro.Structure
             {
                 pi.SetValue(this, BitConverter.ToUInt64(BitConverter.GetBytes(long.Parse(value.ToString())), 0), new object[0]);
             }
+            else if ((pi.PropertyType.Equals(typeof(byte)) || pi.PropertyType.Equals(typeof(Byte))) && ((value.GetType().Equals(typeof(string)) && value.ToString().Length == 1)||(value.GetType().Equals(typeof(bool))||value.GetType().Equals(typeof(Boolean)))))
+            {
+                pi.SetValue(this, ((value.GetType().Equals(typeof(bool))||value.GetType().Equals(typeof(Boolean))) ? (byte)((bool)value ? 'T' : 'F') : (byte)value.ToString()[0]), new object[0]);
+            }
             else
             {
                 if (value != null)
