@@ -233,22 +233,31 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		
 		public override object GetValue(int i)
         {
-            if ((reader.GetDataTypeName(i)=="CHAR")&&(reader[i].ToString().Length == 1) && ((reader[i].ToString() == "T") || (reader[i].ToString() == "F")))
-                return this.GetBoolean(i);
+            if (!((FBConnectionPool)Pool).SupportsBoolean)
+            {
+                if ((reader.GetDataTypeName(i) == "CHAR") && (reader[i].ToString().Length == 1) && ((reader[i].ToString() == "T") || (reader[i].ToString() == "F")))
+                    return this.GetBoolean(i);
+            }
             return base.GetValue(i);
         }
 
         public override Type GetFieldType(int i)
         {
-            if ((reader.GetDataTypeName(i) == "CHAR") && (reader[i].ToString().Length == 1) && ((reader[i].ToString() == "T") || (reader[i].ToString() == "F")))
-                return typeof(bool);
+            if (!((FBConnectionPool)Pool).SupportsBoolean)
+            {
+                if ((reader.GetDataTypeName(i) == "CHAR") && (reader[i].ToString().Length == 1) && ((reader[i].ToString() == "T") || (reader[i].ToString() == "F")))
+                    return typeof(bool);
+            }
             return base.GetFieldType(i);
         }
 
         public override bool GetBoolean(int i)
         {
-            if ((reader.GetDataTypeName(i) == "CHAR") && (reader[i].ToString().Length == 1) && ((reader[i].ToString() == "T") || (reader[i].ToString() == "F")))
-                return reader[i].ToString() == "T";
+            if (!((FBConnectionPool)Pool).SupportsBoolean)
+            {
+                if ((reader.GetDataTypeName(i) == "CHAR") && (reader[i].ToString().Length == 1) && ((reader[i].ToString() == "T") || (reader[i].ToString() == "F")))
+                    return reader[i].ToString() == "T";
+            }
             return base.GetBoolean(i);
         }
 		
@@ -268,7 +277,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 			switch(type)
 			{
 				case FieldType.BOOLEAN:
-					ret="CHAR(1)";
+					ret=(((FBConnectionPool)Pool).SupportsBoolean ? "BOOLEAN":"CHAR(1)");
 					break;
 				case FieldType.BYTE:
 					if ((fieldLength==-1)||(fieldLength>32767))

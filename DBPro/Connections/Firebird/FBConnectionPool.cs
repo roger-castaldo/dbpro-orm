@@ -107,10 +107,27 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		public override int MaxFieldNameLength {
 			get { return 31; }
 		}
-		
-		protected override Connection CreateConnection(bool exclusiveLock)
+
+        private bool _supportsBoolean = false;
+        internal bool SupportsBoolean { get { return _supportsBoolean; } }
+        private bool _booleanChecked = false;
+
+        protected override Connection CreateConnection(bool exclusiveLock)
 		{
-			return new FBConnection(this,connectionString,_readonly,exclusiveLock);
+			Connection ret = new FBConnection(this,connectionString,_readonly,exclusiveLock);
+            if (!_booleanChecked)
+            {
+                _booleanChecked = true;
+                try
+                {
+                    ret.ExecuteQuery("SELECT CAST(SUBSTRING(rdb$get_context('SYSTEM', 'ENGINE_VERSION') FROM 1 FOR POSITION('.' IN rdb$get_context('SYSTEM', 'ENGINE_VERSION'))) AS INTEGER) from rdb$database");
+                    ret.Read();
+                    _supportsBoolean = (int)ret[0] >= 3;
+                    ret.Close();
+                }
+                catch (Exception e) { }
+            }
+            return ret;
 		}
 
         protected override void PreInit()
@@ -157,7 +174,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 
         protected override IDbDataParameter _CreateParameter(string parameterName, object parameterValue)
         {
-            if (parameterValue is bool)
+            if (parameterValue is bool && !SupportsBoolean)
             {
                 if ((bool)parameterValue)
                     parameterValue = 'T';
@@ -183,7 +200,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
         {
             get
             {
-                return "'T'";
+                return (SupportsBoolean ? "true" : "'T'");
             }
         }
 
@@ -191,7 +208,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
         {
             get
             {
-                return "'F'";
+                return (SupportsBoolean ? "false" : "'F'");
             }
         }
         

@@ -149,6 +149,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 					 WHEN 13 THEN 'TIME' 
 					 WHEN 35 THEN 'TIMESTAMP' 
 					 WHEN 37 THEN 'VARCHAR' 
+                     WHEN 23 THEN 'BOOLEAN'
 					 ELSE 'UNKNOWN' 
 					 END) AS ColumnDataType, 
 					(CASE fld.rdb$field_type WHEN 261 THEN -1 ELSE 
@@ -310,6 +311,7 @@ FROM RDB$PROCEDURES proc LEFT JOIN
 	WHEN 13 THEN 'TIME' 
 	WHEN 35 THEN 'TIMESTAMP' 
 	WHEN 37 THEN 'VARCHAR' 
+    WHEN 23 THEN 'BOOLEAN'
 	ELSE 'UNKNOWN' 
     END)||(CASE WHEN fld.rdb$field_type IN (14,37) THEN '('||fld.rdb$field_length||')' 
     ELSE '' END)
@@ -336,7 +338,8 @@ LEFT JOIN
 	WHEN 12 THEN 'DATE' 
 	WHEN 13 THEN 'TIME' 
 	WHEN 35 THEN 'TIMESTAMP' 
-	WHEN 37 THEN 'VARCHAR' 
+	WHEN 37 THEN 'VARCHAR'
+    WHEN 23 THEN 'BOOLEAN' 
 	ELSE 'UNKNOWN' 
     END)||(CASE WHEN fld.rdb$field_type IN (14,37) THEN '('||fld.rdb$field_length||')' 
     ELSE '' END)

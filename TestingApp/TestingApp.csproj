@@ -60,9 +60,6 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="App.ico" />
-    <Content Include="DbPro.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
     <EmbeddedResource Include="CompressionTester.xml" />
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="Class1.cs" />
