@@ -747,7 +747,7 @@ DEALLOCATE DeleteCursor;
             queryParameters.Add(Pool.CreateParameter(queryBuilder.CreateParameterName("startIndex"), (long)StartIndex.Value));
             queryParameters.Add(Pool.CreateParameter(queryBuilder.CreateParameterName("rowCount"), (long)RowCount.Value));
             this.ExecuteQuery(string.Format(@"SELECT * FROM (SELECT *,ROW_NUMBER() OVER (ORDER BY {3}) RowNum
-					 FROM ({0}) internalTbl {4}) cntTbl WHERE RowNum BETWEEN {1} AND {1}+{2}",
+					 FROM ({0}) internalTbl {4}) cntTbl WHERE RowNum BETWEEN {1}+1 AND {1}+{2}",
                         new object[]{
                             cva.Query.QueryString,
                             queryBuilder.CreateParameterName("startIndex"),

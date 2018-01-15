@@ -267,7 +267,7 @@ FROM (SELECT sys1.name trigger_name,
         {
 			get {
                 return @"SELECT * FROM (SELECT *,ROW_NUMBER() OVER (ORDER BY {3}) RowNum
-					 FROM ({0}) internalTbl) cntTbl WHERE RowNum BETWEEN {1} AND {1}+{2}";
+					 FROM ({0}) internalTbl) cntTbl WHERE RowNum BETWEEN {1}+1 AND {1}+{2}";
 			}
 		}
 
