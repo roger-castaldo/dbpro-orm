@@ -1,81 +1,23 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" xmlns:Conversion="urn:Conversion" ToolsVersion="12.0">
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{BA852BCE-1638-464A-9DBB-47E5ABE48BEF}</ProjectGuid>
-    <RootNamespace>TestingApp</RootNamespace>
-    <AssemblyName>TestingApp</AssemblyName>
+    <TargetFramework>net452</TargetFramework>
     <OutputType>Exe</OutputType>
     <ApplicationIcon>App.ico</ApplicationIcon>
-    <RunPostBuildEvent>OnSuccessfulBuild</RunPostBuildEvent>
-    <PreBuildEvent />
-    <PostBuildEvent />
-    <StartupObject />
-    <NoConfig>false</NoConfig>
-    <FileUpgradeFlags>
-    </FileUpgradeFlags>
-    <OldToolsVersion>3.5</OldToolsVersion>
-    <UpgradeBackupLocation>
-    </UpgradeBackupLocation>
-    <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <NoStdLib>false</NoStdLib>
-    <WarningLevel>4</WarningLevel>
-    <NoWarn />
-    <DebugSymbols>true</DebugSymbols>
-    <Optimize>false</Optimize>
-    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
-    <CheckForOverflowUnderflow>false</CheckForOverflowUnderflow>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <OutputPath>bin\Debug\</OutputPath>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <NoStdLib>false</NoStdLib>
-    <WarningLevel>4</WarningLevel>
-    <NoWarn />
-    <DebugSymbols>false</DebugSymbols>
-    <Optimize>true</Optimize>
-    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
-    <CheckForOverflowUnderflow>false</CheckForOverflowUnderflow>
-    <DefineConstants>TRACE</DefineConstants>
-    <OutputPath>bin\Release\</OutputPath>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-  </PropertyGroup>
-  <ItemGroup>
-    <Reference Include="FirebirdSql.Data.FirebirdClient, Version=2.6.0.0, Culture=neutral, PublicKeyToken=3750abcc3150b00c, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\libraries\FirebirdSql.Data.FirebirdClient.dll</HintPath>
-    </Reference>
-    <Reference Include="Mono.Posix, Version=2.0.0.0, Culture=neutral, PublicKeyToken=0738eb9f132ed756, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\FreeSwitchConfig\libraries\Mono.Posix.dll</HintPath>
-    </Reference>
-    <Reference Include="System" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.XML" />
-  </ItemGroup>
   <ItemGroup>
     <Content Include="App.ico" />
     <EmbeddedResource Include="CompressionTester.xml" />
-    <Compile Include="AssemblyInfo.cs" />
-    <Compile Include="Class1.cs" />
-    <Compile Include="MT19937.cs" />
-    <Compile Include="Structure\Extension.cs" />
-    <Compile Include="Structure\ExtensionNumber.cs" />
-    <Compile Include="Structure\Group.cs" />
-    <Compile Include="Structure\SecurityRight.cs" />
-    <Compile Include="Structure\User.cs" />
-    <Compile Include="UserGroupList.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\DBPro\DBPro.csproj">
-      <Project>{804a5915-5770-4b62-af13-e10ae65b5901}</Project>
-      <Name>DBPro</Name>
-    </ProjectReference>
+    <PackageReference Include="FirebirdSql.Data.FirebirdClient" Version="7.0.0-beta1" />
   </ItemGroup>
-  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.Targets" />
+  <ItemGroup>
+    <ProjectReference Include="..\DBPro\DBPro.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="DbPro.xml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 </Project>

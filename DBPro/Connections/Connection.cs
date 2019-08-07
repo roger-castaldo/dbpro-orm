@@ -584,7 +584,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 }
             }
             if (!ret.IsProxied)
-                ret = (Table)LazyProxy.Instance(ret);
+                ret = (Table)LazyProxy<Table>.Instance(ret);
             return ret;
         }
 
@@ -857,7 +857,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                             ExecuteQuery(query, pars);
                             while (Read())
                             {
-                                Table ta = (Table)LazyProxy.Instance(pi.PropertyType.GetElementType().GetConstructor(System.Type.EmptyTypes).Invoke(new object[0]));
+                                Table ta = (Table)LazyProxy<Table>.Instance(pi.PropertyType.GetElementType().GetConstructor(System.Type.EmptyTypes).Invoke(new object[0]));
                                 ta.SetValues(this);
                                 ta.LoadStatus = LoadStatus.Partial;
                                 values.Add(ta);
@@ -1171,7 +1171,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             ExecuteQuery(queryBuilder.SelectAll(type,OrderByFields));
             while (Read())
             {
-                Table t = (Table)LazyProxy.Instance(type.GetConstructor(System.Type.EmptyTypes).Invoke(new object[0]));
+                Table t = (Table)LazyProxy<Table>.Instance(type.GetConstructor(System.Type.EmptyTypes).Invoke(new object[0]));
                 t.SetValues(this);
                 t.LoadStatus = LoadStatus.Complete;
                 ret.Add(t);
@@ -1259,7 +1259,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			while (Read())
 			{
                 Logger.LogLine("Creating a lazy proxy instance for the table type " + type.FullName);
-				Table t = (Table)LazyProxy.Instance(type.GetConstructor(System.Type.EmptyTypes).Invoke(new object[0]));
+				Table t = (Table)LazyProxy<Table>.Instance(type.GetConstructor(System.Type.EmptyTypes).Invoke(new object[0]));
                 Logger.LogLine("Reading result and loading table object " + type.FullName + " from query");
 				t.SetValues(this);
                 Logger.LogLine("Setting load status for " + type.FullName + " as completed and adding to results");
@@ -1335,7 +1335,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			ExecuteQuery(query,pars);
 			while (Read())
 			{
-				Table t = (Table)LazyProxy.Instance(type.GetConstructor(System.Type.EmptyTypes).Invoke(new object[0]));
+				Table t = (Table)LazyProxy<Table>.Instance(type.GetConstructor(System.Type.EmptyTypes).Invoke(new object[0]));
 				t.SetValues(this);
 				t.LoadStatus=LoadStatus.Complete;
 				ret.Add(t);

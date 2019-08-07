@@ -41,7 +41,7 @@ namespace Org.Reddragonit.Dbpro.Structure
 		{
 			if (!type.IsSubclassOf(typeof(Table)))
 				throw new Exception("Cannot create instance of a class that is not a table.");
-			return (Table)LazyProxy.Instance(type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
+			return (Table)LazyProxy<Table>.Instance(type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
 		}
 		
         //access the load status of the current table object.
@@ -225,7 +225,7 @@ namespace Org.Reddragonit.Dbpro.Structure
                         pi = table.GetType().GetProperty(prop, Utility._BINDING_FLAGS_WITH_INHERITANCE);
                     Table t = (Table)pi.PropertyType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
                     t._loadStatus = LoadStatus.Partial;
-                    t = (Table)LazyProxy.Instance(t);
+                    t = (Table)LazyProxy<Table>.Instance(t);
                     foreach (sTableField f in eMap[prop])
                     {
                         foreach (sTableField fld in flds)
@@ -296,7 +296,7 @@ namespace Org.Reddragonit.Dbpro.Structure
                                 pi = table.GetType().GetProperty(fld.ClassProperty, Utility._BINDING_FLAGS_WITH_INHERITANCE);
                             Table t = (Table)pi.PropertyType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
                             t._loadStatus = LoadStatus.Partial;
-                            t = (Table)LazyProxy.Instance(t);
+                            t = (Table)LazyProxy<Table>.Instance(t);
                             table.SetField(fld.Name, t);
                         }
                         RecurSetPropertyValue(fld.ExternalField, conn, queryFieldName, (Table)table.GetField(fld.Name));
@@ -322,7 +322,7 @@ namespace Org.Reddragonit.Dbpro.Structure
                         {
                             Table t = (Table)pi.PropertyType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
                             t._loadStatus = LoadStatus.Partial;
-                            t = (Table)LazyProxy.Instance(t);
+                            t = (Table)LazyProxy<Table>.Instance(t);
                             bool setValue = false;
                             t = SetExternalValues(map, prop, conn, out setValue, t);
                             if (!t.AllPrimaryKeysNull && setValue)

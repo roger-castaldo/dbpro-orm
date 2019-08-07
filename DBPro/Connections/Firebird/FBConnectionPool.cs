@@ -169,7 +169,28 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 
         internal override IDbDataParameter CreateParameter(string parameterName, object parameterValue, FieldType type, int fieldLength)
         {
-            return CreateParameter(parameterName, parameterValue);
+            object val = parameterValue;
+            if (type == FieldType.BYTE)
+            {
+                if (!((fieldLength == -1) || (fieldLength > 32767)))
+                {
+                    if (parameterValue != null)
+                    {
+                        if (fieldLength == 1)
+                            val = (char)(byte)val;
+                        else
+                        {
+                            char[] tmp = new char[((byte[])parameterValue).Length];
+                            for (int x = 0; x < tmp.Length; x++)
+                            {
+                                tmp[x] = (char)((byte[])parameterValue)[x];
+                            }
+                            val = tmp;
+                        }
+                    }
+                }
+            }
+            return CreateParameter(parameterName, val);
         }
 
         protected override IDbDataParameter _CreateParameter(string parameterName, object parameterValue)

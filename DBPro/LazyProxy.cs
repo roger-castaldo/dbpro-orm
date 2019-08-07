@@ -10,8 +10,10 @@ using Org.Reddragonit.Dbpro.Connections.Parameters;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+#if !NETCOREAPP2_2
 using System.Runtime.Remoting.Messaging;
 using System.Runtime.Remoting.Proxies;
+#endif
 using Org.Reddragonit.Dbpro.Connections;
 using Org.Reddragonit.Dbpro.Exceptions;
 using Org.Reddragonit.Dbpro.Structure;
@@ -30,8 +32,14 @@ namespace Org.Reddragonit.Dbpro
     /// completely.  There is a tag called CompleteLazyLoadPriorToCall that 
     /// forces the loading to be completed when the attributed funcion is called.
 	/// </summary>
-	internal class LazyProxy : RealProxy, IDisposable
-	{
+#if !NETCOREAPP2_2
+	internal class LazyProxy<T> : RealProxy, IDisposable
+    { 
+#else
+    internal class LazyProxy<T> : DispatchProxy, IDisposable
+    {
+        private T _object;
+#endif
 
         private ConnectionPool _pool;
 		private sTable _map;
@@ -43,10 +51,13 @@ namespace Org.Reddragonit.Dbpro
 		
 		public void Dispose()
 		{
-			DetachServer();
-		}
-		
-		public LazyProxy(object subject):base(subject.GetType())
+#if !NETCOREAPP2_2
+            DetachServer();
+#endif
+        }
+
+#if !NETCOREAPP2_2
+        public LazyProxy(object subject):base(subject.GetType())
 		{
             _pool = ConnectionPoolManager.GetPool(subject.GetType());
             _map = _pool.Mapping[subject.GetType()];
@@ -55,16 +66,36 @@ namespace Org.Reddragonit.Dbpro
                 _mainPrimary = _map[_map.AutoGenProperty][0];
 			AttachServer((MarshalByRefObject)subject);
 		}
-		
-		public static object Instance(Object obj)
+
+        public static object Instance(Object obj)
 		{
-			return new LazyProxy(obj).GetTransparentProxy();
+			return new LazyProxy<T>(obj).GetTransparentProxy();
 		}
-		
+#else
+        public LazyProxy() : base() { }
+
+        private void Init(T subject)
+        {
+            _pool = ConnectionPoolManager.GetPool(subject.GetType());
+            _map = _pool.Mapping[subject.GetType()];
+            _allowPrimaryChange = _pool.AllowChangingBasicAutogenField;
+            if ((_map.PrimaryKeyFields.Length == 1) && (_map.AutoGenProperty != null))
+                _mainPrimary = _map[_map.AutoGenProperty][0];
+            _object = subject;
+        }
+
+        public static object Instance(Object obj)
+        {
+            object ret = Create<T, LazyProxy<T>>();
+            ((LazyProxy<T>)ret).Init((T)obj);
+            return ret;
+        }
+#endif
+
         //this function is called to convert the called method into a propertyinfo
         //object if it is in fact a property, otherwise it returns a null.  It also
         //inidicates if the function is a get or a set call.
-		protected static PropertyInfo GetMethodProperty(MethodInfo methodInfo, object owner, out bool IsGet,Type tableType,ConnectionPool pool)
+        protected static PropertyInfo GetMethodProperty(MethodInfo methodInfo, object owner, out bool IsGet,Type tableType,ConnectionPool pool)
 		{
             foreach (PropertyInfo aProp in owner.GetType().GetProperties(Utility._BINDING_FLAGS))
 			{
@@ -91,9 +122,10 @@ namespace Org.Reddragonit.Dbpro
 			IsGet = false;
 			return null;
 		}
-		
+
+#if !NETCOREAPP2_2
         //called to override the hashcode and get it from the underlying object
-		public override int GetHashCode()
+        public override int GetHashCode()
 		{
 			return GetUnwrappedServer().GetHashCode();
 		}
@@ -103,7 +135,20 @@ namespace Org.Reddragonit.Dbpro
 		{
 			return GetUnwrappedServer().ToString();
 		}
+#else
+        //called to override the hashcode and get it from the underlying object
+        public override int GetHashCode()
+		{
+			return _object.GetHashCode();
+		}
 		
+        //called to override the tostring and get it from the underlying object.
+		public override string ToString()
+		{
+			return _object.ToString();
+		}
+#endif
+
         /*
          * This is the main function in the lazy proxy.  Any time a method or property is called
          * within a proxied class this will get called.  The first stage is to check for the 
@@ -123,13 +168,21 @@ namespace Org.Reddragonit.Dbpro
          * on the object.
          * 
          */
-		public override IMessage Invoke(System.Runtime.Remoting.Messaging.IMessage msg)
+#if !NETCOREAPP2_2
+        public override IMessage Invoke(System.Runtime.Remoting.Messaging.IMessage msg)
 		{
 			MethodCallMessageWrapper mc = new MethodCallMessageWrapper((IMethodCallMessage)msg);
 			MarshalByRefObject owner = GetUnwrappedServer();
 			MethodInfo mi = (MethodInfo)mc.MethodBase;
-			
-			object outVal=null;
+            object[] args = mc.Args;
+#else
+        protected override object Invoke(MethodInfo targetMethod, object[] args)
+        {
+            MethodInfo mi = targetMethod;
+            object owner = _object;
+#endif
+
+            object outVal=null;
             List<string> fieldsAffected = null;
 
             foreach (object obj in mi.GetCustomAttributes(true))
@@ -206,7 +259,7 @@ namespace Org.Reddragonit.Dbpro
 					}
 					if (isGet)
 					{
-						outVal = mi.Invoke(owner, mc.Args);
+						outVal = mi.Invoke(owner, args);
 					}else
 					{
                         sTable map = ConnectionPoolManager.GetPool(owner.GetType()).Mapping[owner.GetType()];
@@ -219,7 +272,7 @@ namespace Org.Reddragonit.Dbpro
                             {
                                 if (!_originalArrayLengths.ContainsKey(pi.Name))
                                     _originalArrayLengths.Add(pi.Name,(curVal==null ? 0 : ((Array)curVal).Length));
-                                if (curVal != null && mc.Args[0] != null)
+                                if (curVal != null && args[0] != null)
                                 {
                                     List<int> indexes = new List<int>();
                                     if (_replacedArrayIndexes.ContainsKey(pi.Name))
@@ -228,7 +281,7 @@ namespace Org.Reddragonit.Dbpro
                                         _replacedArrayIndexes.Remove(pi.Name);
                                     }
                                     Array arCur = (Array)curVal;
-                                    Array arNew = (Array)mc.Args[0];
+                                    Array arNew = (Array)args[0];
                                     for (int x = 0; x < _originalArrayLengths[pi.Name]; x++)
                                     {
                                         if (!indexes.Contains(x) && x<arNew.Length)
@@ -286,9 +339,9 @@ namespace Org.Reddragonit.Dbpro
                                         }
                                     }
                                 }
-                            }else if (((curVal==null)&&(mc.Args[0]!=null))||
-							    ((curVal!=null)&&(mc.Args[0]==null))||
-							    ((curVal!=null)&&(mc.Args[0]!=null)&&(!curVal.Equals(mc.Args[0]))))
+                            }else if (((curVal==null)&&(args[0]!=null))||
+							    ((curVal!=null)&&(args[0]==null))||
+							    ((curVal!=null)&&(args[0]!=null)&&(!curVal.Equals(args[0]))))
 							{
 								if (!_changedFields.Contains(pi.Name))
 									_changedFields.Add(pi.Name);
@@ -307,11 +360,11 @@ namespace Org.Reddragonit.Dbpro
                             if (obj is ValidationAttribute)
                             {
                                 ValidationAttribute va = (ValidationAttribute)obj;
-                                if (!va.IsValidValue(mc.Args[0]))
+                                if (!va.IsValidValue(args[0]))
                                     va.FailValidation(owner.GetType().ToString(), pi.Name);
                             }
                         }
-						outVal = mi.Invoke(owner, mc.Args);
+						outVal = mi.Invoke(owner, args);
 					}
 				}else
 				{
@@ -329,18 +382,18 @@ namespace Org.Reddragonit.Dbpro
                         outVal = _changedFields;
                     else if (mi.Name == "GetType")
                         outVal = owner.GetType();
-                    else if ((mi.Name == "FieldSetter") && (mc.Args.Length == 3) && (mc.Args[1].ToString().Trim() == "_isSaved"))
-                        ((Table)owner)._isSaved = (bool)mc.Args[2];
-                    else if ((mi.Name == "FieldGetter") && (mc.Args.Length == 2) && (mc.Args[1].ToString().Trim() == "_isSaved"))
+                    else if ((mi.Name == "FieldSetter") && (args.Length == 3) && (args[1].ToString().Trim() == "_isSaved"))
+                        ((Table)owner)._isSaved = (bool)args[2];
+                    else if ((mi.Name == "FieldGetter") && (args.Length == 2) && (args[1].ToString().Trim() == "_isSaved"))
                         outVal = ((Table)owner).IsSaved;
-                    else if ((mi.Name == "FieldSetter") && (mc.Args.Length == 3) && (mc.Args[1].ToString().Trim() == "_changedFields"))
-                        ((Table)owner)._changedFields = (List<string>)mc.Args[2];
+                    else if ((mi.Name == "FieldSetter") && (args.Length == 3) && (args[1].ToString().Trim() == "_changedFields"))
+                        ((Table)owner)._changedFields = (List<string>)args[2];
                     else if ((pi != null) && (!isGet) && (fieldsAffected != null) && ((Table)owner)._isSaved)
                     {
                         object curVal = pi.GetValue(owner, new object[0]);
-                        if (((curVal == null) && (mc.Args[0] != null)) ||
-                            ((curVal != null) && (mc.Args[0] == null)) ||
-                            ((curVal != null) && (mc.Args[0] != null) && (!curVal.Equals(mc.Args[0]))))
+                        if (((curVal == null) && (args[0] != null)) ||
+                            ((curVal != null) && (args[0] == null)) ||
+                            ((curVal != null) && (args[0] != null) && (!curVal.Equals(args[0]))))
                         {
                             foreach (string str in fieldsAffected)
                             {
@@ -348,13 +401,13 @@ namespace Org.Reddragonit.Dbpro
                                     _changedFields.Add(str);
                             }
                         }
-                        outVal = mi.Invoke(owner, mc.Args);
+                        outVal = mi.Invoke(owner, args);
                     }
                     else
                     {
                         try
                         {
-                            outVal = mi.Invoke(owner, mc.Args);
+                            outVal = mi.Invoke(owner, args);
                             if (fieldsAffected != null)
                             {
                                 foreach (string str in fieldsAffected)
@@ -366,7 +419,7 @@ namespace Org.Reddragonit.Dbpro
                         }
                         catch (Exception ex)
                         {
-                            Logger.LogLine("Method Call: " + mc.MethodName);
+                            Logger.LogLine("Method Call: " + mi.Name);
                             Logger.LogLine(ex.Message);
                             Logger.LogLine(ex.Source);
                             Logger.LogLine(ex.StackTrace);
@@ -389,9 +442,12 @@ namespace Org.Reddragonit.Dbpro
                 _changedFields = new List<string>();
                 ((Table)owner)._changedFields = null;
             }
-
+#if !NETCOREAPP2_2
 			return new ReturnMessage(outVal,mc.Args,mc.Args.Length, mc.LogicalCallContext, mc);
-		}
+#else
+            return outVal;
+#endif
+        }
 
         private bool _IsParentTableField(string p,object owner)
         {

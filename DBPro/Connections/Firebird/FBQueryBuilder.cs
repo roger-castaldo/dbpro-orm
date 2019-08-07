@@ -14,11 +14,26 @@ using System.Data;
 
 namespace Org.Reddragonit.Dbpro.Connections.Firebird
 {
-	/// <summary>
-	/// Description of FBQueryBuilder.
-	/// </summary>
-	internal class FBQueryBuilder : QueryBuilder
-	{
+    /// <summary>
+    /// Description of FBQueryBuilder.
+    /// </summary>
+    internal class FBQueryBuilder : QueryBuilder
+    {
+        private bool? _isAtLeastVersion3;
+        protected bool isAtLeastVersion3 {
+            get {
+                if (!_isAtLeastVersion3.HasValue)
+                {
+                    Connection conn = pool.GetConnection();
+                    conn.ExecuteQuery("SELECT CAST(SUBSTRING(rdb$get_context('SYSTEM', 'ENGINE_VERSION') FROM 1 FOR POSITION('.' IN rdb$get_context('SYSTEM', 'ENGINE_VERSION'))) AS INTEGER) from rdb$database");
+                    conn.Read();
+                    _isAtLeastVersion3 = int.Parse(conn[0].ToString()) >= 3;
+                    conn.CloseConnection();
+                }
+                return _isAtLeastVersion3.Value;
+            }
+        }
+
 		public FBQueryBuilder(ConnectionPool pool): base(pool)
 		{
 		}
@@ -31,21 +46,26 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
         }
 
 		protected override string DropNotNullString {
-			get { return "SELECT 'ALTER TABLE {0} DROP CONSTRAINT '||r.rdb$constraint_name "+
-					"FROM rdb$relation_constraints r, "+
-					"rdb$check_constraints c "+
-					"WHERE r.rdb$constraint_name = c.rdb$constraint_name "+
-					"AND   r.rdb$relation_name = '{0}' "+
-					"AND   c.rdb$trigger_name = '{1}' "+
-					"AND   r.rdb$constraint_type = 'NOT NULL'"; }
+			get {
+                if (isAtLeastVersion3)
+                    return "ALTER TABLE {0} ALTER {1} DROP NOT NULL";
+                else
+                    return "SELECT 'ALTER TABLE {0} DROP CONSTRAINT '||r.rdb$constraint_name " +
+                        "FROM rdb$relation_constraints r, " +
+                        "rdb$check_constraints c " +
+                        "WHERE r.rdb$constraint_name = c.rdb$constraint_name " +
+                        "AND   r.rdb$relation_name = '{0}' " +
+                        "AND   c.rdb$trigger_name = '{1}' " +
+                        "AND   r.rdb$constraint_type = 'NOT NULL'";
+            }
 		}
 
         private string DropNullStringV2
         {
             get
-            {
-                return "UPDATE RDB$RELATION_FIELDS SET RDB$NULL_FLAG = NULL "+
-                    "WHERE RDB$FIELD_NAME = '{1}' AND RDB$RELATION_NAME = '{0}'";
+            { 
+                    return "UPDATE RDB$RELATION_FIELDS SET RDB$NULL_FLAG = NULL "+
+                        "WHERE RDB$FIELD_NAME = '{1}' AND RDB$RELATION_NAME = '{0}'";
             }
         }
 		
@@ -53,12 +73,17 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		{
 			string ret = "";
             Connection conn = pool.GetConnection();
-			conn.ExecuteQuery(String.Format(DropNotNullString,table,field.FieldName));
-			if (conn.Read())
-				ret=conn[0].ToString();
-            conn.CloseConnection();
-            if (ret == "")
-                ret = String.Format(DropNullStringV2, table, field.FieldName);
+            if (isAtLeastVersion3)
+                ret = string.Format(DropNotNullString, table, field.FieldName);
+            else
+            {
+                conn.ExecuteQuery(String.Format(DropNotNullString, table, field.FieldName));
+                if (conn.Read())
+                    ret = conn[0].ToString();
+                conn.CloseConnection();
+                if (ret == "")
+                    ret = String.Format(DropNullStringV2, table, field.FieldName);
+            }
 			return ret;
 		}
 		
@@ -255,7 +280,12 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		}
 		
 		protected override string CreateNullConstraintString {
-			get { return "UPDATE RDB$RELATION_FIELDS SET RDB$NULL_FLAG = 1 WHERE RDB$FIELD_NAME = '{1}' AND RDB$RELATION_NAME = '{0}'"; }
+			get {
+                if (isAtLeastVersion3)
+                    return "ALTER TABLE {0} ALTER {1} SET NOT NULL";
+                else
+                    return "UPDATE RDB$RELATION_FIELDS SET RDB$NULL_FLAG = 1 WHERE RDB$FIELD_NAME = '{1}' AND RDB$RELATION_NAME = '{0}'";
+            }
 		}
 
 		protected override string SelectWithPagingIncludeOffset
@@ -415,32 +445,50 @@ WHERE vw.RDB$VIEW_SOURCE IS NOT NULL";
 
         internal override string SetTableDescription(string tableName, string description)
         {
-            return string.Format("UPDATE RDB$RELATIONS SET RDB$DESCRIPTION='{1}' WHERE RDB$RELATION_NAME = '{0}'", tableName,description.Replace("'","''"));
+            if (isAtLeastVersion3)
+                return string.Format("COMMENT ON TABLE {0} IS '{1}'", tableName, description.Replace("'", "''"));
+            else
+                return string.Format("UPDATE RDB$RELATIONS SET RDB$DESCRIPTION='{1}' WHERE RDB$RELATION_NAME = '{0}'", tableName, description.Replace("'", "''"));
         }
 
         internal override string SetFieldDescription(string tableName, string fieldName, string description)
         {
-            return string.Format("UPDATE RDB$RELATION_FIELDS SET RDB$DESCRIPTION='{2}' WHERE RDB$RELATION_NAME = '{0}' AND RDB$FIELD_NAME = '{1}'", new object[] { tableName, fieldName, description.Replace("'", "''") });
+            if (isAtLeastVersion3)
+                return string.Format("COMMENT ON COLUMN {0}.{1} IS '{2}'", new object[] { tableName, fieldName, description.Replace("'", "''") });
+            else
+                return string.Format("UPDATE RDB$RELATION_FIELDS SET RDB$DESCRIPTION='{2}' WHERE RDB$RELATION_NAME = '{0}' AND RDB$FIELD_NAME = '{1}'", new object[] { tableName, fieldName, description.Replace("'", "''") });
         }
 
         internal override string SetGeneratorDescription(string generatorName, string description)
         {
-            return string.Format("UPDATE RDB$GENERATORS SET RDB$DESCRIPTION = '{1}' WHERE RDB$GENERATOR_NAME = '{0}'", generatorName,description.Replace("'","''"));
+            if (isAtLeastVersion3)
+                return string.Format("COMMENT ON GENERATOR {0} IS '{1}'", generatorName, description.Replace("'", "''"));
+            else
+                return string.Format("UPDATE RDB$GENERATORS SET RDB$DESCRIPTION = '{1}' WHERE RDB$GENERATOR_NAME = '{0}'", generatorName,description.Replace("'","''"));
         }
 
         internal override string SetTriggerDescription(string triggerName, string description)
         {
-            return string.Format("UPDATE RDB$TRIGGERS SET RDB$DESCRIPTION = '{1}' WHERE RDB$TRIGGER_NAME = '{0}'", triggerName, description.Replace("'", "''"));
+            if (isAtLeastVersion3)
+                return string.Format("COMMENT ON TRIGGER {0} IS '{1}'", triggerName, description.Replace("'", "''"));
+            else
+                return string.Format("UPDATE RDB$TRIGGERS SET RDB$DESCRIPTION = '{1}' WHERE RDB$TRIGGER_NAME = '{0}'", triggerName, description.Replace("'", "''"));
         }
 
         internal override string SetViewDescription(string viewName, string description)
         {
-            return SetTableDescription(viewName, description);
+            if (isAtLeastVersion3)
+                return string.Format("COMMENT ON VIEW {0} IS '{1}'", viewName, description.Replace("'", "''"));
+            else
+                return SetTableDescription(viewName, description);
         }
 
         internal override string SetIndexDescription(string indexName, string description)
         {
-            return string.Format("UPDATE RDB$INDICES SET RDB$DESCRIPTION = '{1}' WHERE RDB$INDEX_NAME = '{0}'", indexName, description.Replace("'", "''"));
+            if (isAtLeastVersion3)
+                return string.Format("COMMENT ON INDEX {0} IS '{1}'", indexName, description.Replace("'", "''"));
+            else
+                return string.Format("UPDATE RDB$INDICES SET RDB$DESCRIPTION = '{1}' WHERE RDB$INDEX_NAME = '{0}'", indexName, description.Replace("'", "''"));
         }
         #endregion
 
