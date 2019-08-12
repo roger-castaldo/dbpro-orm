@@ -48,7 +48,11 @@ namespace Org.Reddragonit.Dbpro.Connections.PgSql
 		
 		protected override IDbConnection EstablishConnection()
 		{
-            return (IDbConnection)Utility.LocateType(_CONNECTION_TYPE_NAME).GetConstructor(new Type[] { typeof(String) }).Invoke(new object[] { connectionString });
+            Type t = Utility.LocateType(_CONNECTION_TYPE_NAME);
+            if (t == null)
+                Assembly.Load("Npgsql");
+            t = Utility.LocateType(_CONNECTION_TYPE_NAME);
+            return (IDbConnection)t.GetConstructor(new Type[] { typeof(String) }).Invoke(new object[] { connectionString });
 		}
 
         internal override void GetAddAutogen(ExtractedTableMap map, out List<IdentityField> identities, out List<Generator> generators, out List<Trigger> triggers, out List<StoredProcedure> procedures)

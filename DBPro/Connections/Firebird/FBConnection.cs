@@ -28,7 +28,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 	{
         internal const string _ASSEMBLY_NAME = "FirebirdSql.Data.FirebirdClient";
         private const string _COMMAND_CLASS_NAME = "FirebirdSql.Data.FirebirdClient.FbCommand";
-        private const string _CONNECTION_CLASS_NAME = "FirebirdSql.Data.FirebirdClient.FbConnection";
+        private const string _CONNECTION_TYPE_NAME = "FirebirdSql.Data.FirebirdClient.FbConnection";
 		
 		internal override string DefaultTableString {
 			get {
@@ -263,12 +263,16 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 		
 		protected override System.Data.IDbCommand EstablishCommand()
 		{
-            return (System.Data.IDbCommand)Utility.LocateType(_COMMAND_CLASS_NAME).GetConstructor(new Type[] { typeof(string), Utility.LocateType(_CONNECTION_CLASS_NAME) }).Invoke(new object[] { "", conn });
+            return (System.Data.IDbCommand)Utility.LocateType(_COMMAND_CLASS_NAME).GetConstructor(new Type[] { typeof(string), Utility.LocateType(_CONNECTION_TYPE_NAME) }).Invoke(new object[] { "", conn });
 		}
 		
 		protected override System.Data.IDbConnection EstablishConnection()
 		{
-            return (IDbConnection)Utility.LocateType(_CONNECTION_CLASS_NAME).GetConstructor(new Type[] { typeof(string) }).Invoke(new object[] { connectionString });
+            Type t = Utility.LocateType(_CONNECTION_TYPE_NAME);
+            if (t == null)
+                Assembly.Load("FirebirdSql.Data.FirebirdClient");
+            t=Utility.LocateType(_CONNECTION_TYPE_NAME);
+            return (IDbConnection)t.GetConstructor(new Type[] { typeof(string) }).Invoke(new object[] { connectionString });
 		}
 		
 		internal override string TranslateFieldType(FieldType type, int fieldLength)

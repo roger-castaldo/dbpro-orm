@@ -1,19 +1,19 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netcoreapp2.2;net452</TargetFrameworks>
+    <TargetFrameworks>netcoreapp2.1;net452</TargetFrameworks>
     <RootNamespace>Org.Reddragonit.Dbpro</RootNamespace>
     <PackageId>Org.Reddragonit.Dbpro</PackageId>
-    <Version>1.9.0</Version>
+    <Version>1.9.1</Version>
     <Authors>Roger Castaldo</Authors>
     <Description>an orm desgined to map classes directly into a database, including support for creating views and executing a modified sql language that uses the class objects and translates them into a proper query.</Description>
     <PackageProjectUrl>https://github.com/roger-castaldo/backbone-dotnet</PackageProjectUrl>
     <PackageLicenseUrl>https://www.gnu.org/licenses/gpl-3.0.en.html</PackageLicenseUrl>
     <PackageTags>orm database sql</PackageTags>
     <Title>Dbpro</Title>
-    <PackageReleaseNotes>upgrading base to support dotnet core and firebirdsql 3+</PackageReleaseNotes>
-    <AssemblyVersion>1.9.0</AssemblyVersion>
-    <FileVersion>1.9.0</FileVersion>
+    <PackageReleaseNotes>patch to handle side loading of connection libraries better in dotnet core applications.</PackageReleaseNotes>
+    <AssemblyVersion>1.9.1</AssemblyVersion>
+    <FileVersion>1.9.1</FileVersion>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
   <ItemGroup>

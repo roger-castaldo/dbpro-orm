@@ -1,15 +1,10 @@
 
-using Org.Reddragonit.Dbpro.Connections.ClassSQL;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using Org.Reddragonit.Dbpro.Connections;
 using Org.Reddragonit.Dbpro.Structure;
-using Org.Reddragonit.Dbpro.Virtual;
 using TestingApp.Structure;
-using Org.Reddragonit.Dbpro.Backup;
-using System.Xml;
-using Org.Reddragonit.Dbpro;
 using System.IO;
 using System.Reflection;
 using System.Threading;

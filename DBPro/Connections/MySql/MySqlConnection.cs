@@ -49,7 +49,11 @@ namespace Org.Reddragonit.Dbpro.Connections.MySql
 		
 		protected override IDbConnection EstablishConnection()
 		{
-			return (IDbConnection)Utility.LocateType(_CONNECTION_TYPE_NAME).GetConstructor(new Type[]{typeof(string)}).Invoke(new object[]{connectionString});
+            Type t = Utility.LocateType(_CONNECTION_TYPE_NAME);
+            if (t == null)
+                Assembly.Load("MySql.Data");
+            t = Utility.LocateType(_CONNECTION_TYPE_NAME);
+            return (IDbConnection)t.GetConstructor(new Type[]{typeof(string)}).Invoke(new object[]{connectionString});
 		}
 
         internal override void GetAddAutogen(ExtractedTableMap map, out System.Collections.Generic.List<IdentityField> identities, out System.Collections.Generic.List<Generator> generators, out System.Collections.Generic.List<Trigger> triggers, out List<StoredProcedure> procedures)

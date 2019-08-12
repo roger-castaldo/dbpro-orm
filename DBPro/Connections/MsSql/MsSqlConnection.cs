@@ -203,7 +203,11 @@ namespace Org.Reddragonit.Dbpro.Connections.MsSql
 
         protected override IDbConnection EstablishConnection()
         {
-            return (IDbConnection)Utility.LocateType(_CONNECTION_TYPE_NAME).GetConstructor(new Type[] { typeof(String) }).Invoke(new object[] { connectionString });
+            Type t = Utility.LocateType(_CONNECTION_TYPE_NAME);
+            if (t==null)
+                Assembly.Load("System.Data.SqlClient");
+            t=Utility.LocateType(_CONNECTION_TYPE_NAME);
+            return (IDbConnection)t.GetConstructor(new Type[] { typeof(String) }).Invoke(new object[] { connectionString });
         }
 		
 		internal override List<Trigger> GetVersionTableTriggers(ExtractedTableMap table,VersionTypes versionType)
