@@ -2101,7 +2101,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                 return null;
             if (_tableFieldCounts.ContainsKey(i))
             {
-                Table t = (Table)LazyProxy<Table>.Instance(_tableFields[_fieldNames[i]].GetConstructor(System.Type.EmptyTypes).Invoke(new object[0]));
+                Table t = Table.Instance(_tableFields[_fieldNames[i]]);
                 sTableField[] flds = conn.Pool.Mapping[_tableFields[_fieldNames[i]]].Fields;
                 int index = 0;
                 i = TranslateFieldIndex(i);
@@ -2116,7 +2116,7 @@ namespace Org.Reddragonit.Dbpro.Connections.ClassSQL
                             {
                                 if (t.GetField(pi.Name) == null)
                                 {
-                                    Table tmp = (Table)LazyProxy<Table>.Instance(pi.PropertyType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
+                                    Table tmp = Table.Instance(pi.PropertyType);
                                     tmp.LoadStatus = LoadStatus.Partial;
                                     t.SetField(fld.Name, tmp);
                                 }

@@ -72,11 +72,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 		static ConnectionPoolManager()
 		{
             _poolsLock.WaitOne();
-#if !NETCOREAPP2_2
-			string basePath=AppDomain.CurrentDomain.SetupInformation.ConfigurationFile.Substring(0,AppDomain.CurrentDomain.SetupInformation.ConfigurationFile.LastIndexOf(Path.DirectorySeparatorChar));
-#else
             string basePath = Directory.GetCurrentDirectory();
-#endif
             FileInfo fi = RecurLocateConfigFile(new DirectoryInfo(basePath));
 			if (fi!=null)
 			{

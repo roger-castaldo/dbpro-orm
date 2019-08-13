@@ -1,19 +1,19 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netcoreapp2.1;net452</TargetFrameworks>
+    <TargetFrameworks>netcoreapp2.1;net461</TargetFrameworks>
     <RootNamespace>Org.Reddragonit.Dbpro</RootNamespace>
     <PackageId>Org.Reddragonit.Dbpro</PackageId>
-    <Version>1.9.1</Version>
+    <Version>2.0</Version>
     <Authors>Roger Castaldo</Authors>
     <Description>an orm desgined to map classes directly into a database, including support for creating views and executing a modified sql language that uses the class objects and translates them into a proper query.</Description>
     <PackageProjectUrl>https://github.com/roger-castaldo/backbone-dotnet</PackageProjectUrl>
-    <PackageLicenseUrl>https://www.gnu.org/licenses/gpl-3.0.en.html</PackageLicenseUrl>
+    <PackageLicenseUrl></PackageLicenseUrl>
     <PackageTags>orm database sql</PackageTags>
     <Title>Dbpro</Title>
-    <PackageReleaseNotes>patch to handle side loading of connection libraries better in dotnet core applications.</PackageReleaseNotes>
-    <AssemblyVersion>1.9.1</AssemblyVersion>
-    <FileVersion>1.9.1</FileVersion>
+    <PackageReleaseNotes>refactor to operate properly in dotnetcore had to remove proxying and setup to be implemented as calling get/set functions appropriately within the properties of tables.</PackageReleaseNotes>
+    <AssemblyVersion>2.0.0</AssemblyVersion>
+    <FileVersion>2.0.0</FileVersion>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
   <ItemGroup>
@@ -21,5 +21,9 @@
     <EmbeddedResource Include="Connections\Firebird\StringIDProcedures.xml" />
     <EmbeddedResource Include="Connections\MsSql\StringIDProcedures.xml" />
     <Compile Remove="Connections\Attributes\Connection.cs" />
+    <Compile Remove="LazyProxy.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Reflection.DispatchProxy" Version="4.5.1" />
   </ItemGroup>
 </Project>

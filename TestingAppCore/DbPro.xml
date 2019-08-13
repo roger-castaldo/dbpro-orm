@@ -1,0 +1,15 @@
+﻿<?xml version="1.0"?>
+<DbPro>
+  <DBConnection connection_type="Org.Reddragonit.Dbpro.Connections.Firebird.FBConnectionPool">
+    <ConnectionParameter parameter_name="username" parameter_value="sysdba"/>
+    <ConnectionParameter parameter_name="password" parameter_value="masterkey"/>
+    <ConnectionParameter parameter_name="databasePath" parameter_value="/var/lib/firebird/data/TEST.FDB"/>
+    <ConnectionParameter parameter_name="databaseServer" parameter_value="172.0.0.2"/>
+    <ConnectionParameter parameter_name="port" parameter_value="3050"/>
+    <ConnectionParameter parameter_name="UpdateStructureDebugMode" parameter_value="false"/>
+    <ConnectionParameter parameter_name="connectionName" parameter_value="null"/>
+    <ConnectionParameter parameter_name="minPoolSize" parameter_value="5"/>
+    <ConnectionParameter parameter_name="maxPoolSize" parameter_value="40"/>
+    <ConnectionParameter parameter_name="allowTableDeletions" parameter_value="false"/>
+  </DBConnection>
+</DbPro>

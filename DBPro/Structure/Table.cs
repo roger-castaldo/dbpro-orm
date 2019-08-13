@@ -8,6 +8,10 @@ using Org.Reddragonit.Dbpro.Connections.Parameters;
 using Org.Reddragonit.Dbpro.Connections.PoolComponents;
 using Org.Reddragonit.Dbpro.Structure.Attributes;
 using System.ComponentModel;
+using System.Text.RegularExpressions;
+using System.Diagnostics;
+using Org.Reddragonit.Dbpro.Exceptions;
+using Org.Reddragonit.Dbpro.Validation;
 
 namespace Org.Reddragonit.Dbpro.Structure
 {
@@ -22,76 +26,455 @@ namespace Org.Reddragonit.Dbpro.Structure
 	
 	public abstract class Table : MarshalByRefObject,IConvertible
 	{
+        private static readonly Regex _regFunctionCall = new Regex("^(get|set)_(.+)$", RegexOptions.Compiled | RegexOptions.ECMAScript | RegexOptions.IgnoreCase);
+
         //Whether or not the table has been saved in the database.
-		internal bool _isSaved = false;
+        internal bool _isSaved = false;
         //Whether or not the table has been converted from a table loaded in the database
         private bool _isParentSaved = false;
         //Houses the current load state for the table object.
 		private LoadStatus _loadStatus=LoadStatus.NotLoaded;
+        internal LoadStatus LoadStatus { get { return _loadStatus; } set{ _loadStatus = value; } }
         //Houses the initial values for the primary keys prior to editing them.
 		private Dictionary<string, object> _initialPrimaryKeys = new Dictionary<string, object>();
+        //Houses the property values
+        private Dictionary<string, object> _values;
+        internal List<string> _changedFields = null;
+        //returns all fields that have been modified by the set call
+        internal List<string> ChangedFields
+        {
+            get { return _changedFields; }
+        }
+        private Dictionary<string, int> _originalArrayLengths = new Dictionary<string, int>();
+        public Dictionary<string, int> OriginalArrayLengths { get { return _originalArrayLengths; } }
+        private Dictionary<string, List<int>> _replacedArrayIndexes = new Dictionary<string, List<int>>();
+        public Dictionary<string, List<int>> ReplacedArrayIndexes { get { return _replacedArrayIndexes; } }
+        private sTable _map;
 
-		protected Table()
+        protected Table()
 		{
+            _changedFields = new List<string>();
+            _map = ConnectionPoolManager.GetPool(this.GetType()).Mapping[this.GetType()];
+            _values = new Dictionary<string, object>();
 			InitPrimaryKeys();
 		}
 		
         //Creates a new instance of a table object wrapping it in the proxy class.
-		protected static Table Instance(Type type)
+		internal static Table Instance(Type type)
 		{
 			if (!type.IsSubclassOf(typeof(Table)))
 				throw new Exception("Cannot create instance of a class that is not a table.");
-			return (Table)LazyProxy<Table>.Instance(type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]));
-		}
-		
-        //access the load status of the current table object.
-		internal LoadStatus LoadStatus{
-			get{return _loadStatus;}
-			set{_loadStatus=value;
-				if ((_loadStatus== LoadStatus.Complete)||(_loadStatus== LoadStatus.Partial))
-					_isSaved=true;
-			}
+			return (Table)type.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
 		}
 
-
-        internal List<string> _changedFields = null;
-        /*virtual function doesn't do anything, calls are caught by the proxy to 
-         * to return the changed fields according to the proxy.
-        */
-		internal List<string> ChangedFields{
-			get{return _changedFields;}
-		}
-
-        /*virtual function doesn't do anything, calls are caught by the proxy to 
-         * to return the original array fields lengths according to the proxy.
-        */
-        internal Dictionary<string, int> OriginalArrayLengths
+        //Hidden call used to access table property values
+        private object this[string key]
         {
-            get { return null; }
+            get
+            {
+                if (_values.ContainsKey(key))
+                    return _values[key];
+                return null;
+            }
+            set
+            {
+                if (!_changedFields.Contains(key)&&_values.ContainsKey(key))
+                    _changedFields.Add(key);
+                if (_values.ContainsKey(key))
+                    _values.Remove(key);
+                if (value != null)
+                    _values.Add(key, value);
+            }
         }
 
-        /*virtual function doesn't do anything, calls are caught by the proxy to 
-         * to return the changed indexes in any arrayed fields to the proxy.
-        */
-        internal Dictionary<string, List<int>> ReplacedArrayIndexes
+        private void _CompleteLazyLoad()
         {
-            get { return null; }
+            ConnectionPool pool = ConnectionPoolManager.GetPool(this.GetType());
+            List<SelectParameter> pars = new List<SelectParameter>();
+            foreach (string prop in _map.PrimaryKeyProperties)
+                pars.Add(new EqualParameter(prop, this[prop]));
+            Connection conn = pool.GetConnection();
+            Table tmp = null;
+            try
+            {
+                tmp = conn.Select(this.GetType(), pars)[0];
+            }catch (Exception e)
+            {
+                Logger.LogLine(e);
+            }
+            conn.CloseConnection();
+            if (tmp == null)
+                throw new Exception("Unable to load lazy table.");
+            List<string> pkeys = new List<string>(_map.PrimaryKeyProperties);
+            foreach (string prop in _map.Properties)
+            {
+                if ((!pkeys.Contains(prop)) && (!tmp.IsFieldNull(prop)))
+                    this.SetField(prop, tmp.GetField(prop));
+            }
+            Type btype = this.GetType().BaseType;
+            while (pool.Mapping.IsMappableType(btype))
+            {
+                sTable map = pool.Mapping[btype];
+                foreach (string prop in map.Properties)
+                {
+                    if ((!pkeys.Contains(prop)) && (!tmp.IsFieldNull(prop)))
+                        this.SetField(prop, tmp.GetField(prop));
+                }
+                btype = btype.BaseType;
+            }
+            this._loadStatus = LoadStatus.Complete;
         }
-		
+
+        /*Called by implemented classes to get the value of a property
+        e.g. public string FirstName{get{return (string)get();}}
+        the function will take care of detecting which property you are looking to obtain and 
+        attempt to obtain it from the stored data.*/
+        protected object get()
+        {
+            StackTrace st = new StackTrace();
+            StackFrame sf = st.GetFrames()[1];
+            Match m = _regFunctionCall.Match(sf.GetMethod().Name);
+            if (!m.Success)
+                throw new Exception("Invalid Get Call");
+            if (m.Groups[1].Value.ToLower() != "get")
+                throw new Exception("Invalid Get Call");
+            object ret = this[m.Groups[2].Value];
+            if (ret == null && _loadStatus == LoadStatus.Partial)
+                _CompleteLazyLoad();
+            ret = this[m.Groups[2].Value];
+            if (ret == null)
+            {
+                MethodInfo mi = (MethodInfo)sf.GetMethod();
+                if (Nullable.GetUnderlyingType(mi.ReturnType) == null)
+                {
+                    if (mi.ReturnType.IsValueType)
+                        ret = Activator.CreateInstance(mi.ReturnType);
+                }
+            }
+            return ret;
+        }
+
+        /*Called by implemented classes to set the value of a property
+        e.g. public string FirstName{set{return set(value);}}
+        the function will take care of detecting which property you are looking to set and 
+        attempt to set it in the stored data.*/
+        protected void set(object value)
+        {
+            if (_changedFields == null)
+                _changedFields = new List<string>();
+            StackTrace st = new StackTrace();
+            StackFrame sf = st.GetFrames()[1];
+            Match m = _regFunctionCall.Match(sf.GetMethod().Name);
+            if (!m.Success)
+                throw new Exception("Invalid Set Call");
+            if (m.Groups[1].Value.ToLower() != "set")
+                throw new Exception("Invalid Set Call");
+            string prop = m.Groups[2].Value;
+            if (_loadStatus == LoadStatus.Partial)
+                _CompleteLazyLoad();
+            if (_isSaved)
+            {
+                if (new List<string>(_map.PrimaryKeyProperties).Contains(prop) && Utility.StringsEqual(prop, _map.AutoGenProperty))
+                    throw new AlterPrimaryKeyException(this.GetType().FullName, prop);
+                object curVal = this[prop];
+                if (_map.ArrayProperties.Contains(prop))
+                {
+                    if (!_originalArrayLengths.ContainsKey(prop))
+                        _originalArrayLengths.Add(prop, (curVal == null ? 0 : ((Array)curVal).Length));
+                    if (curVal!=null && value != null)
+                    {
+                        if (curVal != null && value != null)
+                        {
+                            List<int> indexes = new List<int>();
+                            if (_replacedArrayIndexes.ContainsKey(prop))
+                            {
+                                indexes = _replacedArrayIndexes[prop];
+                                _replacedArrayIndexes.Remove(prop);
+                            }
+                            Array arCur = (Array)curVal;
+                            Array arNew = (Array)value;
+                            for (int x = 0; x < _originalArrayLengths[prop]; x++)
+                            {
+                                if (!indexes.Contains(x) && x < arNew.Length)
+                                {
+                                    if (arCur.GetValue(x) is Table)
+                                    {
+                                        if (!((Table)arNew.GetValue(x)).IsSaved)
+                                            indexes.Add(x);
+                                        if (((Table)arNew.GetValue(x)).ChangedFields.Count > 0)
+                                            indexes.Add(x);
+                                        else if (!((Table)arCur.GetValue(x)).PrimaryKeysEqual((Table)arNew.GetValue(x)))
+                                            indexes.Add(x);
+                                    }
+                                    else if (!arCur.GetValue(x).Equals(arNew.GetValue(x)))
+                                        indexes.Add(x);
+                                }
+                            }
+                            for (int x = arCur.Length; x < arNew.Length; x++)
+                                indexes.Add(x);
+                            if (indexes.Count > 0 && !_changedFields.Contains(prop))
+                                _changedFields.Add(prop);
+                            else if (arNew.Length != arCur.Length && !_changedFields.Contains(prop))
+                                _changedFields.Add(prop);
+                            _replacedArrayIndexes.Add(prop, indexes);
+                        }
+                        else if (!_changedFields.Contains(prop))
+                            _changedFields.Add(prop);
+                    }
+                }
+                else if (((curVal == null) && (value != null)) ||
+                              ((curVal != null) && (value == null)) ||
+                              ((curVal != null) && (value != null) && (!curVal.Equals(value))))
+                {
+                    if (!_changedFields.Contains(prop))
+                        _changedFields.Add(prop);
+                }
+            }
+            foreach (object obj in sf.GetMethod().GetCustomAttributes(true))
+            {
+                if (obj is ValidationAttribute)
+                {
+                    ValidationAttribute va = (ValidationAttribute)obj;
+                    if (!va.IsValidValue(value))
+                        va.FailValidation(this.GetType().ToString(), prop);
+                }
+            }
+            this[prop] = value;
+        }
+
         //Load the initial primary keys into the table object for later comparison.
         private void InitPrimaryKeys()
         {
             _initialPrimaryKeys.Clear();
-            sTable map = ConnectionPoolManager.GetPool(this.GetType()).Mapping[this.GetType()];
-            List<string> props = new List<string>(map.PrimaryKeyProperties);
+            List<string> props = new List<string>(_map.PrimaryKeyProperties);
             if (props.Count == 0)
-                props.AddRange(map.PrimaryKeyProperties);
+                props.AddRange(_map.PrimaryKeyProperties);
             foreach (string prop in props)
             {
                 object obj = GetField(prop);
                 if (obj!=null)
                     _initialPrimaryKeys.Add(prop,obj);
             }
+        }
+
+
+        internal object GetField(string FieldName)
+        {
+            if (FieldName == null)
+                return null;
+            PropertyInfo pi = LocatePropertyInfo(FieldName);
+            if (pi == null)
+                return null;
+            if (IsFieldNull(FieldName))
+            {
+                return null;
+            }
+            else
+            {
+                return pi.GetValue(this, new object[0]);
+            }
+        }
+
+        internal void SetField(string FieldName, object value)
+        {
+            if (FieldName == null)
+                return;
+            PropertyInfo pi = LocatePropertyInfo(FieldName);
+            if (value == null)
+                value = pi.GetValue(this.GetType().GetConstructor(Type.EmptyTypes).Invoke(new object[0]), new object[0]);
+            if (pi.PropertyType.Equals(typeof(bool)) && !(value.GetType().Equals(typeof(bool))))
+            {
+                if (value.GetType().Equals(typeof(int)))
+                {
+                    if ((int)value == 0)
+                        pi.SetValue(this, false, new object[0]);
+                    else
+                        pi.SetValue(this, true, new object[0]);
+                }
+                else if (value.GetType().Equals(typeof(string)))
+                {
+                    if (((string)value).Length == 1)
+                    {
+                        if ((string)value == "F")
+                            value = "False";
+                        else
+                            value = "True";
+                    }
+                    pi.SetValue(this, bool.Parse((string)value), new object[0]);
+                }
+                else if (value.GetType().Equals(typeof(char)))
+                {
+                    if ((char)value == 'F')
+                        pi.SetValue(this, false, new object[0]);
+                    else
+                        pi.SetValue(this, true, new object[0]);
+                }
+            }
+            else if (pi.PropertyType.Equals(typeof(uint)) || pi.PropertyType.Equals(typeof(UInt32)))
+            {
+                pi.SetValue(this, BitConverter.ToUInt32(BitConverter.GetBytes(int.Parse(value.ToString())), 0), new object[0]);
+            }
+            else if (pi.PropertyType.Equals(typeof(ushort)) || pi.PropertyType.Equals(typeof(UInt16)))
+            {
+                pi.SetValue(this, BitConverter.ToUInt16(BitConverter.GetBytes(short.Parse(value.ToString())), 0), new object[0]);
+            }
+            else if (pi.PropertyType.Equals(typeof(ulong)) || pi.PropertyType.Equals(typeof(UInt64)))
+            {
+                pi.SetValue(this, BitConverter.ToUInt64(BitConverter.GetBytes(long.Parse(value.ToString())), 0), new object[0]);
+            }
+            else if ((pi.PropertyType.Equals(typeof(byte)) || pi.PropertyType.Equals(typeof(Byte))) && ((value.GetType().Equals(typeof(string)) && value.ToString().Length == 1) || (value.GetType().Equals(typeof(bool)) || value.GetType().Equals(typeof(Boolean)))))
+            {
+                pi.SetValue(this, ((value.GetType().Equals(typeof(bool)) || value.GetType().Equals(typeof(Boolean))) ? (byte)((bool)value ? 'T' : 'F') : (byte)value.ToString()[0]), new object[0]);
+            }
+            else
+            {
+                if (value != null)
+                {
+                    if (value.GetType().FullName != pi.PropertyType.FullName)
+                    {
+                        Type pt = pi.PropertyType;
+                        if (pt.IsGenericType && pt.GetGenericTypeDefinition().FullName.StartsWith("System.Nullable"))
+                            pt = pt.GetGenericArguments()[0];
+                        MethodInfo conMethod = null;
+                        foreach (MethodInfo mi in pt.GetMethods(BindingFlags.Static | BindingFlags.Public))
+                        {
+                            if (mi.Name == "op_Implicit" || mi.Name == "op_Explicit")
+                            {
+                                if (mi.ReturnType.Equals(pt)
+                                    && mi.GetParameters().Length == 1
+                                    && mi.GetParameters()[0].ParameterType.Equals(value.GetType()))
+                                {
+                                    conMethod = mi;
+                                    break;
+                                }
+                            }
+                        }
+                        if (conMethod != null)
+                            value = conMethod.Invoke(null, new object[] { value });
+                        else if (pt.GetCustomAttributes(typeof(TypeConverterAttribute), false).Length > 0)
+                        {
+                            if (TypeDescriptor.GetConverter(pt).CanConvertFrom(value.GetType()))
+                            {
+                                value = TypeDescriptor.GetConverter(pt).ConvertFrom(value);
+                            }
+                            else
+                            {
+                                try
+                                {
+                                    object val = Convert.ChangeType(value, pt);
+                                    value = val;
+                                }
+                                catch (Exception e)
+                                {
+                                    Logger.LogLine(e);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            try
+                            {
+                                object val = Convert.ChangeType(value, pt);
+                                value = val;
+                            }
+                            catch (Exception e)
+                            {
+                                Logger.LogLine(e);
+                            }
+                        }
+                    }
+                }
+                pi.SetValue(this, value, new object[0]);
+            }
+        }
+
+        internal bool IsFieldNull(string FieldName)
+        {
+            if (FieldName == null)
+                return true;
+            PropertyInfo pi = LocatePropertyInfo(FieldName);
+            object cur = this[pi.Name];
+            ConnectionPool pool = ConnectionPoolManager.GetPool(this.GetType());
+            if (_map[FieldName].Length > 0)
+            {
+                sTableField fld = _map[FieldName][0];
+                if (((pi.PropertyType.Equals(typeof(bool)) || Utility.IsEnum(pi.PropertyType))
+                    && !fld.Nullable) ||
+                    (new List<string>(_map.PrimaryKeyProperties).Contains(FieldName) && this.IsSaved) ||
+                    (!fld.Nullable && this.IsSaved))
+                    return false;
+                else if (new List<string>(_map.PrimaryKeyProperties).Contains(FieldName) && this.IsParentSaved && _isParentPrimaryKey(FieldName, pool, this.GetType(), cur))
+                    return (_initialPrimaryKeys.ContainsKey(FieldName) ? false : true);
+                else if (new List<string>(_map.PrimaryKeyProperties).Contains(FieldName)
+                    && _initialPrimaryKeys.ContainsKey(FieldName))
+                    return _initialPrimaryKeys[FieldName] == cur && !this.IsSaved && !this.IsParentSaved && _loadStatus == LoadStatus.NotLoaded && !_isParentPrimaryKey(FieldName, pool, this.GetType(), cur)
+                        && !_IsSavedTable(cur);
+                return cur == null;
+            }
+            return equalObjects(cur, pi.GetValue(this.GetType().GetConstructor(Type.EmptyTypes).Invoke(new object[0]), new object[0]));
+        }
+
+        internal PropertyInfo LocatePropertyInfo(string FieldName)
+        {
+            PropertyInfo ret = this.GetType().GetProperty(FieldName, Utility._BINDING_FLAGS);
+            if (ret == null)
+            {
+                foreach (PropertyInfo p in this.GetType().GetProperties(Utility._BINDING_FLAGS))
+                {
+                    if (p.Name == FieldName)
+                    {
+                        ret = p;
+                        break;
+                    }
+                }
+            }
+            if (ret == null)
+            {
+                Type t = this.GetType().BaseType;
+                ConnectionPool pool = ConnectionPoolManager.GetPool(this.GetType());
+                while (pool.Mapping.IsMappableType(t))
+                {
+                    foreach (PropertyInfo p in t.GetProperties(Utility._BINDING_FLAGS))
+                    {
+                        if (p.Name == FieldName)
+                        {
+                            ret = p;
+                            break;
+                        }
+                    }
+                    if (ret != null)
+                        break;
+                    t = t.BaseType;
+                }
+            }
+            if (ret == null)
+            {
+                foreach (sTableField fld in _map.Fields)
+                {
+                    if (fld.Name == FieldName)
+                    {
+                        ret = LocatePropertyInfo(fld.ClassProperty);
+                        break;
+                    }
+                }
+            }
+            return ret;
+        }
+
+        internal bool PrimaryKeysEqual(Table table)
+        {
+            foreach (string prop in _map.PrimaryKeyProperties)
+            {
+                object obj = this.GetField(prop);
+                if (obj is Table)
+                {
+                    if (!((Table)obj).PrimaryKeysEqual((Table)table.GetField(prop)))
+                        return false;
+                }
+                else if (!obj.Equals(table.GetField(prop)))
+                    return false;
+            }
+            return true;
         }
 
         //used to load the original data to be used for update triggers
@@ -192,9 +575,8 @@ namespace Org.Reddragonit.Dbpro.Structure
         {
             _initialPrimaryKeys.Clear();
             Logger.LogLine("Obtaining table map for " + this.GetType().FullName + " to allow setting of values from query");
-            sTable map = conn.Pool.Mapping[this.GetType()];
             Logger.LogLine("Recursively setting values from query for " + this.GetType().FullName);
-            RecurSetValues(map, conn);
+            RecurSetValues(_map, conn);
             _isSaved = true;
         }
 
@@ -225,7 +607,6 @@ namespace Org.Reddragonit.Dbpro.Structure
                         pi = table.GetType().GetProperty(prop, Utility._BINDING_FLAGS_WITH_INHERITANCE);
                     Table t = (Table)pi.PropertyType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
                     t._loadStatus = LoadStatus.Partial;
-                    t = (Table)LazyProxy<Table>.Instance(t);
                     foreach (sTableField f in eMap[prop])
                     {
                         foreach (sTableField fld in flds)
@@ -296,7 +677,6 @@ namespace Org.Reddragonit.Dbpro.Structure
                                 pi = table.GetType().GetProperty(fld.ClassProperty, Utility._BINDING_FLAGS_WITH_INHERITANCE);
                             Table t = (Table)pi.PropertyType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
                             t._loadStatus = LoadStatus.Partial;
-                            t = (Table)LazyProxy<Table>.Instance(t);
                             table.SetField(fld.Name, t);
                         }
                         RecurSetPropertyValue(fld.ExternalField, conn, queryFieldName, (Table)table.GetField(fld.Name));
@@ -322,7 +702,6 @@ namespace Org.Reddragonit.Dbpro.Structure
                         {
                             Table t = (Table)pi.PropertyType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
                             t._loadStatus = LoadStatus.Partial;
-                            t = (Table)LazyProxy<Table>.Instance(t);
                             bool setValue = false;
                             t = SetExternalValues(map, prop, conn, out setValue, t);
                             if (!t.AllPrimaryKeysNull && setValue)
@@ -378,204 +757,10 @@ namespace Org.Reddragonit.Dbpro.Structure
 			}
 		}
 
-        internal PropertyInfo LocatePropertyInfo(string FieldName)
-        {
-            ConnectionPool pool = ConnectionPoolManager.GetPool(this.GetType());
-            sTable map = pool.Mapping[this.GetType()];
-            PropertyInfo ret = this.GetType().GetProperty(FieldName, Utility._BINDING_FLAGS);
-            if (ret == null)
-            {
-                foreach (PropertyInfo p in this.GetType().GetProperties(Utility._BINDING_FLAGS))
-                {
-                    if (p.Name == FieldName)
-                    {
-                        ret = p;
-                        break;
-                    }
-                }
-            }
-            if (ret == null)
-            {
-                Type t = this.GetType().BaseType;
-                while(pool.Mapping.IsMappableType(t)){
-                    foreach (PropertyInfo p in t.GetProperties(Utility._BINDING_FLAGS))
-                    {
-                        if (p.Name == FieldName){
-                            ret = p;
-                            break;
-                        }
-                    }
-                    if (ret!=null)
-                        break;
-                    t=t.BaseType;
-                }
-            }
-            if (ret == null)
-            {
-                foreach (sTableField fld in map.Fields){
-                    if (fld.Name == FieldName){
-                        ret = LocatePropertyInfo(fld.ClassProperty);
-                        break;
-                    }
-                }
-            }
-            return ret;
-        }
-		
-		internal object GetField(string FieldName)
-		{
-            if (FieldName == null)
-                return null;
-            PropertyInfo pi = LocatePropertyInfo(FieldName);
-            if (pi == null)
-                return null;
-			if (IsFieldNull(FieldName))
-			{
-				return null;
-			}else
-			{
-				return pi.GetValue(this,new object[0]);
-			}
-		}
-		
-		internal void SetField(string FieldName,object value)
-		{
-            if (FieldName == null)
-                return;
-            PropertyInfo pi = LocatePropertyInfo(FieldName);
-            if (value == null)
-                value = pi.GetValue(this.GetType().GetConstructor(Type.EmptyTypes).Invoke(new object[0]),new object[0]);
-			if (pi.PropertyType.Equals(typeof(bool))&&!(value.GetType().Equals(typeof(bool))))
-			{
-				if (value.GetType().Equals(typeof(int)))
-				{
-					if ((int)value==0)
-						pi.SetValue(this,false,new object[0]);
-					else
-						pi.SetValue(this,true,new object[0]);
-				}else if (value.GetType().Equals(typeof(string)))
-				{
-					if (((string)value).Length==1)
-					{
-						if ((string)value=="F")
-							value="False";
-						else
-							value="True";
-					}
-					pi.SetValue(this,bool.Parse((string)value),new object[0]);
-				}else if (value.GetType().Equals(typeof(char)))
-				{
-					if ((char)value=='F')
-						pi.SetValue(this,false,new object[0]);
-					else
-						pi.SetValue(this,true,new object[0]);
-				}
-			}else if (pi.PropertyType.Equals(typeof(uint))||pi.PropertyType.Equals(typeof(UInt32))){
-                pi.SetValue(this, BitConverter.ToUInt32(BitConverter.GetBytes(int.Parse(value.ToString())), 0),new object[0]);
-            }else if (pi.PropertyType.Equals(typeof(ushort)) || pi.PropertyType.Equals(typeof(UInt16))){
-                pi.SetValue(this, BitConverter.ToUInt16(BitConverter.GetBytes(short.Parse(value.ToString())), 0), new object[0]);
-            }
-            else if (pi.PropertyType.Equals(typeof(ulong)) || pi.PropertyType.Equals(typeof(UInt64)))
-            {
-                pi.SetValue(this, BitConverter.ToUInt64(BitConverter.GetBytes(long.Parse(value.ToString())), 0), new object[0]);
-            }
-            else if ((pi.PropertyType.Equals(typeof(byte)) || pi.PropertyType.Equals(typeof(Byte))) && ((value.GetType().Equals(typeof(string)) && value.ToString().Length == 1)||(value.GetType().Equals(typeof(bool))||value.GetType().Equals(typeof(Boolean)))))
-            {
-                pi.SetValue(this, ((value.GetType().Equals(typeof(bool))||value.GetType().Equals(typeof(Boolean))) ? (byte)((bool)value ? 'T' : 'F') : (byte)value.ToString()[0]), new object[0]);
-            }
-            else
-            {
-                if (value != null)
-                {
-                    if (value.GetType().FullName != pi.PropertyType.FullName)
-                    {
-                        Type pt = pi.PropertyType;
-                        if (pt.IsGenericType && pt.GetGenericTypeDefinition().FullName.StartsWith("System.Nullable"))
-                            pt = pt.GetGenericArguments()[0];
-                        MethodInfo conMethod = null;
-                        foreach (MethodInfo mi in pt.GetMethods(BindingFlags.Static | BindingFlags.Public))
-                        {
-                            if (mi.Name == "op_Implicit" || mi.Name == "op_Explicit")
-                            {
-                                if (mi.ReturnType.Equals(pt)
-                                    && mi.GetParameters().Length == 1
-                                    && mi.GetParameters()[0].ParameterType.Equals(value.GetType()))
-                                {
-                                    conMethod = mi;
-                                    break;
-                                }
-                            }
-                        }
-                        if (conMethod != null)
-                            value = conMethod.Invoke(null, new object[] { value });
-                        else if (pt.GetCustomAttributes(typeof(TypeConverterAttribute),false).Length > 0)
-                        {
-                            if (TypeDescriptor.GetConverter(pt).CanConvertFrom(value.GetType()))
-                            {
-                                value = TypeDescriptor.GetConverter(pt).ConvertFrom(value);
-                            }
-                            else
-                            {
-                                try
-                                {
-                                    object val = Convert.ChangeType(value, pt);
-                                    value = val;
-                                }
-                                catch (Exception e)
-                                {
-                                    Logger.LogLine(e);
-                                }
-                            }
-                        }
-                        else
-                        {
-                            try
-                            {
-                                object val = Convert.ChangeType(value, pt);
-                                value = val;
-                            }
-                            catch (Exception e)
-                            {
-                                Logger.LogLine(e);
-                            }
-                        }
-                    }
-                }
-                pi.SetValue(this, value, new object[0]);
-            }
-		}
-		
-		internal bool IsFieldNull(string FieldName)
-		{
-            if (FieldName == null)
-                return true;
-            PropertyInfo pi = LocatePropertyInfo(FieldName);
-			object cur = pi.GetValue(this,new object[0]);
-            ConnectionPool pool = ConnectionPoolManager.GetPool(this.GetType());
-            sTable map = pool.Mapping[this.GetType()];
-            if (map[FieldName].Length>0)
-            {
-                sTableField fld = map[FieldName][0];
-                if (((pi.PropertyType.Equals(typeof(bool)) || Utility.IsEnum(pi.PropertyType))
-                    && !fld.Nullable) ||
-                    (new List<string>(map.PrimaryKeyProperties).Contains(FieldName) && this.IsSaved) ||
-                    (!fld.Nullable && this.IsSaved))
-                    return false;
-                else if (new List<string>(map.PrimaryKeyProperties).Contains(FieldName) && this.IsParentSaved && _isParentPrimaryKey(FieldName, pool, this.GetType(), cur))
-                    return (_initialPrimaryKeys.ContainsKey(FieldName) ? false : true);
-                else if (new List<string>(map.PrimaryKeyProperties).Contains(FieldName)
-                    && _initialPrimaryKeys.ContainsKey(FieldName))
-                    return _initialPrimaryKeys[FieldName] == cur && !this.IsSaved && !this.IsParentSaved && LoadStatus == LoadStatus.NotLoaded && !_isParentPrimaryKey(FieldName, pool, this.GetType(), cur)
-                        && !_IsSavedTable(cur);
-                return cur==null;
-            }
-            return equalObjects(cur, pi.GetValue(this.GetType().GetConstructor(Type.EmptyTypes).Invoke(new object[0]), new object[0]));
-		}
-
         private bool _IsSavedTable(object cur)
         {
             if (cur is Table)
-                return ((Table)cur).LoadStatus != LoadStatus.NotLoaded;
+                return ((Table)cur)._loadStatus!= LoadStatus.NotLoaded;
             return false;
         }
 
@@ -810,7 +995,6 @@ namespace Org.Reddragonit.Dbpro.Structure
             if (this.IsSaved)
                 throw new Exception("Cannot Save an object to the database when it already exists.");
             Connection conn = ConnectionPoolManager.GetConnection(this.GetType());
-            sTable tbl = conn.Pool.Mapping[this.GetType()];
             Table tmp = null;
             try
             {
@@ -824,39 +1008,16 @@ namespace Org.Reddragonit.Dbpro.Structure
             conn.CloseConnection();
             if (tmp == null)
                 throw new Exception("An error occured attempting to save the table.");
-            foreach (string prop in tbl.Properties)
+            foreach (string prop in _map.Properties)
             {
                 PropertyInfo pi = this.GetType().GetProperty(prop, Utility._BINDING_FLAGS);
                 if (pi == null)
                     pi = this.GetType().GetProperty(prop, Utility._BINDING_FLAGS_WITH_INHERITANCE);
                 if (pi.CanWrite)
-                    pi.SetValue(this, pi.GetValue(tmp, new object[0]), new object[0]);
+                    this[pi.Name] = pi.GetValue(tmp, new object[] { });
             }
             this._isSaved = true;
             this._changedFields = null;
-        }
-
-        internal bool IsProxied
-        {
-            get { return false; }
-        }
-
-
-        internal bool PrimaryKeysEqual(Table table)
-        {
-            sTable tbl = ConnectionPoolManager.GetPool(this.GetType()).Mapping[this.GetType()];
-            foreach (string prop in tbl.PrimaryKeyProperties)
-            {
-                object obj = this.GetField(prop);
-                if (obj is Table)
-                {
-                    if (!((Table)obj).PrimaryKeysEqual((Table)table.GetField(prop)))
-                        return false;
-                }
-                else if (!obj.Equals(table.GetField(prop)))
-                    return false;
-            }
-            return true;
         }
     }
 }
