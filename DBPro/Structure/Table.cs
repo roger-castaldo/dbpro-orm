@@ -237,6 +237,13 @@ namespace Org.Reddragonit.Dbpro.Structure
                     ValidationAttribute va = (ValidationAttribute)obj;
                     if (!va.IsValidValue(value))
                         va.FailValidation(this.GetType().ToString(), prop);
+                }else if (obj is PropertySetChangesField)
+                {
+                    foreach (string str in ((PropertySetChangesField)obj).FieldAffected)
+                    {
+                        if (!_changedFields.Contains(str))
+                            _changedFields.Add(str);
+                    }
                 }
             }
             this[prop] = value;
