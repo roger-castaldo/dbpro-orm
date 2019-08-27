@@ -23,7 +23,6 @@ namespace TestingApp.Structure
 		public long ID
 		{
 			get{return (long)get();}
-			set{set(value);}
 		}
 		
 		[Field(150,false)]

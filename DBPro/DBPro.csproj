@@ -4,16 +4,16 @@
     <TargetFrameworks>netcoreapp2.1;net461</TargetFrameworks>
     <RootNamespace>Org.Reddragonit.Dbpro</RootNamespace>
     <PackageId>Org.Reddragonit.Dbpro</PackageId>
-    <Version>2.0.1</Version>
+    <Version>2.0.2</Version>
     <Authors>Roger Castaldo</Authors>
     <Description>an orm desgined to map classes directly into a database, including support for creating views and executing a modified sql language that uses the class objects and translates them into a proper query.</Description>
     <PackageProjectUrl>https://github.com/roger-castaldo/backbone-dotnet</PackageProjectUrl>
     <PackageLicenseUrl></PackageLicenseUrl>
     <PackageTags>orm database sql</PackageTags>
     <Title>Dbpro</Title>
-    <PackageReleaseNotes>refactor to operate properly in dotnetcore had to remove proxying and setup to be implemented as calling get/set functions appropriately within the properties of tables.</PackageReleaseNotes>
-    <AssemblyVersion>2.0.1</AssemblyVersion>
-    <FileVersion>2.0.1</FileVersion>
+    <PackageReleaseNotes>updated lazy loading to ignore property info and instead set it directly in the back space</PackageReleaseNotes>
+    <AssemblyVersion>2.0.2</AssemblyVersion>
+    <FileVersion>2.0.2</FileVersion>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
   <ItemGroup>

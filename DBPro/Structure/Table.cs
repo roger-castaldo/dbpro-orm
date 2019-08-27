@@ -294,9 +294,9 @@ namespace Org.Reddragonit.Dbpro.Structure
                 if (value.GetType().Equals(typeof(int)))
                 {
                     if ((int)value == 0)
-                        pi.SetValue(this, false, new object[0]);
+                        this[pi.Name] = false;
                     else
-                        pi.SetValue(this, true, new object[0]);
+                        this[pi.Name] = true;
                 }
                 else if (value.GetType().Equals(typeof(string)))
                 {
@@ -307,31 +307,31 @@ namespace Org.Reddragonit.Dbpro.Structure
                         else
                             value = "True";
                     }
-                    pi.SetValue(this, bool.Parse((string)value), new object[0]);
+                    this[pi.Name] = bool.Parse((string)value);
                 }
                 else if (value.GetType().Equals(typeof(char)))
                 {
                     if ((char)value == 'F')
-                        pi.SetValue(this, false, new object[0]);
+                        this[pi.Name] = false;
                     else
-                        pi.SetValue(this, true, new object[0]);
+                        this[pi.Name] = true;
                 }
             }
             else if (pi.PropertyType.Equals(typeof(uint)) || pi.PropertyType.Equals(typeof(UInt32)))
             {
-                pi.SetValue(this, BitConverter.ToUInt32(BitConverter.GetBytes(int.Parse(value.ToString())), 0), new object[0]);
+                this[pi.Name] =  BitConverter.ToUInt32(BitConverter.GetBytes(int.Parse(value.ToString())), 0);
             }
             else if (pi.PropertyType.Equals(typeof(ushort)) || pi.PropertyType.Equals(typeof(UInt16)))
             {
-                pi.SetValue(this, BitConverter.ToUInt16(BitConverter.GetBytes(short.Parse(value.ToString())), 0), new object[0]);
+                this[pi.Name] = BitConverter.ToUInt16(BitConverter.GetBytes(short.Parse(value.ToString())), 0);
             }
             else if (pi.PropertyType.Equals(typeof(ulong)) || pi.PropertyType.Equals(typeof(UInt64)))
             {
-                pi.SetValue(this, BitConverter.ToUInt64(BitConverter.GetBytes(long.Parse(value.ToString())), 0), new object[0]);
+                this[pi.Name] = BitConverter.ToUInt64(BitConverter.GetBytes(long.Parse(value.ToString())), 0);
             }
             else if ((pi.PropertyType.Equals(typeof(byte)) || pi.PropertyType.Equals(typeof(Byte))) && ((value.GetType().Equals(typeof(string)) && value.ToString().Length == 1) || (value.GetType().Equals(typeof(bool)) || value.GetType().Equals(typeof(Boolean)))))
             {
-                pi.SetValue(this, ((value.GetType().Equals(typeof(bool)) || value.GetType().Equals(typeof(Boolean))) ? (byte)((bool)value ? 'T' : 'F') : (byte)value.ToString()[0]), new object[0]);
+                this[pi.Name] = ((value.GetType().Equals(typeof(bool)) || value.GetType().Equals(typeof(Boolean))) ? (byte)((bool)value ? 'T' : 'F') : (byte)value.ToString()[0]);
             }
             else
             {
@@ -391,7 +391,7 @@ namespace Org.Reddragonit.Dbpro.Structure
                         }
                     }
                 }
-                pi.SetValue(this, value, new object[0]);
+                this[pi.Name] = value;
             }
         }
 
