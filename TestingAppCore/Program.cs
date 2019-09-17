@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Threading;
 using TestingApp;
 using TestingApp.Structure;
+using TestingAppCore.Structure;
 
 namespace TestingAppCore
 {
@@ -45,6 +46,7 @@ namespace TestingAppCore
             u.UserGroup = Group.LoadAllGroups()[0];
             u.UserName = "rcastaldo";
             u = User.Save(u);
+            SecureUser su = (SecureUser)u.ToType(typeof(SecureUser), null);
             conn = ConnectionPoolManager.GetConnection(typeof(User));
             foreach (UserGroupList ugl in conn.SelectClassView(typeof(UserGroupList)))
             {

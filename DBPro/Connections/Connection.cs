@@ -419,8 +419,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 				return table;
             pool.Updater.InitType(table.GetType(), this);
             sTable map = Pool.Mapping[table.GetType()];
-            table._changedFields = table.ChangedFields;
-			if (Pool.Mapping.IsMappableType(table.GetType().BaseType))
+            if (Pool.Mapping.IsMappableType(table.GetType().BaseType))
 			{
 				Table ta = Update((Table)table.ToType(table.GetType().BaseType,null));
 				table.CopyValuesFrom(ta);
@@ -441,7 +440,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                                 for (int x = 0; x < vals.Length; x++)
                                 {
                                     Table t = vals[x];
-                                    if (table._changedFields.Contains(prop) ||
+                                    if (table.ChangedFields.Contains(prop) ||
                                         t.LoadStatus == LoadStatus.NotLoaded ||
                                         t.ChangedFields.Count > 0)
                                     {

@@ -21,7 +21,8 @@ namespace Org.Reddragonit.Dbpro.Structure
 	internal enum LoadStatus{
 		Complete,
 		Partial,
-		NotLoaded
+		NotLoaded,
+        Loading
 	}
 	
 	public abstract class Table : MarshalByRefObject,IConvertible
@@ -35,28 +36,45 @@ namespace Org.Reddragonit.Dbpro.Structure
         //Houses the current load state for the table object.
 		private LoadStatus _loadStatus=LoadStatus.NotLoaded;
         internal LoadStatus LoadStatus { get { return _loadStatus; } set{ _loadStatus = value; } }
-        //Houses the initial values for the primary keys prior to editing them.
-		private Dictionary<string, object> _initialPrimaryKeys = new Dictionary<string, object>();
-        //Houses the property values
+        //Houses the initial values of the table.
+        private Dictionary<string, object> _initialValues;
+        //Houses the changed property values when set is called
         private Dictionary<string, object> _values;
-        internal List<string> _changedFields = null;
         //returns all fields that have been modified by the set call
         internal List<string> ChangedFields
         {
-            get { return _changedFields; }
+            get {
+                string[] ret = new string[_values.Count];
+                _values.Keys.CopyTo(ret, 0);
+                return new List<string>(ret);
+            }
         }
-        private Dictionary<string, int> _originalArrayLengths = new Dictionary<string, int>();
-        public Dictionary<string, int> OriginalArrayLengths { get { return _originalArrayLengths; } }
+        public Dictionary<string, int> OriginalArrayLengths {
+            get {
+                Dictionary<string, int> ret = new Dictionary<string, int>();
+                foreach (string str in _initialValues.Keys)
+                {
+                    if (_map.ArrayProperties.Contains(str))
+                    {
+                        if (_initialValues[str] == null)
+                            ret.Add(str, 0);
+                        else
+                            ret.Add(str, ((Array)_initialValues[str]).Length);
+                    }
+                }
+                return ret;
+            }
+        }
         private Dictionary<string, List<int>> _replacedArrayIndexes = new Dictionary<string, List<int>>();
         public Dictionary<string, List<int>> ReplacedArrayIndexes { get { return _replacedArrayIndexes; } }
         private sTable _map;
 
         protected Table()
 		{
-            _changedFields = new List<string>();
+            _initialValues = new Dictionary<string, object>();
+            _values = new Dictionary<string, object>();
             _map = ConnectionPoolManager.GetPool(this.GetType()).Mapping[this.GetType()];
             _values = new Dictionary<string, object>();
-			InitPrimaryKeys();
 		}
 		
         //Creates a new instance of a table object wrapping it in the proxy class.
@@ -74,17 +92,129 @@ namespace Org.Reddragonit.Dbpro.Structure
             {
                 if (_values.ContainsKey(key))
                     return _values[key];
+                else if (_initialValues.ContainsKey(key))
+                    return _initialValues[key];
                 return null;
             }
             set
             {
-                if (!_changedFields.Contains(key)&&_values.ContainsKey(key))
-                    _changedFields.Add(key);
-                if (_values.ContainsKey(key))
-                    _values.Remove(key);
-                if (value != null)
+                if (LoadStatus==LoadStatus.Loading)
+                    _initialValues.Add(key, value);
+                else if (LoadStatus == LoadStatus.Partial && !_initialValues.ContainsKey(key))
+                    _initialValues.Add(key, value);
+                else
+                {
+                    if (_values.ContainsKey(key))
+                        _values.Remove(key);
                     _values.Add(key, value);
+                }
             }
+        }
+
+        /*Called by implemented classes to get the value of a property
+        e.g. public string FirstName{get{return (string)get();}}
+        the function will take care of detecting which property you are looking to obtain and 
+        attempt to obtain it from the stored data.*/
+        protected object get()
+        {
+            StackTrace st = new StackTrace();
+            StackFrame sf = st.GetFrames()[1];
+            Match m = _regFunctionCall.Match(sf.GetMethod().Name);
+            if (!m.Success)
+                throw new Exception("Invalid Get Call");
+            if (m.Groups[1].Value.ToLower() != "get")
+                throw new Exception("Invalid Get Call");
+            object ret = this[m.Groups[2].Value];
+            if (ret == null && _loadStatus == LoadStatus.Partial)
+                _CompleteLazyLoad();
+            ret = this[m.Groups[2].Value];
+            if (ret == null)
+            {
+                MethodInfo mi = (MethodInfo)sf.GetMethod();
+                if (Nullable.GetUnderlyingType(mi.ReturnType) == null)
+                {
+                    if (mi.ReturnType.IsValueType)
+                        ret = Activator.CreateInstance(mi.ReturnType);
+                }
+            }
+            return ret;
+        }
+
+        /*Called by implemented classes to set the value of a property
+        e.g. public string FirstName{set{return set(value);}}
+        the function will take care of detecting which property you are looking to set and 
+        attempt to set it in the stored data.*/
+        protected void set(object value)
+        {
+            StackTrace st = new StackTrace();
+            StackFrame sf = st.GetFrames()[1];
+            Match m = _regFunctionCall.Match(sf.GetMethod().Name);
+            if (!m.Success)
+                throw new Exception("Invalid Set Call");
+            if (m.Groups[1].Value.ToLower() != "set")
+                throw new Exception("Invalid Set Call");
+            string prop = m.Groups[2].Value;
+            if (_loadStatus == LoadStatus.Partial)
+                _CompleteLazyLoad();
+            if (_isSaved)
+            {
+                if (new List<string>(_map.PrimaryKeyProperties).Contains(prop) && Utility.StringsEqual(prop, _map.AutoGenProperty))
+                    throw new AlterPrimaryKeyException(this.GetType().FullName, prop);
+                object curVal = this[prop];
+                this[prop] = value;
+                if (_map.ArrayProperties.Contains(prop))
+                {
+                    if (curVal != null && value != null)
+                    {
+                        List<int> indexes = new List<int>();
+                        if (_replacedArrayIndexes.ContainsKey(prop))
+                        {
+                            indexes = _replacedArrayIndexes[prop];
+                            _replacedArrayIndexes.Remove(prop);
+                        }
+                        Array arCur = (Array)curVal;
+                        Array arNew = (Array)value;
+                        for (int x = 0; x < OriginalArrayLengths[prop]; x++)
+                        {
+                            if (!indexes.Contains(x) && x < arNew.Length)
+                            {
+                                if (arCur.GetValue(x) is Table)
+                                {
+                                    if (!((Table)arNew.GetValue(x)).IsSaved)
+                                        indexes.Add(x);
+                                    if (((Table)arNew.GetValue(x)).ChangedFields.Count > 0)
+                                        indexes.Add(x);
+                                    else if (!((Table)arCur.GetValue(x)).PrimaryKeysEqual((Table)arNew.GetValue(x)))
+                                        indexes.Add(x);
+                                }
+                                else if (!arCur.GetValue(x).Equals(arNew.GetValue(x)))
+                                    indexes.Add(x);
+                            }
+                        }
+                        for (int x = arCur.Length; x < arNew.Length; x++)
+                            indexes.Add(x);
+                        _replacedArrayIndexes.Add(prop, indexes);
+                    }
+                }
+            }
+            foreach (object obj in sf.GetMethod().GetCustomAttributes(true))
+            {
+                if (obj is ValidationAttribute)
+                {
+                    ValidationAttribute va = (ValidationAttribute)obj;
+                    if (!va.IsValidValue(value))
+                        va.FailValidation(this.GetType().ToString(), prop);
+                }
+                else if (obj is PropertySetChangesField)
+                {
+                    foreach (string str in ((PropertySetChangesField)obj).FieldAffected)
+                    {
+                        PropertyInfo pi = this.GetType().GetProperty(str);
+                        this[str] = pi.GetValue(this, new object[0]);
+                    }
+                }
+            }
+            this[prop] = value;
         }
 
         private void _CompleteLazyLoad()
@@ -124,146 +254,6 @@ namespace Org.Reddragonit.Dbpro.Structure
             }
             this._loadStatus = LoadStatus.Complete;
         }
-
-        /*Called by implemented classes to get the value of a property
-        e.g. public string FirstName{get{return (string)get();}}
-        the function will take care of detecting which property you are looking to obtain and 
-        attempt to obtain it from the stored data.*/
-        protected object get()
-        {
-            StackTrace st = new StackTrace();
-            StackFrame sf = st.GetFrames()[1];
-            Match m = _regFunctionCall.Match(sf.GetMethod().Name);
-            if (!m.Success)
-                throw new Exception("Invalid Get Call");
-            if (m.Groups[1].Value.ToLower() != "get")
-                throw new Exception("Invalid Get Call");
-            object ret = this[m.Groups[2].Value];
-            if (ret == null && _loadStatus == LoadStatus.Partial)
-                _CompleteLazyLoad();
-            ret = this[m.Groups[2].Value];
-            if (ret == null)
-            {
-                MethodInfo mi = (MethodInfo)sf.GetMethod();
-                if (Nullable.GetUnderlyingType(mi.ReturnType) == null)
-                {
-                    if (mi.ReturnType.IsValueType)
-                        ret = Activator.CreateInstance(mi.ReturnType);
-                }
-            }
-            return ret;
-        }
-
-        /*Called by implemented classes to set the value of a property
-        e.g. public string FirstName{set{return set(value);}}
-        the function will take care of detecting which property you are looking to set and 
-        attempt to set it in the stored data.*/
-        protected void set(object value)
-        {
-            if (_changedFields == null)
-                _changedFields = new List<string>();
-            StackTrace st = new StackTrace();
-            StackFrame sf = st.GetFrames()[1];
-            Match m = _regFunctionCall.Match(sf.GetMethod().Name);
-            if (!m.Success)
-                throw new Exception("Invalid Set Call");
-            if (m.Groups[1].Value.ToLower() != "set")
-                throw new Exception("Invalid Set Call");
-            string prop = m.Groups[2].Value;
-            if (_loadStatus == LoadStatus.Partial)
-                _CompleteLazyLoad();
-            if (_isSaved)
-            {
-                if (new List<string>(_map.PrimaryKeyProperties).Contains(prop) && Utility.StringsEqual(prop, _map.AutoGenProperty))
-                    throw new AlterPrimaryKeyException(this.GetType().FullName, prop);
-                object curVal = this[prop];
-                if (_map.ArrayProperties.Contains(prop))
-                {
-                    if (!_originalArrayLengths.ContainsKey(prop))
-                        _originalArrayLengths.Add(prop, (curVal == null ? 0 : ((Array)curVal).Length));
-                    if (curVal!=null && value != null)
-                    {
-                        if (curVal != null && value != null)
-                        {
-                            List<int> indexes = new List<int>();
-                            if (_replacedArrayIndexes.ContainsKey(prop))
-                            {
-                                indexes = _replacedArrayIndexes[prop];
-                                _replacedArrayIndexes.Remove(prop);
-                            }
-                            Array arCur = (Array)curVal;
-                            Array arNew = (Array)value;
-                            for (int x = 0; x < _originalArrayLengths[prop]; x++)
-                            {
-                                if (!indexes.Contains(x) && x < arNew.Length)
-                                {
-                                    if (arCur.GetValue(x) is Table)
-                                    {
-                                        if (!((Table)arNew.GetValue(x)).IsSaved)
-                                            indexes.Add(x);
-                                        if (((Table)arNew.GetValue(x)).ChangedFields.Count > 0)
-                                            indexes.Add(x);
-                                        else if (!((Table)arCur.GetValue(x)).PrimaryKeysEqual((Table)arNew.GetValue(x)))
-                                            indexes.Add(x);
-                                    }
-                                    else if (!arCur.GetValue(x).Equals(arNew.GetValue(x)))
-                                        indexes.Add(x);
-                                }
-                            }
-                            for (int x = arCur.Length; x < arNew.Length; x++)
-                                indexes.Add(x);
-                            if (indexes.Count > 0 && !_changedFields.Contains(prop))
-                                _changedFields.Add(prop);
-                            else if (arNew.Length != arCur.Length && !_changedFields.Contains(prop))
-                                _changedFields.Add(prop);
-                            _replacedArrayIndexes.Add(prop, indexes);
-                        }
-                        else if (!_changedFields.Contains(prop))
-                            _changedFields.Add(prop);
-                    }
-                }
-                else if (((curVal == null) && (value != null)) ||
-                              ((curVal != null) && (value == null)) ||
-                              ((curVal != null) && (value != null) && (!curVal.Equals(value))))
-                {
-                    if (!_changedFields.Contains(prop))
-                        _changedFields.Add(prop);
-                }
-            }
-            foreach (object obj in sf.GetMethod().GetCustomAttributes(true))
-            {
-                if (obj is ValidationAttribute)
-                {
-                    ValidationAttribute va = (ValidationAttribute)obj;
-                    if (!va.IsValidValue(value))
-                        va.FailValidation(this.GetType().ToString(), prop);
-                }else if (obj is PropertySetChangesField)
-                {
-                    foreach (string str in ((PropertySetChangesField)obj).FieldAffected)
-                    {
-                        if (!_changedFields.Contains(str))
-                            _changedFields.Add(str);
-                    }
-                }
-            }
-            this[prop] = value;
-        }
-
-        //Load the initial primary keys into the table object for later comparison.
-        private void InitPrimaryKeys()
-        {
-            _initialPrimaryKeys.Clear();
-            List<string> props = new List<string>(_map.PrimaryKeyProperties);
-            if (props.Count == 0)
-                props.AddRange(_map.PrimaryKeyProperties);
-            foreach (string prop in props)
-            {
-                object obj = GetField(prop);
-                if (obj!=null)
-                    _initialPrimaryKeys.Add(prop,obj);
-            }
-        }
-
 
         internal object GetField(string FieldName)
         {
@@ -410,11 +400,11 @@ namespace Org.Reddragonit.Dbpro.Structure
                     (new List<string>(_map.PrimaryKeyProperties).Contains(FieldName) && this.IsSaved) ||
                     (!fld.Nullable && this.IsSaved))
                     return false;
-                else if (new List<string>(_map.PrimaryKeyProperties).Contains(FieldName) && this.IsParentSaved && _isParentPrimaryKey(FieldName, pool, this.GetType(), cur))
-                    return (_initialPrimaryKeys.ContainsKey(FieldName) ? false : true);
-                else if (new List<string>(_map.PrimaryKeyProperties).Contains(FieldName)
-                    && _initialPrimaryKeys.ContainsKey(FieldName))
-                    return _initialPrimaryKeys[FieldName] == cur && !this.IsSaved && !this.IsParentSaved && _loadStatus == LoadStatus.NotLoaded && !_isParentPrimaryKey(FieldName, pool, this.GetType(), cur)
+                else if (new List<string>(_map.PrimaryKeyFields).Contains(FieldName) && this.IsParentSaved && _isParentPrimaryKey(FieldName, pool, this.GetType(), cur))
+                    return (_initialValues.ContainsKey(pi.Name) ? false : true);
+                else if (new List<string>(_map.PrimaryKeyFields).Contains(FieldName)
+                    && _initialValues.ContainsKey(pi.Name))
+                    return _initialValues[FieldName] == cur && !this.IsSaved && !this.IsParentSaved && _loadStatus == LoadStatus.NotLoaded && !_isParentPrimaryKey(FieldName, pool, this.GetType(), cur)
                         && !_IsSavedTable(cur);
                 return cur == null;
             }
@@ -488,8 +478,8 @@ namespace Org.Reddragonit.Dbpro.Structure
         internal Table LoadCopyOfOriginal(Connection conn)
         {
             List<SelectParameter> pars = new List<SelectParameter>();
-            foreach (string str in _initialPrimaryKeys.Keys)
-                pars.Add(new EqualParameter(str, _initialPrimaryKeys[str]));
+            foreach (string str in _map.PrimaryKeyProperties)
+                pars.Add(new EqualParameter(str, _initialValues[str]));
             List<Org.Reddragonit.Dbpro.Structure.Table> tmp = conn.Select(this.GetType(),
                 pars.ToArray());
             if (tmp.Count > 0)
@@ -500,8 +490,8 @@ namespace Org.Reddragonit.Dbpro.Structure
         //called to get the initial value of a primary key field
 		internal object GetInitialPrimaryValue(string ClassFieldName)
 		{
-			if ((_initialPrimaryKeys!=null)&&(_initialPrimaryKeys.ContainsKey(ClassFieldName)))
-				return _initialPrimaryKeys[ClassFieldName];
+			if ((_map.PrimaryKeyProperties!=null)&&new List<string>(_map.PrimaryKeyProperties).Contains(ClassFieldName)&&(_initialValues.ContainsKey(ClassFieldName)))
+				return _initialValues[ClassFieldName];
 			return null;
 		}
 		
@@ -536,7 +526,6 @@ namespace Org.Reddragonit.Dbpro.Structure
                 }
                 t = t.BaseType;
             }
-            InitPrimaryKeys();
             if (table.GetType() == this.GetType().BaseType)
                 this._isParentSaved = table.IsSaved;
 		}
@@ -580,7 +569,7 @@ namespace Org.Reddragonit.Dbpro.Structure
         //called by a connection to set the values in the table object from the generated query.
         internal void SetValues(Connection conn)
         {
-            _initialPrimaryKeys.Clear();
+            _loadStatus = LoadStatus.Loading;
             Logger.LogLine("Obtaining table map for " + this.GetType().FullName + " to allow setting of values from query");
             Logger.LogLine("Recursively setting values from query for " + this.GetType().FullName);
             RecurSetValues(_map, conn);
@@ -630,7 +619,6 @@ namespace Org.Reddragonit.Dbpro.Structure
                     }
                     if (!t.AllPrimaryKeysNull)
                     {
-                        t.InitPrimaryKeys();
                         table.SetField(prop, t);
                         setValue = true;
                     }
@@ -713,7 +701,6 @@ namespace Org.Reddragonit.Dbpro.Structure
                             t = SetExternalValues(map, prop, conn, out setValue, t);
                             if (!t.AllPrimaryKeysNull && setValue)
                             {
-                                t.InitPrimaryKeys();
                                 this.SetField(prop, t);
                             }
                         }
@@ -746,7 +733,6 @@ namespace Org.Reddragonit.Dbpro.Structure
 			{
 				RecurSetValues(conn.Pool.Mapping[ty.BaseType],conn);
 			}
-            this.InitPrimaryKeys();
 		}
 
 		internal bool AllPrimaryKeysNull
@@ -776,7 +762,7 @@ namespace Org.Reddragonit.Dbpro.Structure
             if (pool.Mapping.IsMappableType(type.BaseType))
             {
                 if (pool.Mapping[type.BaseType][FieldName].Length > 0)
-                    return (_initialPrimaryKeys.ContainsKey(FieldName) ? _initialPrimaryKeys[FieldName] == cur : false);
+                    return (new List<string>(_map.PrimaryKeyFields).Contains(FieldName) ? this.GetField(FieldName) == cur : false);
             }
             return false;
         }
@@ -917,15 +903,14 @@ namespace Org.Reddragonit.Dbpro.Structure
                 ret._isSaved = this._isSaved;
                 ret._loadStatus = this._loadStatus;
             }
-            ((Table)ret)._changedFields = new List<string>();
             foreach (string prop in map.Properties)
             {
-                if (!this.IsFieldNull(prop))
-                    ((Table)ret).SetField(prop, this.GetField(prop));
+                if (_initialValues.ContainsKey(prop))
+                    ((Table)ret)._initialValues.Add(prop, _initialValues[prop]);
                 if (this.ChangedFields != null)
                 {
                     if (this.ChangedFields.Contains(prop))
-                        ((Table)ret)._changedFields.Add(prop);
+                        ((Table)ret)._values.Add(prop,this.GetField(prop));
                 }
             }
             ConnectionPool pool = ConnectionPoolManager.GetPool(ret.GetType());
@@ -937,24 +922,15 @@ namespace Org.Reddragonit.Dbpro.Structure
                 map = pool.Mapping[t];
                 foreach (string prop in map.Properties)
                 {
-                    if (!this.IsFieldNull(prop))
-                        ((Table)ret).SetField(prop, this.GetField(prop));
+                    if (_initialValues.ContainsKey(prop))
+                        ((Table)ret)._initialValues.Add(prop, _initialValues[prop]);
                     if (this.ChangedFields != null)
                     {
                         if (this.ChangedFields.Contains(prop))
-                            ((Table)ret)._changedFields.Add(prop);
+                            ((Table)ret)._values.Add(prop, this.GetField(prop));
                     }
                 }
                 t = t.BaseType;
-            }
-            ((Table)ret).InitPrimaryKeys();
-            foreach (string str in this._initialPrimaryKeys.Keys)
-            {
-                if (((Table)ret)._initialPrimaryKeys.ContainsKey(str))
-                {
-                    ((Table)ret)._initialPrimaryKeys.Remove(str);
-                    ((Table)ret)._initialPrimaryKeys.Add(str, this._initialPrimaryKeys[str]);
-                }
             }
             ret._isParentSaved = this.IsParentSaved||(this.IsSaved&&ret.GetType().BaseType==this.GetType());
 			return ret;
@@ -1024,7 +1000,12 @@ namespace Org.Reddragonit.Dbpro.Structure
                     this[pi.Name] = pi.GetValue(tmp, new object[] { });
             }
             this._isSaved = true;
-            this._changedFields = null;
+            foreach(string str in _values.Keys)
+            {
+                _initialValues.Remove(str);
+                _initialValues.Add(str, _values[str]);
+            }
+            _values.Clear();
         }
     }
 }
