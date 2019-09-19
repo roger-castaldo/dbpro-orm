@@ -47,6 +47,8 @@ namespace TestingAppCore
             u.UserName = "rcastaldo";
             u = User.Save(u);
             SecureUser su = (SecureUser)u.ToType(typeof(SecureUser), null);
+            conn.Save(su);
+            conn.Commit();
             conn = ConnectionPoolManager.GetConnection(typeof(User));
             foreach (UserGroupList ugl in conn.SelectClassView(typeof(UserGroupList)))
             {

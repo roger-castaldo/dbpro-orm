@@ -541,6 +541,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                     }
                 }
             }
+            table.WasSaved();
 			return table;
 		}
 
@@ -583,6 +584,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 }
             }
             ret.LoadStatus = LoadStatus.Complete;
+            table.WasSaved();
             return ret;
         }
 
@@ -608,7 +610,7 @@ namespace Org.Reddragonit.Dbpro.Connections
             sTable map = pool.Mapping[table.GetType()];
             if (!ignoreAutogen)
             {
-                if (pool.Mapping.IsMappableType(table.GetType().BaseType))
+                if (pool.Mapping.IsMappableType(table.GetType().BaseType) && !table.IsParentSaved)
                 {
                     Table tblPar = (Table)table.ToType(table.GetType().BaseType, null);
                     List<SelectParameter> tmpPars = new List<SelectParameter>();
@@ -740,6 +742,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                 else
                     InsertArrayValue(table,pi,0,null, map, (Array)table.GetField(prop), prop, ignoreAutogen);
             }
+            table.WasSaved();
 			return table;
 		}
 		
@@ -905,6 +908,8 @@ namespace Org.Reddragonit.Dbpro.Connections
                 }
                 type = type.BaseType;
             }
+            for (int x = 0; x < ret.Count; x++)
+                ret[x].LoadStatus = LoadStatus.Complete;
 			return ret;
         }
 
@@ -1261,7 +1266,6 @@ namespace Org.Reddragonit.Dbpro.Connections
                 Logger.LogLine("Reading result and loading table object " + type.FullName + " from query");
 				t.SetValues(this);
                 Logger.LogLine("Setting load status for " + type.FullName + " as completed and adding to results");
-				t.LoadStatus=LoadStatus.Complete;
 				ret.Add(t);
 			}
 			Close();

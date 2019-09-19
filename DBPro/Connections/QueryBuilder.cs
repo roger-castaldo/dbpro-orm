@@ -851,7 +851,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                     }
                     insertParameters.Add(pool.CreateParameter(CreateParameterName(tbl.AutoGenField), table.GetField(tbl.AutoGenProperty),
                         tbl[tbl.AutoGenProperty][0].Type, tbl[tbl.AutoGenProperty][0].Length));
-                    if (tbl[tbl.AutoGenProperty][0].Type == FieldType.STRING)
+                    if (tbl[tbl.AutoGenProperty][0].Type == FieldType.STRING || insertParameters[insertParameters.Count - 1].DbType == DbType.String || insertParameters[insertParameters.Count - 1].DbType == DbType.StringFixedLength)
                         insertParameters[insertParameters.Count - 1].Size = int.MaxValue;
                     select = _GenerateAutogenIDQuery(tbl, ref insertParameters);
                     if (pool is MsSqlConnectionPool && select.StartsWith("OUTPUT"))

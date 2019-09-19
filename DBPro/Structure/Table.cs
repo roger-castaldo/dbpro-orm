@@ -40,6 +40,15 @@ namespace Org.Reddragonit.Dbpro.Structure
         private Dictionary<string, object> _initialValues;
         //Houses the changed property values when set is called
         private Dictionary<string, object> _values;
+        internal void WasSaved()
+        {
+            foreach (string str in _values.Keys)
+            {
+                _initialValues.Remove(str);
+                _initialValues.Add(str, _values[str]);
+            }
+            _values.Clear();
+        }
         //returns all fields that have been modified by the set call
         internal List<string> ChangedFields
         {
@@ -98,15 +107,24 @@ namespace Org.Reddragonit.Dbpro.Structure
             }
             set
             {
-                if (LoadStatus==LoadStatus.Loading)
+                if (LoadStatus == LoadStatus.Loading)
+                {
+                    _initialValues.Remove(key);
                     _initialValues.Add(key, value);
+                }
                 else if (LoadStatus == LoadStatus.Partial && !_initialValues.ContainsKey(key))
                     _initialValues.Add(key, value);
                 else
                 {
                     if (_values.ContainsKey(key))
                         _values.Remove(key);
-                    _values.Add(key, value);
+                    if (_initialValues.ContainsKey(key))
+                    {
+                        if (!Utility.Equals(_initialValues[key],value))
+                            _values.Add(key, value);
+                    }
+                    else
+                        _values.Add(key, value);
                 }
             }
         }
@@ -126,8 +144,10 @@ namespace Org.Reddragonit.Dbpro.Structure
                 throw new Exception("Invalid Get Call");
             object ret = this[m.Groups[2].Value];
             if (ret == null && _loadStatus == LoadStatus.Partial)
+            {
                 _CompleteLazyLoad();
-            ret = this[m.Groups[2].Value];
+                ret = this[m.Groups[2].Value];
+            }
             if (ret == null)
             {
                 MethodInfo mi = (MethodInfo)sf.GetMethod();
@@ -400,11 +420,11 @@ namespace Org.Reddragonit.Dbpro.Structure
                     (new List<string>(_map.PrimaryKeyProperties).Contains(FieldName) && this.IsSaved) ||
                     (!fld.Nullable && this.IsSaved))
                     return false;
-                else if (new List<string>(_map.PrimaryKeyFields).Contains(FieldName) && this.IsParentSaved && _isParentPrimaryKey(FieldName, pool, this.GetType(), cur))
+                else if (new List<string>(_map.PrimaryKeyFields).Contains(FieldName) && this.IsParentSaved && _isParentPrimaryKey(FieldName, pool, this.GetType()))
                     return (_initialValues.ContainsKey(pi.Name) ? false : true);
                 else if (new List<string>(_map.PrimaryKeyFields).Contains(FieldName)
                     && _initialValues.ContainsKey(pi.Name))
-                    return _initialValues[FieldName] == cur && !this.IsSaved && !this.IsParentSaved && _loadStatus == LoadStatus.NotLoaded && !_isParentPrimaryKey(FieldName, pool, this.GetType(), cur)
+                    return _initialValues[FieldName] == cur && !this.IsSaved && !this.IsParentSaved && _loadStatus == LoadStatus.NotLoaded && !_isParentPrimaryKey(FieldName, pool, this.GetType())
                         && !_IsSavedTable(cur);
                 return cur == null;
             }
@@ -527,7 +547,19 @@ namespace Org.Reddragonit.Dbpro.Structure
                 t = t.BaseType;
             }
             if (table.GetType() == this.GetType().BaseType)
+            {
                 this._isParentSaved = table.IsSaved;
+                if (this._isParentSaved)
+                {
+                    foreach (string str in _map.PrimaryKeyFields)
+                    {
+                        if (table[str] != null && _values.ContainsKey(str))
+                            _values.Remove(str);
+                        if (table[str] != null && !_initialValues.ContainsKey(str))
+                            _initialValues.Add(str,table[str]);
+                    }
+                }
+            }
 		}
 		
         //returns the connection name that this table is linked to
@@ -693,36 +725,39 @@ namespace Org.Reddragonit.Dbpro.Structure
                     PropertyInfo pi = ty.GetProperty(prop, Utility._BINDING_FLAGS);
                     if (pi != null)
                     {
-                        if (extFields.Contains(prop) && !Utility.IsEnum(pi.PropertyType))
+                        if (pi.DeclaringType == ty)
                         {
-                            Table t = (Table)pi.PropertyType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
-                            t._loadStatus = LoadStatus.Partial;
-                            bool setValue = false;
-                            t = SetExternalValues(map, prop, conn, out setValue, t);
-                            if (!t.AllPrimaryKeysNull && setValue)
+                            if (extFields.Contains(prop) && !Utility.IsEnum(pi.PropertyType))
                             {
-                                this.SetField(prop, t);
-                            }
-                        }
-                        else
-                        {
-                            sTableField fld = map[prop][0];
-                            if (conn.ContainsField(fld.Name))
-                            {
-                                if (conn.IsDBNull(conn.GetOrdinal(fld.Name)))
+                                Table t = (Table)pi.PropertyType.GetConstructor(Type.EmptyTypes).Invoke(new object[0]);
+                                t._loadStatus = LoadStatus.Partial;
+                                bool setValue = false;
+                                t = SetExternalValues(map, prop, conn, out setValue, t);
+                                if (!t.AllPrimaryKeysNull && setValue)
                                 {
-                                    try
-                                    {
-                                        this.SetField(prop, null);
-                                    }
-                                    catch (Exception e) { }
+                                    this.SetField(prop, t);
                                 }
-                                else
+                            }
+                            else
+                            {
+                                sTableField fld = map[prop][0];
+                                if (conn.ContainsField(fld.Name))
                                 {
-                                    if (fld.Type == FieldType.ENUM)
-                                        this.SetField(prop, conn.Pool.GetEnumValue(pi.PropertyType, (int)conn[fld.Name]));
+                                    if (conn.IsDBNull(conn.GetOrdinal(fld.Name)))
+                                    {
+                                        try
+                                        {
+                                            this.SetField(prop, null);
+                                        }
+                                        catch (Exception e) { }
+                                    }
                                     else
-                                        this.SetField(prop, conn[fld.Name]);
+                                    {
+                                        if (fld.Type == FieldType.ENUM)
+                                            this.SetField(prop, conn.Pool.GetEnumValue(pi.PropertyType, (int)conn[fld.Name]));
+                                        else
+                                            this.SetField(prop, conn[fld.Name]);
+                                    }
                                 }
                             }
                         }
@@ -757,12 +792,12 @@ namespace Org.Reddragonit.Dbpro.Structure
             return false;
         }
 
-        private bool _isParentPrimaryKey(string FieldName,ConnectionPool pool,Type type,object cur)
+        private bool _isParentPrimaryKey(string FieldName,ConnectionPool pool,Type type)
         {
             if (pool.Mapping.IsMappableType(type.BaseType))
             {
                 if (pool.Mapping[type.BaseType][FieldName].Length > 0)
-                    return (new List<string>(_map.PrimaryKeyFields).Contains(FieldName) ? this.GetField(FieldName) == cur : false);
+                    return new List<string>(_map.PrimaryKeyFields).Contains(FieldName);
             }
             return false;
         }
@@ -923,11 +958,17 @@ namespace Org.Reddragonit.Dbpro.Structure
                 foreach (string prop in map.Properties)
                 {
                     if (_initialValues.ContainsKey(prop))
+                    {
+                        ((Table)ret)._initialValues.Remove(prop);
                         ((Table)ret)._initialValues.Add(prop, _initialValues[prop]);
+                    }
                     if (this.ChangedFields != null)
                     {
                         if (this.ChangedFields.Contains(prop))
+                        {
+                            ((Table)ret)._values.Remove(prop);
                             ((Table)ret)._values.Add(prop, this.GetField(prop));
+                        }
                     }
                 }
                 t = t.BaseType;
