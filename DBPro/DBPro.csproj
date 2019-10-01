@@ -4,16 +4,16 @@
     <TargetFrameworks>netcoreapp2.1;net461</TargetFrameworks>
     <RootNamespace>Org.Reddragonit.Dbpro</RootNamespace>
     <PackageId>Org.Reddragonit.Dbpro</PackageId>
-    <Version>2.0.5</Version>
+    <Version>2.0.7</Version>
     <Authors>Roger Castaldo</Authors>
     <Description>an orm desgined to map classes directly into a database, including support for creating views and executing a modified sql language that uses the class objects and translates them into a proper query.</Description>
     <PackageProjectUrl>https://github.com/roger-castaldo/backbone-dotnet</PackageProjectUrl>
     <PackageLicenseUrl></PackageLicenseUrl>
     <PackageTags>orm database sql</PackageTags>
     <Title>Dbpro</Title>
-    <PackageReleaseNotes>additional patching to clear bugs wrt saving cascading tables.</PackageReleaseNotes>
-    <AssemblyVersion>2.0.5</AssemblyVersion>
-    <FileVersion>2.0.5</FileVersion>
+    <PackageReleaseNotes>patch to hide internal properties</PackageReleaseNotes>
+    <AssemblyVersion>2.0.7</AssemblyVersion>
+    <FileVersion>2.0.7</FileVersion>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
   <ItemGroup>

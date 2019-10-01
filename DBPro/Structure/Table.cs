@@ -58,7 +58,7 @@ namespace Org.Reddragonit.Dbpro.Structure
                 return new List<string>(ret);
             }
         }
-        public Dictionary<string, int> OriginalArrayLengths {
+        internal Dictionary<string, int> OriginalArrayLengths {
             get {
                 Dictionary<string, int> ret = new Dictionary<string, int>();
                 foreach (string str in _initialValues.Keys)
@@ -75,7 +75,7 @@ namespace Org.Reddragonit.Dbpro.Structure
             }
         }
         private Dictionary<string, List<int>> _replacedArrayIndexes = new Dictionary<string, List<int>>();
-        public Dictionary<string, List<int>> ReplacedArrayIndexes { get { return _replacedArrayIndexes; } }
+        internal Dictionary<string, List<int>> ReplacedArrayIndexes { get { return _replacedArrayIndexes; } }
         private sTable _map;
 
         protected Table()
