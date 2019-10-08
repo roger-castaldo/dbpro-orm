@@ -120,7 +120,7 @@ namespace Org.Reddragonit.Dbpro.Structure
                         _values.Remove(key);
                     if (_initialValues.ContainsKey(key))
                     {
-                        if (!Utility.Equals(_initialValues[key],value))
+                        if (!Utility.IsEqual(_initialValues[key],value))
                             _values.Add(key, value);
                     }
                     else
@@ -605,6 +605,7 @@ namespace Org.Reddragonit.Dbpro.Structure
             Logger.LogLine("Obtaining table map for " + this.GetType().FullName + " to allow setting of values from query");
             Logger.LogLine("Recursively setting values from query for " + this.GetType().FullName);
             RecurSetValues(_map, conn);
+            _values.Clear();
             _isSaved = true;
         }
 

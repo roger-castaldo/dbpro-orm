@@ -109,10 +109,25 @@ namespace Org.Reddragonit.Dbpro
             }
             return ret;
         }
-		
+
+        internal static bool IsEqual(object lt, object rt)
+        {
+            if (lt == null && rt == null)
+                return true;
+            else if (lt == null && rt != null)
+                return false;
+            else if (lt != null && rt == null)
+                return false;
+            else if (lt.GetType() != rt.GetType())
+                return false;
+            else if (lt is IComparable)
+                return ((IComparable)lt).CompareTo(rt) == 0;
+            return lt.Equals(rt);
+        }
+
         //Merges to string arrays into one, commonly called for the keywords
         //declarations within a connection
-		public static string[] MergeStringArrays(string[] array1,string[] array2)
+        public static string[] MergeStringArrays(string[] array1,string[] array2)
 		{
 			List<string> ret = new List<string>();
 			ret.AddRange(array1);
