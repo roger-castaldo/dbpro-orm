@@ -142,18 +142,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 
         protected override bool _IsCoreStoredProcedure(StoredProcedure storedProcedure)
         {
-            bool ret = false;
-            XmlDocument doc = new XmlDocument();
-            doc.LoadXml(new StreamReader(Assembly.GetAssembly(typeof(FBConnection)).GetManifestResourceStream("Org.Reddragonit.Dbpro.Connections.Firebird.StringIDProcedures.xml")).ReadToEnd());
-            foreach (XmlElement proc in doc.GetElementsByTagName("Procedure"))
-            {
-                if (proc.ChildNodes[0].InnerText == storedProcedure.ProcedureName)
-                {
-                    ret = true;
-                    break;
-                }
-            }
-            return ret;
+            return false;
         }
 
         private QueryBuilder _builder;

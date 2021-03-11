@@ -449,7 +449,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Parameters
 
         internal override sealed string ConstructClassViewString(ClassViewAttribute cva, ConnectionPool pool, QueryBuilder builder, ref List<IDbDataParameter> queryParameters, ref int parCount)
         {
-            string ret = FieldName+" ";
+            string ret = string.Format("\"{0}\" ",FieldName);
             if (FieldValue == null)
             {
                 ret += ComparatorString + " " + builder.CreateParameterName("parameter_" + parCount.ToString());

@@ -738,8 +738,11 @@ namespace Org.Reddragonit.Dbpro.Connections
         public string ComputedCode { get { return _computedCode; } }
 		public string FullFieldType{
 			get{
-				if (Type.ToUpper().Contains("CHAR")||Type.Contains("VARBINARY")||Type.Contains("VARYING"))
+				if (Type.ToUpper().Contains("CHAR")||Type.Contains("VARBINARY")||Type.Contains("VARYING")){
+                    if (Type.Contains("{0}"))
+                        return string.Format(Type,"("+(Size==-1 ? "MAX" : Size.ToString())+")");
 					return Type+"("+(Size==-1 ? "MAX" : Size.ToString())+")";
+                }
 				return Type;
 			}
 		}

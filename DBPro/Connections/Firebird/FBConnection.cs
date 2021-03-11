@@ -18,6 +18,7 @@ using System.Reflection;
 using System.Xml;
 using System.IO;
 using Org.Reddragonit.Dbpro.Connections.PoolComponents;
+using System.Text.RegularExpressions;
 
 namespace Org.Reddragonit.Dbpro.Connections.Firebird
 {
@@ -75,20 +76,20 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 			if (field.Type.ToUpper().Contains("DATE")||field.Type.ToUpper().Contains("TIME"))
 			{
 				triggers.Add(new Trigger((imediate ? Pool.Translator.GetInsertIntermediateTriggerName(t,pi,this) : Pool.Translator.GetInsertTriggerName(t,this)),"FOR "+map.TableName+" ACTIVE BEFORE INSERT POSITION 0",
-				                         "AS \n" +
-				                         "BEGIN \n" +
-				                         "    NEW." + field.FieldName + " = CURRENT_TIMESTAMP;\n" +
-				                         "END"));
+				                         string.Format(@"AS 
+										 BEGIN 
+										 	NEW.{0} = CURRENT_TIMESTAMP;
+										 END",field.FieldName)));
 			}else if (field.Type.ToUpper().Contains("INT"))
 			{
 				if (map.PrimaryKeys.Count==1)
 				{
 					generators.Add(new Generator((imediate ? Pool.Translator.GetIntermediateGeneratorName(t,pi,this) : Pool.Translator.GetGeneratorName(t,pi,this))));
                     triggers.Add(new Trigger((imediate ? Pool.Translator.GetInsertIntermediateTriggerName(t, pi, this) : Pool.Translator.GetInsertTriggerName(t, this)), "FOR " + map.TableName + " ACTIVE BEFORE INSERT POSITION 0",
-					                         "AS \n" +
-					                         "BEGIN \n" +
-					                         "    NEW." + field.FieldName + " = GEN_ID("+generators[generators.Count-1].Name + ",1);\n" +
-					                         "END"));
+					                         string.Format(@"AS 
+											BEGIN 
+											 	NEW.{0} = GEN_ID({1},1);
+											END",field.FieldName,generators[generators.Count-1].Name)));
 				}else{
 					string code = "AS \n";
 					string declares="";
@@ -114,30 +115,13 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 					code+="END";
                     triggers.Add(new Trigger((imediate ? Pool.Translator.GetInsertIntermediateTriggerName(t, pi, this) : Pool.Translator.GetInsertTriggerName(t, this)), "FOR " + map.TableName + " ACTIVE BEFORE INSERT POSITION 0", code));
 				}
-            }else if (field.Type.ToUpper().Contains("VARCHAR"))
+            }else if (field.FullFieldType.ToUpper()=="CHAR(16) CHARACTER SET OCTETS")
             {
-                XmlDocument doc = new XmlDocument();
-                doc.LoadXml(new StreamReader(Assembly.GetAssembly(typeof(FBConnection)).GetManifestResourceStream("Org.Reddragonit.Dbpro.Connections.Firebird.StringIDProcedures.xml")).ReadToEnd());
-                foreach (XmlElement proc in doc.GetElementsByTagName("Procedure"))
-                    procedures.Add(new StoredProcedure(proc.ChildNodes[0].InnerText,
-                        proc.ChildNodes[1].InnerText,
-                        proc.ChildNodes[2].InnerText,
-                        proc.ChildNodes[3].InnerText,
-                        proc.ChildNodes[4].InnerText));
-                string code = "AS \n";
-                code += "DECLARE VARIABLE IDVAL VARCHAR(38);\n"+
-                    "DECLARE VARIABLE CNT BIGINT;\n";
-                code += "BEGIN \n";
-                code += "CNT=1;\n";
-                code += "WHILE (CNT>0) DO\n";
-                code += "BEGIN\n";
-                code += "EXECUTE PROCEDURE GENERATE_UNIQUE_ID returning_values IDVAL;\n";
-                code += "SELECT COUNT(*) FROM " + map.TableName + " WHERE ";
-                code += field.FieldName+" = :IDVAL INTO :CNT;\n";
-                code += "END\n";
-                code += "NEW." + field.FieldName + " = IDVAL;\n";
-                code += "END";
-                triggers.Add(new Trigger((imediate ? Pool.Translator.GetInsertIntermediateTriggerName(t, pi, this) : Pool.Translator.GetInsertTriggerName(t, this)), "FOR " + map.TableName + " ACTIVE BEFORE INSERT POSITION 0", code));
+                triggers.Add(new Trigger((imediate ? Pool.Translator.GetInsertIntermediateTriggerName(t, pi, this) : Pool.Translator.GetInsertTriggerName(t, this)), "FOR " + map.TableName + " ACTIVE BEFORE INSERT POSITION 0", 
+					string.Format(@"AS
+					BEGIN
+						NEW.{0} = GEN_UUID();
+					END",field.FieldName)));
             }
             else
                 throw new Exception("Unable to create autogenerator for non date or digit type.");
@@ -165,7 +149,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 					}
 				}
 			}
-            if (field.Type.ToUpper().Contains("DATE") || field.Type.ToUpper().Contains("TIME") || field.Type.ToUpper().Contains("VARCHAR"))
+            if (field.Type.ToUpper().Contains("DATE") || field.Type.ToUpper().Contains("TIME") || field.Type.ToUpper().Contains("CHAR"))
 			{
 				triggers.Add(new Trigger(Pool.Translator.GetInsertTriggerName(t,this),"",""));
 			}
@@ -238,8 +222,23 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
                 if ((reader.GetDataTypeName(i) == "CHAR") && (reader[i].ToString().Length == 1) && ((reader[i].ToString() == "T") || (reader[i].ToString() == "F")))
                     return this.GetBoolean(i);
             }
-            return base.GetValue(i);
+			object ret = base.GetValue(i);
+			if (ret is Guid){
+				return this.GetGuid(i);
+			}
+			return ret;
         }
+
+		public override Guid GetGuid(int i){
+			Guid tmp = reader.GetGuid(i);
+			byte[] rfc4122bytes = tmp.ToByteArray();
+			if (BitConverter.IsLittleEndian) {
+				Array.Reverse(rfc4122bytes, 0, 4);
+				Array.Reverse(rfc4122bytes, 4, 2);
+				Array.Reverse(rfc4122bytes, 6, 2);
+			}
+			return new Guid(rfc4122bytes);
+		}
 
         public override Type GetFieldType(int i)
         {
@@ -248,6 +247,9 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
                 if ((reader.GetDataTypeName(i) == "CHAR") && (reader[i].ToString().Length == 1) && ((reader[i].ToString() == "T") || (reader[i].ToString() == "F")))
                     return typeof(bool);
             }
+			if (reader.GetDataTypeName(i)=="CHAR" && reader[i].ToString().Length==16){
+				return typeof(Guid);
+			}
             return base.GetFieldType(i);
         }
 
@@ -334,6 +336,9 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 					else
 						ret="VARCHAR("+fieldLength.ToString()+")";
 					break;
+				case FieldType.GUID:
+					ret = "CHAR{0} CHARACTER SET OCTETS";
+					break;
 			}
 			return ret;
 		}
@@ -396,5 +401,27 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
                     this.ExecuteNonQuery(str);
             }
         }
+
+        protected override string _FormatParameters(string queryString, ref IDbDataParameter[] parameters)
+        {
+            string ret = queryString;
+			List<IDbDataParameter> pars = new List<IDbDataParameter>();
+			for(int x=0;x<parameters.Length;x++){
+				if (parameters[x].Value !=null){
+					if (parameters[x].Value is Guid){
+						Regex reg = new Regex(string.Format("[^A-Za-z0-9_]+({0})[^A-Za-z0-9_]",parameters[x].ParameterName));
+						string rep = string.Format("x'{0}'",BitConverter.ToString(((Guid)parameters[x].Value).ToByteArray()).Replace("-",""));
+						foreach (Match m in reg.Matches(ret)){
+							ret = ret.Replace(m.Value,m.Value.Replace(m.Groups[1].Value,rep));
+						}
+					}else
+						pars.Add(parameters[x]);
+				}else
+					pars.Add(parameters[x]);
+			}
+			parameters = pars.ToArray();
+			return ret;
+        }
+    
 	}
 }

@@ -23,7 +23,8 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
 		ENUM,
         UNSIGNED_INTEGER,
         UNSIGNED_SHORT,
-        UNSIGNED_LONG
+        UNSIGNED_LONG,
+		GUID
 	};
 	
 	[AttributeUsage(AttributeTargets.Property)]
@@ -207,6 +208,9 @@ namespace Org.Reddragonit.Dbpro.Structure.Attributes
                 case "UINT32":
                     _fieldLength = 4;
                     return FieldType.UNSIGNED_INTEGER;
+				case "GUID":
+					_fieldLength = 16;
+					return FieldType.GUID;
 				default:
                     if (Utility.IsEnum(propertyType))
                     {

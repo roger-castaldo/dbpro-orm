@@ -96,6 +96,10 @@ namespace Org.Reddragonit.Dbpro.Connections
         internal abstract void DisableAutogens();
         internal abstract void EnableAndResetAutogens();
         internal abstract IDbTransaction EstablishExclusiveTransaction();
+
+        protected virtual string _FormatParameters(string queryString,ref IDbDataParameter[] parameters){
+            return queryString;
+        }
 		
 		internal virtual List<string> GetDropTableString(string table,bool isVersioned)
 		{
@@ -1394,7 +1398,7 @@ namespace Org.Reddragonit.Dbpro.Connections
                         pars.Add(par);
 				}
 				parameters=pars.ToArray();
-				return ret;
+				return _FormatParameters(ret,ref parameters);
 			}
 		}
 
@@ -1930,7 +1934,7 @@ namespace Org.Reddragonit.Dbpro.Connections
 			return reader.GetChars(i,fieldoffset,buffer,bufferoffset,length);
 		}
 		
-		public Guid GetGuid(int i)
+		public virtual Guid GetGuid(int i)
 		{
 			return reader.GetGuid(i);
 		}
