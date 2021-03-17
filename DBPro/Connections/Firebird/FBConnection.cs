@@ -222,14 +222,13 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
                 if ((reader.GetDataTypeName(i) == "CHAR") && (reader[i].ToString().Length == 1) && ((reader[i].ToString() == "T") || (reader[i].ToString() == "F")))
                     return this.GetBoolean(i);
             }
-			object ret = base.GetValue(i);
-			if (ret is Guid){
-				return this.GetGuid(i);
-			}
-			return ret;
-        }
+			if (this.GetDataTypeName(i)=="CHAR" && base.GetValue(i).ToString().Length==16)
+				return base.GetGuid(i);
+			else
+				return base.GetValue(i);
+		}
 
-		public override Guid GetGuid(int i){
+		/*public override Guid GetGuid(int i){
 			Guid tmp = reader.GetGuid(i);
 			byte[] rfc4122bytes = tmp.ToByteArray();
 			if (BitConverter.IsLittleEndian) {
@@ -238,7 +237,7 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 				Array.Reverse(rfc4122bytes, 6, 2);
 			}
 			return new Guid(rfc4122bytes);
-		}
+		}*/
 
         public override Type GetFieldType(int i)
         {
@@ -410,10 +409,11 @@ namespace Org.Reddragonit.Dbpro.Connections.Firebird
 				if (parameters[x].Value !=null){
 					if (parameters[x].Value is Guid){
 						Regex reg = new Regex(string.Format("[^A-Za-z0-9_]+({0})[^A-Za-z0-9_]",parameters[x].ParameterName));
-						string rep = string.Format("x'{0}'",BitConverter.ToString(((Guid)parameters[x].Value).ToByteArray()).Replace("-",""));
-						foreach (Match m in reg.Matches(ret)){
-							ret = ret.Replace(m.Value,m.Value.Replace(m.Groups[1].Value,rep));
-						}
+						string rep = string.Format("CHAR_TO_UUID({0})",parameters[x].ParameterName);
+                        foreach (Match m in reg.Matches(queryString)){
+                            ret = ret.Replace(m.Value,m.Value.Replace(m.Groups[1].Value,rep));
+                        }
+						pars.Add(CreateParameter(parameters[x].ParameterName,parameters[x].Value.ToString()));
 					}else
 						pars.Add(parameters[x]);
 				}else
